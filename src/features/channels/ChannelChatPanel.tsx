@@ -47,6 +47,7 @@ interface Props {
   panelSize: ChannelChatPanelSize;
   scrollResetKey?: string | null;
   onPanelSizeChange: (size: ChannelChatPanelSize) => void;
+  onOpenPreferences: () => void;
 }
 
 export type ChannelChatPanelSize = 'small' | 'medium' | 'large';
@@ -330,7 +331,7 @@ function activityStatusClass(status: string): string {
   return status.toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
 }
 
-export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetKey, onPanelSizeChange }: Props) {
+export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetKey, onPanelSizeChange, onOpenPreferences }: Props) {
   const [draft, setDraft] = useState('');
   const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
   const [senderIdentity, setSenderIdentity] = useState(readStoredSenderIdentity);
@@ -556,21 +557,36 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     setMentionActiveIndex(0);
   }, [mentionQuery]);
 
-  const handleComposerKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
-    if (!mentionQuery || mentionSuggestions.length === 0) return;
-    if (event.key === 'ArrowDown') {
+  const handleComposerKeyDown = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
+    // If mention menu is active, handle mention navigation/selection
+    if (mentionQuery && mentionSuggestions.length > 0) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setMentionActiveIndex(index => (index + 1) % mentionSuggestions.length);
+        return;
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setMentionActiveIndex(index => (index - 1 + mentionSuggestions.length) % mentionSuggestions.length);
+        return;
+      } else if (event.key === 'Enter' || event.key === 'Tab') {
+        event.preventDefault();
+        insertMention(mentionSuggestions[mentionActiveIndex]?.identity ?? mentionSuggestions[0].identity);
+        return;
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        setMentionActiveIndex(0);
+        setDraft(current => current);
+        return;
+      }
+    }
+
+    // Submit on Enter (without Shift). Shift+Enter inserts a newline.
+    if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
-      setMentionActiveIndex(index => (index + 1) % mentionSuggestions.length);
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      setMentionActiveIndex(index => (index - 1 + mentionSuggestions.length) % mentionSuggestions.length);
-    } else if (event.key === 'Enter' || event.key === 'Tab') {
-      event.preventDefault();
-      insertMention(mentionSuggestions[mentionActiveIndex]?.identity ?? mentionSuggestions[0].identity);
-    } else if (event.key === 'Escape') {
-      event.preventDefault();
-      setMentionActiveIndex(0);
-      setDraft(current => current);
+      const form = (event.currentTarget as HTMLTextAreaElement).form;
+      if (form) {
+        form.requestSubmit();
+      }
     }
   }, [insertMention, mentionActiveIndex, mentionQuery, mentionSuggestions]);
 
@@ -805,6 +821,15 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
           }}
         >
           Refresh
+        </button>
+        <button
+          type="button"
+          className="preferences-gear"
+          onClick={onOpenPreferences}
+          title="Open preferences"
+          aria-label="Open preferences"
+        >
+          ⚙
         </button>
       </div>
 
@@ -1054,13 +1079,15 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
             <option key={member.id} value={member.memberIdentity}>@{member.memberIdentity}</option>
           ))}
         </select>
-        <input
+        <textarea
           value={draft}
           onChange={event => setDraft(event.target.value)}
           onKeyDown={handleComposerKeyDown}
           placeholder={composerPlaceholder}
           disabled={isComposerDisabled}
           aria-label="Channel message"
+          rows={1}
+          className="channel-chat-composer-textarea"
         />
         {mentionQuery && (
           <div className="channel-chat-mention-menu" role="listbox" aria-label="Mention suggestions">

@@ -33,6 +33,8 @@ import { AgentsOverviewView } from '../features/agents/AgentsOverviewView';
 import { agentStreamEntryVisibility } from '../features/agents/subagentRuns';
 import { documentSelectionAction } from '../features/documents/documentEditor';
 import type { GitFocus } from '../features/git/git';
+import { usePreferences } from '../features/preferences/usePreferences';
+import { PreferencesDialog } from '../features/preferences/PreferencesDialog';
 
 const ALL_SPACES_ID = '_all';
 const GLOBAL_SPACE_ID = '_global';
@@ -88,6 +90,8 @@ export default function App() {
   const [showRawSubagentWorkEvents, setShowRawSubagentWorkEvents] = useState(false);
   const [sortMode, setSortMode] = useState('priority');
   const [channelPanelSize, setChannelPanelSize] = useState<ChannelChatPanelSize>('medium');
+  const [showPreferences, setShowPreferences] = useState(false);
+  const { prefs, updateSection, resetToDefaults } = usePreferences();
 
   const fetchProjects = useCallback(() => listProjects(), []);
   const { data: projects } = usePolling(fetchProjects, 5000);
@@ -527,6 +531,7 @@ export default function App() {
         panelSize={channelPanelSize}
         scrollResetKey={effectiveSpaceId}
         onPanelSizeChange={setChannelPanelSize}
+        onOpenPreferences={() => setShowPreferences(true)}
       />
 
       {/* Detail overlays */}
@@ -597,6 +602,15 @@ export default function App() {
           pendingSwitch={pendingDocumentSwitch}
           onCancelSwitch={() => setPendingDocumentSwitch(null)}
           onConfirmSwitch={applyDocumentSelection}
+        />
+      )}
+
+      {showPreferences && (
+        <PreferencesDialog
+          prefs={prefs}
+          onUpdateSection={updateSection}
+          onReset={resetToDefaults}
+          onClose={() => setShowPreferences(false)}
         />
       )}
     </div>
