@@ -2,7 +2,7 @@
 
 Den Web is the standalone static-site browser cockpit for the Den system. It owns the React/Vite frontend, static assets, frontend tests, and UI smoke checks while consuming API contracts owned by `den-core`, `den-channels`, and `den-gateway`.
 
-Current migration status: this repository starts with service-contract documentation. The app source is expected to be scaffolded from the current `den-channels` ClientApp in Den task #1706 after the static service contract in task #1705 is accepted.
+This repository was scaffolded from the `den-channels` ClientApp (source commit `cd7bb549ea6dcbc1ce912aea87fd81cec346451c`) as part of Den task #1706.
 
 ## Contract and migration docs
 
@@ -16,3 +16,61 @@ Current migration status: this repository starts with service-contract documenta
 - `den-gateway`: delivery, wake, binding, claim, and Hermes session routing authority.
 
 Do not add backend state authority to `den-web`; add API/client adapters here and backend behavior in the owning service.
+
+## Local development
+
+```bash
+# Install dependencies
+npm install
+
+# Start dev server with Hot Module Replacement
+npm run dev
+
+# Run all tests
+npm test
+
+# Run a specific test file
+npx vitest run src/api/config.test.ts
+
+# Lint
+npm run lint
+
+# Production build
+npm run build
+```
+
+### Vite dev server proxy
+
+The Vite dev server proxies `/den-core-api` requests to the Den Core REST API.
+Configure the target with `VITE_DEV_DEN_CORE_TARGET` (default: `http://localhost:5299`):
+
+```bash
+VITE_DEV_DEN_CORE_TARGET=http://192.168.1.10:5299 npm run dev
+```
+
+### Runtime configuration
+
+The app loads API base URLs from `/den-web-config.json` at runtime when present.
+Fallback order:
+
+1. `/den-web-config.json` (deploy-time JSON override)
+2. Vite build-time env vars (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, `VITE_DEN_GATEWAY_API_BASE`)
+3. Hardcoded defaults (`/den-core-api`, `/api`, `/api/gateway`)
+
+For local development without a runtime config file, set env vars in a `.env` file:
+
+```
+VITE_DEN_CORE_API_BASE=/den-core-api
+VITE_DEN_CHANNELS_API_BASE=/api
+```
+
+### Lockfile strategy
+
+The `package-lock.json` is committed. Always use `npm ci` in CI/CD for reproducible installs.
+In local development, use `npm install` (updates lockfile) or `npm ci` (strict lockfile install).
+
+## Build output
+
+Production build writes to `dist/`. The output is a fully static site that can be served
+by any HTTP server (nginx, caddy, deno serve, etc.) at any path with proper URL rewriting
+for SPA client-side routing.
