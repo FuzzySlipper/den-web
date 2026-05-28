@@ -7,6 +7,7 @@ This repository was scaffolded from the `den-channels` ClientApp (source commit 
 ## Contract and migration docs
 
 - [Static service contract](docs/den-web-static-service-contract.md)
+- [Standalone deploy guide](docs/den-web-standalone-deploy.md) — deployment, smoke, rollback instructions
 
 ## Ownership boundaries
 

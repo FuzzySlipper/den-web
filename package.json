@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:rendering": "vitest run src/components/channelChatRenderModel.test.ts",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "serve:static": "node ops/den-web-static-server.mjs",
+    "smoke:live": "node ops/smoke-den-web.mjs"
   },
   "dependencies": {
     "react": "^19.2.4",
