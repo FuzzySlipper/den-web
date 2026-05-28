@@ -5,6 +5,7 @@ import { resetConfig, getConfig, getCachedConfig, getConfigLoadError, normalizeA
 beforeEach(() => {
   resetConfig();
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });
 
 describe('normalizeApiBase', () => {
@@ -38,16 +39,26 @@ describe('getConfig - no runtime config (404)', () => {
     });
   });
 
-  it('falls back to VITE env values when runtime config is missing', async () => {
-    // Set env manually via import.meta.env (Vite test mode)
-    // In Vitest, import.meta.env is available and can be set
-    // We need a way to set these env vars before the config loads
+  it('falls back to defaults when runtime config and VITE env values are missing', async () => {
     const config = await getConfig();
 
-    // Without explicit env vars, should use defaults
     expect(config.denCoreApiBase).toBe('/den-core-api');
     expect(config.denChannelsApiBase).toBe('/api');
     expect(config.denGatewayApiBase).toBe('/api/gateway');
+    expect(config.appBasePath).toBe('/');
+    expect(config.environmentName).toBe('development');
+  });
+
+  it('uses VITE env values when runtime config is missing', async () => {
+    vi.stubEnv('VITE_DEN_CORE_API_BASE', '/env-core-api/');
+    vi.stubEnv('VITE_DEN_CHANNELS_API_BASE', '/env-channels-api/');
+    vi.stubEnv('VITE_DEN_GATEWAY_API_BASE', '/env-gateway-api/');
+
+    const config = await getConfig();
+
+    expect(config.denCoreApiBase).toBe('/env-core-api');
+    expect(config.denChannelsApiBase).toBe('/env-channels-api');
+    expect(config.denGatewayApiBase).toBe('/env-gateway-api');
     expect(config.appBasePath).toBe('/');
     expect(config.environmentName).toBe('development');
   });

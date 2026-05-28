@@ -57,11 +57,12 @@ Fallback order:
 2. Vite build-time env vars (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, `VITE_DEN_GATEWAY_API_BASE`)
 3. Hardcoded defaults (`/den-core-api`, `/api`, `/api/gateway`)
 
-For local development without a runtime config file, set env vars in a `.env` file:
+For local development without a runtime config file, copy `.env.example` to `.env` and adjust values if needed:
 
 ```
 VITE_DEN_CORE_API_BASE=/den-core-api
 VITE_DEN_CHANNELS_API_BASE=/api
+VITE_DEN_GATEWAY_API_BASE=/api/gateway
 ```
 
 ### Lockfile strategy
