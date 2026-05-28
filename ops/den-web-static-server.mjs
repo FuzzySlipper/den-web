@@ -20,7 +20,12 @@
  *   DEN_WEB_CONFIG_PATH   - path to den-web-config.json (default: ${STATIC_ROOT}/den-web-config.json)
  *   DEN_WEB_BUILD_SENTINEL - path to den-web-build.json (default: ${STATIC_ROOT}/den-web-build.json)
  *   CACHE_MAX_AGE_SECONDS - max-age for immutable assets (default: 31536000)
- *   CACHE_HTML_SECONDS    - max-age for HTML (default: 0)
+ *   CACHE_HTML_SECONDS    - max-age for HTML and un-hashed files (default: 0)
+ *   DEN_CORE_API_BASE     - runtime config Core API base (default: /den-core-api)
+ *   DEN_CHANNELS_API_BASE - runtime config Channels API base (default: /api)
+ *   DEN_GATEWAY_API_BASE  - runtime config Gateway API base (default: /api/gateway)
+ *   APP_BASE_PATH         - runtime config app base path (default: /)
+ *   ENVIRONMENT_NAME      - runtime config environment label (default: den-srv)
  */
 
 import * as http from 'node:http';
@@ -280,7 +285,7 @@ function handleRequest(req, res) {
       if (!err && stats.isFile()) {
         // Determine cache max-age: immutable assets (hashed) get long cache
         let maxAge = CACHE_HTML_AGE;
-        if (/[.-][a-f0-9]{8,}\./i.test(path.basename(safe))) {
+        if (/[.-][a-zA-Z0-9_-]{8,}\./.test(path.basename(safe))) {
           maxAge = CACHE_MAX_AGE;
         }
         serveStatic(res, safe, maxAge);

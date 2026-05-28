@@ -179,7 +179,7 @@ Expected output: all PASS lines, exit code 0.
 | `DEN_WEB_CONFIG_PATH` | `${STATIC_ROOT}/den-web-config.json` | Path to runtime config |
 | `DEN_WEB_BUILD_SENTINEL` | `${STATIC_ROOT}/den-web-build.json` | Path to build sentinel |
 | `CACHE_MAX_AGE_SECONDS` | `31536000` | max-age for hashed assets |
-| `CACHE_HTML_AGE_SECONDS` | `0` | max-age for HTML |
+| `CACHE_HTML_SECONDS` | `0` | max-age for HTML and un-hashed files |
 | `APP_BASE_PATH` | `/` | App base path for config defaults |
 | `ENVIRONMENT_NAME` | `den-srv` | Environment name for config defaults |
 | `DEN_CORE_API_BASE` | `/den-core-api` | Core API base for config defaults |
