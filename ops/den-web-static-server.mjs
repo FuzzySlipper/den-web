@@ -69,12 +69,13 @@ function mimeType(ext) {
 // ── Path traversal guard ───────────────────────────────────────────────────────
 
 function safePath(root, requestPath) {
+  const rootPath = path.resolve(root);
   // Decode URL-encoded characters
   const decoded = decodeURIComponent(requestPath).replace(/[?#].*$/, '');
   // Resolve and normalize
-  const resolved = path.resolve(root, '.' + decoded);
+  const resolved = path.resolve(rootPath, '.' + decoded);
   // Must stay inside root
-  if (!resolved.startsWith(root)) {
+  if (resolved !== rootPath && !resolved.startsWith(rootPath + path.sep)) {
     return null;
   }
   return resolved;
@@ -216,7 +217,9 @@ function proxyRequest(targetBase, req, res, pathRewrite) {
 // ── Request handler ────────────────────────────────────────────────────────────
 
 function handleRequest(req, res) {
-  const requestPath = url.parse(req.url).pathname;
+  const parsedUrl = url.parse(req.url);
+  const requestPath = parsedUrl.pathname;
+  const requestSearch = parsedUrl.search ?? '';
 
   // ── Config endpoint ──
   if (requestPath === '/den-web-config.json') {
@@ -262,12 +265,12 @@ function handleRequest(req, res) {
   if (requestPath.startsWith('/den-core-api/') || requestPath === '/den-core-api') {
     // Strip /den-core-api prefix before forwarding
     const stripped = requestPath.replace(/^\/den-core-api/, '') || '/';
-    return proxyRequest(DEN_CORE_TARGET, req, res, () => stripped);
+    return proxyRequest(DEN_CORE_TARGET, req, res, () => stripped + requestSearch);
   }
 
   // ── Channels/Gateway/Agents API proxy ──
   if (requestPath.startsWith('/api/')) {
-    return proxyRequest(DEN_CHANNELS_TARGET, req, res, () => requestPath);
+    return proxyRequest(DEN_CHANNELS_TARGET, req, res, () => requestPath + requestSearch);
   }
 
   // ── Static files ──
