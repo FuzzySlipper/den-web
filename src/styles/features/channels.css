@@ -80,9 +80,11 @@
   overflow: hidden;
 }
 
-/* Hide participants sidebar when preference toggle is off */
-body:has([style*="--pref-layout-show-participants:0"]) .channel-chat-members,
-body:has([style*="--pref-layout-show-participants: 0"]) .channel-chat-members {
+/* Hide participants sidebar when preference toggle is off.
+   Uses :root[data-*] selector because usePreferences sets the data
+   attribute on <html> — body:has([style*=...]) would not see it
+   since the style is on documentElement, not body. */
+:root[data-show-participants="0"] .channel-chat-members {
   display: none !important;
 }
 
@@ -708,6 +710,7 @@ body:has([style*="--pref-layout-show-participants: 0"]) .channel-chat-members {
   resize: none;
   overflow-y: auto;
   max-height: 120px;
+  min-height: 44px; /* roughly 2 lines visible by default */
   line-height: 1.45;
   padding: 5px 8px;
   font-size: 12px;

@@ -11,7 +11,13 @@ import type { DenWebPreferences } from './types';
 
 import { readPreferences, writePreferences, clearPreferences, getDefaults } from './preferencesStorage';
 
-function applyThemeVars(prefs: DenWebPreferences): void {
+/**
+ * Apply preference CSS custom properties and data attributes to
+ * document.documentElement so styles take effect live.
+ *
+ * Exported for testing.
+ */
+export function applyThemeVars(prefs: DenWebPreferences): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
 
@@ -36,7 +42,11 @@ function applyThemeVars(prefs: DenWebPreferences): void {
   root.style.setProperty('--pref-chat-message-padding', `${prefs.chat.messagePadding}px`);
   root.style.setProperty('--pref-chat-column-gap', `${prefs.chat.columnGap}px`);
   root.style.setProperty('--pref-layout-chat-fraction', String(prefs.layout.chatFraction));
-  root.style.setProperty('--pref-layout-show-participants', prefs.layout.showParticipants ? '1' : '0');
+  // Use a data attribute instead of a CSS custom property so that CSS
+  // can select it via :root[data-show-participants="0"] without fragile
+  // body:has([style*=...]) substring matching (which doesn't work when
+  // the property is set on <html>, not <body>).
+  root.dataset.showParticipants = prefs.layout.showParticipants ? '' : '0';
 }
 
 /** Produce a dimmed/desaturated variant of a hex colour by reducing brightness. */

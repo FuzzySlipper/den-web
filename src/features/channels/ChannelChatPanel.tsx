@@ -1086,7 +1086,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
           placeholder={composerPlaceholder}
           disabled={isComposerDisabled}
           aria-label="Channel message"
-          rows={1}
+          rows={2}
           className="channel-chat-composer-textarea"
         />
         {mentionQuery && (
