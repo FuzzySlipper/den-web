@@ -1,6 +1,6 @@
 /* =========================================================================
    Den Web — shared style/design-system structure
-   
+
    Decomposed into module-specific files by UI domain:
      base.css       — CSS variables, reset, root element styles
      layout.css     — Dashboard grid, panel, workspace layout
