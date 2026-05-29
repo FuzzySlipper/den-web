@@ -32,9 +32,14 @@ export function applyThemeVars(prefs: DenWebPreferences): void {
   const dim = dimColor(prefs.theme.accent);
   root.style.setProperty('--accent-dim', dim);
 
-  // Font — override root font-family and base size
+  // Font — override the app font stacks and explicit size variables used by CSS.
+  // Most Den Web styles use px values rather than rem, so changing only
+  // documentElement.style.fontSize made the preference look inert. Keep the
+  // root font-size for rem-based future styles, but also expose real CSS vars.
   root.style.setProperty('--font-mono', prefs.font.monoStack);
   root.style.setProperty('--font-sans', prefs.font.sansStack);
+  root.style.setProperty('--pref-font-base-size', `${prefs.font.baseSize}px`);
+  root.style.setProperty('--pref-font-chat-size', `${prefs.font.chatSize}px`);
   root.style.fontSize = `${prefs.font.baseSize}px`;
 
   // CSS custom properties for sub-components that read chat density

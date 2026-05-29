@@ -73,6 +73,8 @@ describe('applyThemeVars', () => {
     const el = doc.documentElement;
     expect(el.style.setProperty).toHaveBeenCalledWith('--font-mono', '"Fira Code", monospace');
     expect(el.style.setProperty).toHaveBeenCalledWith('--font-sans', '"Inter", sans-serif');
+    expect(el.style.setProperty).toHaveBeenCalledWith('--pref-font-base-size', '15px');
+    expect(el.style.setProperty).toHaveBeenCalledWith('--pref-font-chat-size', '13px');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((el.style as any).fontSize).toBe('15px');
   });

@@ -153,8 +153,12 @@ function FontSection({ value, onChange }: { value: FontPreferences; onChange: (v
   return (
     <div className="preferences-section">
       <h3>Font</h3>
+      <p className="preferences-note">
+        Font stacks are ordered fallback lists: the browser uses the first installed font, then falls back through the list.
+        Monospace is used for code-like/dense data (chat transcript, ids, task rows); sans-serif is used for regular UI text.
+      </p>
       <label className="preferences-field-row">
-        <span>Monospace stack</span>
+        <span>Monospace font stack</span>
         <input
           type="text"
           className="preferences-text-input"
@@ -164,7 +168,7 @@ function FontSection({ value, onChange }: { value: FontPreferences; onChange: (v
         />
       </label>
       <label className="preferences-field-row">
-        <span>Sans-serif stack</span>
+        <span>Sans-serif UI font stack</span>
         <input
           type="text"
           className="preferences-text-input"
@@ -173,8 +177,8 @@ function FontSection({ value, onChange }: { value: FontPreferences; onChange: (v
           placeholder="-apple-system, sans-serif"
         />
       </label>
-      <SliderRow label="Base font size (px)" min={10} max={20} step={1} value={value.baseSize} onChange={v => set('baseSize', v)} />
-      <SliderRow label="Chat font size (px)" min={10} max={20} step={1} value={value.chatSize} onChange={v => set('chatSize', v)} />
+      <SliderRow label="UI base font size (px)" min={10} max={22} step={1} value={value.baseSize} onChange={v => set('baseSize', v)} />
+      <SliderRow label="Chat transcript font size (px)" min={10} max={22} step={1} value={value.chatSize} onChange={v => set('chatSize', v)} />
     </div>
   );
 }

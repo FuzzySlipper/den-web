@@ -444,8 +444,13 @@
   gap: var(--pref-chat-column-gap, 8px);
   align-items: baseline;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--pref-font-chat-size, 12px);
   padding: var(--pref-chat-message-padding, 0px) 0;
+}
+
+.channel-chat-activity-timeline,
+.channel-chat-composer-textarea {
+  font-size: var(--pref-font-chat-size, 12px);
 }
 
 .channel-chat-sender {
@@ -722,7 +727,7 @@
   min-height: 44px; /* roughly 2 lines visible by default */
   line-height: 1.45;
   padding: 5px 8px;
-  font-size: 12px;
+  font-size: var(--pref-font-chat-size, 12px);
   font-family: var(--font-sans);
   background: var(--bg);
   color: var(--text);
