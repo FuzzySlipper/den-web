@@ -422,7 +422,7 @@ function AgentDetailOverlay({
           {agent?.summary && (
             <span className={`agents-summary-line ${severityClass(agent.summary.highestSeverity)}`}>
               {agent.summary.activeMembershipCount} active memberships · {agent.summary.activeDeliveryCount} active deliveries
-              {agent.summary.staleDeliveryCount && agent.summary.staleDeliveryCount > 0
+              {(agent.summary.staleDeliveryCount ?? 0) > 0
                 ? ` · ${agent.summary.staleDeliveryCount} stale`
                 : ''}
                · {agent.summary.recentActivityCount} recent activities
