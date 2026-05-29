@@ -6,10 +6,12 @@ import type { ChannelActivityEvent, ChannelMessage } from '../../api/types';
 import {
   activityMatchesChannelMessage,
   channelMessageDeliveryRequestId,
+  deriveAssignmentBadge,
   findActiveMentionQuery,
   getMentionSuggestions,
   groupActivityEventsForChannelMessages,
   insertMentionToken,
+  messageHasCheckpointMetadata,
   parseMessageBodySegments,
   sortActivityEvents,
   toActivityDisplayModel,
@@ -112,6 +114,61 @@ describe('activity/message delivery matching', () => {
       dedupeKey: null,
       metadataJson: JSON.stringify({ delivery_request_id: 229 }),
     }))).toBe('229');
+  });
+
+  it('detects checkpoint metadata keys for assignment badges', () => {
+    expect(messageHasCheckpointMetadata(message({ metadataJson: JSON.stringify({ checkpoint_status: 'success' }) }))).toBe(true);
+    expect(messageHasCheckpointMetadata(message({ metadataJson: JSON.stringify({ assignment_checkpoint: { sequence: 2 } }) }))).toBe(true);
+    expect(messageHasCheckpointMetadata(message({ metadataJson: JSON.stringify({ deliveryRequestId: 'del-1' }) }))).toBe(false);
+    expect(messageHasCheckpointMetadata(message({ metadataJson: 'not json' }))).toBe(false);
+  });
+
+  it('derives assignment badge labels from delivery ids, checkpoints, and final delivery metadata', () => {
+    expect(deriveAssignmentBadge(message({
+      deliveryRequestId: 'first-class-delivery',
+      sourceKind: 'agent_message',
+      sourceId: null,
+      dedupeKey: null,
+    }))).toEqual({
+      assignmentId: 'first-class-delivery',
+      hasCheckpointMetadata: false,
+      isFinalDelivery: false,
+      label: 'delivery',
+    });
+
+    expect(deriveAssignmentBadge(message({
+      deliveryRequestId: null,
+      sourceKind: 'external_adapter_message',
+      sourceId: 'source-delivery',
+      dedupeKey: null,
+      metadataJson: JSON.stringify({ checkpoint_sequence: 4 }),
+    }))).toEqual({
+      assignmentId: 'source-delivery',
+      hasCheckpointMetadata: true,
+      isFinalDelivery: false,
+      label: 'checkpoint',
+    });
+
+    expect(deriveAssignmentBadge(message({
+      deliveryRequestId: null,
+      sourceKind: 'gateway_delivery',
+      sourceId: '228',
+      dedupeKey: 'gateway-delivery:228:final',
+      metadataJson: JSON.stringify({ checkpoint_status: 'success' }),
+    }))).toEqual({
+      assignmentId: '228',
+      hasCheckpointMetadata: true,
+      isFinalDelivery: true,
+      label: 'final',
+    });
+
+    expect(deriveAssignmentBadge(message({
+      deliveryRequestId: null,
+      sourceKind: 'agent_message',
+      sourceId: null,
+      dedupeKey: null,
+      metadataJson: null,
+    }))).toBeNull();
   });
 
   it('matches unanchored activity to the visible final message by delivery id', () => {
