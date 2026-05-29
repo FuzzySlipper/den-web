@@ -1,4 +1,7 @@
-export type WorkspaceViewMode = 'tasks' | 'messages' | 'documents' | 'git' | 'librarian' | 'agent-stream' | 'sessions' | 'agents';
+import type { WorkspaceViewMode } from './workspaceViewModes';
+import { STATUSES } from '../features/tasks/taskStatuses';
+
+export type { WorkspaceViewMode } from './workspaceViewModes';
 
 interface Props {
   statusFilter: string | null;
@@ -9,7 +12,6 @@ interface Props {
   onViewModeChange: (mode: WorkspaceViewMode) => void;
 }
 
-const STATUSES = ['planned', 'in_progress', 'review', 'blocked', 'done', 'cancelled'];
 const SORTS = ['priority', 'id', 'status', 'title'];
 
 export function FilterBar({

@@ -71,6 +71,30 @@ export interface KeyboardPreferences {
   closePanel: string;
   /** Open the preferences/options panel */
   openPreferences: string;
+
+  /** Cycle through spaces/projects (left sidebar) forward */
+  switchProject: string;
+  /** Cycle through main panel modes forward */
+  cycleMainPanel: string;
+  /** Cycle task status filter (Tasks mode only) */
+  cycleTaskFilter: string;
+
+  /** Direct jump to Tasks panel */
+  jumpToTasks: string;
+  /** Direct jump to Agents panel */
+  jumpToAgents: string;
+  /** Direct jump to Messages panel */
+  jumpToMessages: string;
+  /** Direct jump to Docs panel */
+  jumpToDocs: string;
+  /** Direct jump to Git panel */
+  jumpToGit: string;
+  /** Direct jump to Sessions panel */
+  jumpToSessions: string;
+  /** Direct jump to Librarian panel */
+  jumpToLibrarian: string;
+  /** Direct jump to Agent Stream panel */
+  jumpToAgentStream: string;
 }
 
 export interface DenWebPreferences {
@@ -107,5 +131,16 @@ export const DEFAULT_PREFERENCES: DenWebPreferences = {
   keyboard: {
     closePanel: 'Escape',
     openPreferences: '',
+    switchProject: 'Ctrl+Tab',
+    cycleMainPanel: 'Shift+Tab',
+    cycleTaskFilter: 'F3',
+    jumpToTasks: '',
+    jumpToAgents: '',
+    jumpToMessages: '',
+    jumpToDocs: '',
+    jumpToGit: '',
+    jumpToSessions: '',
+    jumpToLibrarian: '',
+    jumpToAgentStream: '',
   },
 };

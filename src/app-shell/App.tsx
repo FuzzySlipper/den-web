@@ -15,7 +15,9 @@ import { ProjectSidebar } from './ProjectSidebar';
 import { TaskTree } from '../features/tasks/TaskTree';
 import { TaskDetail } from '../features/tasks/TaskDetail';
 import { FilterBar } from './FilterBar';
-import type { WorkspaceViewMode } from './FilterBar';
+import { WORKSPACE_VIEW_MODES } from './workspaceViewModes';
+import type { WorkspaceViewMode } from './workspaceViewModes';
+import { STATUSES } from '../features/tasks/taskStatuses';
 import { MessageDetail } from '../features/messages/MessageDetail';
 import { MessagesInbox } from '../features/messages/MessagesInbox';
 import { AgentStreamFeed } from '../features/agents/AgentStreamFeed';
@@ -36,6 +38,7 @@ import { documentSelectionAction } from '../features/documents/documentEditor';
 import type { GitFocus } from '../features/git/git';
 import { usePreferences } from '../features/preferences/usePreferences';
 import { PreferencesDialog } from '../features/preferences/PreferencesDialog';
+import { matchHotkey } from '../features/preferences/hotkeyParse';
 
 const ALL_SPACES_ID = '_all';
 const GLOBAL_SPACE_ID = '_global';
@@ -385,51 +388,133 @@ export default function App() {
   }, [handleThreadOpen]);
 
   useEffect(() => {
-    const closeKey = prefs.keyboard.closePanel.trim();
-    const openPreferencesKey = prefs.keyboard.openPreferences.trim();
+    const kb = prefs.keyboard;
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.defaultPrevented) return;
-      if (openPreferencesKey && event.key === openPreferencesKey && !editableTarget(event.target)) {
+      // All navigation shortcuts require the user to not be typing in an editable element
+      if (editableTarget(event.target)) return;
+
+      // 1) Open preferences (existing behavior)
+      if (kb.openPreferences && matchHotkey(event, kb.openPreferences)) {
         event.preventDefault();
         setShowPreferences(true);
         return;
       }
-      if (!closeKey || event.key !== closeKey) return;
 
-      if (showPreferences) {
-        event.preventDefault();
-        setShowPreferences(false);
+      // 2) Close panel (existing behavior, now through the same configurable matcher)
+      if (kb.closePanel && matchHotkey(event, kb.closePanel)) {
+        if (showPreferences) {
+          event.preventDefault();
+          setShowPreferences(false);
+          return;
+        }
+        if (selectedDoc || selectedDispatch || selectedSubagentRun || selectedStreamEntry || selectedMessage || selectedTaskId != null || selectedAssignmentTrace) {
+          event.preventDefault();
+          if (selectedAssignmentTrace) {
+            setSelectedAssignmentTrace(null);
+          } else if (selectedDoc) {
+            setSelectedDoc(null);
+            setDocumentDetailDirty(false);
+            setPendingDocumentSwitch(null);
+          } else if (selectedDispatch) {
+            setSelectedDispatch(null);
+          } else if (selectedSubagentRun) {
+            setSelectedSubagentRun(null);
+          } else if (selectedStreamEntry) {
+            setSelectedStreamEntry(null);
+          } else if (selectedMessage) {
+            setSelectedMessage(null);
+          } else {
+            setSelectedTaskId(null);
+            setSelectedTaskProjectId(null);
+          }
+        }
         return;
       }
-      if (selectedDoc || selectedDispatch || selectedSubagentRun || selectedStreamEntry || selectedMessage || selectedTaskId != null || selectedAssignmentTrace) {
+
+      // 3) Switch project/space — cycle forward through spaces order
+      if (kb.switchProject && matchHotkey(event, kb.switchProject)) {
         event.preventDefault();
-        if (selectedAssignmentTrace) {
-          setSelectedAssignmentTrace(null);
-        } else if (selectedDoc) {
-          setSelectedDoc(null);
-          setDocumentDetailDirty(false);
-          setPendingDocumentSwitch(null);
-        } else if (selectedDispatch) {
-          setSelectedDispatch(null);
-        } else if (selectedSubagentRun) {
-          setSelectedSubagentRun(null);
-        } else if (selectedStreamEntry) {
-          setSelectedStreamEntry(null);
-        } else if (selectedMessage) {
-          setSelectedMessage(null);
-        } else {
-          setSelectedTaskId(null);
-          setSelectedTaskProjectId(null);
+        if (spaces.length > 0) {
+          const currentIdx = effectiveSpaceId
+            ? spaces.findIndex(s => s.id === effectiveSpaceId)
+            : -1;
+          const nextIdx = (currentIdx + 1) % spaces.length;
+          handleProjectSelect(spaces[nextIdx].id);
         }
+        return;
+      }
+
+      // 4) Cycle main panel forward
+      if (kb.cycleMainPanel && matchHotkey(event, kb.cycleMainPanel)) {
+        event.preventDefault();
+        const currentIdx = WORKSPACE_VIEW_MODES.indexOf(viewMode);
+        const nextIdx = (currentIdx + 1) % WORKSPACE_VIEW_MODES.length;
+        setViewMode(WORKSPACE_VIEW_MODES[nextIdx]);
+        return;
+      }
+
+      // 5) Cycle task status filter (matters mostly in tasks mode)
+      if (kb.cycleTaskFilter && matchHotkey(event, kb.cycleTaskFilter)) {
+        if (viewMode !== 'tasks') return;
+        event.preventDefault();
+        const allIncludingAll = ['', ...STATUSES];
+        const currentIdx = statusFilter
+          ? allIncludingAll.indexOf(statusFilter)
+          : 0;
+        const nextIdx = (currentIdx + 1) % allIncludingAll.length;
+        setStatusFilter(allIncludingAll[nextIdx] || null);
+        return;
+      }
+
+      // 6) Direct panel jumps
+      if (kb.jumpToTasks && matchHotkey(event, kb.jumpToTasks)) {
+        event.preventDefault();
+        setViewMode('tasks');
+        return;
+      }
+      if (kb.jumpToAgents && matchHotkey(event, kb.jumpToAgents)) {
+        event.preventDefault();
+        setViewMode('agents');
+        return;
+      }
+      if (kb.jumpToMessages && matchHotkey(event, kb.jumpToMessages)) {
+        event.preventDefault();
+        setViewMode('messages');
+        return;
+      }
+      if (kb.jumpToDocs && matchHotkey(event, kb.jumpToDocs)) {
+        event.preventDefault();
+        setViewMode('documents');
+        return;
+      }
+      if (kb.jumpToGit && matchHotkey(event, kb.jumpToGit)) {
+        event.preventDefault();
+        setViewMode('git');
+        return;
+      }
+      if (kb.jumpToSessions && matchHotkey(event, kb.jumpToSessions)) {
+        event.preventDefault();
+        setViewMode('sessions');
+        return;
+      }
+      if (kb.jumpToLibrarian && matchHotkey(event, kb.jumpToLibrarian)) {
+        event.preventDefault();
+        setViewMode('librarian');
+        return;
+      }
+      if (kb.jumpToAgentStream && matchHotkey(event, kb.jumpToAgentStream)) {
+        event.preventDefault();
+        setViewMode('agent-stream');
+        return;
       }
     }
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
-    prefs.keyboard.closePanel,
-    prefs.keyboard.openPreferences,
+    prefs.keyboard,
     selectedDispatch,
     selectedDoc,
     selectedMessage,
@@ -438,6 +523,13 @@ export default function App() {
     selectedTaskId,
     selectedAssignmentTrace,
     showPreferences,
+    spaces,
+    effectiveSpaceId,
+    handleProjectSelect,
+    viewMode,
+    statusFilter,
+    setViewMode,
+    setStatusFilter,
   ]);
 
   return (

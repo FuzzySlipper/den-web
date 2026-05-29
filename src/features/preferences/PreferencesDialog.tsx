@@ -8,8 +8,9 @@
  * See types.ts for the deferred color surfaces TODO.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ChatPreferences, DenWebPreferences, FontPreferences, KeyboardPreferences, LayoutPreferences, ThemePreferences } from './types';
+import { normalizeHotkey } from './hotkeyParse';
 
 interface Props {
   prefs: DenWebPreferences;
@@ -193,38 +194,60 @@ function KeyboardSection({ value, onChange }: { value: KeyboardPreferences; onCh
   return (
     <div className="preferences-section">
       <h3>Keyboard shortcuts</h3>
-      <label className="preferences-field-row">
-        <span>Close latest panel</span>
-        <input
-          type="text"
-          className="preferences-text-input"
-          value={value.closePanel}
-          onChange={e => set('closePanel', normalizeHotkey(e.target.value))}
-          placeholder="Escape"
-        />
-      </label>
-      <label className="preferences-field-row">
-        <span>Open preferences</span>
-        <input
-          type="text"
-          className="preferences-text-input"
-          value={value.openPreferences}
-          onChange={e => set('openPreferences', normalizeHotkey(e.target.value))}
-          placeholder="Optional, e.g. ?"
-        />
-      </label>
-      <p className="preferences-note">
-        Use browser key names such as Escape, ?, or F2. Leave a field blank to disable that shortcut.
-      </p>
+      <p className="preferences-note">Use browser key names (e.g. Escape, F3, Ctrl+Tab). Leave a field blank to disable that shortcut.</p>
+
+      <h4 className="preferences-subheading">General</h4>
+      <HotkeyInputRow label="Close latest panel" value={value.closePanel} onChange={v => set('closePanel', v)} placeholder="Escape" />
+      <HotkeyInputRow label="Open preferences" value={value.openPreferences} onChange={v => set('openPreferences', v)} placeholder="Optional" />
+
+      <h4 className="preferences-subheading">Navigation</h4>
+      <HotkeyInputRow label="Switch project/space" value={value.switchProject} onChange={v => set('switchProject', v)} placeholder="Ctrl+Tab" />
+      <HotkeyInputRow label="Cycle main panel forward" value={value.cycleMainPanel} onChange={v => set('cycleMainPanel', v)} placeholder="Shift+Tab" />
+      <HotkeyInputRow label="Cycle task filter status" value={value.cycleTaskFilter} onChange={v => set('cycleTaskFilter', v)} placeholder="F3" />
+
+      <h4 className="preferences-subheading">Jump to panel</h4>
+      <HotkeyInputRow label="Tasks" value={value.jumpToTasks} onChange={v => set('jumpToTasks', v)} placeholder="" />
+      <HotkeyInputRow label="Agents" value={value.jumpToAgents} onChange={v => set('jumpToAgents', v)} placeholder="" />
+      <HotkeyInputRow label="Messages" value={value.jumpToMessages} onChange={v => set('jumpToMessages', v)} placeholder="" />
+      <HotkeyInputRow label="Docs" value={value.jumpToDocs} onChange={v => set('jumpToDocs', v)} placeholder="" />
+      <HotkeyInputRow label="Git" value={value.jumpToGit} onChange={v => set('jumpToGit', v)} placeholder="" />
+      <HotkeyInputRow label="Sessions" value={value.jumpToSessions} onChange={v => set('jumpToSessions', v)} placeholder="" />
+      <HotkeyInputRow label="Librarian" value={value.jumpToLibrarian} onChange={v => set('jumpToLibrarian', v)} placeholder="" />
+      <HotkeyInputRow label="Agent Stream" value={value.jumpToAgentStream} onChange={v => set('jumpToAgentStream', v)} placeholder="" />
     </div>
   );
 }
 
-function normalizeHotkey(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) return '';
-  if (trimmed.toLowerCase() === 'esc') return 'Escape';
-  return trimmed.length === 1 ? trimmed : trimmed[0].toUpperCase() + trimmed.slice(1);
+function HotkeyInputRow({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder: string }) {
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  const commit = useCallback(() => {
+    onChange(normalizeHotkey(draft));
+  }, [draft, onChange]);
+
+  return (
+    <label className="preferences-field-row">
+      <span>{label}</span>
+      <input
+        type="text"
+        className="preferences-text-input"
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => {
+          if (e.key === 'Enter') {
+            commit();
+            e.currentTarget.blur();
+          }
+        }}
+        placeholder={placeholder}
+      />
+    </label>
+  );
 }
 
 // ---------------------------------------------------------------------------
