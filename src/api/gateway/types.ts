@@ -246,3 +246,109 @@ export interface TaskAssociationDto {
   activityCount: number;
   latestActivityAt: string | null;
 }
+
+// =============================================================================
+// Worker-pool assignment trace (task #1729)
+// =============================================================================
+
+/**
+ * Assignment trace — aggregates observable state from Core, Gateway, and
+ * Channels into a single read-only projection for a tester/operator.
+ *
+ * Every section has an explicit sourceAvailability field so the UI can render
+ * "core_unavailable" / "gateway_unavailable" / "no_assignment_messages" etc.
+ * without guessing whether data is missing or not yet loaded.
+ */
+
+export interface AssignmentCoreState {
+  /** e.g. 'assigned', 'leased', 'working', 'checkpointing', 'releasing', 'quarantined', 'completed' */
+  phase: string | null;
+  /** When the assignment was created */
+  assignedAt: string | null;
+  /** Agent identity the assignment was assigned to */
+  assignedAgent: string | null;
+  /** Lease / takeover evidence if available */
+  leaseAcquiredAt: string | null;
+  leaseExpiresAt: string | null;
+  /** Checkpoint evidence: each checkpoint is a snapshot/response pair */
+  checkpoints: AssignmentCheckpointDto[] | null;
+  /** Final completion status, if terminal */
+  finalStatus: string | null;
+  finalStatusAt: string | null;
+  /** Cleanup evidence */
+  cleanupState: string | null;
+  cleanupTriggeredAt: string | null;
+  cleanupCompletedAt: string | null;
+  /** Release / quarantine result */
+  releaseState: string | null;
+  quarantined: boolean;
+  quarantinedAt: string | null;
+}
+
+export interface AssignmentCheckpointDto {
+  sequence: number;
+  checkpointRequestAt: string | null;
+  checkpointResponseAt: string | null;
+  status: string | null;
+  snapshotPreview: string | null;
+  error: string | null;
+}
+
+export interface AssignmentGatewayEvidence {
+  deliveryRequestId: string | null;
+  deliveryStatus: string | null;
+  claimStatus: string | null;
+  completionStatus: string | null;
+  suppressionStatus: string | null;
+  requestedAt: string | null;
+  deliveredAt: string | null;
+  claimedAt: string | null;
+  completedAt: string | null;
+  evidenceSummary: string | null;
+  gatewayMessageUrl: string | null;
+  gatewayEventsUrl: string | null;
+}
+
+export type TraceSourceAvailability =
+  | 'available'
+  | 'core_unavailable'
+  | 'gateway_unavailable'
+  | 'no_assignment_messages'
+  | 'no_activity_events'
+  | 'delivery_missing'
+  | 'pending';
+
+export interface AssignmentTraceResponse {
+  /** The assignment ID being traced */
+  assignmentId: string;
+  /** Project / task identity */
+  projectId: string | null;
+  projectName: string | null;
+  taskId: number | null;
+  taskTitle: string | null;
+  /** Agent identity associated with this assignment */
+  agentIdentity: string | null;
+  workerRunId: string | null;
+  workerRole: string | null;
+
+  /** Source availability signals */
+  coreAvailability: TraceSourceAvailability;
+  gatewayAvailability: TraceSourceAvailability;
+  messagesAvailability: TraceSourceAvailability;
+  activityAvailability: TraceSourceAvailability;
+
+  /** Core state (from den-core worker-pool API) */
+  coreState: AssignmentCoreState | null;
+
+  /** Gateway delivery evidence */
+  gatewayEvidence: AssignmentGatewayEvidence | null;
+
+  /** Channel messages tagged with this deliveryRequestId */
+  channelMessages: import('../channels/types').ChannelMessage[];
+
+  /** Activity events (non-waking) tagged with this assignment */
+  activityEvents: import('../channels/types').ChannelActivityEvent[];
+
+  /** Summary of the trace for display */
+  summary: string | null;
+}

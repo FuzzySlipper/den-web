@@ -17,7 +17,7 @@ import {
 } from '../../api/client';
 import { usePolling } from '../../hooks/usePolling';
 import { formatTimeAgo } from '../../utils';
-import { findActiveMentionQuery, getMentionSuggestions, groupActivityEventsForChannelMessages, insertMentionToken, parseMessageBodySegments, sortActivityEvents, toActivityDisplayModel } from './channelChatRenderModel';
+import { findActiveMentionQuery, getMentionSuggestions, groupActivityEventsForChannelMessages, insertMentionToken, parseMessageBodySegments, sortActivityEvents, toActivityDisplayModel, deriveAssignmentBadge } from './channelChatRenderModel';
 
 const SENDER_IDENTITY_STORAGE_KEY = 'den-channel-sender-identity';
 const DEFAULT_WAKE_POLICY = 'mentions_only';
@@ -48,6 +48,7 @@ interface Props {
   scrollResetKey?: string | null;
   onPanelSizeChange: (size: ChannelChatPanelSize) => void;
   onOpenPreferences: () => void;
+  onOpenAssignmentTrace?: (assignmentId: string) => void;
 }
 
 export type ChannelChatPanelSize = 'small' | 'medium' | 'large';
@@ -331,7 +332,7 @@ function activityStatusClass(status: string): string {
   return status.toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
 }
 
-export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetKey, onPanelSizeChange, onOpenPreferences }: Props) {
+export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetKey, onPanelSizeChange, onOpenPreferences, onOpenAssignmentTrace }: Props) {
   const [draft, setDraft] = useState('');
   const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
   const [senderIdentity, setSenderIdentity] = useState(readStoredSenderIdentity);
@@ -874,6 +875,29 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
                         <a href={evidence.url} target="_blank" rel="noreferrer">Gateway evidence</a>
                       </span>
                     )}
+                    {(() => {
+                      const badge = deriveAssignmentBadge(message);
+                      if (!badge) return null;
+                      return (
+                        <span className={`channel-chat-assignment-badge channel-chat-assignment-badge-${badge.label}`}>
+                          <span className="trace-assignment-badge-label">{badge.label}</span>
+                          <span className="trace-assignment-badge-id" title={badge.assignmentId}>{badge.assignmentId.slice(0, 12)}</span>
+                          {onOpenAssignmentTrace && (
+                            <button
+                              type="button"
+                              className="trace-open-transcript-button"
+                              onClick={event => {
+                                event.stopPropagation();
+                                onOpenAssignmentTrace(badge.assignmentId);
+                              }}
+                              title={`Open assignment trace for ${badge.assignmentId}`}
+                            >
+                              Open transcript
+                            </button>
+                          )}
+                        </span>
+                      );
+                    })()}
                     <span className="channel-chat-reactions" aria-label={`Reactions for message ${message.id}`}>
                       {messageReactions.map(reaction => (
                         <span key={`${reaction.channelMessageId}:${reaction.reactionKey}`} className="channel-chat-reaction-pill" title={reaction.reactors.join(', ')}>

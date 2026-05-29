@@ -4,6 +4,17 @@ export type MessageBodySegment =
   | { type: 'text'; text: string }
   | { type: 'details'; summary: string; body: string };
 
+export interface AssignmentBadgeInfo {
+  /** The delivery/assignment ID found on this message */
+  assignmentId: string;
+  /** Whether this message has checkpoint-related metadata */
+  hasCheckpointMetadata: boolean;
+  /** Whether the message source suggests it is a final/terminal delivery message */
+  isFinalDelivery: boolean;
+  /** Short label for the badge */
+  label: string;
+}
+
 const detailsPattern = /<details>\s*<summary>([\s\S]*?)<\/summary>\s*([\s\S]*?)<\/details>/gi;
 
 export function parseMessageBodySegments(body: string): MessageBodySegment[] {
@@ -332,4 +343,51 @@ function compareActivityEventArrays(left: ChannelActivityEvent[], right: Channel
   if (!leftFirst || !rightFirst) return left.length - right.length;
   const sorted = sortActivityEvents([leftFirst, rightFirst]);
   return sorted[0] === leftFirst ? -1 : 1;
+}
+
+// =============================================================================
+// Assignment/checkpoint badge helpers (task #1729)
+// =============================================================================
+
+/**
+ * Check whether a message's metadataJson contains checkpoint-related keys.
+ */
+export function messageHasCheckpointMetadata(
+  message: Pick<ChannelMessage, 'metadataJson'>,
+): boolean {
+  const metadata = parseJsonObject(message.metadataJson);
+  return (
+    metadata.checkpoint !== undefined ||
+    metadata.checkpoint_id !== undefined ||
+    metadata.checkpoint_request !== undefined ||
+    metadata.checkpoint_response !== undefined ||
+    metadata.checkpoint_sequence !== undefined ||
+    metadata.checkpoint_status !== undefined ||
+    metadata.assignment_checkpoint !== undefined
+  );
+}
+
+/**
+ * Derive an assignment badge from a channel message.
+ * Returns null if no assignment/delivery ID can be found.
+ */
+export function deriveAssignmentBadge(
+  message: Pick<ChannelMessage, 'deliveryRequestId' | 'sourceKind' | 'sourceId' | 'dedupeKey' | 'metadataJson'>,
+): AssignmentBadgeInfo | null {
+  const assignmentId = channelMessageDeliveryRequestId(message);
+  if (!assignmentId) return null;
+
+  const hasCheckpoint = messageHasCheckpointMetadata(message);
+
+  const isFinalDelivery =
+    message.sourceKind === 'gateway_delivery' &&
+    (message.dedupeKey?.includes(':final') ?? false);
+
+  const label = isFinalDelivery
+    ? 'final'
+    : hasCheckpoint
+      ? 'checkpoint'
+      : 'delivery';
+
+  return { assignmentId, hasCheckpointMetadata: hasCheckpoint, isFinalDelivery, label };
 }

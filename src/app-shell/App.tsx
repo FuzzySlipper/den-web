@@ -21,6 +21,7 @@ import { MessagesInbox } from '../features/messages/MessagesInbox';
 import { AgentStreamFeed } from '../features/agents/AgentStreamFeed';
 import { AgentStreamDetail } from '../features/agents/AgentStreamDetail';
 import { SubagentRunDetail } from '../features/agents/SubagentRunDetail';
+import { AssignmentTraceView } from '../features/agents/AssignmentTraceView';
 import { DocumentList } from '../features/documents/DocumentList';
 import { DocumentDetail } from '../features/documents/DocumentDetail';
 import { LibrarianView } from '../features/librarian/LibrarianView';
@@ -81,6 +82,7 @@ export default function App() {
   const [selectedStreamEntry, setSelectedStreamEntry] = useState<AgentStreamEntry | null>(null);
   const [selectedSubagentRun, setSelectedSubagentRun] = useState<SubagentRunSummary | null>(null);
   const [selectedDispatch, setSelectedDispatch] = useState<DispatchEntry | null>(null);
+  const [selectedAssignmentTrace, setSelectedAssignmentTrace] = useState<string | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<DocumentSummary | null>(null);
   const [documentDetailDirty, setDocumentDetailDirty] = useState(false);
   const [pendingDocumentSwitch, setPendingDocumentSwitch] = useState<DocumentSummary | null>(null);
@@ -275,6 +277,14 @@ export default function App() {
     }
   }, []);
 
+  const handleAssignmentTraceSelect = useCallback((assignmentId: string) => {
+    setSelectedAssignmentTrace(assignmentId);
+    setSelectedStreamEntry(null);
+    setSelectedSubagentRun(null);
+    setSelectedDoc(null);
+    setSelectedDispatch(null);
+  }, []);
+
   const applyDocumentSelection = useCallback((doc: DocumentSummary) => {
     if (doc.project_id && doc.project_id !== selectedSpaceId) {
       setSelectedSpaceId(doc.project_id);
@@ -392,9 +402,11 @@ export default function App() {
         setShowPreferences(false);
         return;
       }
-      if (selectedDoc || selectedDispatch || selectedSubagentRun || selectedStreamEntry || selectedMessage || selectedTaskId != null) {
+      if (selectedDoc || selectedDispatch || selectedSubagentRun || selectedStreamEntry || selectedMessage || selectedTaskId != null || selectedAssignmentTrace) {
         event.preventDefault();
-        if (selectedDoc) {
+        if (selectedAssignmentTrace) {
+          setSelectedAssignmentTrace(null);
+        } else if (selectedDoc) {
           setSelectedDoc(null);
           setDocumentDetailDirty(false);
           setPendingDocumentSwitch(null);
@@ -424,6 +436,7 @@ export default function App() {
     selectedStreamEntry,
     selectedSubagentRun,
     selectedTaskId,
+    selectedAssignmentTrace,
     showPreferences,
   ]);
 
@@ -570,6 +583,7 @@ export default function App() {
                 projectId={!isAggregateSpace && !isGlobal ? effectiveSpaceId : null}
                 isAggregate={isAggregateSpace}
                 closePanelKey={prefs.keyboard.closePanel}
+                onOpenAssignmentTrace={handleAssignmentTraceSelect}
               />
             ) : (
               <LibrarianView
@@ -592,6 +606,7 @@ export default function App() {
         scrollResetKey={effectiveSpaceId}
         onPanelSizeChange={setChannelPanelSize}
         onOpenPreferences={() => setShowPreferences(true)}
+        onOpenAssignmentTrace={handleAssignmentTraceSelect}
       />
 
       {/* Detail overlays */}
@@ -645,6 +660,16 @@ export default function App() {
           dispatch={selectedDispatch}
           onClose={() => setSelectedDispatch(null)}
           onOpenTask={handleTaskSelect}
+        />
+      )}
+
+      {selectedAssignmentTrace && (
+        <AssignmentTraceView
+          key={selectedAssignmentTrace}
+          assignmentId={selectedAssignmentTrace}
+          projectId={!isAggregateSpace && !isGlobal ? effectiveSpaceId : null}
+          closePanelKey={prefs.keyboard.closePanel}
+          onClose={() => setSelectedAssignmentTrace(null)}
         />
       )}
 

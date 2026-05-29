@@ -6,6 +6,7 @@ import type {
   PostGatewayDirectAgentMessageRequest,
   AgentsOverviewResponse,
   AgentDetailResponse,
+  AssignmentTraceResponse,
 } from './types';
 import { normalizeApiBase } from '../config';
 
@@ -122,4 +123,17 @@ export function getAgentDetail(agentIdentity: string, opts: { projectId?: string
     deliveryLimit: opts.deliveryLimit,
   });
   return getChannels(`/agents/${encodeURIComponent(agentIdentity)}/overview${q}`);
+}
+
+// Worker-pool assignment trace (#1729)
+// Fetches a read-only assignment trace projection. If the backend endpoint does not
+// exist yet, consumers should handle the rejection gracefully (e.g. by showing
+// "core_unavailable" / "gateway_unavailable" states).
+
+export function getAssignmentTrace(assignmentId: string, opts: { projectId?: string; channelId?: string } = {}): Promise<AssignmentTraceResponse> {
+  const q = buildQuery({
+    projectId: opts.projectId,
+    channelId: opts.channelId,
+  });
+  return getChannels(`/assignments/${encodeURIComponent(assignmentId)}/trace${q}`);
 }

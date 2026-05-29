@@ -114,4 +114,9 @@ export type {
   ActivityEventOverviewDto,
   AgentDetailResponse,
   TaskAssociationDto,
+  AssignmentTraceResponse,
+  AssignmentCoreState,
+  AssignmentCheckpointDto,
+  AssignmentGatewayEvidence,
+  TraceSourceAvailability,
 } from './gateway/types';

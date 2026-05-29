@@ -14,6 +14,7 @@ interface Props {
   projectId: string | null;
   isAggregate: boolean;
   closePanelKey?: string;
+  onOpenAssignmentTrace?: (assignmentId: string) => void;
 }
 
 interface FullDetailItem {
@@ -99,7 +100,7 @@ function formatTimestamp(ts: string | null | undefined): string {
   }
 }
 
-export function AgentsOverviewView({ projectId, isAggregate, closePanelKey = 'Escape' }: Props) {
+export function AgentsOverviewView({ projectId, isAggregate, closePanelKey = 'Escape', onOpenAssignmentTrace }: Props) {
   const [selectedAgentIdentity, setSelectedAgentIdentity] = useState<string | null>(null);
 
   const fetchOverview = useCallback(
@@ -277,6 +278,7 @@ export function AgentsOverviewView({ projectId, isAggregate, closePanelKey = 'Es
           isAggregate={isAggregate}
           closePanelKey={closePanelKey}
           onClose={handleCloseDetail}
+          onOpenAssignmentTrace={onOpenAssignmentTrace}
         />
       )}
     </div>
@@ -362,12 +364,14 @@ function AgentDetailOverlay({
   isAggregate,
   closePanelKey,
   onClose,
+  onOpenAssignmentTrace,
 }: {
   agentIdentity: string;
   projectId: string | null;
   isAggregate: boolean;
   closePanelKey: string;
   onClose: () => void;
+  onOpenAssignmentTrace?: (assignmentId: string) => void;
 }) {
   const fetchDetail = useCallback(
     () => getAgentDetail(agentIdentity, {
@@ -577,6 +581,17 @@ function AgentDetailOverlay({
                     {d.createdAt && <span>Created: {formatTimestamp(d.createdAt)}</span>}
                     {d.updatedAt && <span>Updated: {formatTimestamp(d.updatedAt)}</span>}
                   </div>
+                  {onOpenAssignmentTrace && d.deliveryRequestId && (
+                    <button
+                      className="trace-open-button"
+                      onClick={event => {
+                        event.stopPropagation();
+                        onOpenAssignmentTrace(d.deliveryRequestId!);
+                      }}
+                    >
+                      Open assignment trace
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -610,6 +625,17 @@ function AgentDetailOverlay({
                     {d.createdAt && <span>Created: {formatTimestamp(d.createdAt)}</span>}
                     {d.updatedAt && <span>Updated: {formatTimestamp(d.updatedAt)}</span>}
                   </div>
+                  {onOpenAssignmentTrace && d.deliveryRequestId && (
+                    <button
+                      className="trace-open-button"
+                      onClick={event => {
+                        event.stopPropagation();
+                        onOpenAssignmentTrace(d.deliveryRequestId!);
+                      }}
+                    >
+                      Open assignment trace
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

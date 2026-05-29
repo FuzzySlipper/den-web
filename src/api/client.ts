@@ -97,7 +97,6 @@ export {
 
 // Gateway API
 export type {
-  UpsertChannelMembershipRequest,
   ListAgentsOverviewOpts,
 } from './gateway/client';
 export {
@@ -107,4 +106,5 @@ export {
   postGatewayDirectAgentMessage,
   listAgentsOverview,
   getAgentDetail,
+  getAssignmentTrace,
 } from './gateway/client';
