@@ -68,7 +68,10 @@
   vertical-align: top;
 }
 
-.agents-table-row:hover td { background: var(--bg-hover); }
+.agents-table-row { cursor: pointer; }
+.agents-table-row:hover td,
+.agents-table-row:focus-visible td { background: var(--bg-hover); }
+.agents-table-row:focus-visible { outline: 1px solid var(--accent-dim); outline-offset: -1px; }
 .agents-table-row.selected td { background: var(--bg-selected); }
 .agents-table-row.selected:hover td { background: var(--bg-selected); }
 
@@ -158,6 +161,7 @@
 .agents-delivery-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
 .agents-terminal-badge { display: inline-block; border: 1px solid var(--border); border-radius: 999px; padding: 0 5px; font-size: 9px; color: var(--text-muted); text-transform: uppercase; }
 .agents-delivery-summary { color: var(--text); font-size: 11px; margin-bottom: 4px; line-height: 1.4; }
+.agents-delivery-lines { display: flex; flex-direction: column; gap: 3px; margin-bottom: 4px; }
 .agents-delivery-timestamps { display: flex; flex-wrap: wrap; gap: 8px; color: var(--text-muted); font-size: 10px; }
 
 /* Activity cards */
@@ -168,6 +172,36 @@
 .agents-activity-ids { display: flex; flex-wrap: wrap; gap: 6px; color: var(--text-muted); font-size: 10px; font-family: var(--font-mono); margin-bottom: 3px; }
 .agents-activity-status { display: flex; flex-wrap: wrap; gap: 8px; color: var(--text-muted); font-size: 10px; margin-bottom: 2px; }
 .agents-activity-preview { color: var(--text); font-size: 11px; line-height: 1.4; font-family: var(--font-sans); }
+
+.agents-detail-line {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.agents-detail-line:hover,
+.agents-detail-line:focus-visible { background: var(--bg-hover); border-color: var(--border); outline: none; }
+.agents-detail-line-label { color: var(--text-muted); font-size: 10px; font-family: var(--font-mono); text-transform: uppercase; }
+.agents-detail-line-value { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agents-full-detail-panel {
+  width: min(680px, 52vw);
+  z-index: 120;
+}
+.agents-full-detail-pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: none;
+}
 
 /* Task association cards */
 .agents-task-list { display: flex; flex-direction: column; gap: 6px; }

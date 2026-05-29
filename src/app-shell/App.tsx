@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { AgentStreamEntry, DispatchEntry, Document, DocumentSummary, Message, Space, SubagentRunSummary } from '../api/types';
 import {
   getDispatch,
@@ -65,6 +65,12 @@ function defaultSpaceId(spaces: Space[]): string | null {
 
 function spaceSupportsGit(space: Space | null | undefined, isAllSpaces: boolean): boolean {
   return isAllSpaces || space?.kind === 'project' || Boolean(space?.root_path?.trim());
+}
+
+function editableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName.toLowerCase();
+  return target.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select';
 }
 
 export default function App() {
@@ -368,6 +374,59 @@ export default function App() {
     await handleThreadOpen(entry.project_id, entry.thread_id);
   }, [handleThreadOpen]);
 
+  useEffect(() => {
+    const closeKey = prefs.keyboard.closePanel.trim();
+    const openPreferencesKey = prefs.keyboard.openPreferences.trim();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented) return;
+      if (openPreferencesKey && event.key === openPreferencesKey && !editableTarget(event.target)) {
+        event.preventDefault();
+        setShowPreferences(true);
+        return;
+      }
+      if (!closeKey || event.key !== closeKey) return;
+
+      if (showPreferences) {
+        event.preventDefault();
+        setShowPreferences(false);
+        return;
+      }
+      if (selectedDoc || selectedDispatch || selectedSubagentRun || selectedStreamEntry || selectedMessage || selectedTaskId != null) {
+        event.preventDefault();
+        if (selectedDoc) {
+          setSelectedDoc(null);
+          setDocumentDetailDirty(false);
+          setPendingDocumentSwitch(null);
+        } else if (selectedDispatch) {
+          setSelectedDispatch(null);
+        } else if (selectedSubagentRun) {
+          setSelectedSubagentRun(null);
+        } else if (selectedStreamEntry) {
+          setSelectedStreamEntry(null);
+        } else if (selectedMessage) {
+          setSelectedMessage(null);
+        } else {
+          setSelectedTaskId(null);
+          setSelectedTaskProjectId(null);
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    prefs.keyboard.closePanel,
+    prefs.keyboard.openPreferences,
+    selectedDispatch,
+    selectedDoc,
+    selectedMessage,
+    selectedStreamEntry,
+    selectedSubagentRun,
+    selectedTaskId,
+    showPreferences,
+  ]);
+
   return (
     <div className={`dashboard dashboard-channel-size-${channelPanelSize}`}>
       <div className="dashboard-workspace">
@@ -510,6 +569,7 @@ export default function App() {
               <AgentsOverviewView
                 projectId={!isAggregateSpace && !isGlobal ? effectiveSpaceId : null}
                 isAggregate={isAggregateSpace}
+                closePanelKey={prefs.keyboard.closePanel}
               />
             ) : (
               <LibrarianView

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   AgentDetailResponse,
   AgentsOverviewResponse,
@@ -13,6 +13,13 @@ import { formatTimeAgo } from '../../utils';
 interface Props {
   projectId: string | null;
   isAggregate: boolean;
+  closePanelKey?: string;
+}
+
+interface FullDetailItem {
+  title: string;
+  subtitle?: string;
+  value: unknown;
 }
 
 function severityClass(severity: string | null): string {
@@ -92,7 +99,7 @@ function formatTimestamp(ts: string | null | undefined): string {
   }
 }
 
-export function AgentsOverviewView({ projectId, isAggregate }: Props) {
+export function AgentsOverviewView({ projectId, isAggregate, closePanelKey = 'Escape' }: Props) {
   const [selectedAgentIdentity, setSelectedAgentIdentity] = useState<string | null>(null);
 
   const fetchOverview = useCallback(
@@ -173,6 +180,16 @@ export function AgentsOverviewView({ projectId, isAggregate }: Props) {
                 <tr
                   key={agent.agentIdentity}
                   className={`agents-table-row ${selectedAgentIdentity === agent.agentIdentity ? 'selected' : ''}`}
+                  onClick={() => handleSelect(agent.agentIdentity)}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      handleSelect(agent.agentIdentity);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Open details for ${agent.agentIdentity}`}
                 >
                   <td className="agents-cell-agent">
                     <div className="agents-agent-identity">{agent.agentIdentity}</div>
@@ -238,7 +255,10 @@ export function AgentsOverviewView({ projectId, isAggregate }: Props) {
                   <td className="agents-cell-action">
                     <button
                       className="agents-detail-button"
-                      onClick={() => handleSelect(agent.agentIdentity)}
+                      onClick={event => {
+                        event.stopPropagation();
+                        handleSelect(agent.agentIdentity);
+                      }}
                     >
                       {selectedAgentIdentity === agent.agentIdentity ? 'Close' : 'Detail'}
                     </button>
@@ -255,6 +275,7 @@ export function AgentsOverviewView({ projectId, isAggregate }: Props) {
           agentIdentity={selectedAgentIdentity}
           projectId={projectId}
           isAggregate={isAggregate}
+          closePanelKey={closePanelKey}
           onClose={handleCloseDetail}
         />
       )}
@@ -294,15 +315,58 @@ function copyableDiagnosticPacket(agent: AgentDetailResponse): string {
   return lines.join('\n');
 }
 
+function detailText(value: unknown): string {
+  if (value == null) return '—';
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function DetailLine({ label, value, onOpen }: { label: string; value: unknown; onOpen: (item: FullDetailItem) => void }) {
+  return (
+    <button
+      type="button"
+      className="agents-detail-line"
+      onClick={() => onOpen({ title: label, value })}
+      title="Open full detail"
+    >
+      <span className="agents-detail-line-label">{label}</span>
+      <span className="agents-detail-line-value">{detailText(value)}</span>
+    </button>
+  );
+}
+
+function FullDetailPanel({ item, onClose }: { item: FullDetailItem; onClose: () => void }) {
+  return (
+    <div className="detail-overlay agents-full-detail-panel" role="dialog" aria-label={`Full detail: ${item.title}`} aria-modal="true">
+      <div className="detail-header">
+        <div className="detail-title-block">
+          <h2>{item.title}</h2>
+          {item.subtitle && <span className="detail-subtle">{item.subtitle}</span>}
+        </div>
+        <button className="detail-close" onClick={onClose}>Close</button>
+      </div>
+      <div className="detail-body">
+        <pre className="detail-pre agents-full-detail-pre">{detailText(item.value)}</pre>
+      </div>
+    </div>
+  );
+}
+
 function AgentDetailOverlay({
   agentIdentity,
   projectId,
   isAggregate,
+  closePanelKey,
   onClose,
 }: {
   agentIdentity: string;
   projectId: string | null;
   isAggregate: boolean;
+  closePanelKey: string;
   onClose: () => void;
 }) {
   const fetchDetail = useCallback(
@@ -316,6 +380,25 @@ function AgentDetailOverlay({
   const { data: agent, loading, error, refresh } = usePolling<AgentDetailResponse>(fetchDetail, 10000);
 
   const [showDiagnostic, setShowDiagnostic] = useState(false);
+  const [fullDetailItem, setFullDetailItem] = useState<FullDetailItem | null>(null);
+
+  useEffect(() => {
+    const closeKey = closePanelKey.trim();
+    if (!closeKey) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.key !== closeKey) return;
+      event.preventDefault();
+      if (fullDetailItem) {
+        setFullDetailItem(null);
+      } else {
+        onClose();
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [closePanelKey, fullDetailItem, onClose]);
 
   const healthWarnings = useMemo(() => agent ? renderHealthWarnings(agent.sourceHealth) : [], [agent]);
 
@@ -479,7 +562,12 @@ function AgentDetailOverlay({
                     )}
                     {d.terminal && <span className="agents-terminal-badge">terminal</span>}
                   </div>
-                  {d.summary && <div className="agents-delivery-summary">{d.summary}</div>}
+                  <div className="agents-delivery-lines">
+                    {d.deliveryRequestId && <DetailLine label="Delivery request" value={d.deliveryRequestId} onOpen={setFullDetailItem} />}
+                    {d.summary && <DetailLine label="Summary" value={d.summary} onOpen={setFullDetailItem} />}
+                    {d.evidenceSummary && <DetailLine label="Evidence" value={d.evidenceSummary} onOpen={setFullDetailItem} />}
+                    <DetailLine label="Full delivery record" value={d} onOpen={item => setFullDetailItem({ ...item, title: d.deliveryRequestId ?? item.title })} />
+                  </div>
                   <div className="agents-delivery-timestamps">
                     {d.createdAt && <span>Created: {formatTimestamp(d.createdAt)}</span>}
                     {d.updatedAt && <span>Updated: {formatTimestamp(d.updatedAt)}</span>}
@@ -507,7 +595,12 @@ function AgentDetailOverlay({
                     )}
                     {d.terminal && <span className="agents-terminal-badge">terminal</span>}
                   </div>
-                  {d.summary && <div className="agents-delivery-summary">{d.summary}</div>}
+                  <div className="agents-delivery-lines">
+                    {d.deliveryRequestId && <DetailLine label="Delivery request" value={d.deliveryRequestId} onOpen={setFullDetailItem} />}
+                    {d.summary && <DetailLine label="Summary" value={d.summary} onOpen={setFullDetailItem} />}
+                    {d.evidenceSummary && <DetailLine label="Evidence" value={d.evidenceSummary} onOpen={setFullDetailItem} />}
+                    <DetailLine label="Full delivery record" value={d} onOpen={item => setFullDetailItem({ ...item, title: d.deliveryRequestId ?? item.title })} />
+                  </div>
                   <div className="agents-delivery-timestamps">
                     {d.createdAt && <span>Created: {formatTimestamp(d.createdAt)}</span>}
                     {d.updatedAt && <span>Updated: {formatTimestamp(d.updatedAt)}</span>}
@@ -550,11 +643,11 @@ function AgentDetailOverlay({
                   </div>
                   {(a.title || a.summary) && (
                     <div className="agents-activity-preview">
-                      {a.title && <strong>{a.title}</strong>}
-                      {a.title && a.summary && ': '}
-                      {a.summary}
+                      {a.title && <DetailLine label="Title" value={a.title} onOpen={setFullDetailItem} />}
+                      {a.summary && <DetailLine label="Summary" value={a.summary} onOpen={setFullDetailItem} />}
                     </div>
                   )}
+                  <DetailLine label="Full activity event" value={a} onOpen={item => setFullDetailItem({ ...item, title: `${a.eventType} #${a.id}` })} />
                 </div>
               ))}
             </div>
@@ -610,6 +703,9 @@ function AgentDetailOverlay({
           )}
         </div>
       </div>
+      {fullDetailItem && (
+        <FullDetailPanel item={fullDetailItem} onClose={() => setFullDetailItem(null)} />
+      )}
     </div>
   );
 }

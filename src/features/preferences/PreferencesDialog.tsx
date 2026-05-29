@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import type { ChatPreferences, DenWebPreferences, FontPreferences, LayoutPreferences, ThemePreferences } from './types';
+import type { ChatPreferences, DenWebPreferences, FontPreferences, KeyboardPreferences, LayoutPreferences, ThemePreferences } from './types';
 
 interface Props {
   prefs: DenWebPreferences;
@@ -19,7 +19,7 @@ interface Props {
 }
 
 export function PreferencesDialog({ prefs, onUpdateSection, onReset, onClose }: Props) {
-  const [activeTab, setActiveTab] = useState<'chat' | 'layout' | 'theme' | 'font'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'layout' | 'theme' | 'font' | 'keyboard'>('chat');
 
   return (
     <div className="preferences-overlay" role="dialog" aria-label="Preferences" aria-modal="true">
@@ -32,14 +32,14 @@ export function PreferencesDialog({ prefs, onUpdateSection, onReset, onClose }: 
         </div>
 
         <div className="preferences-tabs">
-          {(['chat', 'layout', 'theme', 'font'] as const).map(tab => (
+          {(['chat', 'layout', 'theme', 'font', 'keyboard'] as const).map(tab => (
             <button
               key={tab}
               type="button"
               className={`preferences-tab ${activeTab === tab ? 'preferences-tab-active' : ''}`}
               onClick={() => setActiveTab(tab)}
             >
-              {tab === 'chat' ? 'Chat' : tab === 'layout' ? 'Layout' : tab === 'theme' ? 'Theme' : 'Font'}
+              {tab === 'chat' ? 'Chat' : tab === 'layout' ? 'Layout' : tab === 'theme' ? 'Theme' : tab === 'font' ? 'Font' : 'Keyboard'}
             </button>
           ))}
         </div>
@@ -56,6 +56,9 @@ export function PreferencesDialog({ prefs, onUpdateSection, onReset, onClose }: 
           )}
           {activeTab === 'font' && (
             <FontSection value={prefs.font} onChange={v => onUpdateSection('font', v)} />
+          )}
+          {activeTab === 'keyboard' && (
+            <KeyboardSection value={prefs.keyboard} onChange={v => onUpdateSection('keyboard', v)} />
           )}
         </div>
 
@@ -174,6 +177,50 @@ function FontSection({ value, onChange }: { value: FontPreferences; onChange: (v
       <SliderRow label="Chat font size (px)" min={10} max={20} step={1} value={value.chatSize} onChange={v => set('chatSize', v)} />
     </div>
   );
+}
+
+function KeyboardSection({ value, onChange }: { value: KeyboardPreferences; onChange: (v: KeyboardPreferences) => void }) {
+  const set = useCallback(
+    <K extends keyof KeyboardPreferences>(key: K, val: KeyboardPreferences[K]) =>
+      onChange({ ...value, [key]: val }),
+    [value, onChange],
+  );
+
+  return (
+    <div className="preferences-section">
+      <h3>Keyboard shortcuts</h3>
+      <label className="preferences-field-row">
+        <span>Close latest panel</span>
+        <input
+          type="text"
+          className="preferences-text-input"
+          value={value.closePanel}
+          onChange={e => set('closePanel', normalizeHotkey(e.target.value))}
+          placeholder="Escape"
+        />
+      </label>
+      <label className="preferences-field-row">
+        <span>Open preferences</span>
+        <input
+          type="text"
+          className="preferences-text-input"
+          value={value.openPreferences}
+          onChange={e => set('openPreferences', normalizeHotkey(e.target.value))}
+          placeholder="Optional, e.g. ?"
+        />
+      </label>
+      <p className="preferences-note">
+        Use browser key names such as Escape, ?, or F2. Leave a field blank to disable that shortcut.
+      </p>
+    </div>
+  );
+}
+
+function normalizeHotkey(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (trimmed.toLowerCase() === 'esc') return 'Escape';
+  return trimmed.length === 1 ? trimmed : trimmed[0].toUpperCase() + trimmed.slice(1);
 }
 
 // ---------------------------------------------------------------------------

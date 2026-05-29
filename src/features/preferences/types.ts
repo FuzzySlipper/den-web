@@ -65,11 +65,20 @@ export interface FontPreferences {
   chatSize: number;
 }
 
+/** Keyboard shortcuts. Empty strings disable the binding. */
+export interface KeyboardPreferences {
+  /** Close the most recently opened panel/sub-panel */
+  closePanel: string;
+  /** Open the preferences/options panel */
+  openPreferences: string;
+}
+
 export interface DenWebPreferences {
   chat: ChatPreferences;
   layout: LayoutPreferences;
   theme: ThemePreferences;
   font: FontPreferences;
+  keyboard: KeyboardPreferences;
 }
 
 export const DEFAULT_PREFERENCES: DenWebPreferences = {
@@ -94,5 +103,9 @@ export const DEFAULT_PREFERENCES: DenWebPreferences = {
     sansStack: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     baseSize: 13,
     chatSize: 12,
+  },
+  keyboard: {
+    closePanel: 'Escape',
+    openPreferences: '',
   },
 };

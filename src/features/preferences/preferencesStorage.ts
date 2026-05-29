@@ -77,5 +77,6 @@ function mergeDefaults(partial: Partial<DenWebPreferences>): DenWebPreferences {
     layout: { ...defaults.layout, ...partial.layout },
     theme: { ...defaults.theme, ...partial.theme },
     font: { ...defaults.font, ...partial.font },
+    keyboard: { ...defaults.keyboard, ...partial.keyboard },
   };
 }

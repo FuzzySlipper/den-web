@@ -38,6 +38,7 @@ describe('preferencesStorage', () => {
     expect(prefs.font.baseSize).toBe(13);
     expect(prefs.chat.rowGap).toBe(4);
     expect(prefs.layout.chatFraction).toBe(0.8);
+    expect(prefs.keyboard.closePanel).toBe('Escape');
   });
 
   it('persists and retrieves preferences', () => {
@@ -46,6 +47,7 @@ describe('preferencesStorage', () => {
       layout: { chatFraction: 0.7, showParticipants: false },
       theme: { accent: '#ff0000', background: '#000', surface: '#111', text: '#fff', textMuted: '#888' },
       font: { monoStack: 'monospace', sansStack: 'sans-serif', baseSize: 14, chatSize: 13 },
+      keyboard: { closePanel: 'Escape', openPreferences: '?' },
     };
     writePreferences(custom);
     const read = readPreferences();
@@ -58,6 +60,7 @@ describe('preferencesStorage', () => {
       layout: { chatFraction: 0.5, showParticipants: false },
       theme: { accent: '#ff0000', background: '#000', surface: '#111', text: '#fff', textMuted: '#888' },
       font: { monoStack: 'x', sansStack: 'y', baseSize: 10, chatSize: 10 },
+      keyboard: { closePanel: 'Escape', openPreferences: '' },
     });
     clearPreferences();
     const read = readPreferences();
@@ -77,6 +80,7 @@ describe('preferencesStorage', () => {
     // unrelated sections should be defaults
     expect(prefs.theme.accent).toBe('#7aa2f7');
     expect(prefs.font.baseSize).toBe(13);
+    expect(prefs.keyboard.closePanel).toBe('Escape');
   });
 
   it('returns defaults on corrupt JSON', () => {
