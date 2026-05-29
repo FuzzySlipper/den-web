@@ -421,7 +421,11 @@ function AgentDetailOverlay({
           <h2>{agentIdentity}</h2>
           {agent?.summary && (
             <span className={`agents-summary-line ${severityClass(agent.summary.highestSeverity)}`}>
-              {agent.summary.activeMembershipCount} active memberships · {agent.summary.activeDeliveryCount} active deliveries · {agent.summary.recentActivityCount} recent activities
+              {agent.summary.activeMembershipCount} active memberships · {agent.summary.activeDeliveryCount} active deliveries
+              {agent.summary.staleDeliveryCount && agent.summary.staleDeliveryCount > 0
+                ? ` · ${agent.summary.staleDeliveryCount} stale`
+                : ''}
+               · {agent.summary.recentActivityCount} recent activities
             </span>
           )}
         </div>
@@ -561,6 +565,7 @@ function AgentDetailOverlay({
                       <span className="agents-delivery-id">ID: {d.deliveryRequestId}</span>
                     )}
                     {d.terminal && <span className="agents-terminal-badge">terminal</span>}
+                    {d.isStale && <span className="agents-stale-badge">stale debt</span>}
                   </div>
                   <div className="agents-delivery-lines">
                     {d.deliveryRequestId && <DetailLine label="Delivery request" value={d.deliveryRequestId} onOpen={setFullDetailItem} />}

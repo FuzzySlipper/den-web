@@ -127,6 +127,7 @@ export interface AgentSummaryDto {
   recentActivityCount: number;
   latestActivityAt: string | null;
   highestSeverity: string | null;
+  staleDeliveryCount?: number;
 }
 
 export interface AgentLinksDto {
@@ -195,6 +196,7 @@ export interface DeliveryOverviewDto {
   createdAt: string | null;
   updatedAt: string | null;
   summary: string | null;
+  isStale?: boolean;
 }
 
 export interface ActivityEventOverviewDto {
