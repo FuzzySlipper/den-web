@@ -11,7 +11,7 @@
 
 .channel-chat-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto minmax(110px, 160px) auto minmax(180px, 260px) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto minmax(110px, 160px) auto minmax(180px, 260px) auto;
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
@@ -53,7 +53,7 @@
   .channel-chat-identity,
   .channel-chat-selector-label,
   .channel-chat-selector,
-  .channel-chat-auto-scroll,
+  .channel-chat-quick-controls,
   .channel-chat-refresh {
     grid-column: span 1;
   }
@@ -312,9 +312,18 @@
   white-space: nowrap;
 }
 
+.channel-chat-quick-controls,
 .channel-chat-size-controls {
   display: inline-flex;
   align-items: center;
+}
+
+.channel-chat-quick-controls {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.channel-chat-size-controls {
   gap: 3px;
 }
 

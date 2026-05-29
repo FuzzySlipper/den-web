@@ -762,28 +762,39 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
           <strong>{channelLabel(activeChannel, projectId)}</strong>
           <span>{channelStatus}</span>
         </div>
-        <div className="channel-chat-size-controls" role="group" aria-label="Channel panel size">
-          {PANEL_SIZE_OPTIONS.map(option => (
-            <button
-              key={option.value}
-              type="button"
-              className={`channel-chat-size-button ${panelSize === option.value ? 'active' : ''}`}
-              aria-pressed={panelSize === option.value}
-              onClick={() => onPanelSizeChange(option.value)}
-              title={`Set channel panel size to ${option.label.toLowerCase()}`}
-            >
-              {option.label}
-            </button>
-          ))}
+        <div className="channel-chat-quick-controls" aria-label="Channel display controls">
+          <div className="channel-chat-size-controls" role="group" aria-label="Channel panel size">
+            {PANEL_SIZE_OPTIONS.map(option => (
+              <button
+                key={option.value}
+                type="button"
+                className={`channel-chat-size-button ${panelSize === option.value ? 'active' : ''}`}
+                aria-pressed={panelSize === option.value}
+                onClick={() => onPanelSizeChange(option.value)}
+                title={`Set channel panel size to ${option.label.toLowerCase()}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <label className="channel-chat-auto-scroll">
+            <input
+              type="checkbox"
+              checked={autoScroll}
+              onChange={event => setAutoScroll(event.target.checked)}
+            />
+            <span>Auto-scroll</span>
+          </label>
+          <button
+            type="button"
+            className="preferences-gear"
+            onClick={onOpenPreferences}
+            title="Open preferences"
+            aria-label="Open preferences"
+          >
+            Options ⚙
+          </button>
         </div>
-        <label className="channel-chat-auto-scroll">
-          <input
-            type="checkbox"
-            checked={autoScroll}
-            onChange={event => setAutoScroll(event.target.checked)}
-          />
-          <span>Auto-scroll</span>
-        </label>
         <label className="channel-chat-identity-label" htmlFor="channel-chat-sender-identity">Posting as</label>
         <input
           id="channel-chat-sender-identity"
@@ -821,15 +832,6 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
           }}
         >
           Refresh
-        </button>
-        <button
-          type="button"
-          className="preferences-gear"
-          onClick={onOpenPreferences}
-          title="Open preferences"
-          aria-label="Open preferences"
-        >
-          ⚙
         </button>
       </div>
 
