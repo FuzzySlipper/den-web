@@ -18,6 +18,8 @@ import {
 import { usePolling } from '../../hooks/usePolling';
 import { formatTimeAgo } from '../../utils';
 import { findActiveMentionQuery, getMentionSuggestions, groupActivityEventsForChannelMessages, insertMentionToken, parseMessageBodySegments, sortActivityEvents, toActivityDisplayModel, deriveAssignmentBadge } from './channelChatRenderModel';
+import { findSlashCommandSuggestions, getSlashCommandHelpLines } from './channelSlashCommands';
+import { appendHistory, persistHistory, readHistory } from './channelComposerHistory';
 
 const SENDER_IDENTITY_STORAGE_KEY = 'den-channel-sender-identity';
 const DEFAULT_WAKE_POLICY = 'mentions_only';
@@ -339,6 +341,15 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   const [selectedChannelId, setSelectedChannelId] = useState<number | null>(null);
   const [sendMode, setSendMode] = useState<ChannelSendMode>('channel');
   const [autoScroll, setAutoScroll] = useState(true);
+  const [composerHistoryEntries, setComposerHistoryEntries] = useState<ReturnType<typeof readHistory>>([]);
+  const [historyNavigateIndex, setHistoryNavigateIndex] = useState<number | null>(null);
+  const [slashActiveIndex, setSlashActiveIndex] = useState(0);
+  const slashCommandSuggestions = useMemo(
+    () => findSlashCommandSuggestions(draft),
+    [draft],
+  );
+  const slashHelpLines = useMemo(() => getSlashCommandHelpLines(), []);
+  const showSlashHelp = draft.trim() === '/help';
   const scrollbackRef = useRef<HTMLDivElement | null>(null);
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
   const isScrollPinnedToBottomRef = useRef(true);
@@ -346,6 +357,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   const pendingAutoScrollSnapKeyRef = useRef<string | null>(null);
   const previousProjectIdRef = useRef<string | null>(projectId);
   const pendingProjectDefaultSelectionRef = useRef<string | null>(null);
+  const historyUnsentDraftRef = useRef('');
   const [targetMemberIdentity, setTargetMemberIdentity] = useState('');
   const [inviteIdentity, setInviteIdentity] = useState('');
   const [inviteWakePolicy, setInviteWakePolicy] = useState(DEFAULT_WAKE_POLICY);
@@ -518,6 +530,17 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     setMentionActiveIndex(0);
   }, [mentionQuery?.query, mentionSuggestions.length]);
 
+  // Load composer history when sender identity changes
+  useEffect(() => {
+    setComposerHistoryEntries(readHistory(normalizedSenderIdentity));
+    setHistoryNavigateIndex(null);
+  }, [normalizedSenderIdentity]);
+
+  // Reset slash-command active index when suggestions change
+  useEffect(() => {
+    setSlashActiveIndex(0);
+  }, [slashCommandSuggestions.length]);
+
   useEffect(() => {
     if (activeAgentMembers.length === 0) {
       setTargetMemberIdentity('');
@@ -552,6 +575,13 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     isScrollPinnedToBottomRef.current = isScrollElementPinnedToBottom(event.currentTarget);
   }, []);
 
+  const handleDraftChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
+    const value = event.target.value;
+    setDraft(value);
+    setHistoryNavigateIndex(null);
+    historyUnsentDraftRef.current = value;
+  }, []);
+
   const insertMention = useCallback((identity: string) => {
     if (!mentionQuery) return;
     setDraft(current => insertMentionToken(current, mentionQuery, identity));
@@ -559,6 +589,34 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   }, [mentionQuery]);
 
   const handleComposerKeyDown = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
+    // If slash-command menu is active, handle slash-command navigation/selection
+    if (slashCommandSuggestions.length > 0) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setSlashActiveIndex(index => (index + 1) % slashCommandSuggestions.length);
+        return;
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setSlashActiveIndex(index => (index - 1 + slashCommandSuggestions.length) % slashCommandSuggestions.length);
+        return;
+      } else if (event.key === 'Enter' || event.key === 'Tab') {
+        event.preventDefault();
+        const cmd = slashCommandSuggestions[slashActiveIndex] ?? slashCommandSuggestions[0];
+        if (cmd) {
+          setDraft(cmd.command);
+          if (cmd.command === '/clear') {
+            setDraft('');
+          }
+        }
+        setHistoryNavigateIndex(null);
+        return;
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        setSlashActiveIndex(0);
+        return;
+      }
+    }
+
     // If mention menu is active, handle mention navigation/selection
     if (mentionQuery && mentionSuggestions.length > 0) {
       if (event.key === 'ArrowDown') {
@@ -581,6 +639,43 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
       }
     }
 
+    // ArrowUp — navigate history (only when at the start of the draft and not in a menu)
+    if (event.key === 'ArrowUp' && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+      const textarea = event.currentTarget;
+      const canStartHistoryRecall = textarea.selectionStart === 0 && textarea.selectionEnd === 0;
+      const isNavigatingHistory = historyNavigateIndex !== null;
+      if ((isNavigatingHistory || canStartHistoryRecall) && composerHistoryEntries.length > 0) {
+        event.preventDefault();
+        const currentNavIndex = historyNavigateIndex;
+        if (currentNavIndex === null) {
+          // Start navigating from the most recent entry
+          historyUnsentDraftRef.current = draft;
+          setHistoryNavigateIndex(composerHistoryEntries.length - 1);
+          setDraft(composerHistoryEntries[composerHistoryEntries.length - 1].body);
+        } else if (currentNavIndex > 0) {
+          // Go to previous entry
+          setHistoryNavigateIndex(currentNavIndex - 1);
+          setDraft(composerHistoryEntries[currentNavIndex - 1].body);
+        }
+        return;
+      }
+    }
+
+    // ArrowDown — navigate forward through history
+    if (event.key === 'ArrowDown' && !event.shiftKey && !event.ctrlKey && !event.metaKey && historyNavigateIndex !== null) {
+      event.preventDefault();
+      if (historyNavigateIndex < composerHistoryEntries.length - 1) {
+        const nextIndex = historyNavigateIndex + 1;
+        setHistoryNavigateIndex(nextIndex);
+        setDraft(composerHistoryEntries[nextIndex].body);
+      } else {
+        // At the end of history, restore the current draft
+        setHistoryNavigateIndex(null);
+        setDraft(historyUnsentDraftRef.current);
+      }
+      return;
+    }
+
     // Submit on Enter (without Shift). Shift+Enter inserts a newline.
     if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
@@ -589,7 +684,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
         form.requestSubmit();
       }
     }
-  }, [insertMention, mentionActiveIndex, mentionQuery, mentionSuggestions]);
+  }, [draft, insertMention, mentionActiveIndex, mentionQuery, mentionSuggestions, slashCommandSuggestions, slashActiveIndex, composerHistoryEntries, historyNavigateIndex]);
 
   const handleSubmit = useCallback(async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -617,6 +712,11 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
         setLastDirectResult(null);
       }
       setDraft('');
+      // Record message in composer history
+      const updated = appendHistory(composerHistoryEntries, body);
+      setComposerHistoryEntries(updated);
+      persistHistory(normalizedSenderIdentity, updated);
+      setHistoryNavigateIndex(null);
       refreshMessages();
       refreshActivityEvents();
       refreshReactions();
@@ -625,7 +725,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     } finally {
       setSending(false);
     }
-  }, [activeChannel, draft, isComposerDisabled, normalizedSenderIdentity, refreshActivityEvents, refreshMessages, refreshReactions, selectedTarget, sendMode]);
+  }, [activeChannel, composerHistoryEntries, draft, isComposerDisabled, normalizedSenderIdentity, refreshActivityEvents, refreshMessages, refreshReactions, selectedTarget, sendMode]);
 
   const handleReactToMessage = useCallback(async (message: ChannelMessage, reactionKey: string) => {
     const reactorIdentity = normalizedSenderIdentity || targetMemberIdentity;
@@ -1107,7 +1207,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
         </select>
         <textarea
           value={draft}
-          onChange={event => setDraft(event.target.value)}
+          onChange={handleDraftChange}
           onKeyDown={handleComposerKeyDown}
           placeholder={composerPlaceholder}
           disabled={isComposerDisabled}
@@ -1115,6 +1215,40 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
           rows={2}
           className="channel-chat-composer-textarea"
         />
+        {slashCommandSuggestions.length > 0 && (
+          <div className="channel-chat-slash-menu" role="listbox" aria-label="Slash command suggestions">
+            {slashCommandSuggestions.map((cmd, index) => (
+              <button
+                key={cmd.command}
+                type="button"
+                className={`channel-chat-slash-option ${index === slashActiveIndex ? 'active' : ''}`}
+                onMouseDown={event => event.preventDefault()}
+                onClick={() => {
+                  if (cmd.command === '/clear') {
+                    setDraft('');
+                  } else {
+                    setDraft(cmd.command);
+                  }
+                  setHistoryNavigateIndex(null);
+                }}
+                role="option"
+                aria-selected={index === slashActiveIndex}
+              >
+                <span className="channel-chat-slash-command">{cmd.command}</span>
+                <span className="channel-chat-slash-description">{cmd.description}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {showSlashHelp && (
+          <div className="channel-chat-slash-help" aria-label="Slash command help">
+            <strong>Slash command help</strong>
+            <span>These are local composer shortcuts; they do not call a backend slash-command API.</span>
+            <ul>
+              {slashHelpLines.map(line => <li key={line}>{line}</li>)}
+            </ul>
+          </div>
+        )}
         {mentionQuery && (
           <div className="channel-chat-mention-menu" role="listbox" aria-label="Mention suggestions">
             {mentionSuggestions.length === 0 ? (
