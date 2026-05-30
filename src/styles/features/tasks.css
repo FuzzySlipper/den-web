@@ -278,3 +278,136 @@
   line-height: 1.5;
   margin-top: 4px;
 }
+
+/* =========================================================================
+   Start Work — task detail wake affordance
+   ========================================================================= */
+
+.start-work-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.start-work-button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1a3a1a;
+  color: var(--green);
+  border: 1px solid #2d5d37;
+  border-radius: 5px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.start-work-button:hover:not(:disabled) {
+  background: #244d24;
+  border-color: #3d7d47;
+}
+
+.start-work-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.start-work-inflight {
+  opacity: 0.7;
+  animation: pulse-opacity 1s infinite;
+}
+
+@keyframes pulse-opacity {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 0.4; }
+}
+
+.start-work-disabled {
+  background: #2a2b3d;
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+.start-work-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.start-work-evidence {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.start-work-evidence-sent {
+  background: #1a2e1a;
+  border: 1px solid #2d5d37;
+  color: var(--green);
+}
+
+.start-work-evidence-failed {
+  background: #2a151d;
+  border: 1px solid #6a2a3c;
+  color: var(--red);
+}
+
+.start-work-summary {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.start-work-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.start-work-detail-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.start-work-link {
+  display: inline-block;
+  margin-left: 4px;
+  color: var(--accent);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.start-work-link:hover {
+  text-decoration: underline;
+  color: var(--accent-dim);
+}
+
+.start-work-warning {
+  color: var(--yellow);
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.start-work-recovery {
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-size: 11px;
+}

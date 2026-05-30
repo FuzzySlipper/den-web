@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   AgentWorkspace,
   GitStatusResponse,
@@ -16,6 +16,7 @@ import { formatTimeAgo, truncate } from '../../utils';
 import { messageIntentLabel } from '../messages/messageIntents';
 import { buildTaskGitFocus, dirtyCount, reviewGitAlignmentWarnings, summarizeGitStatus, type GitFocus } from '../git/git';
 import { renderFindingMeta } from './reviewFindings';
+import { sendTaskStartWork, type StartWorkEvidence, type StartWorkPhase } from './startWork';
 
 interface Props {
   projectId: string;
@@ -102,6 +103,9 @@ export function TaskDetail({ projectId, taskId, onSelectTask, onSelectMessage, o
   const [gitError, setGitError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [runsError, setRunsError] = useState<string | null>(null);
+  const [startWorkPhase, setStartWorkPhase] = useState<StartWorkPhase>('idle');
+  const [startWorkEvidence, setStartWorkEvidence] = useState<StartWorkEvidence | null>(null);
+  const startWorkInFlight = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -171,6 +175,28 @@ export function TaskDetail({ projectId, taskId, onSelectTask, onSelectMessage, o
     }
   };
 
+  const handleStartWork = useCallback(async () => {
+    if (startWorkInFlight.current || !detail) return;
+    startWorkInFlight.current = true;
+    setStartWorkPhase('preflighting');
+    setStartWorkEvidence(null);
+    try {
+      setStartWorkPhase('sending');
+      const evidence = await sendTaskStartWork(detail.task);
+      setStartWorkPhase(evidence.phase);
+      setStartWorkEvidence(evidence);
+    } catch (e) {
+      setStartWorkPhase('failed');
+      setStartWorkEvidence({
+        phase: 'failed',
+        summary: e instanceof Error ? e.message : String(e),
+        error: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      startWorkInFlight.current = false;
+    }
+  }, [detail]);
+
   if (error) {
     return (
       <div className="detail-overlay">
@@ -239,6 +265,81 @@ export function TaskDetail({ projectId, taskId, onSelectTask, onSelectMessage, o
               </>
             )}
           </dl>
+          <div className="start-work-row">
+            {task.assigned_to ? (
+              <>
+                <button
+                  type="button"
+                  className={`start-work-button${startWorkPhase !== 'idle' ? ' start-work-inflight' : ''}`}
+                  disabled={startWorkPhase !== 'idle'}
+                  onClick={handleStartWork}
+                >
+                  {startWorkPhase === 'preflighting' && 'Preflighting membership…'}
+                  {startWorkPhase === 'sending' && 'Sending wake…'}
+                  {(startWorkPhase === 'idle' || startWorkPhase === 'sent' || startWorkPhase === 'failed') && (
+                    <>Start work → {task.assigned_to}</>
+                  )}
+                </button>
+                {startWorkPhase === 'idle' && (
+                  <span className="start-work-hint">Sends a targeted wake to {task.assigned_to} via gateway green path.</span>
+                )}
+              </>
+            ) : (
+              <>
+                <button type="button" className="start-work-button start-work-disabled" disabled>
+                  Start work
+                </button>
+                <span className="start-work-hint">Assign this task to an agent to enable the start-work wake.</span>
+              </>
+            )}
+          </div>
+          {startWorkEvidence && (
+            <div className={`start-work-evidence start-work-evidence-${startWorkEvidence.phase}`}>
+              <span className="start-work-summary">{startWorkEvidence.summary}</span>
+              {startWorkEvidence.phase === 'sent' && (
+                <div className="start-work-details">
+                  {startWorkEvidence.deliveryStatus && (
+                    <span className="start-work-detail-tag">Delivery: {startWorkEvidence.deliveryStatus}</span>
+                  )}
+                  {startWorkEvidence.claimStatus && (
+                    <span className="start-work-detail-tag">Claim: {startWorkEvidence.claimStatus}</span>
+                  )}
+                  {startWorkEvidence.completionStatus && (
+                    <span className="start-work-detail-tag">Completion: {startWorkEvidence.completionStatus}</span>
+                  )}
+                  {startWorkEvidence.channelSlug && (
+                    <span className="start-work-detail-tag">Channel: #{startWorkEvidence.channelSlug}</span>
+                  )}
+                  {startWorkEvidence.messageId != null && (
+                    <span className="start-work-detail-tag">Message: #{startWorkEvidence.messageId}</span>
+                  )}
+                  {startWorkEvidence.requestId && (
+                    <span className="start-work-detail-tag">Request: {startWorkEvidence.requestId}</span>
+                  )}
+                  {startWorkEvidence.gatewayMessageUrl && (
+                    <a
+                      className="start-work-link"
+                      href={startWorkEvidence.gatewayMessageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Gateway message →
+                    </a>
+                  )}
+                </div>
+              )}
+              {startWorkEvidence.phase === 'failed' && (
+                <div className="start-work-details">
+                  {startWorkEvidence.warning && (
+                    <div className="start-work-warning">⚠ {startWorkEvidence.warning}</div>
+                  )}
+                  {startWorkEvidence.recoveryHint && (
+                    <div className="start-work-recovery">💡 {startWorkEvidence.recoveryHint}</div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="detail-section workspace-section">
