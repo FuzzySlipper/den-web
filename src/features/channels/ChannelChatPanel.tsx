@@ -19,7 +19,7 @@ import { usePolling } from '../../hooks/usePolling';
 import { formatTimeAgo } from '../../utils';
 import { findActiveMentionQuery, getMentionSuggestions, groupActivityEventsForChannelMessages, insertMentionToken, parseMessageBodySegments, sortActivityEvents, toActivityDisplayModel, deriveAssignmentBadge } from './channelChatRenderModel';
 import { findSlashCommandSuggestions, getSlashCommandHelpLines } from './channelSlashCommands';
-import { appendHistory, persistHistory, readHistory } from './channelComposerHistory';
+import { appendHistory, persistHistory, readHistory, subscribeToHistoryChanges } from './channelComposerHistory';
 
 const SENDER_IDENTITY_STORAGE_KEY = 'den-channel-sender-identity';
 const DEFAULT_WAKE_POLICY = 'mentions_only';
@@ -536,6 +536,13 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     setHistoryNavigateIndex(null);
   }, [normalizedSenderIdentity]);
 
+  // Cross-tab composer history synchronization
+  useEffect(() => {
+    return subscribeToHistoryChanges(normalizedSenderIdentity, (entries) => {
+      setComposerHistoryEntries(entries);
+    });
+  }, [normalizedSenderIdentity]);
+
   // Reset slash-command active index when suggestions change
   useEffect(() => {
     setSlashActiveIndex(0);
@@ -603,9 +610,10 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
         event.preventDefault();
         const cmd = slashCommandSuggestions[slashActiveIndex] ?? slashCommandSuggestions[0];
         if (cmd) {
-          setDraft(cmd.command);
           if (cmd.command === '/clear') {
             setDraft('');
+          } else {
+            setDraft(cmd.command);
           }
         }
         setHistoryNavigateIndex(null);

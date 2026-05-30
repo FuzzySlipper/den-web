@@ -16,6 +16,7 @@ export interface ComposerHistoryEntry {
 }
 
 export function storageKey(_senderIdentity = ''): string {
+  void _senderIdentity;
   return STORAGE_KEY;
 }
 
@@ -97,4 +98,24 @@ export function clearHistory(senderIdentity: string): void {
   } catch {
     // silently ignore
   }
+}
+
+/**
+ * Subscribe to cross-tab composer history changes via the `storage` event.
+ * Returns an unsubscribe function. The callback fires when another tab writes
+ * to the same localStorage key (the key is the composer history key).
+ */
+export function subscribeToHistoryChanges(
+  senderIdentity: string,
+  callback: (entries: ComposerHistoryEntry[]) => void,
+): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const key = storageKey(senderIdentity);
+  const handler = (event: StorageEvent) => {
+    if (event.key === key) {
+      callback(readHistory(senderIdentity));
+    }
+  };
+  window.addEventListener('storage', handler);
+  return () => window.removeEventListener('storage', handler);
 }
