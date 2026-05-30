@@ -108,6 +108,14 @@ export function NotificationHistoryPanel({
   );
   const { data: feed, loading, error, refresh } = usePolling(fetchFeed, POLL_INTERVAL_MS);
 
+  // Derive error display from feed.result.error (API-caught errors as string)
+  // falling back to usePolling's thrown-error state as a safety net.
+  const errorMessage = useMemo<string | null>(() => {
+    if (feed?.error) return feed.error;
+    if (error) return error.message ?? String(error);
+    return null;
+  }, [feed?.error, error]);
+
   // Apply filters
   const filteredItems = useMemo(() => {
     return filterFeed(feed?.items ?? [], {
@@ -115,7 +123,7 @@ export function NotificationHistoryPanel({
       severity: severityFilter,
       search: searchFilter || undefined,
       projectId: projectFilter || undefined,
-      showRead: showRead || undefined,
+      showRead,
     });
   }, [feed, typeFilter, severityFilter, searchFilter, projectFilter, showRead]);
 
@@ -149,9 +157,9 @@ export function NotificationHistoryPanel({
 
   const emptyLabel = useMemo(() => {
     if (loading) return 'Loading notifications…';
-    if (error) return `Error: ${error}`;
+    if (errorMessage) return `Error: ${errorMessage}`;
     return 'No notifications yet.';
-  }, [loading, error]);
+  }, [loading, errorMessage]);
 
   return (
     <div className={`notification-panel ${standalone ? 'notification-panel-standalone' : ''} ${className}`}>
@@ -263,10 +271,10 @@ export function NotificationHistoryPanel({
 
       {/* Feed list */}
       <div className="notification-panel-body panel-body">
-        {error && !loading ? (
+        {errorMessage && !loading ? (
           <div className="notification-panel-error detail-error">
             <strong>Failed to load notifications.</strong>
-            <p>{error.message}</p>
+            <p>{errorMessage}</p>
             <button type="button" className="detail-action" onClick={refresh}>
               Retry
             </button>

@@ -359,6 +359,9 @@ describe('notificationHistoryPanel source invariants', () => {
     expect(panelSource).toContain('searchFilter');
     expect(panelSource).toContain('projectFilter');
     expect(panelSource).toContain('showRead');
+    // showRead must pass the raw boolean to filterFeed — `showRead || undefined`
+    // would convert `false` to `undefined`, making the "hide read" filter dead.
+    expect(panelSource).not.toContain('showRead || undefined');
   });
 
   it('has mark-all-read and clear-local-views actions', () => {
@@ -372,6 +375,9 @@ describe('notificationHistoryPanel source invariants', () => {
     expect(panelSource).toContain('Loading notifications');
     expect(panelSource).toContain('Failed to load notifications');
     expect(panelSource).toContain('No notifications yet');
+    // API errors come from feed.error (NotificationFeedResult.error), not only from usePolling.
+    // This pattern would fail on the buggy implementation that used `error` from usePolling.
+    expect(panelSource).toContain('feed?.error');
   });
 
   it('documents the backend gap', () => {
