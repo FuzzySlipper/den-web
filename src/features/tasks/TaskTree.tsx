@@ -9,9 +9,11 @@ export interface TaskNode {
 interface Props {
   tasks: TaskSummary[];
   selectedTaskId: number | null;
-  onSelect: (taskId: number) => void;
+  onSelect: (taskId: number, projectId?: string | null) => void;
   statusFilter: string | null;
   sortMode: string;
+  showProjectLabels?: boolean;
+  projectNames?: Map<string, string>;
 }
 
 function buildTree(tasks: TaskSummary[]): TaskNode[] {
@@ -82,7 +84,7 @@ function priorityLabel(p: number): string {
   return '  ';
 }
 
-export function TaskTree({ tasks, selectedTaskId, onSelect, statusFilter, sortMode }: Props) {
+export function TaskTree({ tasks, selectedTaskId, onSelect, statusFilter, sortMode, showProjectLabels = false, projectNames }: Props) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   const filtered = useMemo(() => {
@@ -107,13 +109,15 @@ export function TaskTree({ tasks, selectedTaskId, onSelect, statusFilter, sortMo
     const hasChildren = node.children.length > 0;
     const isExpanded = expanded.has(task.id);
     const si = statusIcon(task.status);
+    const projectLabel = projectNames?.get(task.project_id) ?? task.project_id;
 
     return (
       <div key={task.id}>
         <div
           className={`tree-node${task.id === selectedTaskId ? ' selected' : ''}`}
           style={{ paddingLeft: `${10 + depth * 16}px` }}
-          onClick={() => onSelect(task.id)}
+          onClick={() => onSelect(task.id, task.project_id)}
+          title={showProjectLabels ? `${projectLabel} · #${task.id} ${task.title}` : undefined}
         >
           {hasChildren ? (
             <span className="tree-toggle" onClick={(e) => toggleExpand(task.id, e)}>
@@ -125,6 +129,9 @@ export function TaskTree({ tasks, selectedTaskId, onSelect, statusFilter, sortMo
           <span className={`tree-status-icon ${si.cls}`}>{si.icon}</span>
           <span className={`priority-${task.priority}`}>{priorityLabel(task.priority)}</span>
           <span className="tree-id">#{task.id}</span>
+          {showProjectLabels && (
+            <span className="tree-project" title={task.project_id}>{projectLabel}</span>
+          )}
           <span className={`tree-title${task.status === 'cancelled' ? ' status-cancelled' : ''}`}>
             {task.title}
           </span>

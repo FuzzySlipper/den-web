@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import type { AgentStreamEntry, DispatchEntry, Document, DocumentSummary, Message, Space, SubagentRunSummary } from '../api/types';
+import type { AgentStreamEntry, DispatchEntry, Document, DocumentSummary, Message, Space, SubagentRunSummary, TaskSummary } from '../api/types';
 import {
   getDispatch,
   listProjects,
@@ -132,12 +132,39 @@ export default function App() {
   const isAggregateSpace = isAllSpaces;
   const activeSpaceSupportsGit = spaceSupportsGit(activeSpace, isAllSpaces);
 
-  const fetchTasks = useCallback(
-    () => effectiveSpaceId
-      ? listTasks(effectiveSpaceId, { tree: true, status: statusFilter ?? undefined })
-      : Promise.resolve([]),
-    [effectiveSpaceId, statusFilter],
+  const taskSpaces = useMemo(
+    () => spaces.filter(space => space.id !== ALL_SPACES_ID),
+    [spaces],
   );
+  const taskSpaceNames = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const space of taskSpaces) {
+      names.set(space.id, space.name || space.id);
+    }
+    return names;
+  }, [taskSpaces]);
+
+  const fetchTasks = useCallback(async () => {
+    if (!effectiveSpaceId) return [];
+
+    const options = { tree: true, status: statusFilter ?? undefined };
+    if (!isAllSpaces) {
+      return listTasks(effectiveSpaceId, options);
+    }
+
+    const taskResults = await Promise.allSettled(
+      taskSpaces.map(space => listTasks(space.id, options)),
+    );
+    const aggregateTasks: TaskSummary[] = [];
+    for (const result of taskResults) {
+      if (result.status === 'fulfilled') {
+        aggregateTasks.push(...result.value);
+      } else {
+        console.warn('Failed to load tasks for an All spaces task source', result.reason);
+      }
+    }
+    return aggregateTasks;
+  }, [effectiveSpaceId, isAllSpaces, statusFilter, taskSpaces]);
   const { data: tasks } = usePolling(fetchTasks, 5000);
 
   const parsedStreamTaskId = useMemo(() => {
@@ -654,6 +681,8 @@ export default function App() {
                 onSelect={handleTaskSelect}
                 statusFilter={statusFilter}
                 sortMode={sortMode}
+                showProjectLabels={isAllSpaces}
+                projectNames={taskSpaceNames}
               />
             ) : viewMode === 'messages' ? (
               <MessagesInbox
