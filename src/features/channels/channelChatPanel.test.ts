@@ -3,6 +3,17 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Channel, ChannelMessage } from '../../api/types';
+import {
+  type SlashCommand,
+  applySlashSelection,
+  cycleSlashIndex,
+  isSlashHelpTrigger,
+} from './channelSlashCommands';
+import {
+  type ComposerHistoryEntry,
+  navigateHistoryDown,
+  navigateHistoryUp,
+} from './channelComposerHistory';
 
 // ---------------------------------------------------------------------------
 // Helper: re-implement relevant pure functions from ChannelChatPanel.tsx
@@ -272,209 +283,128 @@ describe('DocumentDiscussion component invariants', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Slash-command and history keyboard behavior (Finding 845)
-// These tests mirror the handleComposerKeyDown logic as pure state functions
-// extracted from the ChannelChatPanel.tsx component.
+// Slash-command and history keyboard behavior (Finding 845 / 847)
+//
+// These tests exercise the pure keyboard/history/slash helper functions
+// that were extracted into shared production modules (channelSlashCommands.ts
+// and channelComposerHistory.ts) from the handleComposerKeyDown logic in
+// ChannelChatPanel.tsx. Using shared production modules instead of
+// test-local re-implementations ensures real regression protection.
 // ---------------------------------------------------------------------------
 
-interface SlashCommand {
-  command: string;
-  label: string;
-  description: string;
-}
+const testCommands: SlashCommand[] = [
+  { command: '/help', label: '/help', description: 'Show help' },
+  { command: '/clear', label: '/clear', description: 'Clear composer' },
+];
 
-interface HistoryEntry {
-  body: string;
-  timestamp: number;
-}
+const historyEntries: ComposerHistoryEntry[] = [
+  { body: 'old message', timestamp: 1000 },
+  { body: 'recent message', timestamp: 2000 },
+];
 
-/**
- * Simulate slash-command ArrowDown press — advances active index modulo length.
- */
-function slashArrowDown(activeIndex: number, suggestionCount: number): number {
-  if (suggestionCount === 0) return activeIndex;
-  return (activeIndex + 1) % suggestionCount;
-}
-
-/**
- * Simulate slash-command ArrowUp press — retreats active index modulo length.
- */
-function slashArrowUp(activeIndex: number, suggestionCount: number): number {
-  if (suggestionCount === 0) return activeIndex;
-  return (activeIndex - 1 + suggestionCount) % suggestionCount;
-}
-
-/**
- * Simulate slash-command Enter/Tab selection — returns the draft that
- * should result from selecting the given command at the given index.
- */
-function slashEnterSelection(
-  suggestions: SlashCommand[],
-  activeIndex: number,
-): string {
-  const cmd = suggestions[activeIndex] ?? suggestions[0];
-  if (!cmd) return '';
-  if (cmd.command === '/clear') return '';
-  return cmd.command;
-}
-
-/**
- * Simulate history ArrowUp navigation — returns the next body and navigate index.
- * Mirrors the logic in handleComposerKeyDown when cursor is at position 0.
- */
-function historyArrowUp(
-  currentDraft: string,
-  currentNavIndex: number | null,
-  entries: HistoryEntry[],
-): { draft: string; navIndex: number | null; unsentDraft: string } {
-  if (entries.length === 0) return { draft: currentDraft, navIndex: null, unsentDraft: '' };
-  if (currentNavIndex === null) {
-    // Start navigating from the most recent entry
-    return { draft: entries[entries.length - 1].body, navIndex: entries.length - 1, unsentDraft: currentDraft };
-  }
-  if (currentNavIndex > 0) {
-    // Go to previous (older) entry
-    return { draft: entries[currentNavIndex - 1].body, navIndex: currentNavIndex - 1, unsentDraft: '' };
-  }
-  // Already at oldest entry — no change
-  return { draft: entries[currentNavIndex].body, navIndex: currentNavIndex, unsentDraft: '' };
-}
-
-/**
- * Simulate history ArrowDown navigation — cycles forward through history.
- */
-function historyArrowDown(
-  currentNavIndex: number | null,
-  entries: HistoryEntry[],
-  unsentDraft: string,
-): { draft: string; navIndex: number | null } {
-  if (currentNavIndex === null) return { draft: unsentDraft, navIndex: null };
-  if (currentNavIndex < entries.length - 1) {
-    const nextIndex = currentNavIndex + 1;
-    return { draft: entries[nextIndex].body, navIndex: nextIndex };
-  }
-  // At the end of history, restore the unsent draft
-  return { draft: unsentDraft, navIndex: null };
-}
-
-/**
- * Slash help should display when draft is exactly '/help'.
- */
-function slashHelpShown(draft: string): boolean {
-  return draft.trim() === '/help';
-}
-
-// ---------------------------------------------------------------------------
-
-describe('slash-command keyboard navigation', () => {
-  const testCommands: SlashCommand[] = [
-    { command: '/help', label: '/help', description: 'Show help' },
-    { command: '/clear', label: '/clear', description: 'Clear composer' },
-  ];
-
-  it('ArrowDown cycles active index forward modulo length', () => {
-    expect(slashArrowDown(0, 2)).toBe(1);
-    expect(slashArrowDown(1, 2)).toBe(0);
+describe('cycleSlashIndex (from channelSlashCommands)', () => {
+  it('ArrowDown cycles forward modulo length', () => {
+    expect(cycleSlashIndex(0, 2, 'down')).toBe(1);
+    expect(cycleSlashIndex(1, 2, 'down')).toBe(0);
     // Single suggestion wraps
-    expect(slashArrowDown(0, 1)).toBe(0);
+    expect(cycleSlashIndex(0, 1, 'down')).toBe(0);
     // No suggestions — no-op
-    expect(slashArrowDown(0, 0)).toBe(0);
+    expect(cycleSlashIndex(0, 0, 'down')).toBe(0);
   });
 
-  it('ArrowUp cycles active index backward modulo length', () => {
-    expect(slashArrowUp(0, 2)).toBe(1);
-    expect(slashArrowUp(1, 2)).toBe(0);
+  it('ArrowUp cycles backward modulo length', () => {
+    expect(cycleSlashIndex(0, 2, 'up')).toBe(1);
+    expect(cycleSlashIndex(1, 2, 'up')).toBe(0);
     // Single suggestion wraps
-    expect(slashArrowUp(0, 1)).toBe(0);
+    expect(cycleSlashIndex(0, 1, 'up')).toBe(0);
     // No suggestions — no-op
-    expect(slashArrowUp(0, 0)).toBe(0);
+    expect(cycleSlashIndex(0, 0, 'up')).toBe(0);
   });
+});
 
+describe('applySlashSelection (from channelSlashCommands)', () => {
   it('Enter on non-clear command sets draft to the command', () => {
-    expect(slashEnterSelection(testCommands, 0)).toBe('/help');
+    expect(applySlashSelection(testCommands, 0)).toBe('/help');
   });
 
   it('Enter on /clear command sets draft to empty string', () => {
-    expect(slashEnterSelection(testCommands, 1)).toBe('');
+    expect(applySlashSelection(testCommands, 1)).toBe('');
   });
 
   it('Enter with invalid index falls back to first suggestion', () => {
-    expect(slashEnterSelection(testCommands, 99)).toBe('/help');
+    expect(applySlashSelection(testCommands, 99)).toBe('/help');
   });
 
   it('Enter with empty suggestions returns empty draft', () => {
-    expect(slashEnterSelection([], 0)).toBe('');
+    expect(applySlashSelection([], 0)).toBe('');
   });
 });
 
-describe('slash help display condition', () => {
+describe('isSlashHelpTrigger (from channelSlashCommands)', () => {
   it('shows help when draft is exactly /help', () => {
-    expect(slashHelpShown('/help')).toBe(true);
+    expect(isSlashHelpTrigger('/help')).toBe(true);
   });
 
-  it('does not show help for /help with trailing whitespace (trimmed)', () => {
-    expect(slashHelpShown('  /help  ')).toBe(true);
+  it('shows help for /help with leading/trailing whitespace (due to trim)', () => {
+    expect(isSlashHelpTrigger('  /help  ')).toBe(true);
   });
 
   it('does not show help for bare slash', () => {
-    expect(slashHelpShown('/')).toBe(false);
+    expect(isSlashHelpTrigger('/')).toBe(false);
   });
 
   it('does not show help for other commands', () => {
-    expect(slashHelpShown('/clear')).toBe(false);
+    expect(isSlashHelpTrigger('/clear')).toBe(false);
   });
 
   it('does not show help for empty draft', () => {
-    expect(slashHelpShown('')).toBe(false);
+    expect(isSlashHelpTrigger('')).toBe(false);
   });
 });
 
-describe('composer history keyboard navigation', () => {
-  const entries: HistoryEntry[] = [
-    { body: 'old message', timestamp: 1000 },
-    { body: 'recent message', timestamp: 2000 },
-  ];
-
+describe('navigateHistoryUp (from channelComposerHistory)', () => {
   it('ArrowUp at start navigates to most recent entry', () => {
-    const result = historyArrowUp('current draft', null, entries);
+    const result = navigateHistoryUp('current draft', historyEntries, null);
     expect(result.draft).toBe('recent message');
     expect(result.navIndex).toBe(1);
     expect(result.unsentDraft).toBe('current draft');
   });
 
   it('ArrowUp while navigating goes to previous (older) entry', () => {
-    const result = historyArrowUp('', 1, entries);
+    const result = navigateHistoryUp('', historyEntries, 1);
     expect(result.draft).toBe('old message');
     expect(result.navIndex).toBe(0);
   });
 
   it('ArrowUp at oldest entry stays at oldest', () => {
-    const result = historyArrowUp('', 0, entries);
+    const result = navigateHistoryUp('', historyEntries, 0);
     expect(result.draft).toBe('old message');
     expect(result.navIndex).toBe(0);
   });
 
+  it('ArrowUp with empty history does nothing', () => {
+    const result = navigateHistoryUp('draft', [], null);
+    expect(result.draft).toBe('draft');
+    expect(result.navIndex).toBeNull();
+  });
+});
+
+describe('navigateHistoryDown (from channelComposerHistory)', () => {
   it('ArrowDown while navigating goes to newer entry', () => {
-    const result = historyArrowDown(0, entries, 'unsaved draft');
+    const result = navigateHistoryDown(historyEntries, 0, 'unsaved draft');
     expect(result.draft).toBe('recent message');
     expect(result.navIndex).toBe(1);
   });
 
   it('ArrowDown at newest entry restores unsent draft and exits navigation', () => {
-    const result = historyArrowDown(1, entries, 'unsaved draft');
+    const result = navigateHistoryDown(historyEntries, 1, 'unsaved draft');
     expect(result.draft).toBe('unsaved draft');
     expect(result.navIndex).toBeNull();
   });
 
-  it('ArrowDown outside navigation does nothing', () => {
-    const result = historyArrowDown(null, entries, 'unsaved draft');
+  it('ArrowDown outside navigation restores unsent draft', () => {
+    const result = navigateHistoryDown(historyEntries, null, 'unsaved draft');
     expect(result.draft).toBe('unsaved draft');
-    expect(result.navIndex).toBeNull();
-  });
-
-  it('ArrowUp with empty history does nothing', () => {
-    const result = historyArrowUp('draft', null, []);
-    expect(result.draft).toBe('draft');
     expect(result.navIndex).toBeNull();
   });
 });

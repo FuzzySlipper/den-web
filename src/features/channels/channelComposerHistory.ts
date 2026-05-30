@@ -119,3 +119,58 @@ export function subscribeToHistoryChanges(
   window.addEventListener('storage', handler);
   return () => window.removeEventListener('storage', handler);
 }
+
+/**
+ * Navigate backward (older) through the composer history. Pure function.
+ *
+ * - With no history entries: no-op.
+ * - With null navIndex (not yet navigating): start from the most recent entry.
+ * - With a navIndex > 0: move one step older.
+ * - At the oldest entry: stay in place.
+ *
+ * Returns the new draft text, navIndex, and unsent draft capture.
+ */
+export function navigateHistoryUp(
+  draft: string,
+  entries: ComposerHistoryEntry[],
+  currentNavIndex: number | null,
+): { draft: string; navIndex: number | null; unsentDraft: string } {
+  if (entries.length === 0) return { draft, navIndex: null, unsentDraft: '' };
+  if (currentNavIndex === null) {
+    return {
+      draft: entries[entries.length - 1].body,
+      navIndex: entries.length - 1,
+      unsentDraft: draft,
+    };
+  }
+  if (currentNavIndex > 0) {
+    return {
+      draft: entries[currentNavIndex - 1].body,
+      navIndex: currentNavIndex - 1,
+      unsentDraft: '',
+    };
+  }
+  return { draft: entries[currentNavIndex].body, navIndex: currentNavIndex, unsentDraft: '' };
+}
+
+/**
+ * Navigate forward (newer) through the composer history. Pure function.
+ *
+ * - With null navIndex (not navigating): restore the unsent draft.
+ * - With navIndex below the last entry: move one step newer.
+ * - At the newest entry: restore the unsent draft and exit navigation.
+ *
+ * Returns the new draft text and navIndex.
+ */
+export function navigateHistoryDown(
+  entries: ComposerHistoryEntry[],
+  currentNavIndex: number | null,
+  unsentDraft: string,
+): { draft: string; navIndex: number | null } {
+  if (currentNavIndex === null) return { draft: unsentDraft, navIndex: null };
+  if (currentNavIndex < entries.length - 1) {
+    const nextIndex = currentNavIndex + 1;
+    return { draft: entries[nextIndex].body, navIndex: nextIndex };
+  }
+  return { draft: unsentDraft, navIndex: null };
+}

@@ -1,11 +1,14 @@
 /// <reference types="node" />
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import {
   appendHistory,
   clearHistory,
+  navigateHistoryDown,
+  navigateHistoryUp,
   readHistory,
   recordAndPersistHistory,
   storageKey,
+  subscribeToHistoryChanges,
   type ComposerHistoryEntry,
 } from './channelComposerHistory';
 
@@ -167,5 +170,196 @@ describe('graceful fallback without localStorage', () => {
     const result = recordAndPersistHistory('no-storage', 'hello');
     expect(result).toHaveLength(1);
     expect(result[0].body).toBe('hello');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// navigateHistoryUp (pure function)
+// ---------------------------------------------------------------------------
+
+describe('navigateHistoryUp', () => {
+  const entries: ComposerHistoryEntry[] = [
+    { body: 'old message', timestamp: 1000 },
+    { body: 'middle message', timestamp: 1500 },
+    { body: 'recent message', timestamp: 2000 },
+  ];
+
+  it('starts navigation from most recent entry when currentNavIndex is null', () => {
+    const result = navigateHistoryUp('current draft', entries, null);
+    expect(result.draft).toBe('recent message');
+    expect(result.navIndex).toBe(2);
+    expect(result.unsentDraft).toBe('current draft');
+  });
+
+  it('moves one step older when navigating', () => {
+    const result = navigateHistoryUp('', entries, 2);
+    expect(result.draft).toBe('middle message');
+    expect(result.navIndex).toBe(1);
+  });
+
+  it('stays at oldest entry when already at oldest', () => {
+    const result = navigateHistoryUp('', entries, 0);
+    expect(result.draft).toBe('old message');
+    expect(result.navIndex).toBe(0);
+  });
+
+  it('no-op when history is empty', () => {
+    const result = navigateHistoryUp('draft', [], null);
+    expect(result.draft).toBe('draft');
+    expect(result.navIndex).toBeNull();
+  });
+
+  it('from index 1 moves to index 0', () => {
+    const result = navigateHistoryUp('', entries, 1);
+    expect(result.draft).toBe('old message');
+    expect(result.navIndex).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// navigateHistoryDown (pure function)
+// ---------------------------------------------------------------------------
+
+describe('navigateHistoryDown', () => {
+  const entries: ComposerHistoryEntry[] = [
+    { body: 'old message', timestamp: 1000 },
+    { body: 'middle message', timestamp: 1500 },
+    { body: 'recent message', timestamp: 2000 },
+  ];
+
+  it('moves one step newer when not at newest', () => {
+    const result = navigateHistoryDown(entries, 0, 'unsaved draft');
+    expect(result.draft).toBe('middle message');
+    expect(result.navIndex).toBe(1);
+  });
+
+  it('restores unsent draft and exits navigation at newest entry', () => {
+    const result = navigateHistoryDown(entries, 2, 'unsaved draft');
+    expect(result.draft).toBe('unsaved draft');
+    expect(result.navIndex).toBeNull();
+  });
+
+  it('restores unsent draft when not navigating', () => {
+    const result = navigateHistoryDown(entries, null, 'unsaved draft');
+    expect(result.draft).toBe('unsaved draft');
+    expect(result.navIndex).toBeNull();
+  });
+
+  it('from index 1 moves to index 2 (newest)', () => {
+    const result = navigateHistoryDown(entries, 1, 'unsaved draft');
+    expect(result.draft).toBe('recent message');
+    expect(result.navIndex).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// subscribeToHistoryChanges
+// ---------------------------------------------------------------------------
+
+describe('subscribeToHistoryChanges', () => {
+  it('returns a no-op unsubscribe when window is unavailable', () => {
+    // In Node.js environment, typeof window === 'undefined', so
+    // subscribeToHistoryChanges returns () => {}
+    const unsub = subscribeToHistoryChanges('test', () => {});
+    expect(typeof unsub).toBe('function');
+    // Calling the no-op should not throw
+    expect(() => unsub()).not.toThrow();
+  });
+
+  it('callback fires for matching history key via storage event', () => {
+    const handlerRef: { current: ((event: StorageEvent) => void) | null } = { current: null };
+    const origWindow = (globalThis as Record<string, unknown>).window;
+    const mockWindow: Record<string, unknown> = {
+      addEventListener: (type: string, handler: (event: StorageEvent) => void) => {
+        if (type === 'storage') handlerRef.current = handler;
+      },
+      removeEventListener: () => {
+        handlerRef.current = null;
+      },
+      localStorage: {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {},
+        key: () => null,
+        length: 0,
+        clear: () => {},
+      },
+    };
+    (globalThis as Record<string, unknown>).window = mockWindow;
+
+    try {
+      const callback = vi.fn();
+      const key = storageKey('test-user');
+      subscribeToHistoryChanges('test-user', callback);
+
+      // Simulate storage event with matching key
+      if (handlerRef.current) {
+        handlerRef.current({ key } as StorageEvent);
+      }
+      expect(callback).toHaveBeenCalled();
+    } finally {
+      (globalThis as Record<string, unknown>).window = origWindow;
+    }
+  });
+
+  it('ignores non-matching storage keys', () => {
+    const handlerRef: { current: ((event: StorageEvent) => void) | null } = { current: null };
+    const origWindow = (globalThis as Record<string, unknown>).window;
+    const mockWindow: Record<string, unknown> = {
+      addEventListener: (type: string, handler: (event: StorageEvent) => void) => {
+        if (type === 'storage') handlerRef.current = handler;
+      },
+      removeEventListener: () => {},
+      localStorage: {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {},
+        key: () => null,
+        length: 0,
+        clear: () => {},
+      },
+    };
+    (globalThis as Record<string, unknown>).window = mockWindow;
+
+    try {
+      const callback = vi.fn();
+      subscribeToHistoryChanges('test-user', callback);
+
+      // Simulate storage event with non-matching key
+      if (handlerRef.current) {
+        handlerRef.current({ key: 'some-other-key' } as StorageEvent);
+      }
+      expect(callback).not.toHaveBeenCalled();
+    } finally {
+      (globalThis as Record<string, unknown>).window = origWindow;
+    }
+  });
+
+  it('unsubscribe removes the storage listener', () => {
+    let removed = false;
+    const origWindow = (globalThis as Record<string, unknown>).window;
+    const mockWindow: Record<string, unknown> = {
+      addEventListener: () => {},
+      removeEventListener: () => {
+        removed = true;
+      },
+      localStorage: {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {},
+        key: () => null,
+        length: 0,
+        clear: () => {},
+      },
+    };
+    (globalThis as Record<string, unknown>).window = mockWindow;
+
+    try {
+      const unsub = subscribeToHistoryChanges('test-user', () => {});
+      unsub();
+      expect(removed).toBe(true);
+    } finally {
+      (globalThis as Record<string, unknown>).window = origWindow;
+    }
   });
 });

@@ -50,3 +50,43 @@ export function findSlashCommandSuggestions(
   const normalized = draft.toLowerCase();
   return list.filter(cmd => cmd.command.toLowerCase().startsWith(normalized));
 }
+
+/**
+ * Cycle the slash-command suggestion index in a given direction.
+ * Returns the new active index (wraps modularly). No-op when suggestionCount is 0.
+ */
+export function cycleSlashIndex(
+  currentIndex: number,
+  suggestionCount: number,
+  direction: 'up' | 'down',
+): number {
+  if (suggestionCount === 0) return currentIndex;
+  if (direction === 'down') {
+    return (currentIndex + 1) % suggestionCount;
+  }
+  return (currentIndex - 1 + suggestionCount) % suggestionCount;
+}
+
+/**
+ * Compute the draft text that should result from selecting a slash-command
+ * suggestion at the given active index. Falls back to the first suggestion
+ * when the index is out of range. /clear yields empty string; others yield
+ * the command text.
+ */
+export function applySlashSelection(
+  suggestions: SlashCommand[],
+  activeIndex: number,
+): string {
+  const cmd = suggestions[activeIndex] ?? suggestions[0];
+  if (!cmd) return '';
+  if (cmd.command === '/clear') return '';
+  return cmd.command;
+}
+
+/**
+ * Returns true when the draft text should trigger the slash command help panel.
+ * The condition is: trimmed draft equals exactly '/help'.
+ */
+export function isSlashHelpTrigger(draft: string): boolean {
+  return draft.trim() === '/help';
+}
