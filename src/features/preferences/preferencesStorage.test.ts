@@ -51,7 +51,7 @@ describe('preferencesStorage', () => {
       layout: { chatFraction: 0.7, showParticipants: false },
       theme: { accent: '#ff0000', background: '#000', surface: '#111', text: '#fff', textMuted: '#888' },
       font: { monoStack: 'monospace', sansStack: 'sans-serif', baseSize: 14, chatSize: 13 },
-      keyboard: { closePanel: 'Escape', openPreferences: '?', switchProject: 'Ctrl+Tab', cycleMainPanel: 'Alt+Tab', cycleTaskFilter: 'F3', jumpToTasks: '1', jumpToAgents: '2', jumpToMessages: '3', jumpToDocs: '4', jumpToGit: '5', jumpToSessions: '6', jumpToLibrarian: '7', jumpToAgentStream: '8' },
+      keyboard: { closePanel: 'Escape', openPreferences: '?', switchProject: 'Ctrl+Tab', cycleMainPanel: 'Alt+Tab', cycleTaskFilter: 'F3', jumpToTasks: '1', jumpToAgents: '2', jumpToMessages: '3', jumpToDocs: '4', jumpToGit: '5', jumpToSessions: '6', jumpToLibrarian: '7', jumpToAgentStream: '8', composerCycleSendMode: 'Alt+C', composerCycleTarget: 'Alt+T' },
     };
     writePreferences(custom);
     const read = readPreferences();
@@ -64,7 +64,7 @@ describe('preferencesStorage', () => {
       layout: { chatFraction: 0.5, showParticipants: false },
       theme: { accent: '#ff0000', background: '#000', surface: '#111', text: '#fff', textMuted: '#888' },
       font: { monoStack: 'x', sansStack: 'y', baseSize: 10, chatSize: 10 },
-      keyboard: { closePanel: 'Escape', openPreferences: '', switchProject: 'Ctrl+Tab', cycleMainPanel: 'Shift+Tab', cycleTaskFilter: 'F3', jumpToTasks: '', jumpToAgents: '', jumpToMessages: '', jumpToDocs: '', jumpToGit: '', jumpToSessions: '', jumpToLibrarian: '', jumpToAgentStream: '' },
+      keyboard: { closePanel: 'Escape', openPreferences: '', switchProject: 'Ctrl+Tab', cycleMainPanel: 'Shift+Tab', cycleTaskFilter: 'F3', jumpToTasks: '', jumpToAgents: '', jumpToMessages: '', jumpToDocs: '', jumpToGit: '', jumpToSessions: '', jumpToLibrarian: '', jumpToAgentStream: '', composerCycleSendMode: 'Alt+C', composerCycleTarget: 'Alt+T' },
     });
     clearPreferences();
     const read = readPreferences();

@@ -736,6 +736,17 @@
   outline: none;
 }
 
+.channel-chat-hint {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  align-self: center;
+  opacity: 0.6;
+  pointer-events: none;
+  user-select: none;
+}
+
 .channel-chat-composer-textarea:focus {
   border-color: var(--accent-dim);
 }

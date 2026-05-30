@@ -95,6 +95,17 @@ export interface KeyboardPreferences {
   jumpToLibrarian: string;
   /** Direct jump to Agent Stream panel */
   jumpToAgentStream: string;
+
+  /**
+   * Composer-local: cycle send mode between channel post and direct-agent message.
+   * Only fires when composer textarea has focus.
+   */
+  composerCycleSendMode: string;
+  /**
+   * Composer-local: cycle direct-agent target when in direct mode.
+   * Only fires when composer textarea has focus.
+   */
+  composerCycleTarget: string;
 }
 
 export interface DenWebPreferences {
@@ -142,5 +153,7 @@ export const DEFAULT_PREFERENCES: DenWebPreferences = {
     jumpToSessions: '',
     jumpToLibrarian: '',
     jumpToAgentStream: '',
+    composerCycleSendMode: 'Alt+C',
+    composerCycleTarget: 'Alt+T',
   },
 };

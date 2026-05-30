@@ -20,6 +20,8 @@ import { formatTimeAgo } from '../../utils';
 import { findActiveMentionQuery, getMentionSuggestions, groupActivityEventsForChannelMessages, insertMentionToken, parseMessageBodySegments, sortActivityEvents, toActivityDisplayModel, deriveAssignmentBadge } from './channelChatRenderModel';
 import { findSlashCommandSuggestions, getSlashCommandHelpLines } from './channelSlashCommands';
 import { appendHistory, persistHistory, readHistory, subscribeToHistoryChanges } from './channelComposerHistory';
+import { useComposerHotkeys } from './useComposerHotkeys';
+import type { ChannelSendMode } from './useComposerHotkeys';
 
 const SENDER_IDENTITY_STORAGE_KEY = 'den-channel-sender-identity';
 const DEFAULT_WAKE_POLICY = 'mentions_only';
@@ -54,7 +56,6 @@ interface Props {
 }
 
 export type ChannelChatPanelSize = 'small' | 'medium' | 'large';
-type ChannelSendMode = 'channel' | 'direct';
 
 interface WakeProgress {
   label: string;
@@ -557,6 +558,19 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
       setTargetMemberIdentity(activeAgentMembers[0].memberIdentity);
     }
   }, [activeAgentMembers, targetMemberIdentity]);
+
+  const availableTargets = useMemo(
+    () => activeAgentMembers.map(m => m.memberIdentity),
+    [activeAgentMembers],
+  );
+
+  const { onComposerHotkey, bindings } = useComposerHotkeys({
+    sendMode,
+    onSetSendMode: setSendMode,
+    targetMemberIdentity,
+    onSetTargetMemberIdentity: setTargetMemberIdentity,
+    availableTargets,
+  });
 
   const disabledReason = channelError
     ? 'Channel unavailable. Check den-channels API health.'
@@ -1201,6 +1215,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
           <option value="channel">Channel</option>
           <option value="direct">Direct agent</option>
         </select>
+        <span className="channel-chat-hint">{bindings.cycleModeKey}</span>
         <select
           value={targetMemberIdentity}
           onChange={event => setTargetMemberIdentity(event.target.value)}
@@ -1213,10 +1228,18 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
             <option key={member.id} value={member.memberIdentity}>@{member.memberIdentity}</option>
           ))}
         </select>
+        {sendMode === 'direct' && activeAgentMembers.length > 1 && (
+          <span className="channel-chat-hint">{bindings.cycleTargetKey}</span>
+        )}
         <textarea
           value={draft}
           onChange={handleDraftChange}
-          onKeyDown={handleComposerKeyDown}
+          onKeyDown={event => {
+            onComposerHotkey(event);
+            if (!event.defaultPrevented) {
+              handleComposerKeyDown(event);
+            }
+          }}
           placeholder={composerPlaceholder}
           disabled={isComposerDisabled}
           aria-label="Channel message"
