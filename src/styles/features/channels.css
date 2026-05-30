@@ -710,7 +710,7 @@
 
 .channel-chat-composer {
   display: grid;
-  grid-template-columns: minmax(110px, 150px) minmax(120px, 190px) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(110px, 150px) max-content minmax(120px, 220px) max-content minmax(0, 1fr) 72px;
   gap: 8px;
   padding: 6px 10px;
   border-top: 1px solid var(--border);
@@ -720,6 +720,9 @@
 }
 
 .channel-chat-composer-textarea {
+  grid-column: 1 / 6;
+  grid-row: 2;
+  width: 100%;
   min-width: 0;
   resize: none;
   overflow-y: auto;
@@ -760,10 +763,16 @@
   color: var(--text-muted);
 }
 
+.channel-chat-composer > button[type='submit'] {
+  grid-column: 6;
+  grid-row: 2;
+  align-self: stretch;
+}
+
 .channel-chat-mention-menu {
   position: absolute;
-  left: calc(10px + 150px + 190px + 16px);
-  right: 72px;
+  left: 10px;
+  right: 92px;
   bottom: 100%;
   margin-bottom: 4px;
   display: flex;
@@ -804,8 +813,8 @@
 
 .channel-chat-slash-menu {
   position: absolute;
-  left: calc(10px + 150px + 190px + 16px);
-  right: 72px;
+  left: 10px;
+  right: 92px;
   bottom: 100%;
   margin-bottom: 4px;
   display: flex;
@@ -858,8 +867,8 @@
 
 .channel-chat-slash-help {
   position: absolute;
-  left: calc(10px + 150px + 190px + 16px);
-  right: 72px;
+  left: 10px;
+  right: 92px;
   bottom: calc(100% + 56px);
   padding: 8px 10px;
   border: 1px solid var(--accent-dim);
