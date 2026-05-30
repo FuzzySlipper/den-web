@@ -248,6 +248,65 @@ export interface TaskAssociationDto {
 }
 
 // =============================================================================
+// Worker-pool lobby presence (task #1781)
+// =============================================================================
+
+/**
+ * Presence state for a single worker-pool member.
+ * Represents the live snapshot from Core/Channels lobby readback.
+ */
+export interface WorkerPoolMemberPresence {
+  /** The agent/worker identity (e.g. "hermes-coder", "den-hermes-runner") */
+  identity: string;
+  /** Worker role grouping (e.g. "coder", "reviewer", "pilot", "validator") */
+  role: string;
+  /** Availability state from Core/Channels readback */
+  availabilityState: WorkerPoolAvailabilityState;
+  /** Human-readable status detail, if any */
+  statusDetail: string | null;
+  /** Number of active/leased assignments */
+  activeAssignmentCount: number;
+  /** Count of completed assignments */
+  completedAssignmentCount: number;
+  /** Current assignment delivery request IDs, if leased/busy */
+  activeAssignmentIds: string[];
+  /** When this member was last seen/updated */
+  lastSeenAt: string | null;
+  /** True if this member is a legacy pilot (not a spawned candidate) */
+  isLegacyPilot: boolean;
+  /** True if the member is quarantined */
+  isQuarantined: boolean;
+}
+
+export type WorkerPoolAvailabilityState =
+  | 'available'
+  | 'leased'
+  | 'busy'
+  | 'draining'
+  | 'cleanup'
+  | 'quarantined'
+  | 'offline'
+  | 'unknown';
+
+/**
+ * Aggregate worker-pool lobby presence response.
+ */
+export interface WorkerPoolLobbyPresence {
+  /** The lobby channel ID this presence data is drawn from */
+  channelId: number;
+  /** The count of currently available workers */
+  availableCount: number;
+  /** Total candidate worker count (excluding legacy pilots) */
+  totalCandidateCount: number;
+  /** Per-role breakdown */
+  roleCounts: Record<string, number>;
+  /** Individual member presence records */
+  members: WorkerPoolMemberPresence[];
+  /** Timestamp of the snapshot */
+  observedAt: string;
+}
+
+// =============================================================================
 // Worker-pool assignment trace (task #1729)
 // =============================================================================
 

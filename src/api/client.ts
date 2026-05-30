@@ -107,4 +107,5 @@ export {
   listAgentsOverview,
   getAgentDetail,
   getAssignmentTrace,
+  getWorkerPoolLobbyPresence,
 } from './gateway/client';

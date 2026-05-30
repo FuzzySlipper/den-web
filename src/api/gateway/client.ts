@@ -7,6 +7,7 @@ import type {
   AgentsOverviewResponse,
   AgentDetailResponse,
   AssignmentTraceResponse,
+  WorkerPoolLobbyPresence,
 } from './types';
 import { normalizeApiBase } from '../config';
 
@@ -136,4 +137,11 @@ export function getAssignmentTrace(assignmentId: string, opts: { projectId?: str
     channelId: opts.channelId,
   });
   return getChannels(`/assignments/${encodeURIComponent(assignmentId)}/trace${q}`);
+}
+
+// Worker-pool lobby presence (#1781)
+// GET /api/worker-pool/lobby/presence — proxied through static server to Channels
+
+export function getWorkerPoolLobbyPresence(): Promise<WorkerPoolLobbyPresence> {
+  return getChannels('/worker-pool/lobby/presence');
 }

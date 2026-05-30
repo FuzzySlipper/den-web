@@ -119,4 +119,7 @@ export type {
   AssignmentCheckpointDto,
   AssignmentGatewayEvidence,
   TraceSourceAvailability,
+  WorkerPoolMemberPresence,
+  WorkerPoolAvailabilityState,
+  WorkerPoolLobbyPresence,
 } from './gateway/types';

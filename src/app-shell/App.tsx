@@ -24,6 +24,7 @@ import { AgentStreamFeed } from '../features/agents/AgentStreamFeed';
 import { AgentStreamDetail } from '../features/agents/AgentStreamDetail';
 import { SubagentRunDetail } from '../features/agents/SubagentRunDetail';
 import { AssignmentTraceView } from '../features/agents/AssignmentTraceView';
+import { WorkerPoolLobbyView } from '../features/agents/WorkerPoolLobbyView';
 import { DocumentList } from '../features/documents/DocumentList';
 import { DocumentDetail } from '../features/documents/DocumentDetail';
 import { LibrarianView } from '../features/librarian/LibrarianView';
@@ -105,6 +106,9 @@ export default function App() {
   const [channelPanelSize, setChannelPanelSize] = useState<ChannelChatPanelSize>('medium');
   const [showPreferences, setShowPreferences] = useState(false);
   const { prefs, updateSection, resetToDefaults } = usePreferences();
+
+  // Agents sub-view toggle: 'overview' (default) or 'worker-pool'
+  const [agentsSubView, setAgentsSubView] = useState<'overview' | 'worker-pool'>('overview');
 
   // Standalone notification popup: detect #/notification-panel hash route
   const [standalonePopup, setStandalonePopup] = useState(false);
@@ -723,12 +727,34 @@ export default function App() {
                 spaceName={activeSpace?.name ?? effectiveSpaceId}
               />
             ) : viewMode === 'agents' ? (
-              <AgentsOverviewView
-                projectId={!isAggregateSpace && !isGlobal ? effectiveSpaceId : null}
-                isAggregate={isAggregateSpace}
-                closePanelKey={prefs.keyboard.closePanel}
-                onOpenAssignmentTrace={handleAssignmentTraceSelect}
-              />
+              <>
+                <div className="agents-sub-view-tabs">
+                  <button
+                    className={`agents-sub-view-tab ${agentsSubView === 'overview' ? 'active' : ''}`}
+                    onClick={() => setAgentsSubView('overview')}
+                  >
+                    Overview
+                  </button>
+                  <button
+                    className={`agents-sub-view-tab ${agentsSubView === 'worker-pool' ? 'active' : ''}`}
+                    onClick={() => setAgentsSubView('worker-pool')}
+                  >
+                    Worker Pool
+                  </button>
+                </div>
+                {agentsSubView === 'overview' ? (
+                  <AgentsOverviewView
+                    projectId={!isAggregateSpace && !isGlobal ? effectiveSpaceId : null}
+                    isAggregate={isAggregateSpace}
+                    closePanelKey={prefs.keyboard.closePanel}
+                    onOpenAssignmentTrace={handleAssignmentTraceSelect}
+                  />
+                ) : (
+                  <WorkerPoolLobbyView
+                    onOpenAssignmentTrace={handleAssignmentTraceSelect}
+                  />
+                )}
+              </>
             ) : viewMode === 'notifications' ? (
               <NotificationHistoryPanel
                 projectIds={effectiveSpaceId && effectiveSpaceId !== ALL_SPACES_ID && effectiveSpaceId !== GLOBAL_SPACE_ID
