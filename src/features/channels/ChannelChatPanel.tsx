@@ -363,6 +363,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   const isScrollPinnedToBottomRef = useRef(true);
   const previousAutoScrollKeyRef = useRef<string | null>(null);
   const pendingAutoScrollSnapKeyRef = useRef<string | null>(null);
+  const pendingAutoScrollObservedLoadingRef = useRef(false);
   const previousProjectIdRef = useRef<string | null>(projectId);
   const pendingProjectDefaultSelectionRef = useRef<string | null>(null);
   const historyUnsentDraftRef = useRef('');
@@ -865,6 +866,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     if (previousAutoScrollKeyRef.current !== autoScrollKey) {
       previousAutoScrollKeyRef.current = autoScrollKey;
       pendingAutoScrollSnapKeyRef.current = autoScrollKey;
+      pendingAutoScrollObservedLoadingRef.current = false;
       isScrollPinnedToBottomRef.current = true;
     }
 
@@ -879,8 +881,16 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     scrollElementToBottom(scrollbackElement, shouldSnapToBottom ? 'auto' : 'smooth');
     isScrollPinnedToBottomRef.current = true;
 
-    if (shouldSnapToBottom && !messagesLoading && !activityLoading) {
+    if (!shouldSnapToBottom) return;
+
+    if (messagesLoading || activityLoading) {
+      pendingAutoScrollObservedLoadingRef.current = true;
+      return;
+    }
+
+    if (pendingAutoScrollObservedLoadingRef.current) {
       pendingAutoScrollSnapKeyRef.current = null;
+      pendingAutoScrollObservedLoadingRef.current = false;
     }
   }, [activeChannel, activeChannel?.id, activityEvents?.length, activityLoading, autoScroll, messagesLoading, projectId, scrollResetKey, sortedMessages.length]);
 
