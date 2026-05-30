@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Den Web">
+  <rect width="512" height="512" rx="96" fill="#16161e"/>
+  <path d="M112 352V160h92c64 0 108 38 108 96s-44 96-108 96h-92Zm58-50h31c33 0 53-18 53-46s-20-46-53-46h-31v92Z" fill="#7aa2f7"/>
+  <path d="M333 160h67v192h-54V231l-46 121h-38l-46-121v121h-54V160h67l52 130 52-130Z" fill="#9ece6a" opacity=".96"/>
+  <circle cx="400" cy="112" r="32" fill="#f7768e"/>
+</svg>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent, KeyboardEvent, UIEvent } from 'react';
 import type { Channel, ChannelActivityEvent, ChannelMessage, ChannelReactionSummary, GatewayDirectAgentMessage, GatewayMember, GatewayMemberships, GatewayTestWake } from '../../api/types';
 import {
@@ -78,6 +78,13 @@ function channelLabel(channel: Channel | null, projectId: string | null): string
 
 function isScrollElementPinnedToBottom(element: HTMLElement): boolean {
   return element.scrollHeight - element.scrollTop - element.clientHeight <= SCROLL_BOTTOM_PIN_THRESHOLD_PX;
+}
+
+function scrollElementToBottom(element: HTMLElement, behavior: ScrollBehavior): void {
+  element.scrollTo({
+    top: element.scrollHeight,
+    behavior,
+  });
 }
 
 async function resolveAgentCommonsChannel(): Promise<Channel> {
@@ -853,7 +860,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
           ? 'Join or select an agent before sending a direct message'
           : `Message ${channelLabel(activeChannel, projectId)}`;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const autoScrollKey = `${scrollResetKey ?? projectId ?? 'aggregate'}:${activeChannel?.id ?? 'none'}`;
     if (previousAutoScrollKeyRef.current !== autoScrollKey) {
       previousAutoScrollKeyRef.current = autoScrollKey;
@@ -866,10 +873,10 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     const shouldSnapToBottom = activeChannel !== null && pendingAutoScrollSnapKeyRef.current === autoScrollKey;
     if (!shouldSnapToBottom && !isScrollPinnedToBottomRef.current) return;
 
-    scrollAnchorRef.current?.scrollIntoView({
-      block: 'end',
-      behavior: shouldSnapToBottom ? 'auto' : 'smooth',
-    });
+    const scrollbackElement = scrollbackRef.current;
+    if (!scrollbackElement) return;
+
+    scrollElementToBottom(scrollbackElement, shouldSnapToBottom ? 'auto' : 'smooth');
     isScrollPinnedToBottomRef.current = true;
 
     if (shouldSnapToBottom && !messagesLoading && !activityLoading) {
