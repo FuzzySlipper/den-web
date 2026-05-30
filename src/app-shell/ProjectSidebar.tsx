@@ -1,4 +1,5 @@
 import type { Space } from '../api/types';
+import { openNotificationPanelWindow } from '../features/notifications/notificationWindow';
 
 interface Props {
   spaces: Space[];
@@ -53,6 +54,16 @@ export function ProjectSidebar({ spaces, selectedId, onSelect }: Props) {
             </span>
           </button>
         ))}
+      </div>
+      <div className="panel-subheader notification-sidebar-action">
+        <button
+          type="button"
+          className="notification-sidebar-button"
+          onClick={openNotificationPanelWindow}
+          title="Open notification history panel in a separate window (requires user gesture)"
+        >
+          🔔 Notification History
+        </button>
       </div>
     </div>
   );

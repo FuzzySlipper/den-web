@@ -55,6 +55,34 @@
   color: var(--orange);
 }
 
+/* Sidebar notification action */
+.notification-sidebar-action {
+  padding: 4px 6px;
+  border-top: 1px solid var(--border);
+}
+
+.notification-sidebar-button {
+  width: 100%;
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.notification-sidebar-button:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
 /* Filter bar */
 .filter-bar {
   display: flex;

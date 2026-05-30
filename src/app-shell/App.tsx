@@ -39,6 +39,8 @@ import type { GitFocus } from '../features/git/git';
 import { usePreferences } from '../features/preferences/usePreferences';
 import { PreferencesDialog } from '../features/preferences/PreferencesDialog';
 import { matchHotkey } from '../features/preferences/hotkeyParse';
+import { NotificationHistoryPanel } from '../features/notifications/NotificationHistoryPanel';
+import { isNotificationPanelRoute } from '../features/notifications/notificationWindow';
 
 const ALL_SPACES_ID = '_all';
 const GLOBAL_SPACE_ID = '_global';
@@ -103,6 +105,18 @@ export default function App() {
   const [channelPanelSize, setChannelPanelSize] = useState<ChannelChatPanelSize>('medium');
   const [showPreferences, setShowPreferences] = useState(false);
   const { prefs, updateSection, resetToDefaults } = usePreferences();
+
+  // Standalone notification popup: detect #/notification-panel hash route
+  const [standalonePopup, setStandalonePopup] = useState(false);
+
+  useEffect(() => {
+    function checkHash() {
+      setStandalonePopup(isNotificationPanelRoute());
+    }
+    checkHash();
+    window.addEventListener('hashchange', checkHash);
+    return () => window.removeEventListener('hashchange', checkHash);
+  }, []);
 
   const fetchProjects = useCallback(() => listProjects(), []);
   const { data: projects } = usePolling(fetchProjects, 5000);
@@ -210,7 +224,9 @@ export default function App() {
               ? 'Agent Stream'
               : viewMode === 'agents'
                 ? 'Agents'
-                : 'Librarian';
+                : viewMode === 'notifications'
+                  ? 'Notifications'
+                  : 'Librarian';
   const mainCount = viewMode === 'tasks'
     ? `(${taskCount}${filterLabel}${sortLabel})`
     : viewMode === 'documents'
@@ -529,10 +545,17 @@ export default function App() {
     viewMode,
     statusFilter,
     setViewMode,
-    setStatusFilter,
   ]);
 
-  return (
+  // Standalone notification popup: render full-screen panel when #/notification-panel hash is present
+  if (standalonePopup) {
+      const notificationProjectIds = effectiveSpaceId && effectiveSpaceId !== ALL_SPACES_ID && effectiveSpaceId !== GLOBAL_SPACE_ID
+        ? [effectiveSpaceId]
+        : (spaces ?? []).filter(s => s.id !== ALL_SPACES_ID).map(s => s.id);
+      return <NotificationHistoryPanel projectIds={notificationProjectIds} standalone />;
+    }
+
+    return (
     <div className={`dashboard dashboard-channel-size-${channelPanelSize}`}>
       <div className="dashboard-workspace">
         <ProjectSidebar
@@ -676,6 +699,14 @@ export default function App() {
                 isAggregate={isAggregateSpace}
                 closePanelKey={prefs.keyboard.closePanel}
                 onOpenAssignmentTrace={handleAssignmentTraceSelect}
+              />
+            ) : viewMode === 'notifications' ? (
+              <NotificationHistoryPanel
+                projectIds={effectiveSpaceId && effectiveSpaceId !== ALL_SPACES_ID && effectiveSpaceId !== GLOBAL_SPACE_ID
+                  ? [effectiveSpaceId]
+                  : (spaces ?? []).filter(s => s.id !== ALL_SPACES_ID).map(s => s.id)
+                }
+                onOpenTask={handleTaskSelect}
               />
             ) : (
               <LibrarianView
