@@ -2,11 +2,11 @@
  * Notification History Panel
  *
  * A separate-window notification history panel for Den Web that renders a
- * scrollable/accruing feed of notifications from multiple source classes:
- *   - User notification records (intent=notification messages)
- *   - User-directed messages (questions, task_blocked, etc.)
- *   - Agent/worker stream events (completions, status changes)
- *   - Worker run completions/failures
+ * scrollable feed of notifications from the canonical Core notification feed.
+ *
+ * Source of truth: Core `GET /api/user-notifications` (#1789).
+ * Read state: Server-backed via `POST /api/user-notifications/mark-read`.
+ * Local cache: LocalStorage is an optimistic UI cache only, labeled "cache".
  *
  * Window management: The first open requires a user gesture (button click)
  * which calls window.open() with a named target. Subsequent activations
@@ -38,10 +38,8 @@ const POLL_INTERVAL_MS = 10000;
 
 const SOURCE_KIND_OPTIONS: Array<{ value: NotificationSourceKind | 'all'; label: string }> = [
   { value: 'all', label: 'All' },
+  { value: 'agent_work_complete', label: 'Agent Done' },
   { value: 'user_notification', label: 'Notifications' },
-  { value: 'user_message', label: 'Messages' },
-  { value: 'agent_event', label: 'Agent Events' },
-  { value: 'worker_completion', label: 'Worker Completions' },
 ];
 
 const SEVERITY_OPTIONS: Array<{ value: NotificationSeverity | 'all'; label: string }> = [
@@ -62,10 +60,8 @@ function severityClass(severity: NotificationSeverity): string {
 
 function sourceTypeLabel(type: NotificationSourceKind): string {
   switch (type) {
+    case 'agent_work_complete': return 'Agent Done';
     case 'user_notification': return 'Notification';
-    case 'user_message': return 'Message';
-    case 'agent_event': return 'Agent';
-    case 'worker_completion': return 'Worker';
   }
 }
 
@@ -110,6 +106,7 @@ export function NotificationHistoryPanel({
 
   // Derive error display from feed.result.error (API-caught errors as string)
   // falling back to usePolling's thrown-error state as a safety net.
+  // Runner correction #3: distinguish true empty feed from API error state.
   const errorMessage = useMemo<string | null>(() => {
     if (feed?.error) return feed.error;
     if (error) return error.message ?? String(error);
@@ -142,12 +139,12 @@ export function NotificationHistoryPanel({
     refresh();
   }, [feed, refresh]);
 
-  const handleClearLocal = useCallback(() => {
+  const handleClearCache = useCallback(() => {
     clearLocalReadState();
     refresh();
   }, [refresh]);
 
-  // Direct mark-read on scroll/visibility of each item
+  // Direct mark-read on click of each item
   const handleItemClick = useCallback((item: NotificationItem) => {
     if (!item.read) {
       markNotificationRead(item.id);
@@ -177,17 +174,17 @@ export function NotificationHistoryPanel({
             className="notification-panel-action"
             onClick={handleMarkAllRead}
             disabled={unreadCount === 0}
-            title="Mark all displayed as read (local only)"
+            title="Mark all displayed as read (server-backed)"
           >
             Mark all read
           </button>
           <button
             type="button"
             className="notification-panel-action"
-            onClick={handleClearLocal}
-            title="Clear local read tracking (does not delete backend records)"
+            onClick={handleClearCache}
+            title="Clear local read cache (does not affect server read state)"
           >
-            Reset local reads
+            Clear read cache
           </button>
           <button
             type="button"
@@ -260,15 +257,6 @@ export function NotificationHistoryPanel({
         </label>
       </div>
 
-      {/* Backend gap notice (shown when standalone in popup) */}
-      {standalone && (
-        <div className="notification-panel-notice detail-info">
-          This panel composes notifications from existing Den APIs. A dedicated
-          notification feed API does not yet exist — see the backend gap doc in
-          <code> notificationFeed.ts</code>.
-        </div>
-      )}
-
       {/* Feed list */}
       <div className="notification-panel-body panel-body">
         {errorMessage && !loading ? (
@@ -310,7 +298,7 @@ export function NotificationHistoryPanel({
           </span>
         )}
         <span className="notification-panel-backend-notice">
-          Local read state only
+          Server-backed read state
         </span>
       </div>
     </div>

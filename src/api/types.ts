@@ -79,6 +79,7 @@ export type {
   ListDesktopSessionEventsOptions,
   DiscussionComment,
   DocumentDiscussion,
+  NotificationFeedItem,
 } from './core/types';
 
 // === Channels types ===

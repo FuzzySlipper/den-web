@@ -1,45 +1,37 @@
 /**
- * Den Web notification feed adapter.
+ * Den Web notification feed adapter — canonical Core feed.
  *
- * This adapter composes from existing Den read APIs to build a unified
- * notification feed. It is NOT a canonical notification database — it
- * reads from reachable backends and aggregates results client-side.
+ * Consumes the Core user-notification feed API from den-core #1789.
+ * The feed is the authoritative source for notification items and read state.
  *
- * ## Backend gap
+ * ## Read state
  *
- * There is currently no dedicated Den notification feed API. The adapter
- * composes from:
- *   - Core `getMessages()` with intent=notification and user-directed heuristics
- *   - Core `listAgentStream()` for agent/worker completion and status events
- *   - Core `listSubagentRuns()` for worker/agent run completions and failures
+ * Server-backed: `is_read` from Core is authoritative. Mark-read calls go to
+ * `POST /api/user-notifications/mark-read`. LocalStorage is used only as a
+ * labeled UI cache for optimistic updates — it is NOT the source of truth.
  *
- * A future canonical notification API in `den-core` or `den-channels`
- * should replace this adapter. Until then, this adapter clearly documents
- * the gap and provides a bounded frontend-only solution.
+ * ## Feed source
  *
- * ## Local-only state
- *
- * Read tracking and clear-local-view are managed in LocalStorage via
- * a set of notification IDs. This does not delete canonical records.
+ * All items come from `GET /api/user-notifications` which returns
+ * `NotificationFeedItem[]`. The old heuristic aggregator over multiple
+ * backend surfaces has been replaced.
  */
 
-import type { AgentStreamEntry, Message, SubagentRunSummary } from '../../api/types';
-import { getMessages, listAgentStream, listSubagentRuns } from '../../api/client';
+import type { NotificationFeedItem } from '../../api/types';
+import { getUserNotifications, markNotificationsRead } from '../../api/client';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export type NotificationSourceKind =
-  | 'user_notification'    // Message with intent='notification'
-  | 'user_message'         // User-directed message (question, blocked, etc.)
-  | 'agent_event'          // Agent stream event (completions, status)
-  | 'worker_completion';   // Subagent run completion/failure
+  | 'agent_work_complete'   // Agent/orchestrator work-drain complete notification
+  | 'user_notification';    // General user notification from Core
 
 export type NotificationSeverity = 'info' | 'success' | 'warning' | 'error';
 
 export interface NotificationItem {
-  /** Composite stable id for dedup and read tracking. */
+  /** Stable id derived from Core notification id. */
   id: string;
   /** Source classification. */
   type: NotificationSourceKind;
@@ -65,7 +57,7 @@ export interface NotificationItem {
   severity: NotificationSeverity;
   /** Additional status string (e.g. run state, delivery mode). */
   status: string | null;
-  /** Locally-tracked read state. */
+  /** Server-backed read state (LocalStorage cache is optimistic only). */
   read: boolean;
 }
 
@@ -76,14 +68,14 @@ export interface NotificationFeedResult {
 }
 
 // ---------------------------------------------------------------------------
-// Local read tracking (LocalStorage)
+// Local UI read cache (LocalStorage — cache only, NOT source of truth)
 // ---------------------------------------------------------------------------
 
-const STORAGE_KEY = 'den-web-notification-read-ids';
+const CACHE_KEY = 'den-web-notification-read-cache';
 
-function loadReadIds(): Set<string> {
+function loadCachedReadIds(): Set<string> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return new Set();
     return new Set(JSON.parse(raw));
   } catch {
@@ -91,227 +83,96 @@ function loadReadIds(): Set<string> {
   }
 }
 
-function saveReadIds(ids: Set<string>): void {
+function saveCachedReadIds(ids: Set<string>): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(ids)));
+    localStorage.setItem(CACHE_KEY, JSON.stringify(Array.from(ids)));
   } catch {
     // Silently ignore storage errors (quota, private browsing)
   }
 }
 
-/** Mark a specific notification as read in local storage. */
-export function markNotificationRead(id: string): void {
-  const ids = loadReadIds();
-  ids.add(id);
-  saveReadIds(ids);
-}
-
-/** Mark a batch of notification IDs as read. */
-export function markNotificationsRead(ids: string[]): void {
-  const stored = loadReadIds();
-  for (const id of ids) stored.add(id);
-  saveReadIds(stored);
-}
-
-/** Mark all currently displayed notifications as read. */
-export function markAllRead(ids: string[]): void {
-  markNotificationsRead(ids);
-}
-
-/** Clear the local read-tracking store (does not affect canonical records). */
+/** Clear the local read-tracking cache (does not affect server read state). */
 export function clearLocalReadState(): void {
-  saveReadIds(new Set());
+  saveCachedReadIds(new Set());
 }
 
-/** Get the set of locally-read notification IDs. */
+/** Get the set of locally-cached read notification IDs. Cache only — not authoritative. */
 export function getReadIds(): Set<string> {
-  return loadReadIds();
+  return loadCachedReadIds();
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Feed item mapping
 // ---------------------------------------------------------------------------
 
-function metadataObject(metadata: unknown): Record<string, unknown> {
-  return metadata && typeof metadata === 'object' && !Array.isArray(metadata)
-    ? metadata as Record<string, unknown>
-    : {};
+/** Default operator identity for read-state queries. */
+const DEFAULT_READ_FOR = 'web-ui';
+
+function severityFromUrgency(urgency: string | null): NotificationSeverity {
+  if (urgency === 'high' || urgency === 'urgent') return 'warning';
+  if (urgency === 'critical') return 'error';
+  return 'info';
 }
 
-function firstString(...values: unknown[]): string | null {
-  for (const value of values) {
-    if (typeof value === 'string' && value.trim().length > 0) return value.trim();
+function classifySourceType(metadata: Record<string, unknown> | null): NotificationSourceKind {
+  if (metadata?.type === 'agent_work_complete') return 'agent_work_complete';
+  return 'user_notification';
+}
+
+function buildCoreItemId(coreId: number): string {
+  return `core:${coreId}`;
+}
+
+/**
+ * Extract a stable integer Core notification ID from the composite string id.
+ * Returns null if the format is unexpected.
+ */
+export function parseCoreNotificationId(compositeId: string): number | null {
+  if (compositeId.startsWith('core:')) {
+    const num = parseInt(compositeId.slice(5), 10);
+    return Number.isNaN(num) ? null : num;
   }
   return null;
 }
 
-function buildMessageId(message: Message): string {
-  return `msg:${message.project_id}:${message.id}`;
-}
+function mapFeedItem(item: NotificationFeedItem): NotificationItem {
+  const metadata = item.metadata && typeof item.metadata === 'object' && !Array.isArray(item.metadata)
+    ? item.metadata as Record<string, unknown>
+    : {};
+  const sourceType = classifySourceType(metadata);
+  // Extract run_id from source_refs or metadata for convenience
+  const runId = (metadata.run_ids as string[] | undefined)?.[0] ?? (metadata.run_id as string | null) ?? null;
+  const dispatchId = typeof metadata.dispatch_id === 'number' ? metadata.dispatch_id : null;
 
-function buildAgentStreamId(entry: AgentStreamEntry): string {
-  return `stream:${entry.id}`;
-}
-
-function buildRunId(run: SubagentRunSummary): string {
-  return `run:${run.run_id}`;
-}
-
-function severityFromMessage(message: Message): NotificationSeverity {
-  if (message.intent === 'task_blocked') return 'error';
-  if (message.intent === 'review_request' || message.intent === 'question') return 'warning';
-  if (message.intent === 'notification') {
-    const meta = metadataObject(message.metadata);
-    const urgency = firstString(meta.urgency, meta.priority);
-    if (urgency === 'high' || urgency === 'urgent') return 'warning';
-    if (urgency === 'critical') return 'error';
+  // Derive a short label for sourceKind
+  let sourceKind = sourceType === 'agent_work_complete' ? 'Agent work complete' : 'Notification';
+  const completionScope = metadata.completion_scope;
+  if (typeof completionScope === 'string') {
+    sourceKind = `Agent ${completionScope.replace(/_/g, ' ')}`;
   }
-  return 'info';
-}
 
-function severityFromAgentStreamEntry(entry: AgentStreamEntry): NotificationSeverity {
-  const eventType = entry.event_type;
-  if (eventType.endsWith('_failed') || eventType.endsWith('_error') || eventType === 'subagent_timeout' || eventType === 'subagent_startup_timeout') return 'error';
-  if (eventType === 'subagent_completed' || eventType === 'dispatch_completed') return 'success';
-  if (eventType.includes('blocked') || eventType.includes('warning')) return 'warning';
-  return 'info';
-}
+  // Derive severity from final_status if available, else from urgency
+  let severity = severityFromUrgency(item.urgency);
+  const finalStatus = metadata.final_status;
+  if (finalStatus === 'completed') severity = 'success';
+  else if (finalStatus === 'blocked' || finalStatus === 'failed') severity = 'error';
 
-function severityFromRun(run: SubagentRunSummary): NotificationSeverity {
-  if (run.state === 'failed' || run.state === 'timeout' || run.state === 'aborted') return 'error';
-  if (run.state === 'complete') return 'success';
-  if (run.state === 'running' || run.state === 'retrying') return 'info';
-  return 'warning';
-}
-
-function formatEventType(eventType: string): string {
-  return eventType.replace(/_/g, ' ');
-}
-
-function isUserDirected(message: Message): boolean {
-  if (message.intent === 'question' || message.intent === 'task_blocked' || message.intent === 'notification') return true;
-  const meta = metadataObject(message.metadata);
-  const recipient = firstString(meta.recipient, meta.recipient_agent, meta.target, meta.to, meta.audience);
-  const type = firstString(meta.type, meta.kind);
-  if (type === 'user_notification' || type === 'notification') return true;
-  if (recipient === 'user' || recipient === 'Patchfoot' || recipient === 'Patch') return true;
-  return false;
-}
-
-// ---------------------------------------------------------------------------
-// Feed source fetchers
-// ---------------------------------------------------------------------------
-
-const LARGE_LIMIT = 50;
-
-async function fetchNotificationMessages(projectIds: string[]): Promise<NotificationItem[]> {
-  const pages = await Promise.all(projectIds.map(async projectId => {
-    try {
-      return await getMessages(projectId, { intent: 'notification', limit: LARGE_LIMIT });
-    } catch {
-      return [] as Message[];
-    }
-  }));
-  return pages.flat().map(message => ({
-    id: buildMessageId(message),
-    type: 'user_notification' as const,
-    timestamp: message.created_at,
-    sourceKind: message.intent,
-    agentService: message.sender,
-    projectId: message.project_id,
-    taskId: message.task_id,
-    threadId: message.thread_id,
-    dispatchId: null,
-    runId: null,
-    summary: message.content.replace(/\s+/g, ' ').trim(),
-    severity: severityFromMessage(message),
-    status: null,
-    read: false,
-  }));
-}
-
-async function fetchUserDirectedMessages(projectIds: string[]): Promise<NotificationItem[]> {
-  const pages = await Promise.all(projectIds.map(async projectId => {
-    try {
-      const messages = await getMessages(projectId, { limit: LARGE_LIMIT });
-      return messages.filter(isUserDirected);
-    } catch {
-      return [] as Message[];
-    }
-  }));
-  return pages.flat().map(message => ({
-    id: buildMessageId(message),
-    type: 'user_message' as const,
-    timestamp: message.created_at,
-    sourceKind: message.intent,
-    agentService: message.sender,
-    projectId: message.project_id,
-    taskId: message.task_id,
-    threadId: message.thread_id,
-    dispatchId: null,
-    runId: null,
-    summary: message.content.replace(/\s+/g, ' ').trim(),
-    severity: severityFromMessage(message),
-    status: null,
-    read: false,
-  }));
-}
-
-async function fetchAgentStreamEvents(projectIds: string[]): Promise<NotificationItem[]> {
-  const pages = await Promise.all(projectIds.map(async projectId => {
-    try {
-      return await listAgentStream({ projectId, limit: LARGE_LIMIT });
-    } catch {
-      return [] as AgentStreamEntry[];
-    }
-  }));
-  return pages.flat().map(entry => ({
-    id: buildAgentStreamId(entry),
-    type: 'agent_event' as const,
-    timestamp: entry.created_at,
-    sourceKind: formatEventType(entry.event_type),
-    agentService: entry.sender,
-    projectId: entry.project_id,
-    taskId: entry.task_id,
-    threadId: entry.thread_id,
-    dispatchId: entry.dispatch_id,
-    runId: metadataObject(entry.metadata).run_id as string | null ?? null,
-    summary: entry.body?.replace(/\s+/g, ' ').trim() ?? formatEventType(entry.event_type),
-    severity: severityFromAgentStreamEntry(entry),
-    status: entry.delivery_mode,
-    read: false,
-  }));
-}
-
-async function fetchSubagentRuns(projectIds: string[]): Promise<NotificationItem[]> {
-  const pages = await Promise.all(projectIds.map(async projectId => {
-    try {
-      const runs = await listSubagentRuns({ projectId, limit: LARGE_LIMIT });
-      return runs.filter(run => run.state === 'complete' || run.state === 'failed' || run.state === 'timeout' || run.state === 'aborted');
-    } catch {
-      return [] as SubagentRunSummary[];
-    }
-  }));
-  return pages.flat().map(run => ({
-    id: buildRunId(run),
-    type: 'worker_completion' as const,
-    timestamp: run.ended_at ?? run.latest.created_at,
-    sourceKind: runStateLabel(run.state),
-    agentService: run.role ?? run.latest.sender,
-    projectId: run.project_id,
-    taskId: run.task_id,
-    threadId: null,
-    dispatchId: null,
-    runId: run.run_id,
-    summary: run.purpose ?? `${run.role ?? 'worker'} run ${runStateLabel(run.state)}`,
-    severity: severityFromRun(run),
-    status: run.state,
-    read: false,
-  }));
-}
-
-function runStateLabel(state: string): string {
-  return state.replace(/_/g, ' ');
+  return {
+    id: buildCoreItemId(item.id),
+    type: sourceType,
+    timestamp: item.created_at,
+    sourceKind,
+    agentService: item.sender,
+    projectId: item.project_id,
+    taskId: item.task_id,
+    threadId: item.thread_id,
+    dispatchId,
+    runId,
+    summary: item.content.replace(/\s+/g, ' ').trim(),
+    severity,
+    status: typeof finalStatus === 'string' ? finalStatus : item.urgency,
+    read: item.is_read,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -319,62 +180,98 @@ function runStateLabel(state: string): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Fetch the unified notification feed from multiple backend sources.
+ * Fetch the notification feed from the canonical Core API.
  *
- * @param projectIds Project/space IDs to fetch notifications for.
- *   Pass a single project ID or aggregated project IDs.
- * @returns A feed result with flattened, sorted, deduplicated items.
- *
- * Note: Deduplication is by composite ID. If the same notification appears
- * from multiple sources (e.g., a message is both a user_notification and
- * a user_message), the first source wins by priority order.
+ * @param projectIds Project/space IDs (unused in global mode — kept for
+ *   backward-compatible signature). When a single projectId is given,
+ *   filters to that project via the API query param.
+ * @returns A feed result with items sorted newest-first.
  */
 export async function fetchNotificationFeed(projectIds: string[]): Promise<NotificationFeedResult> {
   const startTime = Date.now();
 
   try {
-    const [notifications, userMessages, streamEvents, runCompletions] = await Promise.all([
-      fetchNotificationMessages(projectIds),
-      fetchUserDirectedMessages(projectIds),
-      fetchAgentStreamEvents(projectIds),
-      fetchSubagentRuns(projectIds),
-    ]);
+    // Use global feed endpoint with optional project filter
+    const projectId = projectIds.length === 1 ? projectIds[0] : undefined;
+    const feedItems = await getUserNotifications({
+      projectId,
+      readFor: DEFAULT_READ_FOR,
+      limit: 50,
+    });
 
-    // Deduplicate by composite ID with priority:
-    // 1. user_notification 2. user_message 3. agent_event 4. worker_completion
-    const seen = new Set<string>();
-    const all: NotificationItem[] = [];
+    const items = feedItems.map(mapFeedItem);
 
-    for (const items of [notifications, userMessages, streamEvents, runCompletions]) {
-      for (const item of items) {
-        if (!seen.has(item.id)) {
-          seen.add(item.id);
-          all.push(item);
-        }
-      }
-    }
+    // Sort newest first (API should do this, but enforce client-side)
+    items.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
-    // Sort newest first
-    all.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-
-    // Apply local read state
-    const readIds = loadReadIds();
-    for (const item of all) {
-      if (readIds.has(item.id)) {
+    // Apply local optimistic read cache on top of server is_read
+    const cachedReadIds = loadCachedReadIds();
+    for (const item of items) {
+      if (cachedReadIds.has(item.id)) {
         item.read = true;
       }
     }
 
-    return { items: all, loading: false, error: null };
+    return { items, loading: false, error: null };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return { items: [], loading: false, error: `Failed to load notifications: ${message}` };
   } finally {
     const elapsed = Date.now() - startTime;
     if (elapsed > 8000) {
-      console.warn(`[notificationFeed] fetchNotificationFeed took ${elapsed}ms — consider reducing projectIds or adding pagination`);
+      console.warn(`[notificationFeed] fetchNotificationFeed took ${elapsed}ms — consider reducing limit or adding pagination`);
     }
   }
+}
+
+/**
+ * Mark a specific notification as read (server-backed + local cache).
+ */
+export async function markNotificationRead(id: string): Promise<void> {
+  const coreId = parseCoreNotificationId(id);
+  // Optimistic local cache update
+  const cached = loadCachedReadIds();
+  cached.add(id);
+  saveCachedReadIds(cached);
+  // Server mark-read
+  if (coreId !== null) {
+    await markNotificationsRead({ agent: DEFAULT_READ_FOR, notification_ids: [coreId] });
+  }
+}
+
+/**
+ * Mark a batch of notification IDs as read (server-backed + local cache).
+ */
+export async function markNotificationsReadBatch(ids: string[]): Promise<void> {
+  // Optimistic local cache update
+  const cached = loadCachedReadIds();
+  for (const id of ids) cached.add(id);
+  saveCachedReadIds(cached);
+  // Server mark-read — extract core IDs
+  const coreIds = ids.map(parseCoreNotificationId).filter((id): id is number => id !== null);
+  if (coreIds.length > 0) {
+    await markNotificationsRead({ agent: DEFAULT_READ_FOR, notification_ids: coreIds });
+  }
+}
+
+/**
+ * Mark all currently displayed notifications as read by explicit IDs.
+ */
+export async function markAllRead(ids: string[]): Promise<void> {
+  await markNotificationsReadBatch(ids);
+}
+
+/**
+ * Mark all notifications read in a project scope using server-side mark_all.
+ * Falls back to explicit IDs when available.
+ */
+export async function markAllReadScoped(projectId: string, taskId?: number): Promise<number> {
+  const result = await markNotificationsRead({
+    agent: DEFAULT_READ_FOR,
+    mark_all: true,
+    scope: { project_id: projectId, task_id: taskId },
+  });
+  return result.marked;
 }
 
 /**

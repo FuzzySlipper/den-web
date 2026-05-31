@@ -29,6 +29,8 @@ export type {
   ListDesktopSessionSnapshotsOpts,
   ListDispatchesOpts,
   PostDiscussionCommentRequest,
+  GetUserNotificationsOpts,
+  MarkNotificationsReadBody,
 } from './core/client';
 export {
   listSpaces,
@@ -73,6 +75,9 @@ export {
   rejectDispatch,
   getDocumentDiscussion,
   postDocumentDiscussionComment,
+  getUserNotifications,
+  getProjectUserNotifications,
+  markNotificationsRead,
 } from './core/client';
 
 // Channels API
