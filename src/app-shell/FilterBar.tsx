@@ -92,6 +92,12 @@ export function FilterBar({
         >
           Agents
         </button>
+        <button
+          className={viewMode === 'fleet-ops' ? 'active' : ''}
+          onClick={() => onViewModeChange('fleet-ops')}
+        >
+          Fleet Ops
+        </button>
       </div>
     </div>
   );

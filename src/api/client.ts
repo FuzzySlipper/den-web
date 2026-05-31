@@ -113,4 +113,7 @@ export {
   getAgentDetail,
   getAssignmentTrace,
   getWorkerPoolLobbyPresence,
+  getFleetOps,
+  postFleetOpsActionRun,
+  getFleetOpsRun,
 } from './gateway/client';

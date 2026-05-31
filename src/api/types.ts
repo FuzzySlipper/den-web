@@ -123,4 +123,12 @@ export type {
   WorkerPoolMemberPresence,
   WorkerPoolAvailabilityState,
   WorkerPoolLobbyPresence,
+  FleetOpsServiceUnit,
+  FleetOpsAction,
+  FleetOpsDiagnosticEntry,
+  FleetOpsRunSummary,
+  FleetOpsResponse,
+  FleetOpsActionRunRequest,
+  FleetOpsActionRunResponse,
+  FleetOpsRunDetailResponse,
 } from './gateway/types';

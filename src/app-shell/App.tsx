@@ -35,6 +35,7 @@ import type { ChannelChatPanelSize } from '../features/channels/ChannelChatPanel
 import { FocusedSessionView } from '../features/sessions/FocusedSessionView';
 import { AgentsOverviewView } from '../features/agents/AgentsOverviewView';
 import { agentStreamEntryVisibility } from '../features/agents/subagentRuns';
+import { FleetOpsCockpit } from '../features/fleetops/FleetOpsCockpit';
 import { documentSelectionAction } from '../features/documents/documentEditor';
 import type { GitFocus } from '../features/git/git';
 import { usePreferences } from '../features/preferences/usePreferences';
@@ -255,9 +256,11 @@ export default function App() {
               ? 'Agent Stream'
               : viewMode === 'agents'
                 ? 'Agents'
-                : viewMode === 'notifications'
-                  ? 'Notifications'
-                  : 'Librarian';
+                : viewMode === 'fleet-ops'
+                  ? 'Fleet Ops'
+                  : viewMode === 'notifications'
+                    ? 'Notifications'
+                    : 'Librarian';
   const mainCount = viewMode === 'tasks'
     ? `(${taskCount}${filterLabel}${sortLabel})`
     : viewMode === 'documents'
@@ -755,6 +758,8 @@ export default function App() {
                   />
                 )}
               </>
+            ) : viewMode === 'fleet-ops' ? (
+              <FleetOpsCockpit />
             ) : viewMode === 'notifications' ? (
               <NotificationHistoryPanel
                 projectIds={effectiveSpaceId && effectiveSpaceId !== ALL_SPACES_ID && effectiveSpaceId !== GLOBAL_SPACE_ID

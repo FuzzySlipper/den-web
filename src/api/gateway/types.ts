@@ -377,6 +377,113 @@ export type TraceSourceAvailability =
   | 'delivery_missing'
   | 'pending';
 
+// =============================================================================
+// Fleet Ops cockpit (task #1797)
+// Gateway FleetOps API types.
+// =============================================================================
+
+export interface FleetOpsServiceUnit {
+  /** Service unit name (e.g. "hermes-coder", "den-hermes-runner") */
+  name: string;
+  /** Current status reported by the service manager */
+  status: string;
+  /** Whether the unit is enabled */
+  enabled: boolean;
+  /** Profile name if this is a per-profile unit */
+  profile?: string | null;
+  /** Human-readable description */
+  description?: string | null;
+  /** Last known PID or instance marker */
+  pid?: number | string | null;
+  /** Uptime seconds */
+  uptimeSeconds?: number | null;
+}
+
+export interface FleetOpsAction {
+  /** Action identifier — e.g. "fleet-status", "fleet-smoke", "restart-all", "restart-failed", "restart-profile" */
+  actionId: string;
+  /** Human-readable label */
+  label: string;
+  /** Category for grouping (e.g. "diagnostic", "restart", "maintenance") */
+  category: string;
+  /** Whether the action is currently allowed */
+  enabled: boolean;
+  /** If false, the UI must show the button as disabled */
+  highRisk?: boolean;
+  /** Short description */
+  description?: string | null;
+  /** Whether this action requires confirmation */
+  requiresConfirmation?: boolean;
+  /** Whether this action supports dry-run */
+  supportsDryRun?: boolean;
+  /** Whether this action requires args (e.g. profile name for restart-profile) */
+  requiresArgs?: boolean;
+}
+
+export interface FleetOpsDiagnosticEntry {
+  /** Diagnostic check name */
+  check: string;
+  /** Status: "ok", "warn", "error", "unknown" */
+  status: string;
+  /** Human-readable detail */
+  detail?: string | null;
+}
+
+export interface FleetOpsRunSummary {
+  /** Unique run identifier */
+  runId: string;
+  /** Action that was triggered */
+  actionId: string;
+  /** Whether this was a dry run */
+  dryRun: boolean;
+  /** Run status: "pending", "running", "completed", "failed" */
+  status: string;
+  /** When the run was started */
+  startedAt: string | null;
+  /** When the run completed */
+  completedAt: string | null;
+  /** Summary of results */
+  summary?: string | null;
+  /** Error detail if failed */
+  error?: string | null;
+}
+
+export interface FleetOpsResponse {
+  /** Service name (e.g. "gateway-fleet-ops") */
+  service: string;
+  /** Timestamp of generation */
+  generatedAt: string;
+  /** Service unit statuses */
+  serviceUnits: FleetOpsServiceUnit[];
+  /** Available actions */
+  actions: FleetOpsAction[];
+  /** Discovery diagnostics */
+  discoveryDiagnostics: FleetOpsDiagnosticEntry[];
+  /** Recent action runs */
+  recentRuns: FleetOpsRunSummary[];
+}
+
+export interface FleetOpsActionRunRequest {
+  /** The action to execute */
+  actionId: string;
+  /** Whether to perform a dry run */
+  dryRun?: boolean;
+  /** Action arguments (e.g. { profile: "hermes-coder" } for restart-profile) */
+  args?: Record<string, string> | null;
+  /** Confirmation token/string for high-risk actions */
+  confirmation?: string | null;
+}
+
+export interface FleetOpsActionRunResponse {
+  /** The created run */
+  run: FleetOpsRunSummary;
+}
+
+export interface FleetOpsRunDetailResponse {
+  /** The run detail, or null if not found */
+  run: FleetOpsRunSummary | null;
+}
+
 export interface AssignmentTraceResponse {
   /** The assignment ID being traced */
   assignmentId: string;

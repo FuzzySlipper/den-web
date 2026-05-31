@@ -8,6 +8,10 @@ import type {
   AgentDetailResponse,
   AssignmentTraceResponse,
   WorkerPoolLobbyPresence,
+  FleetOpsResponse,
+  FleetOpsActionRunRequest,
+  FleetOpsActionRunResponse,
+  FleetOpsRunDetailResponse,
 } from './types';
 import { normalizeApiBase } from '../config';
 
@@ -144,4 +148,21 @@ export function getAssignmentTrace(assignmentId: string, opts: { projectId?: str
 
 export function getWorkerPoolLobbyPresence(): Promise<WorkerPoolLobbyPresence> {
   return getChannels('/worker-pool/lobby/presence');
+}
+
+// =============================================================================
+// Fleet Ops cockpit (task #1797)
+// Gateway FleetOps API — fleet status, actions, runs.
+// =============================================================================
+
+export function getFleetOps(): Promise<FleetOpsResponse> {
+  return getChannels('/gateway/fleet-ops');
+}
+
+export function postFleetOpsActionRun(request: FleetOpsActionRunRequest): Promise<FleetOpsActionRunResponse> {
+  return postChannels(`/gateway/fleet-ops/actions/${encodeURIComponent(request.actionId)}/runs`, request);
+}
+
+export function getFleetOpsRun(runId: string): Promise<FleetOpsRunDetailResponse> {
+  return getChannels(`/gateway/fleet-ops/runs/${encodeURIComponent(runId)}`);
 }
