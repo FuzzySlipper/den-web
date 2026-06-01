@@ -16,15 +16,21 @@ import type {
 import { normalizeApiBase } from '../config';
 
 let denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
+let denGatewayApiBase = normalizeApiBase(import.meta.env.VITE_DEN_GATEWAY_API_BASE, '/api/gateway');
 
-/** Reinitialize base URL from runtime config */
+/** Reinitialize Gateway-specific base URL from runtime config. */
 export function reinitGatewayBase(base: string): void {
-  denChannelsApiBase = normalizeApiBase(base, '/api');
+  denGatewayApiBase = normalizeApiBase(base, '/api/gateway');
 }
 
 function channelsApiUrl(url: string): string {
   if (/^https?:\/\//i.test(url)) return url;
   return `${denChannelsApiBase}${url.startsWith('/') ? url : `/${url}`}`;
+}
+
+function gatewayApiUrl(url: string): string {
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${denGatewayApiBase}${url.startsWith('/') ? url : `/${url}`}`;
 }
 
 async function putChannels<T>(url: string, body: unknown): Promise<T> {
@@ -53,6 +59,24 @@ async function getChannels<T>(url: string): Promise<T> {
   const requestUrl = channelsApiUrl(url);
   const res = await fetch(requestUrl);
   if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
+  return res.json();
+}
+
+async function getGateway<T>(url: string): Promise<T> {
+  const requestUrl = gatewayApiUrl(url);
+  const res = await fetch(requestUrl);
+  if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
+  return res.json();
+}
+
+async function postGateway<T>(url: string, body: unknown): Promise<T> {
+  const requestUrl = gatewayApiUrl(url);
+  const res = await fetch(requestUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`POST ${requestUrl}: ${res.status}`);
   return res.json();
 }
 
@@ -156,13 +180,13 @@ export function getWorkerPoolLobbyPresence(): Promise<WorkerPoolLobbyPresence> {
 // =============================================================================
 
 export function getFleetOps(): Promise<FleetOpsResponse> {
-  return getChannels('/gateway/fleet-ops');
+  return getGateway('/fleet-ops');
 }
 
 export function postFleetOpsActionRun(request: FleetOpsActionRunRequest): Promise<FleetOpsActionRunResponse> {
-  return postChannels(`/gateway/fleet-ops/actions/${encodeURIComponent(request.actionId)}/runs`, request);
+  return postGateway(`/fleet-ops/actions/${encodeURIComponent(request.actionId)}/runs`, request);
 }
 
 export function getFleetOpsRun(runId: string): Promise<FleetOpsRunDetailResponse> {
-  return getChannels(`/gateway/fleet-ops/runs/${encodeURIComponent(runId)}`);
+  return getGateway(`/fleet-ops/runs/${encodeURIComponent(runId)}`);
 }

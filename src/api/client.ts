@@ -8,8 +8,26 @@
  *   - `@api/gateway/client` — Memberships, Test Wake, Direct Agent, Agents Overview
  */
 
+import { getConfig } from './config';
+import { initClient as initCoreClient, resetClient as resetCoreClient } from './core/client';
+import { reinitChannelsBase } from './channels/client';
+import { reinitGatewayBase } from './gateway/client';
+
 // Core API
-export { initClient, resetClient, getApiBases } from './core/client';
+export { getApiBases } from './core/client';
+
+export async function initClient(): Promise<void> {
+  await initCoreClient();
+  const config = await getConfig();
+  reinitChannelsBase(config.denChannelsApiBase);
+  reinitGatewayBase(config.denGatewayApiBase);
+}
+
+export function resetClient(): void {
+  resetCoreClient();
+  reinitChannelsBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE ?? '/api');
+  reinitGatewayBase(import.meta.env.VITE_DEN_GATEWAY_API_BASE ?? '/api/gateway');
+}
 export type {
   ListSpacesOpts,
   ListTasksOpts,
