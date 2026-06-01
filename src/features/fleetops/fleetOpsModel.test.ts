@@ -3,23 +3,29 @@ import { describe, expect, it } from 'vitest';
 import {
   unitStatusLabel,
   unitStatusClass,
-  actionCategoryLabel,
-  actionCategoryClass,
+  isActionDisabled,
   isActionExecutable,
+  actionNeedsConfirmation,
+  actionConfirmationPrompt,
+  riskLevelClass,
+  riskLevelLabel,
   extractProfileNames,
   sanitizeProfileName,
-  diagnosticStatusClass,
   runStatusClass,
   runStatusLabel,
   buildFleetSummary,
-  groupActionsByCategory,
-  formatUptime,
+  groupActionsByRisk,
+  formatRunDuration,
   fakeFleetOpsResponse,
 } from './fleetOpsModel';
 import type { FleetOpsAction, FleetOpsServiceUnit } from '../../api/types';
 
+// =============================================================================
+// Service unit helpers (activeState-based, not old status/enabled)
+// =============================================================================
+
 describe('unitStatusLabel', () => {
-  it('returns human-readable labels for known statuses', () => {
+  it('returns human-readable labels for known activeStates', () => {
     expect(unitStatusLabel('running')).toBe('Running');
     expect(unitStatusLabel('active')).toBe('Active');
     expect(unitStatusLabel('stopped')).toBe('Stopped');
@@ -31,8 +37,8 @@ describe('unitStatusLabel', () => {
     expect(unitStatusLabel('unknown')).toBe('Unknown');
   });
 
-  it('passes through unknown statuses', () => {
-    expect(unitStatusLabel('custom-status')).toBe('custom-status');
+  it('passes through unknown activeStates', () => {
+    expect(unitStatusLabel('custom-state')).toBe('custom-state');
   });
 
   it('handles case-insensitively', () => {
@@ -42,7 +48,7 @@ describe('unitStatusLabel', () => {
 });
 
 describe('unitStatusClass', () => {
-  it('returns appropriate CSS classes for each status', () => {
+  it('returns appropriate CSS classes for each activeState', () => {
     expect(unitStatusClass('running')).toBe('fops-unit-running');
     expect(unitStatusClass('active')).toBe('fops-unit-running');
     expect(unitStatusClass('stopped')).toBe('fops-unit-stopped');
@@ -54,120 +60,229 @@ describe('unitStatusClass', () => {
   });
 });
 
-describe('actionCategoryLabel', () => {
-  it('returns human-readable category labels', () => {
-    expect(actionCategoryLabel('diagnostic')).toBe('Diagnostics');
-    expect(actionCategoryLabel('restart')).toBe('Restart');
-    expect(actionCategoryLabel('maintenance')).toBe('Maintenance');
-    expect(actionCategoryLabel('other')).toBe('other');
-  });
-});
+// =============================================================================
+// Action helpers (Gateway FleetActionDescriptor fields)
+// =============================================================================
 
-describe('actionCategoryClass', () => {
-  it('returns sanitized CSS class names', () => {
-    expect(actionCategoryClass('diagnostic')).toBe('fops-action-cat-diagnostic');
-    expect(actionCategoryClass('restart')).toBe('fops-action-cat-restart');
-    expect(actionCategoryClass('some category')).toBe('fops-action-cat-some-category');
+describe('isActionDisabled', () => {
+  it('returns true when disabledReason is set', () => {
+    const action: FleetOpsAction = {
+      actionId: 'purge-logs',
+      label: 'Purge Logs',
+      riskLevel: 'high',
+      mutating: true,
+      supportsDryRun: false,
+      needsConfirmation: true,
+      timeoutSeconds: 60,
+      disabledReason: 'Disabled by policy',
+    };
+    expect(isActionDisabled(action)).toBe(true);
+  });
+
+  it('returns false when disabledReason is null/empty/undefined', () => {
+    const base: FleetOpsAction = {
+      actionId: 'restart-all',
+      label: 'Restart All',
+      riskLevel: 'high',
+      mutating: true,
+      supportsDryRun: true,
+      needsConfirmation: true,
+      timeoutSeconds: 120,
+    };
+    expect(isActionDisabled({ ...base, disabledReason: null })).toBe(false);
+    expect(isActionDisabled({ ...base, disabledReason: '' })).toBe(false);
+    expect(isActionDisabled({ ...base, disabledReason: undefined })).toBe(false);
   });
 });
 
 describe('isActionExecutable', () => {
-  it('returns true for enabled non-high-risk actions', () => {
+  it('returns true for non-disabled actions (even high risk)', () => {
+    const action: FleetOpsAction = {
+      actionId: 'restart-all',
+      label: 'Restart All',
+      riskLevel: 'high',
+      mutating: true,
+      supportsDryRun: true,
+      needsConfirmation: true,
+      timeoutSeconds: 120,
+      confirmationCopy: 'Restart ALL fleet services?',
+    };
+    // restart-all is high risk but NOT disabled — must be executable (confirmable)
+    expect(isActionExecutable(action)).toBe(true);
+  });
+
+  it('returns false for actions with a disabledReason', () => {
+    const action: FleetOpsAction = {
+      actionId: 'purge-logs',
+      label: 'Purge Logs',
+      riskLevel: 'high',
+      mutating: true,
+      supportsDryRun: false,
+      needsConfirmation: true,
+      timeoutSeconds: 60,
+      disabledReason: 'Disabled by policy',
+    };
+    expect(isActionExecutable(action)).toBe(false);
+  });
+});
+
+describe('actionNeedsConfirmation', () => {
+  it('returns true when needsConfirmation is set', () => {
+    const action: FleetOpsAction = {
+      actionId: 'restart-failed',
+      label: 'Restart Failed',
+      riskLevel: 'medium',
+      mutating: true,
+      supportsDryRun: false,
+      needsConfirmation: true,
+      timeoutSeconds: 90,
+    };
+    expect(actionNeedsConfirmation(action)).toBe(true);
+  });
+
+  it('returns true for mutating actions even without explicit needsConfirmation', () => {
+    const action: FleetOpsAction = {
+      actionId: 'some-mutator',
+      label: 'Some Mutator',
+      riskLevel: 'low',
+      mutating: true,
+      supportsDryRun: false,
+      needsConfirmation: false,
+      timeoutSeconds: 30,
+    };
+    expect(actionNeedsConfirmation(action)).toBe(true);
+  });
+
+  it('returns false for non-mutating actions without needsConfirmation', () => {
     const action: FleetOpsAction = {
       actionId: 'fleet-status',
       label: 'Fleet Status',
-      category: 'diagnostic',
-      enabled: true,
+      riskLevel: 'low',
+      mutating: false,
+      supportsDryRun: true,
+      needsConfirmation: false,
+      timeoutSeconds: 30,
     };
-    expect(isActionExecutable(action)).toBe(true);
+    expect(actionNeedsConfirmation(action)).toBe(false);
   });
 
   it('returns false for disabled actions', () => {
     const action: FleetOpsAction = {
       actionId: 'purge-logs',
       label: 'Purge Logs',
-      category: 'maintenance',
-      enabled: false,
-      highRisk: true,
+      riskLevel: 'high',
+      mutating: true,
+      supportsDryRun: false,
+      needsConfirmation: true,
+      timeoutSeconds: 60,
+      disabledReason: 'Disabled',
     };
-    expect(isActionExecutable(action)).toBe(false);
-  });
-
-  it('returns false for high-risk actions', () => {
-    const action: FleetOpsAction = {
-      actionId: 'nuke-all',
-      label: 'Nuke All',
-      category: 'maintenance',
-      enabled: true,
-      highRisk: true,
-    };
-    expect(isActionExecutable(action)).toBe(false);
-  });
-
-  it('returns true when highRisk is false or undefined', () => {
-    expect(isActionExecutable({ actionId: 'a', label: 'A', category: 'diag', enabled: true, highRisk: false })).toBe(true);
-    expect(isActionExecutable({ actionId: 'a', label: 'A', category: 'diag', enabled: true })).toBe(true);
+    expect(actionNeedsConfirmation(action)).toBe(false);
   });
 });
 
+describe('actionConfirmationPrompt', () => {
+  it('uses confirmationCopy when present', () => {
+    const action: FleetOpsAction = {
+      actionId: 'restart-all',
+      label: 'Restart All',
+      riskLevel: 'high',
+      mutating: true,
+      supportsDryRun: true,
+      needsConfirmation: true,
+      confirmationCopy: 'Restart ALL fleet services?',
+      timeoutSeconds: 120,
+    };
+    expect(actionConfirmationPrompt(action)).toBe('Restart ALL fleet services?');
+  });
+
+  it('generates generic prompt for mutating actions without confirmationCopy', () => {
+    const action: FleetOpsAction = {
+      actionId: 'restart-failed',
+      label: 'Restart Failed',
+      riskLevel: 'medium',
+      mutating: true,
+      supportsDryRun: false,
+      needsConfirmation: true,
+      timeoutSeconds: 90,
+    };
+    const prompt = actionConfirmationPrompt(action);
+    expect(prompt).toContain('Restart Failed');
+    expect(prompt).toContain('confirm');
+  });
+});
+
+describe('riskLevelClass', () => {
+  it('returns correct CSS classes for risk levels', () => {
+    expect(riskLevelClass('high')).toBe('fops-risk-high');
+    expect(riskLevelClass('medium')).toBe('fops-risk-medium');
+    expect(riskLevelClass('low')).toBe('fops-risk-low');
+    expect(riskLevelClass('unknown')).toBe('fops-risk-unknown');
+  });
+});
+
+describe('riskLevelLabel', () => {
+  it('capitalizes risk level', () => {
+    expect(riskLevelLabel('high')).toBe('High Risk');
+    expect(riskLevelLabel('medium')).toBe('Medium Risk');
+    expect(riskLevelLabel('low')).toBe('Low Risk');
+  });
+});
+
+// =============================================================================
+// Profile extraction (profileName from Gateway FleetServiceUnit)
+// =============================================================================
+
 describe('extractProfileNames', () => {
-  it('extracts profile names from service units', () => {
+  it('extracts profileName from service units', () => {
     const units: FleetOpsServiceUnit[] = [
-      { name: 'hermes-coder', status: 'running', enabled: true, profile: 'hermes-coder' },
-      { name: 'hermes-reviewer', status: 'running', enabled: true, profile: 'hermes-reviewer' },
-      { name: 'den-core', status: 'running', enabled: true, profile: null },
+      { unitName: 'hermes-coder', profileName: 'hermes-coder', activeState: 'running', subState: 'main', description: 'Coder' },
+      { unitName: 'hermes-reviewer', profileName: 'hermes-reviewer', activeState: 'running', subState: 'main', description: 'Reviewer' },
+      { unitName: 'den-core', profileName: '', activeState: 'running', subState: 'main', description: 'Core' },
     ];
     const profiles = extractProfileNames(units);
     expect(profiles).toEqual(['hermes-coder', 'hermes-reviewer']);
   });
 
-  it('includes unit names as candidates when no profile is set', () => {
+  it('excludes units with empty profileName', () => {
     const units: FleetOpsServiceUnit[] = [
-      { name: 'some-agent', status: 'running', enabled: true, profile: null },
-      { name: 'den-core', status: 'running', enabled: true, profile: null },
+      { unitName: 'den-core', profileName: '', activeState: 'running', subState: 'main', description: 'Core' },
     ];
-    const profiles = extractProfileNames(units);
-    expect(profiles).toContain('some-agent');
-    expect(profiles).not.toContain('den-core');
+    expect(extractProfileNames(units)).toEqual([]);
   });
 
-  it('returns sorted unique names', () => {
+  it('returns sorted unique profileName values', () => {
     const units: FleetOpsServiceUnit[] = [
-      { name: 'z-agent', status: 'running', enabled: true, profile: 'z-agent' },
-      { name: 'a-agent', status: 'running', enabled: true, profile: 'a-agent' },
-      { name: 'a-agent', status: 'stopped', enabled: true, profile: 'a-agent' },
+      { unitName: 'z-agent', profileName: 'z-agent', activeState: 'running', subState: 'main', description: 'Z' },
+      { unitName: 'a-agent', profileName: 'a-agent', activeState: 'running', subState: 'main', description: 'A' },
+      { unitName: 'a-agent-2', profileName: 'a-agent', activeState: 'stopped', subState: 'dead', description: 'A2' },
     ];
-    const profiles = extractProfileNames(units);
-    expect(profiles).toEqual(['a-agent', 'z-agent']);
+    expect(extractProfileNames(units)).toEqual(['a-agent', 'z-agent']);
   });
 });
 
 describe('sanitizeProfileName', () => {
-  it('allows alphanumeric, dash, underscore, dot', () => {
+  it('allows alphanumeric, dash, underscore (Gateway pattern ^[a-zA-Z0-9_-]+$)', () => {
     expect(sanitizeProfileName('hermes-coder')).toBe('hermes-coder');
-    expect(sanitizeProfileName('my_agent.v2')).toBe('my_agent.v2');
+    expect(sanitizeProfileName('my_agent')).toBe('my_agent');
     expect(sanitizeProfileName('abc123')).toBe('abc123');
   });
 
+  it('strips dots (Gateway pattern does not allow dots)', () => {
+    expect(sanitizeProfileName('test.profile')).toBe('testprofile');
+  });
+
   it('strips dangerous characters', () => {
-    // Only alphanumeric, dash, underscore, dot are kept — spaces and special chars stripped
     expect(sanitizeProfileName('foo; rm -rf /')).toBe('foorm-rf');
     expect(sanitizeProfileName('$(evil)')).toBe('evil');
-    expect(sanitizeProfileName('test-profile.v2')).toBe('test-profile.v2');
     expect(sanitizeProfileName('`whoami`')).toBe('whoami');
     expect(sanitizeProfileName('hello world')).toBe('helloworld');
   });
 });
 
-describe('diagnosticStatusClass', () => {
-  it('returns correct CSS classes', () => {
-    expect(diagnosticStatusClass('ok')).toBe('fops-diag-ok');
-    expect(diagnosticStatusClass('warn')).toBe('fops-diag-warn');
-    expect(diagnosticStatusClass('error')).toBe('fops-diag-error');
-    expect(diagnosticStatusClass('unknown')).toBe('fops-diag-unknown');
-    expect(diagnosticStatusClass('other')).toBe('fops-diag-unknown');
-  });
-});
+// =============================================================================
+// Run status helpers (Gateway FleetOpsActionRun fields)
+// =============================================================================
 
 describe('runStatusClass', () => {
   it('returns correct CSS classes', () => {
@@ -189,8 +304,12 @@ describe('runStatusLabel', () => {
   });
 });
 
+// =============================================================================
+// Fleet summary
+// =============================================================================
+
 describe('buildFleetSummary', () => {
-  it('builds a summary string from the response', () => {
+  it('builds a summary string from the response using activeState', () => {
     const response = fakeFleetOpsResponse();
     const summary = buildFleetSummary(response);
     expect(summary).toContain('running');
@@ -199,9 +318,9 @@ describe('buildFleetSummary', () => {
   it('reports failed count when present', () => {
     const response = fakeFleetOpsResponse({
       serviceUnits: [
-        { name: 'svc-1', status: 'running', enabled: true },
-        { name: 'svc-2', status: 'failed', enabled: true },
-        { name: 'svc-3', status: 'crashed', enabled: true },
+        { unitName: 'svc-1', profileName: '', activeState: 'running', subState: 'main', description: 'Svc1' },
+        { unitName: 'svc-2', profileName: '', activeState: 'failed', subState: 'failed', description: 'Svc2' },
+        { unitName: 'svc-3', profileName: '', activeState: 'crashed', subState: 'crashed', description: 'Svc3' },
       ],
     });
     const summary = buildFleetSummary(response);
@@ -209,83 +328,122 @@ describe('buildFleetSummary', () => {
   });
 });
 
-describe('groupActionsByCategory', () => {
-  it('groups actions by category in canonical order', () => {
+// =============================================================================
+// Action grouping by risk level
+// =============================================================================
+
+describe('groupActionsByRisk', () => {
+  it('groups actions by riskLevel in canonical order', () => {
     const response = fakeFleetOpsResponse();
-    const groups = groupActionsByCategory(response.actions);
+    const groups = groupActionsByRisk(response.actions);
 
     expect(groups.length).toBeGreaterThanOrEqual(3);
-    expect(groups[0].category).toBe('diagnostic');
-    expect(groups[1].category).toBe('restart');
-    expect(groups[2].category).toBe('maintenance');
+    expect(groups[0].riskLevel).toBe('low');
+    expect(groups[1].riskLevel).toBe('medium');
+    expect(groups[2].riskLevel).toBe('high');
   });
 
   it('handles empty actions list', () => {
-    const groups = groupActionsByCategory([]);
-    expect(groups).toEqual([]);
-  });
-
-  it('handles unknown categories', () => {
-    const actions: FleetOpsAction[] = [
-      { actionId: 'custom-action', label: 'Custom', category: 'custom-cat', enabled: true },
-    ];
-    const groups = groupActionsByCategory(actions);
-    expect(groups.length).toBe(1);
-    expect(groups[0].category).toBe('custom-cat');
+    expect(groupActionsByRisk([])).toEqual([]);
   });
 });
 
-describe('formatUptime', () => {
-  it('formats seconds', () => {
-    expect(formatUptime(30)).toBe('30s');
+// =============================================================================
+// Run duration formatting (startedAt/finishedAt)
+// =============================================================================
+
+describe('formatRunDuration', () => {
+  it('formats duration between startedAt and finishedAt', () => {
+    expect(formatRunDuration('2026-05-31T20:00:00Z', '2026-05-31T20:00:05Z')).toBe('5s');
+    expect(formatRunDuration('2026-05-31T20:00:00Z', '2026-05-31T20:02:05Z')).toBe('2m 5s');
   });
 
-  it('formats minutes and seconds', () => {
-    expect(formatUptime(125)).toBe('2m 5s');
-  });
-
-  it('formats hours and minutes', () => {
-    expect(formatUptime(3720)).toBe('1h 2m');
-  });
-
-  it('formats days and hours', () => {
-    expect(formatUptime(90000)).toBe('1d 1h');
-  });
-
-  it('returns placeholder for null/undefined', () => {
-    expect(formatUptime(null)).toBe('—');
-    expect(formatUptime(undefined)).toBe('—');
-  });
-
-  it('returns placeholder for negative', () => {
-    expect(formatUptime(-1)).toBe('—');
+  it('returns placeholder for missing timestamps', () => {
+    expect(formatRunDuration(null, null)).toBe('\u2014');
+    expect(formatRunDuration(undefined, undefined)).toBe('\u2014');
+    expect(formatRunDuration('2026-05-31T20:00:00Z', null)).toBe('\u2014');
   });
 });
+
+// =============================================================================
+// Fake fixture factory — aligned with Gateway #1796 contract
+// =============================================================================
 
 describe('fakeFleetOpsResponse', () => {
-  it('creates a valid FleetOpsResponse with defaults', () => {
+  it('creates a valid FleetOpsResponse with Gateway-shaped defaults', () => {
     const response = fakeFleetOpsResponse();
     expect(response.service).toBe('gateway-fleet-ops');
     expect(response.serviceUnits.length).toBeGreaterThanOrEqual(3);
     expect(response.actions.length).toBeGreaterThanOrEqual(3);
-    expect(response.discoveryDiagnostics.length).toBeGreaterThanOrEqual(1);
-    expect(response.recentRuns.length).toBeGreaterThanOrEqual(1);
+    expect(typeof response.discoveryDiagnostics).toBe('string');
+    expect(response.recentRuns!.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('uses Gateway field names on service units', () => {
+    const response = fakeFleetOpsResponse();
+    const unit = response.serviceUnits[0];
+    expect(unit).toHaveProperty('unitName');
+    expect(unit).toHaveProperty('profileName');
+    expect(unit).toHaveProperty('activeState');
+    expect(unit).toHaveProperty('subState');
+    expect(unit).toHaveProperty('description');
+    // Must NOT have invented fields
+    expect(unit).not.toHaveProperty('name');
+    expect(unit).not.toHaveProperty('status');
+    expect(unit).not.toHaveProperty('enabled');
+    expect(unit).not.toHaveProperty('uptimeSeconds');
+  });
+
+  it('uses Gateway field names on actions', () => {
+    const response = fakeFleetOpsResponse();
+    const action = response.actions[0];
+    expect(action).toHaveProperty('actionId');
+    expect(action).toHaveProperty('label');
+    expect(action).toHaveProperty('riskLevel');
+    expect(action).toHaveProperty('mutating');
+    expect(action).toHaveProperty('supportsDryRun');
+    expect(action).toHaveProperty('needsConfirmation');
+    expect(action).toHaveProperty('timeoutSeconds');
+    // Must NOT have invented fields
+    expect(action).not.toHaveProperty('category');
+    expect(action).not.toHaveProperty('enabled');
+    expect(action).not.toHaveProperty('highRisk');
+    expect(action).not.toHaveProperty('requiresConfirmation');
+    expect(action).not.toHaveProperty('requiresArgs');
+  });
+
+  it('uses Gateway field names on runs', () => {
+    const response = fakeFleetOpsResponse();
+    const run = response.recentRuns![0];
+    expect(run).toHaveProperty('runId');
+    expect(run).toHaveProperty('actionId');
+    expect(run).toHaveProperty('status');
+    expect(run).toHaveProperty('createdAt');
+    expect(run).toHaveProperty('wasDryRun');
+    expect(run).toHaveProperty('exitCode');
+    expect(run).toHaveProperty('stdoutTail');
+    expect(run).toHaveProperty('errorMessage');
+    // Must NOT have invented fields
+    expect(run).not.toHaveProperty('dryRun');
+    expect(run).not.toHaveProperty('completedAt');
+    expect(run).not.toHaveProperty('summary');
+    expect(run).not.toHaveProperty('error');
   });
 
   it('accepts overrides for service units', () => {
     const response = fakeFleetOpsResponse({
       serviceUnits: [
-        { name: 'custom-svc', status: 'running', enabled: true },
+        { unitName: 'custom-svc', profileName: 'custom', activeState: 'running', subState: 'main', description: 'Custom' },
       ],
     });
     expect(response.serviceUnits.length).toBe(1);
-    expect(response.serviceUnits[0].name).toBe('custom-svc');
+    expect(response.serviceUnits[0].unitName).toBe('custom-svc');
   });
 
   it('accepts overrides for actions', () => {
     const response = fakeFleetOpsResponse({
       actions: [
-        { actionId: 'custom-action', label: 'Custom', category: 'test', enabled: true },
+        { actionId: 'custom-action', label: 'Custom', riskLevel: 'low', mutating: false, supportsDryRun: true, needsConfirmation: false, timeoutSeconds: 30 },
       ],
     });
     expect(response.actions.length).toBe(1);
@@ -295,10 +453,88 @@ describe('fakeFleetOpsResponse', () => {
   it('accepts overrides for recent runs', () => {
     const response = fakeFleetOpsResponse({
       recentRuns: [
-        { runId: 'run-custom', actionId: 'fleet-status', dryRun: false, status: 'failed', startedAt: null, completedAt: null, error: 'timeout' },
+        { runId: 'run-custom', actionId: 'fleet-status', status: 'failed', createdAt: '2026-05-31T20:00:00Z', wasDryRun: false, errorMessage: 'timeout', exitCode: 1 },
       ],
     });
-    expect(response.recentRuns.length).toBe(1);
-    expect(response.recentRuns[0].error).toBe('timeout');
+    expect(response.recentRuns!.length).toBe(1);
+    expect(response.recentRuns![0].errorMessage).toBe('timeout');
+    expect(response.recentRuns![0].exitCode).toBe(1);
+  });
+
+  it('restart-all is executable (not disabled), just confirmable', () => {
+    const response = fakeFleetOpsResponse();
+    const restartAll = response.actions.find(a => a.actionId === 'restart-all')!;
+    expect(isActionDisabled(restartAll)).toBe(false);
+    expect(isActionExecutable(restartAll)).toBe(true);
+    expect(actionNeedsConfirmation(restartAll)).toBe(true);
+    expect(restartAll.riskLevel).toBe('high');
+    expect(restartAll.confirmationCopy).toBe('Restart ALL fleet services?');
+  });
+
+  it('purge-logs is disabled (has disabledReason)', () => {
+    const response = fakeFleetOpsResponse();
+    const purgeLogs = response.actions.find(a => a.actionId === 'purge-logs')!;
+    expect(isActionDisabled(purgeLogs)).toBe(true);
+    expect(isActionExecutable(purgeLogs)).toBe(false);
+    expect(purgeLogs.disabledReason).toBeTruthy();
+  });
+
+  it('restart-profile has argsSchema with profile arg matching Gateway pattern', () => {
+    const response = fakeFleetOpsResponse();
+    const restartProfile = response.actions.find(a => a.actionId === 'restart-profile')!;
+    expect(restartProfile.argsSchema).toBeDefined();
+    expect(restartProfile.argsSchema!.length).toBeGreaterThan(0);
+    const profileArg = restartProfile.argsSchema!.find(a => a.name === 'profile')!;
+    expect(profileArg.pattern).toBe('^[a-zA-Z0-9_-]+$');
+  });
+});
+
+// =============================================================================
+// Restart-profile sanitized args
+// =============================================================================
+
+describe('restart-profile sanitized args', () => {
+  it('sanitizeProfileName strips dots to match Gateway pattern', () => {
+    // Gateway pattern is ^[a-zA-Z0-9_-]+$ — dots must be stripped
+    expect(sanitizeProfileName('profile.with.dots')).toBe('profilewithdots');
+  });
+
+  it('sanitizeProfileName preserves valid Gateway profile names', () => {
+    expect(sanitizeProfileName('hermes-coder')).toBe('hermes-coder');
+    expect(sanitizeProfileName('my_agent')).toBe('my_agent');
+    expect(sanitizeProfileName('agent-123')).toBe('agent-123');
+  });
+
+  it('sanitizeProfileName strips all shell-injection characters', () => {
+    expect(sanitizeProfileName('; rm -rf /')).toBe('rm-rf');
+    expect(sanitizeProfileName('$(cat /etc/passwd)')).toBe('catetcpasswd');
+    expect(sanitizeProfileName('`id`')).toBe('id');
+    expect(sanitizeProfileName('foo&&bar')).toBe('foobar');
+    expect(sanitizeProfileName('a|b')).toBe('ab');
+  });
+});
+
+// =============================================================================
+// Gateway unavailable/error state
+// =============================================================================
+
+describe('gateway error state', () => {
+  it('buildFleetSummary handles empty serviceUnits gracefully', () => {
+    const response = fakeFleetOpsResponse({
+      serviceUnits: [],
+      recentRuns: [],
+    });
+    const summary = buildFleetSummary(response);
+    expect(summary).toContain('0/0 running');
+  });
+
+  it('fakeFleetOpsResponse supports null discoveryDiagnostics', () => {
+    const response = fakeFleetOpsResponse({ discoveryDiagnostics: null });
+    expect(response.discoveryDiagnostics).toBeNull();
+  });
+
+  it('fakeFleetOpsResponse supports null recentRuns', () => {
+    const response = fakeFleetOpsResponse({ recentRuns: [] });
+    expect(response.recentRuns).toEqual([]);
   });
 });

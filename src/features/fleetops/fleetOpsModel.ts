@@ -1,25 +1,29 @@
 /**
- * Fleet Ops Cockpit Render Model — task #1797
+ * Fleet Ops Cockpit Render Model — task #1797 (r2 fix)
  *
  * Pure-model helpers for the FleetOpsCockpit component. All
  * status labels, CSS classes, action grouping, and fixture
  * factories live here so the TSX stays focused on layout.
+ *
+ * Types are aligned with the den-gateway #1796 contract:
+ *   FleetOpsServiceUnit  → Gateway FleetServiceUnit
+ *   FleetOpsAction       → Gateway FleetActionDescriptor
+ *   FleetOpsActionRun    → Gateway FleetOpsActionRun
  */
 
 import type {
   FleetOpsServiceUnit,
   FleetOpsAction,
-  FleetOpsDiagnosticEntry,
-  FleetOpsRunSummary,
+  FleetOpsActionRun,
   FleetOpsResponse,
 } from '../../api/types';
 
 // =============================================================================
-// Service unit status helpers
+// Service unit status helpers (using activeState from Gateway)
 // =============================================================================
 
-export function unitStatusLabel(status: string): string {
-  const normalized = status.toLowerCase().trim();
+export function unitStatusLabel(activeState: string): string {
+  const normalized = activeState.toLowerCase().trim();
   switch (normalized) {
     case 'running': return 'Running';
     case 'active': return 'Active';
@@ -30,12 +34,12 @@ export function unitStatusLabel(status: string): string {
     case 'degraded': return 'Degraded';
     case 'disabled': return 'Disabled';
     case 'unknown': return 'Unknown';
-    default: return status;
+    default: return activeState;
   }
 }
 
-export function unitStatusClass(status: string): string {
-  const normalized = status.toLowerCase().trim();
+export function unitStatusClass(activeState: string): string {
+  const normalized = activeState.toLowerCase().trim();
   switch (normalized) {
     case 'running':
     case 'active':
@@ -56,68 +60,90 @@ export function unitStatusClass(status: string): string {
 }
 
 // =============================================================================
-// Action helpers
+// Action helpers (using Gateway FleetActionDescriptor fields)
 // =============================================================================
 
-export function actionCategoryLabel(category: string): string {
-  switch (category) {
-    case 'diagnostic': return 'Diagnostics';
-    case 'restart': return 'Restart';
-    case 'maintenance': return 'Maintenance';
-    default: return category;
-  }
-}
-
-export function actionCategoryClass(category: string): string {
-  return `fops-action-cat-${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+/**
+ * Derive whether an action is disabled (has a disabledReason from Gateway).
+ */
+export function isActionDisabled(action: FleetOpsAction): boolean {
+  return action.disabledReason != null && action.disabledReason !== '';
 }
 
 /**
- * Check if an action can be executed (enabled and not high-risk disabled).
+ * Check if an action can be executed: not disabled. Even high-risk / mutating
+ * actions are executable — they just go through the confirmation flow.
  */
 export function isActionExecutable(action: FleetOpsAction): boolean {
-  return action.enabled && !action.highRisk;
+  return !isActionDisabled(action);
+}
+
+/**
+ * Check if an action needs confirmation before execution.
+ * Uses Gateway needsConfirmation flag; also true for mutating actions as a
+ * safety net.
+ */
+export function actionNeedsConfirmation(action: FleetOpsAction): boolean {
+  if (isActionDisabled(action)) return false;
+  return action.needsConfirmation || action.mutating;
+}
+
+/**
+ * Get the confirmation prompt text for an action.
+ * Uses Gateway confirmationCopy when present; otherwise a generic message
+ * for mutating actions.
+ */
+export function actionConfirmationPrompt(action: FleetOpsAction): string {
+  if (action.confirmationCopy) return action.confirmationCopy;
+  if (action.mutating) return `This action (${action.label}) modifies fleet state. Type confirm to proceed.`;
+  return 'Type confirm to proceed.';
+}
+
+/**
+ * Derive risk-level CSS class from Gateway riskLevel field.
+ */
+export function riskLevelClass(riskLevel: string): string {
+  const normalized = riskLevel.toLowerCase().trim();
+  switch (normalized) {
+    case 'high': return 'fops-risk-high';
+    case 'medium': return 'fops-risk-medium';
+    case 'low': return 'fops-risk-low';
+    default: return 'fops-risk-unknown';
+  }
+}
+
+/**
+ * Derive a UI risk label from Gateway riskLevel field.
+ */
+export function riskLevelLabel(riskLevel: string): string {
+  const cap = riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1).toLowerCase();
+  return `${cap} Risk`;
 }
 
 /**
  * Extract profile names from serviceUnits for the restart-profile action.
+ * Uses Gateway profileName field directly.
  */
 export function extractProfileNames(units: FleetOpsServiceUnit[]): string[] {
   const profiles = new Set<string>();
   for (const unit of units) {
-    if (unit.profile) {
-      profiles.add(unit.profile);
-    } else if (unit.name && !unit.name.startsWith('den-core')) {
-      // Use the unit name as a profile candidate
-      profiles.add(unit.name);
+    if (unit.profileName) {
+      profiles.add(unit.profileName);
     }
   }
   return Array.from(profiles).sort();
 }
 
 /**
- * Sanitize a profile name: only allow alphanumeric, dash, underscore, dot.
+ * Sanitize a profile name: only allow alphanumeric, dash, underscore
+ * (matching Gateway pattern ^[a-zA-Z0-9_-]+$ — no dots).
  */
 export function sanitizeProfileName(raw: string): string {
-  return raw.replace(/[^a-zA-Z0-9._-]/g, '');
+  return raw.replace(/[^a-zA-Z0-9_-]/g, '');
 }
 
 // =============================================================================
-// Diagnostic helpers
-// =============================================================================
-
-export function diagnosticStatusClass(status: string): string {
-  const normalized = status.toLowerCase().trim();
-  switch (normalized) {
-    case 'ok': return 'fops-diag-ok';
-    case 'warn': return 'fops-diag-warn';
-    case 'error': return 'fops-diag-error';
-    default: return 'fops-diag-unknown';
-  }
-}
-
-// =============================================================================
-// Run status helpers
+// Run status helpers (using Gateway FleetOpsActionRun fields)
 // =============================================================================
 
 export function runStatusClass(status: string): string {
@@ -147,54 +173,56 @@ export function runStatusLabel(status: string): string {
 // =============================================================================
 
 export function buildFleetSummary(response: FleetOpsResponse): string {
-  const total = response.serviceUnits.length;
-  const running = response.serviceUnits.filter(u =>
-    u.status.toLowerCase() === 'running' || u.status.toLowerCase() === 'active'
+  const units = response.serviceUnits;
+  const total = units.length;
+  const running = units.filter(u =>
+    u.activeState.toLowerCase() === 'running' || u.activeState.toLowerCase() === 'active'
   ).length;
-  const failed = response.serviceUnits.filter(u =>
-    u.status.toLowerCase() === 'failed' || u.status.toLowerCase() === 'crashed'
+  const failed = units.filter(u =>
+    u.activeState.toLowerCase() === 'failed' || u.activeState.toLowerCase() === 'crashed'
   ).length;
   const parts = [`${running}/${total} running`];
   if (failed > 0) parts.push(`${failed} failed`);
-  if (response.recentRuns.length > 0) parts.push(`${response.recentRuns.length} recent runs`);
+  const runs = response.recentRuns ?? [];
+  if (runs.length > 0) parts.push(`${runs.length} recent runs`);
   return parts.join(' · ');
 }
 
 // =============================================================================
-// Grouping
+// Grouping actions by riskLevel as a simple UI grouping strategy
 // =============================================================================
 
-export interface ActionCategoryGroup {
-  category: string;
+export interface ActionRiskGroup {
+  riskLevel: string;
   label: string;
   cssClass: string;
   actions: FleetOpsAction[];
 }
 
-export function groupActionsByCategory(actions: FleetOpsAction[]): ActionCategoryGroup[] {
+export function groupActionsByRisk(actions: FleetOpsAction[]): ActionRiskGroup[] {
   const groupMap = new Map<string, FleetOpsAction[]>();
-  const categoryOrder = ['diagnostic', 'restart', 'maintenance'];
+  const riskOrder = ['low', 'medium', 'high'];
 
   for (const action of actions) {
-    const cat = action.category || 'other';
-    const list = groupMap.get(cat) ?? [];
+    const rl = (action.riskLevel || 'unknown').toLowerCase();
+    const list = groupMap.get(rl) ?? [];
     list.push(action);
-    groupMap.set(cat, list);
+    groupMap.set(rl, list);
   }
 
-  // Ensure order: diagnostic, restart, maintenance, then any others
-  const ordered = [...categoryOrder];
-  for (const cat of groupMap.keys()) {
-    if (!ordered.includes(cat)) ordered.push(cat);
+  // Ensure order: low, medium, high, then any others
+  const ordered = [...riskOrder];
+  for (const rl of groupMap.keys()) {
+    if (!ordered.includes(rl)) ordered.push(rl);
   }
 
   return ordered
-    .filter(cat => groupMap.has(cat))
-    .map(cat => ({
-      category: cat,
-      label: actionCategoryLabel(cat),
-      cssClass: actionCategoryClass(cat),
-      actions: groupMap.get(cat)!,
+    .filter(rl => groupMap.has(rl))
+    .map(rl => ({
+      riskLevel: rl,
+      label: riskLevelLabel(rl),
+      cssClass: `fops-action-risk-${rl}`,
+      actions: groupMap.get(rl)!,
     }));
 }
 
@@ -202,84 +230,84 @@ export function groupActionsByCategory(actions: FleetOpsAction[]): ActionCategor
 // Formatting
 // =============================================================================
 
-export function formatUptime(seconds: number | null | undefined): string {
-  if (seconds == null || seconds < 0) return '—';
-  if (seconds < 60) return `${Math.round(seconds)}s`;
+export function formatRunDuration(
+  startedAt?: string | null,
+  finishedAt?: string | null,
+): string {
+  if (!startedAt || !finishedAt) return '\u2014';
+  const ms = new Date(finishedAt).getTime() - new Date(startedAt).getTime();
+  if (ms < 0) return '\u2014';
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
   const mins = Math.floor(seconds / 60);
-  if (mins < 60) return `${mins}m ${Math.round(seconds % 60)}s`;
+  const remSec = seconds % 60;
+  if (mins < 60) return `${mins}m ${remSec}s`;
   const hours = Math.floor(mins / 60);
-  const remainingMins = mins % 60;
-  if (hours < 24) return `${hours}h ${remainingMins}m`;
-  const days = Math.floor(hours / 24);
-  const remainingHours = hours % 24;
-  return `${days}d ${remainingHours}h`;
+  const remMins = mins % 60;
+  return `${hours}h ${remMins}m`;
 }
 
 // =============================================================================
-// Fake fixture factories for testing
+// Fake fixture factories for testing — aligned with Gateway #1796 contract
 // =============================================================================
 
 export interface FakeFleetOpsOpts {
   service?: string;
   serviceUnits?: Partial<FleetOpsServiceUnit>[];
   actions?: Partial<FleetOpsAction>[];
-  discoveryDiagnostics?: Partial<FleetOpsDiagnosticEntry>[];
-  recentRuns?: Partial<FleetOpsRunSummary>[];
+  discoveryDiagnostics?: string | null;
+  recentRuns?: Partial<FleetOpsActionRun>[];
 }
 
 export function fakeFleetOpsResponse(opts: FakeFleetOpsOpts = {}): FleetOpsResponse {
   const defaultUnits: FleetOpsServiceUnit[] = [
-    { name: 'hermes-coder', status: 'running', enabled: true, profile: 'hermes-coder', description: 'Coder agent', pid: 12345, uptimeSeconds: 86400 },
-    { name: 'hermes-reviewer', status: 'running', enabled: true, profile: 'hermes-reviewer', description: 'Reviewer agent', pid: 12346, uptimeSeconds: 72000 },
-    { name: 'den-hermes-runner', status: 'running', enabled: true, profile: null, description: 'Orchestrator', pid: 12340, uptimeSeconds: 172800 },
-    { name: 'hermes-pilot', status: 'stopped', enabled: true, profile: 'hermes-pilot', description: 'Legacy pilot', pid: null, uptimeSeconds: null },
-    { name: 'den-core', status: 'running', enabled: true, profile: null, description: 'Core API', pid: 12300, uptimeSeconds: 200000 },
+    { unitName: 'hermes-coder', profileName: 'hermes-coder', activeState: 'running', subState: 'main', pid: 12345, statusSummary: 'OK', description: 'Coder agent' },
+    { unitName: 'hermes-reviewer', profileName: 'hermes-reviewer', activeState: 'running', subState: 'main', pid: 12346, statusSummary: 'OK', description: 'Reviewer agent' },
+    { unitName: 'den-hermes-runner', profileName: '', activeState: 'running', subState: 'main', pid: 12340, statusSummary: 'OK', description: 'Orchestrator' },
+    { unitName: 'hermes-pilot', profileName: 'hermes-pilot', activeState: 'stopped', subState: 'dead', pid: null, statusSummary: 'Not running', description: 'Legacy pilot' },
+    { unitName: 'den-core', profileName: '', activeState: 'running', subState: 'main', pid: 12300, statusSummary: 'OK', description: 'Core API' },
   ];
 
   const defaultActions: FleetOpsAction[] = [
-    { actionId: 'fleet-status', label: 'Fleet Status', category: 'diagnostic', enabled: true, description: 'Show fleet status', requiresConfirmation: false, supportsDryRun: true, requiresArgs: false },
-    { actionId: 'fleet-smoke', label: 'Fleet Smoke Test', category: 'diagnostic', enabled: true, description: 'Run smoke tests', requiresConfirmation: false, supportsDryRun: true, requiresArgs: false },
-    { actionId: 'restart-all', label: 'Restart All', category: 'restart', enabled: true, description: 'Restart all fleet services', requiresConfirmation: true, supportsDryRun: true, requiresArgs: false },
-    { actionId: 'restart-failed', label: 'Restart Failed', category: 'restart', enabled: true, description: 'Restart only failed services', requiresConfirmation: true, supportsDryRun: false, requiresArgs: false },
-    { actionId: 'restart-profile', label: 'Restart Profile', category: 'restart', enabled: true, description: 'Restart a specific profile', requiresConfirmation: true, supportsDryRun: false, requiresArgs: true },
-    { actionId: 'purge-logs', label: 'Purge Logs', category: 'maintenance', enabled: false, highRisk: true, description: 'Dangerous: purge all logs', requiresConfirmation: true, supportsDryRun: false, requiresArgs: false },
+    { actionId: 'fleet-status', label: 'Fleet Status', riskLevel: 'low', mutating: false, supportsDryRun: true, needsConfirmation: false, timeoutSeconds: 30 },
+    { actionId: 'fleet-smoke', label: 'Fleet Smoke Test', riskLevel: 'low', mutating: false, supportsDryRun: true, needsConfirmation: false, timeoutSeconds: 60 },
+    { actionId: 'restart-all', label: 'Restart All', riskLevel: 'high', mutating: true, supportsDryRun: true, needsConfirmation: true, confirmationCopy: 'Restart ALL fleet services?', timeoutSeconds: 120 },
+    { actionId: 'restart-failed', label: 'Restart Failed', riskLevel: 'medium', mutating: true, supportsDryRun: false, needsConfirmation: true, timeoutSeconds: 90 },
+    { actionId: 'restart-profile', label: 'Restart Profile', riskLevel: 'medium', mutating: true, supportsDryRun: false, needsConfirmation: true, timeoutSeconds: 90, argsSchema: [{ name: 'profile', type: 'string', required: true, description: 'Profile name to restart', pattern: '^[a-zA-Z0-9_-]+$' }] },
+    { actionId: 'purge-logs', label: 'Purge Logs', riskLevel: 'high', mutating: true, supportsDryRun: false, needsConfirmation: true, confirmationCopy: 'This will permanently delete all logs. Continue?', timeoutSeconds: 60, disabledReason: 'Disabled by policy — log purge requires manual intervention' },
   ];
 
-  const defaultDiagnostics: FleetOpsDiagnosticEntry[] = [
-    { check: 'systemd-resolved', status: 'ok', detail: 'All units resolved' },
-    { check: 'service-connectivity', status: 'ok', detail: 'All services reachable' },
-    { check: 'disk-space', status: 'warn', detail: '/var/log at 85% capacity' },
+  const defaultRuns: FleetOpsActionRun[] = [
+    { runId: 'run-001', actionId: 'fleet-status', args: null, status: 'completed', createdAt: '2026-05-31T19:59:00Z', startedAt: '2026-05-31T20:00:00Z', finishedAt: '2026-05-31T20:00:02Z', exitCode: 0, stdoutTail: 'All services healthy', stderrTail: null, errorMessage: null, wasDryRun: false },
+    { runId: 'run-002', actionId: 'restart-failed', args: { profile: 'hermes-pilot' }, status: 'completed', createdAt: '2026-05-31T18:59:00Z', startedAt: '2026-05-31T19:00:00Z', finishedAt: '2026-05-31T19:00:10Z', exitCode: 0, stdoutTail: 'Restarted 1 service', stderrTail: null, errorMessage: null, wasDryRun: false },
+    { runId: 'run-003', actionId: 'fleet-smoke', args: null, status: 'completed', createdAt: '2026-05-31T17:59:00Z', startedAt: '2026-05-31T18:00:00Z', finishedAt: '2026-05-31T18:00:05Z', exitCode: 0, stdoutTail: '6 checks passed', stderrTail: null, errorMessage: null, wasDryRun: true },
   ];
 
-  const defaultRuns: FleetOpsRunSummary[] = [
-    { runId: 'run-001', actionId: 'fleet-status', dryRun: false, status: 'completed', startedAt: '2026-05-31T20:00:00Z', completedAt: '2026-05-31T20:00:02Z', summary: 'All services healthy' },
-    { runId: 'run-002', actionId: 'restart-failed', dryRun: false, status: 'completed', startedAt: '2026-05-31T19:00:00Z', completedAt: '2026-05-31T19:00:10Z', summary: 'Restarted 1 service' },
-    { runId: 'run-003', actionId: 'fleet-smoke', dryRun: true, status: 'completed', startedAt: '2026-05-31T18:00:00Z', completedAt: '2026-05-31T18:00:05Z', summary: 'Dry run: 6 checks passed' },
-  ];
-
-  const units = (opts.serviceUnits ?? defaultUnits).map((u, i) => ({
-    ...(defaultUnits[i] ?? defaultUnits[0]),
-    ...u,
-  }));
-  const actions = (opts.actions ?? defaultActions).map((a, i) => ({
-    ...(defaultActions[i] ?? defaultActions[0]),
-    ...a,
-  }));
-  const diagnostics = (opts.discoveryDiagnostics ?? defaultDiagnostics).map((d, i) => ({
-    ...(defaultDiagnostics[i] ?? defaultDiagnostics[0]),
-    ...d,
-  }));
-  const runs = (opts.recentRuns ?? defaultRuns).map((r, i) => ({
-    ...(defaultRuns[i] ?? defaultRuns[0]),
-    ...r,
-  }));
+  const units = opts.serviceUnits !== undefined
+    ? opts.serviceUnits.map((u, i) => ({
+        ...(defaultUnits[i] ?? defaultUnits[0]),
+        ...u,
+      }))
+    : defaultUnits;
+  const actions = opts.actions !== undefined
+    ? opts.actions.map((a, i) => ({
+        ...(defaultActions[i] ?? defaultActions[0]),
+        ...a,
+      }))
+    : defaultActions;
+  const runs = opts.recentRuns !== undefined
+    ? opts.recentRuns.map((r, i) => ({
+        ...(defaultRuns[i] ?? defaultRuns[0]),
+        ...r,
+      }))
+    : defaultRuns;
 
   return {
     service: opts.service ?? 'gateway-fleet-ops',
     generatedAt: '2026-05-31T23:00:00Z',
-    serviceUnits: units.length > 0 ? units : defaultUnits,
-    actions: actions.length > 0 ? actions : defaultActions,
-    discoveryDiagnostics: diagnostics.length > 0 ? diagnostics : defaultDiagnostics,
-    recentRuns: runs.length > 0 ? runs : defaultRuns,
+    serviceUnits: units,
+    actions: actions,
+    discoveryDiagnostics: opts.discoveryDiagnostics !== undefined ? opts.discoveryDiagnostics : 'systemd-resolved: ok\nservice-connectivity: ok\ndisk-space: warn — /var/log at 85%',
+    recentRuns: runs,
   };
 }

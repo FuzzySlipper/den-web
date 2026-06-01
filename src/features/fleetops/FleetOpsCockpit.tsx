@@ -1,20 +1,22 @@
 import { useState, useCallback, useMemo } from 'react';
-import type { FleetOpsResponse, FleetOpsAction, FleetOpsRunSummary } from '../../api/types';
+import type { FleetOpsResponse, FleetOpsAction, FleetOpsActionRun } from '../../api/types';
 import { getFleetOps, postFleetOpsActionRun, getFleetOpsRun } from '../../api/client';
 import { usePolling } from '../../hooks/usePolling';
 import { formatTimeAgo } from '../../utils';
 import {
   unitStatusLabel,
   unitStatusClass,
-  isActionExecutable,
+  isActionDisabled,
+  actionNeedsConfirmation,
+  actionConfirmationPrompt,
+  riskLevelClass,
   extractProfileNames,
   sanitizeProfileName,
-  diagnosticStatusClass,
   runStatusClass,
   runStatusLabel,
   buildFleetSummary,
-  groupActionsByCategory,
-  formatUptime,
+  groupActionsByRisk,
+  formatRunDuration,
 } from './fleetOpsModel';
 
 // =============================================================================
@@ -52,59 +54,53 @@ export function FleetOpsCockpit() {
   );
 
   const actionGroups = useMemo(
-    () => fleetData ? groupActionsByCategory(fleetData.actions) : [],
+    () => fleetData ? groupActionsByRisk(fleetData.actions) : [],
     [fleetData],
   );
 
   const handleExecuteAction = useCallback(async (action: FleetOpsAction) => {
-    // Cannot execute disabled or high-risk actions
-    if (!isActionExecutable(action) && !action.highRisk) return;
+    // Cannot execute disabled actions
+    if (isActionDisabled(action)) return;
 
-    // High-risk actions need confirmation flow even if "enabled" is true
-    if (action.highRisk) return;
-
-    // Actions requiring confirmation need explicit user approval
-    if (action.requiresConfirmation) {
+    // Actions needing confirmation go through the confirmation flow
+    if (actionNeedsConfirmation(action)) {
       setPendingAction(action);
       setConfirmText('');
       return;
     }
 
-    // Actions requiring args (restart-profile) need a profile selected
-    if (action.requiresArgs && action.actionId === 'restart-profile') {
-      if (!selectedProfile) return;
-    }
+    // Actions with argsSchema requiring profile (restart-profile) need a profile selected
+    if (action.actionId === 'restart-profile' && !selectedProfile) return;
 
     try {
       const args = action.actionId === 'restart-profile' && selectedProfile
         ? { profile: sanitizeProfileName(selectedProfile) }
         : undefined;
 
-      const result = await postFleetOpsActionRun({
+      const run = await postFleetOpsActionRun({
         actionId: action.actionId,
         dryRun: dryRunEnabled || undefined,
         args,
       });
 
-      setLastActionResult({ actionId: action.actionId, success: true, message: `Run ${result.run.runId} started` });
+      // POST returns FleetOpsActionRun directly (not wrapped)
+      setLastActionResult({ actionId: action.actionId, success: true, message: `Run ${run.runId} started` });
 
       // If the run is still running/pending, poll for completion
-      if (result.run.status === 'running' || result.run.status === 'pending') {
-        const runId = result.run.runId;
+      if (run.status === 'running' || run.status === 'pending') {
+        const runId = run.runId;
         setRunningActionRunIds(prev => new Set(prev).add(runId));
 
         const timer = setInterval(async () => {
           try {
             const detail = await getFleetOpsRun(runId);
             if (!detail.run || detail.run.status === 'completed' || detail.run.status === 'failed') {
-              // Stop polling
               clearInterval(timer);
               setRunningActionRunIds(prev => {
                 const next = new Set(prev);
                 next.delete(runId);
                 return next;
               });
-              // Refresh fleet data when run completes
               refresh();
             }
           } catch {
@@ -113,7 +109,6 @@ export function FleetOpsCockpit() {
         }, 3000);
       }
 
-      // Refresh fleet data after triggering
       refresh();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -132,14 +127,14 @@ export function FleetOpsCockpit() {
         ? { profile: sanitizeProfileName(selectedProfile) }
         : undefined;
 
-      const result = await postFleetOpsActionRun({
+      const run = await postFleetOpsActionRun({
         actionId: action.actionId,
         dryRun: dryRunEnabled || undefined,
         args,
         confirmation: confirmText || undefined,
       });
 
-      setLastActionResult({ actionId: action.actionId, success: true, message: `Run ${result.run.runId} started` });
+      setLastActionResult({ actionId: action.actionId, success: true, message: `Run ${run.runId} started` });
       refresh();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -151,6 +146,9 @@ export function FleetOpsCockpit() {
     setPendingAction(null);
     setConfirmText('');
   }, []);
+
+  // Determine the confirmation prompt from the pending action
+  const confirmPrompt = pendingAction ? actionConfirmationPrompt(pendingAction) : '';
 
   return (
     <div className="fops-cockpit">
@@ -191,9 +189,9 @@ export function FleetOpsCockpit() {
 
       {fleetData && (
         <>
-          {/* Discovery Diagnostics */}
-          {fleetData.discoveryDiagnostics.length > 0 && (
-            <FleetDiagnostics diagnostics={fleetData.discoveryDiagnostics} />
+          {/* Discovery Diagnostics (plain text from Gateway) */}
+          {fleetData.discoveryDiagnostics && (
+            <FleetDiagnostics text={fleetData.discoveryDiagnostics} />
           )}
 
           {/* Service Units */}
@@ -212,7 +210,9 @@ export function FleetOpsCockpit() {
           />
 
           {/* Recent Runs */}
-          <FleetRecentRuns runs={fleetData.recentRuns} />
+          {(fleetData.recentRuns ?? []).length > 0 && (
+            <FleetRecentRuns runs={fleetData.recentRuns!} />
+          )}
 
           {/* Last Action Result */}
           {lastActionResult && (
@@ -230,9 +230,7 @@ export function FleetOpsCockpit() {
         <div className="fops-confirm-overlay" role="dialog" aria-label={`Confirm ${pendingAction.label}`}>
           <div className="fops-confirm-dialog">
             <h3>Confirm: {pendingAction.label}</h3>
-            {pendingAction.description && (
-              <p className="fops-confirm-desc">{pendingAction.description}</p>
-            )}
+            <p className="fops-confirm-desc">{confirmPrompt}</p>
             <label className="fops-confirm-label">
               Type <strong>confirm</strong> to proceed:
               <input
@@ -266,21 +264,11 @@ export function FleetOpsCockpit() {
 // Sub-components
 // =============================================================================
 
-function FleetDiagnostics({ diagnostics }: { diagnostics: FleetOpsResponse['discoveryDiagnostics'] }) {
+function FleetDiagnostics({ text }: { text: string }) {
   return (
     <div className="fops-section">
       <h3 className="fops-section-title">Discovery Diagnostics</h3>
-      <div className="fops-diag-list">
-        {diagnostics.map((diag, i) => (
-          <div key={i} className={`fops-diag-item ${diagnosticStatusClass(diag.status)}`}>
-            <span className="fops-diag-check">{diag.check}</span>
-            <span className={`fops-diag-status ${diagnosticStatusClass(diag.status)}`}>
-              {diag.status.toUpperCase()}
-            </span>
-            {diag.detail && <span className="fops-diag-detail">{diag.detail}</span>}
-          </div>
-        ))}
-      </div>
+      <pre className="fops-diag-text">{text}</pre>
     </div>
   );
 }
@@ -294,31 +282,31 @@ function FleetServiceUnits({ units }: { units: FleetOpsResponse['serviceUnits'] 
           <thead>
             <tr>
               <th>Unit</th>
-              <th>Status</th>
+              <th>State</th>
+              <th>Sub</th>
               <th>Profile</th>
               <th>PID</th>
-              <th>Uptime</th>
-              <th>Enabled</th>
+              <th>Summary</th>
             </tr>
           </thead>
           <tbody>
             {units.map(unit => (
-              <tr key={unit.name} className={`fops-unit-row ${unitStatusClass(unit.status)}`}>
+              <tr key={unit.unitName} className={`fops-unit-row ${unitStatusClass(unit.activeState)}`}>
                 <td className="fops-unit-name">
-                  {unit.name}
+                  {unit.unitName}
                   {unit.description && (
                     <span className="fops-unit-desc">{unit.description}</span>
                   )}
                 </td>
                 <td>
-                  <span className={`fops-status-chip ${unitStatusClass(unit.status)}`}>
-                    {unitStatusLabel(unit.status)}
+                  <span className={`fops-status-chip ${unitStatusClass(unit.activeState)}`}>
+                    {unitStatusLabel(unit.activeState)}
                   </span>
                 </td>
-                <td className="fops-unit-profile">{unit.profile ?? '—'}</td>
-                <td className="fops-unit-pid">{unit.pid != null ? String(unit.pid) : '—'}</td>
-                <td className="fops-unit-uptime">{formatUptime(unit.uptimeSeconds ?? null)}</td>
-                <td className="fops-unit-enabled">{unit.enabled ? 'Yes' : 'No'}</td>
+                <td className="fops-unit-substate">{unit.subState}</td>
+                <td className="fops-unit-profile">{unit.profileName || '\u2014'}</td>
+                <td className="fops-unit-pid">{unit.pid != null ? String(unit.pid) : '\u2014'}</td>
+                <td className="fops-unit-summary">{unit.statusSummary ?? '\u2014'}</td>
               </tr>
             ))}
           </tbody>
@@ -329,7 +317,7 @@ function FleetServiceUnits({ units }: { units: FleetOpsResponse['serviceUnits'] 
 }
 
 interface FleetActionsProps {
-  actionGroups: ReturnType<typeof groupActionsByCategory>;
+  actionGroups: ReturnType<typeof groupActionsByRisk>;
   profileNames: string[];
   selectedProfile: string;
   onProfileChange: (profile: string) => void;
@@ -390,33 +378,33 @@ function FleetActions({
 
       {/* Action groups */}
       {actionGroups.map(group => (
-        <div key={group.category} className={`fops-action-group ${group.cssClass}`}>
+        <div key={group.riskLevel} className={`fops-action-group ${group.cssClass}`}>
           <div className="fops-action-group-label">{group.label}</div>
           <div className="fops-action-buttons">
             {group.actions.map(action => {
-              const executable = action.enabled;
-              const isHighRisk = Boolean(action.highRisk);
+              const disabled = isActionDisabled(action);
               const needsProfile = action.actionId === 'restart-profile' && !selectedProfile;
-              const disabled = !executable || isHighRisk || needsProfile;
+              const buttonDisabled = disabled || needsProfile;
 
               return (
                 <button
                   key={action.actionId}
-                  className={`fops-action-button ${executable ? 'fops-action-enabled' : 'fops-action-disabled'} ${isHighRisk ? 'fops-action-highrisk' : ''}`}
+                  className={`fops-action-button ${!disabled ? 'fops-action-enabled' : 'fops-action-disabled'} ${riskLevelClass(action.riskLevel)}`}
                   onClick={() => onExecute(action)}
-                  disabled={disabled}
+                  disabled={buttonDisabled}
                   title={[
-                    action.description,
+                    `Risk: ${action.riskLevel}`,
+                    action.mutating ? 'mutating' : 'read-only',
                     action.supportsDryRun ? 'supports dry-run' : '',
-                    action.requiresConfirmation ? 'requires confirmation' : '',
-                    isHighRisk ? 'HIGH RISK — disabled by policy' : '',
+                    action.needsConfirmation ? 'requires confirmation' : '',
+                    action.disabledReason ?? '',
                     needsProfile ? 'select a profile first' : '',
                   ].filter(Boolean).join('\n')}
                 >
                   {action.label}
                   {action.supportsDryRun && <span className="fops-action-dry-badge">DRY</span>}
-                  {isHighRisk && <span className="fops-action-risk-badge">HIGH RISK</span>}
-                  {!executable && !isHighRisk && <span className="fops-action-disabled-badge">DISABLED</span>}
+                  {!disabled && action.riskLevel === 'high' && <span className="fops-action-risk-badge">HIGH RISK</span>}
+                  {disabled && <span className="fops-action-disabled-badge">DISABLED: {action.disabledReason}</span>}
                 </button>
               );
             })}
@@ -427,9 +415,7 @@ function FleetActions({
   );
 }
 
-function FleetRecentRuns({ runs }: { runs: FleetOpsRunSummary[] }) {
-  if (runs.length === 0) return null;
-
+function FleetRecentRuns({ runs }: { runs: FleetOpsActionRun[] }) {
   return (
     <div className="fops-section">
       <h3 className="fops-section-title">Recent Runs ({runs.length})</h3>
@@ -439,10 +425,11 @@ function FleetRecentRuns({ runs }: { runs: FleetOpsRunSummary[] }) {
             <th>Run ID</th>
             <th>Action</th>
             <th>Status</th>
+            <th>Exit</th>
             <th>Dry Run</th>
-            <th>Started</th>
+            <th>Created</th>
             <th>Duration</th>
-            <th>Summary</th>
+            <th>Output</th>
           </tr>
         </thead>
         <tbody>
@@ -455,18 +442,17 @@ function FleetRecentRuns({ runs }: { runs: FleetOpsRunSummary[] }) {
                   {runStatusLabel(run.status)}
                 </span>
               </td>
-              <td className="fops-run-dry">{run.dryRun ? 'Yes' : ''}</td>
-              <td className="fops-run-started">{run.startedAt ? formatTimeAgo(run.startedAt) : '—'}</td>
-              <td className="fops-run-duration">
-                {run.startedAt && run.completedAt
-                  ? `${Math.round((new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime()) / 1000)}s`
-                  : '—'}
-              </td>
-              <td className="fops-run-summary">
-                {run.error ? (
-                  <span className="fops-run-error">{run.error}</span>
+              <td className="fops-run-exit">{run.exitCode != null ? String(run.exitCode) : '\u2014'}</td>
+              <td className="fops-run-dry">{run.wasDryRun ? 'Yes' : ''}</td>
+              <td className="fops-run-created">{run.createdAt ? formatTimeAgo(run.createdAt) : '\u2014'}</td>
+              <td className="fops-run-duration">{formatRunDuration(run.startedAt, run.finishedAt)}</td>
+              <td className="fops-run-output">
+                {run.errorMessage ? (
+                  <span className="fops-run-error">{run.errorMessage}</span>
                 ) : (
-                  run.summary ?? '—'
+                  <span className="fops-run-stdout" title={run.stderrTail ?? undefined}>
+                    {run.stdoutTail ?? '\u2014'}
+                  </span>
                 )}
               </td>
             </tr>

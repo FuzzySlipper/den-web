@@ -379,109 +379,86 @@ export type TraceSourceAvailability =
 
 // =============================================================================
 // Fleet Ops cockpit (task #1797)
-// Gateway FleetOps API types.
+// Gateway FleetOps API types — aligned with den-gateway #1796 contract.
 // =============================================================================
 
+/** Maps to Gateway FleetServiceUnit */
 export interface FleetOpsServiceUnit {
-  /** Service unit name (e.g. "hermes-coder", "den-hermes-runner") */
+  unitName: string;
+  profileName: string;
+  activeState: string;
+  subState: string;
+  pid?: number | null;
+  statusSummary?: string | null;
+  description: string;
+}
+
+/** Schema for a single action argument */
+export interface FleetOpsActionArgSchema {
   name: string;
-  /** Current status reported by the service manager */
-  status: string;
-  /** Whether the unit is enabled */
-  enabled: boolean;
-  /** Profile name if this is a per-profile unit */
-  profile?: string | null;
-  /** Human-readable description */
-  description?: string | null;
-  /** Last known PID or instance marker */
-  pid?: number | string | null;
-  /** Uptime seconds */
-  uptimeSeconds?: number | null;
+  type: string;
+  required: boolean;
+  description: string;
+  pattern?: string;
 }
 
+/** Maps to Gateway FleetActionDescriptor */
 export interface FleetOpsAction {
-  /** Action identifier — e.g. "fleet-status", "fleet-smoke", "restart-all", "restart-failed", "restart-profile" */
   actionId: string;
-  /** Human-readable label */
   label: string;
-  /** Category for grouping (e.g. "diagnostic", "restart", "maintenance") */
-  category: string;
-  /** Whether the action is currently allowed */
-  enabled: boolean;
-  /** If false, the UI must show the button as disabled */
-  highRisk?: boolean;
-  /** Short description */
-  description?: string | null;
-  /** Whether this action requires confirmation */
-  requiresConfirmation?: boolean;
-  /** Whether this action supports dry-run */
-  supportsDryRun?: boolean;
-  /** Whether this action requires args (e.g. profile name for restart-profile) */
-  requiresArgs?: boolean;
+  riskLevel: string;
+  mutating: boolean;
+  supportsDryRun: boolean;
+  needsConfirmation: boolean;
+  confirmationCopy?: string | null;
+  timeoutSeconds: number;
+  argsSchema?: FleetOpsActionArgSchema[] | null;
+  disabledReason?: string | null;
 }
 
-export interface FleetOpsDiagnosticEntry {
-  /** Diagnostic check name */
-  check: string;
-  /** Status: "ok", "warn", "error", "unknown" */
-  status: string;
-  /** Human-readable detail */
-  detail?: string | null;
-}
-
-export interface FleetOpsRunSummary {
-  /** Unique run identifier */
+/** Maps to Gateway FleetOpsActionRun */
+export interface FleetOpsActionRun {
   runId: string;
-  /** Action that was triggered */
   actionId: string;
-  /** Whether this was a dry run */
-  dryRun: boolean;
-  /** Run status: "pending", "running", "completed", "failed" */
+  args?: Record<string, unknown> | null;
   status: string;
-  /** When the run was started */
-  startedAt: string | null;
-  /** When the run completed */
-  completedAt: string | null;
-  /** Summary of results */
-  summary?: string | null;
-  /** Error detail if failed */
-  error?: string | null;
+  createdAt: string;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  exitCode?: number | null;
+  stdoutTail?: string | null;
+  stderrTail?: string | null;
+  errorMessage?: string | null;
+  wasDryRun: boolean;
 }
 
+/** Maps to Gateway FleetOpsOverviewResponse */
 export interface FleetOpsResponse {
-  /** Service name (e.g. "gateway-fleet-ops") */
   service: string;
-  /** Timestamp of generation */
   generatedAt: string;
-  /** Service unit statuses */
   serviceUnits: FleetOpsServiceUnit[];
-  /** Available actions */
   actions: FleetOpsAction[];
-  /** Discovery diagnostics */
-  discoveryDiagnostics: FleetOpsDiagnosticEntry[];
-  /** Recent action runs */
-  recentRuns: FleetOpsRunSummary[];
+  discoveryDiagnostics?: string | null;
+  recentRuns?: FleetOpsActionRun[] | null;
 }
 
+/** POST body for /actions/{actionId}/runs */
 export interface FleetOpsActionRunRequest {
-  /** The action to execute */
   actionId: string;
-  /** Whether to perform a dry run */
   dryRun?: boolean;
-  /** Action arguments (e.g. { profile: "hermes-coder" } for restart-profile) */
-  args?: Record<string, string> | null;
-  /** Confirmation token/string for high-risk actions */
+  args?: Record<string, unknown> | null;
   confirmation?: string | null;
 }
 
-export interface FleetOpsActionRunResponse {
-  /** The created run */
-  run: FleetOpsRunSummary;
-}
+/**
+ * POST /actions/{actionId}/runs returns a FleetOpsActionRun directly
+ * (not wrapped). Error responses may also be run-shaped with errorMessage.
+ */
+export type FleetOpsActionRunResponse = FleetOpsActionRun;
 
+/** GET /runs/{runId} returns { run: FleetOpsActionRun | null } */
 export interface FleetOpsRunDetailResponse {
-  /** The run detail, or null if not found */
-  run: FleetOpsRunSummary | null;
+  run: FleetOpsActionRun | null;
 }
 
 export interface AssignmentTraceResponse {
