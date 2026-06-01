@@ -6,7 +6,8 @@
  * Zero-dependency Node.js static file server + reverse proxy for Den Web.
  *
  * Serves the production build of Den Web (React/Vite SPA) from STATIC_ROOT,
- * proxies /den-core-api/* to Den Core (stripping the prefix), and
+ * proxies /den-core-api/* to Den Core (stripping the prefix), proxies
+ * /den-gateway-api/* to Den Gateway (rewriting to /api/gateway/*), and
  * proxies /api/* to Den Channels (preserving the prefix). Falls back to
  * index.html for unknown paths (SPA routing). Serves /den-web-config.json
  * from a configurable path or from sensible defaults.
@@ -17,13 +18,14 @@
  *   STATIC_ROOT           - directory with built static assets (default: /data/services/den-web/wwwroot)
  *   DEN_CORE_TARGET       - Den Core backend URL (default: http://127.0.0.1:5299)
  *   DEN_CHANNELS_TARGET   - Den Channels backend URL (default: http://127.0.0.1:18081)
+ *   DEN_GATEWAY_TARGET    - Den Gateway backend URL (default: http://127.0.0.1:5300)
  *   DEN_WEB_CONFIG_PATH   - path to den-web-config.json (default: ${STATIC_ROOT}/den-web-config.json)
  *   DEN_WEB_BUILD_SENTINEL - path to den-web-build.json (default: ${STATIC_ROOT}/den-web-build.json)
  *   CACHE_MAX_AGE_SECONDS - max-age for immutable assets (default: 31536000)
  *   CACHE_HTML_SECONDS    - max-age for HTML and un-hashed files (default: 0)
  *   DEN_CORE_API_BASE     - runtime config Core API base (default: /den-core-api)
  *   DEN_CHANNELS_API_BASE - runtime config Channels API base (default: /api)
- *   DEN_GATEWAY_API_BASE  - runtime config Gateway API base (default: /api/gateway)
+ *   DEN_GATEWAY_API_BASE  - runtime config Gateway API base (default: /den-gateway-api)
  *   APP_BASE_PATH         - runtime config app base path (default: /)
  *   ENVIRONMENT_NAME      - runtime config environment label (default: den-srv)
  */
@@ -40,6 +42,7 @@ const HOST             = process.env.HOST ?? '0.0.0.0';
 const STATIC_ROOT      = process.env.STATIC_ROOT ?? '/data/services/den-web/wwwroot';
 const DEN_CORE_TARGET  = process.env.DEN_CORE_TARGET ?? 'http://127.0.0.1:5299';
 const DEN_CHANNELS_TARGET = process.env.DEN_CHANNELS_TARGET ?? 'http://127.0.0.1:18081';
+const DEN_GATEWAY_TARGET = process.env.DEN_GATEWAY_TARGET ?? 'http://127.0.0.1:5300';
 const CONFIG_PATH      = process.env.DEN_WEB_CONFIG_PATH ?? path.join(STATIC_ROOT, 'den-web-config.json');
 const BUILD_SENTINEL_PATH = process.env.DEN_WEB_BUILD_SENTINEL ?? path.join(STATIC_ROOT, 'den-web-build.json');
 const CACHE_MAX_AGE    = parseInt(process.env.CACHE_MAX_AGE_SECONDS ?? '31536000', 10);
@@ -146,7 +149,7 @@ function loadConfig() {
     const defaults = {
       denCoreApiBase: process.env.DEN_CORE_API_BASE ?? '/den-core-api',
       denChannelsApiBase: process.env.DEN_CHANNELS_API_BASE ?? '/api',
-      denGatewayApiBase: process.env.DEN_GATEWAY_API_BASE ?? '/api/gateway',
+      denGatewayApiBase: process.env.DEN_GATEWAY_API_BASE ?? '/den-gateway-api',
       appBasePath: process.env.APP_BASE_PATH ?? '/',
       environmentName: process.env.ENVIRONMENT_NAME ?? 'den-srv',
     };
@@ -273,6 +276,14 @@ function handleRequest(req, res) {
     return proxyRequest(DEN_CORE_TARGET, req, res, () => stripped + requestSearch);
   }
 
+  // ── Gateway FleetOps/API proxy ──
+  if (requestPath.startsWith('/den-gateway-api/') || requestPath === '/den-gateway-api') {
+    // Rewrite /den-gateway-api prefix to den-gateway's internal /api/gateway namespace.
+    const suffix = requestPath.replace(/^\/den-gateway-api/, '') || '/';
+    const rewritten = `/api/gateway${suffix === '/' ? '' : suffix}`;
+    return proxyRequest(DEN_GATEWAY_TARGET, req, res, () => rewritten + requestSearch);
+  }
+
   // ── Channels/Gateway/Agents API proxy ──
   if (requestPath.startsWith('/api/')) {
     return proxyRequest(DEN_CHANNELS_TARGET, req, res, () => requestPath + requestSearch);
@@ -310,6 +321,7 @@ server.listen(PORT, HOST, () => {
   console.log(`[den-web-static-server] static root: ${STATIC_ROOT}`);
   console.log(`[den-web-static-server] Den Core target: ${DEN_CORE_TARGET}`);
   console.log(`[den-web-static-server] Den Channels target: ${DEN_CHANNELS_TARGET}`);
+  console.log(`[den-web-static-server] Den Gateway target: ${DEN_GATEWAY_TARGET}`);
   if (configData) {
     console.log(`[den-web-static-server] config: ${CONFIG_PATH}`);
   } else {

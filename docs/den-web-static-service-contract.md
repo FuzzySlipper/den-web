@@ -48,7 +48,8 @@ The browser app must use explicit configured API bases and must not infer backen
 | --- | --- | --- | --- | --- |
 | Den Core | `den-core` | `/den-core-api` | `/den-core-api/health`, `/den-core-api/api/projects` | Canonical tasks/docs/messages/workflow REST facade. Current live health returns commit/version metadata. |
 | Den Channels | `den-channels` | `/api` | `/api/channels?limit=1` | Channel/chat/membership/reaction/activity APIs. The current extracted app may temporarily keep this base for compatibility. |
-| Gateway-visible Channels helpers | `den-channels` + `den-gateway` | `/api/gateway` | `/api/gateway/memberships?projectId=den-web` | Direct-agent message, membership, test-wake, and delivery-observability helpers exposed through Channels. |
+| Gateway-visible Channels helpers | `den-channels` | `/api/gateway` | `/api/gateway/memberships?projectId=den-web` | Direct-agent message, membership, test-wake, and delivery-observability helpers exposed through Channels. |
+| Den Gateway service APIs | `den-gateway` | `/den-gateway-api` | `/den-gateway-api/fleet-ops` | Den Gateway-owned APIs. The static service rewrites `/den-gateway-api/*` to den-gateway's internal `/api/gateway/*` namespace to avoid colliding with Channels' `/api/gateway/*` helpers. |
 | Agents overview | `den-channels` aggregate over Gateway/Core | `/api/agents` | `/api/agents/overview` | Read-only operator overview; must degrade gracefully if Gateway data is unavailable. |
 
 Current ClientApp code already uses two Vite build-time variables:
@@ -56,7 +57,7 @@ Current ClientApp code already uses two Vite build-time variables:
 - `VITE_DEN_CORE_API_BASE`, fallback `/den-core-api`;
 - `VITE_DEN_CHANNELS_API_BASE`, fallback `/api`.
 
-During scaffold extraction (#1706), keep those names working for compatibility. Add a Gateway-specific frontend adapter later only if the code split needs it; the first extraction may continue to reach Gateway helper routes through the Channels API base (`/api/gateway/...`).
+During scaffold extraction (#1706), keep those names working for compatibility. Channels helper routes under `/api/gateway/...` continue to use the Channels API base. Den Gateway-owned APIs use the separate Gateway-specific frontend adapter and `/den-gateway-api` runtime base.
 
 ## Runtime config strategy
 
@@ -66,7 +67,7 @@ Required precedence for the extracted app:
 
 1. Runtime config loaded from `/den-web-config.json` when present.
 2. Vite build-time env values (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, and future `VITE_DEN_GATEWAY_API_BASE`) as fallback.
-3. Safe local defaults: `/den-core-api`, `/api`, and `/api/gateway`.
+3. Safe local defaults: `/den-core-api`, `/api`, and `/den-gateway-api`.
 
 Recommended runtime config keys:
 
@@ -74,7 +75,7 @@ Recommended runtime config keys:
 | --- | --- | --- |
 | `denCoreApiBase` | `/den-core-api` | Core REST facade base path. |
 | `denChannelsApiBase` | `/api` | Channels API base path. |
-| `denGatewayApiBase` | `/api/gateway` | Gateway-visible helper route base exposed through Channels. |
+| `denGatewayApiBase` | `/den-gateway-api` | Den Gateway-owned service API base; currently used by FleetOps and rewritten by the static service to den-gateway's internal `/api/gateway` route. |
 | `appBasePath` | `/` | Static app base path. |
 | `environmentName` | `den-srv` | Human-readable deployment/environment label. |
 
@@ -116,8 +117,9 @@ After standalone deployment (#1707), smoke the public URL and API-backed UI path
 3. Channels API reachability:
    - `curl -fsS 'http://192.168.1.10:18080/api/channels?limit=1'`.
    - For the Den Web project channel, `curl -fsS 'http://192.168.1.10:18080/api/gateway/memberships?projectId=den-web'` should return the project default channel and membership list, even if the member list is empty.
-4. Gateway/agents overview reachability:
+4. Gateway/agents overview and Den Gateway API reachability:
    - `curl -fsS http://192.168.1.10:18080/api/agents/overview` returns JSON or a UI-degradable health warning, not a hard app crash.
+   - `curl -fsS http://192.168.1.10:18080/den-gateway-api/fleet-ops` returns the FleetOps overview JSON shape without consuming `/api/gateway/*`.
 5. Browser behavior smoke:
    - project/space list loads from Core;
    - document list/detail and discussion panel load without mixing comments into document body;

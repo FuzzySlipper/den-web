@@ -170,6 +170,12 @@ async function checkConfig() {
     fail('config.denChannelsApiBase', `expected "/api", got "${config.denChannelsApiBase}"`);
   }
 
+  if (config.denGatewayApiBase === '/den-gateway-api') {
+    pass('config.denGatewayApiBase == "/den-gateway-api"');
+  } else {
+    fail('config.denGatewayApiBase', `expected "/den-gateway-api", got "${config.denGatewayApiBase}"`);
+  }
+
   if (config.environmentName === EXPECTED_ENV_NAME) {
     pass(`config.environmentName == "${EXPECTED_ENV_NAME}"`);
   } else {
@@ -241,6 +247,25 @@ async function checkChannelsApi() {
   assertJson('/api/agents/overview returns JSON', overview);
 }
 
+async function checkDenGatewayApi() {
+  console.log('\n── Den Gateway API (via /den-gateway-api/) ──');
+
+  const fleetOps = await fetchUrl(fullUrl('/den-gateway-api/fleet-ops'));
+  assertStatus('GET /den-gateway-api/fleet-ops', fleetOps);
+  assertJson('/den-gateway-api/fleet-ops returns JSON', fleetOps);
+
+  try {
+    const body = JSON.parse(fleetOps.body);
+    if (body.service === 'den-gateway' && Array.isArray(body.actions)) {
+      pass('/den-gateway-api/fleet-ops returns FleetOps overview shape');
+    } else {
+      fail('/den-gateway-api/fleet-ops shape', 'expected service="den-gateway" and actions array');
+    }
+  } catch (e) {
+    fail('/den-gateway-api/fleet-ops shape', `invalid JSON: ${e.message}`);
+  }
+}
+
 async function checkDocumentDiscussion() {
   console.log('\n── Document discussion API ──');
 
@@ -275,6 +300,7 @@ async function main() {
     await checkBuildSentinel();
     await checkCoreApi();
     await checkChannelsApi();
+    await checkDenGatewayApi();
     await checkDocumentDiscussion();
   } catch (err) {
     console.error(`\n  ERROR  Unhandled exception: ${err.message}`);

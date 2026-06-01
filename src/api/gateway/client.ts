@@ -15,12 +15,12 @@ import type {
 } from './types';
 import { normalizeApiBase } from '../config';
 
-let denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
-let denGatewayApiBase = normalizeApiBase(import.meta.env.VITE_DEN_GATEWAY_API_BASE, '/api/gateway');
+const denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
+let denGatewayApiBase = normalizeApiBase(import.meta.env.VITE_DEN_GATEWAY_API_BASE, '/den-gateway-api');
 
 /** Reinitialize Gateway-specific base URL from runtime config. */
 export function reinitGatewayBase(base: string): void {
-  denGatewayApiBase = normalizeApiBase(base, '/api/gateway');
+  denGatewayApiBase = normalizeApiBase(base, '/den-gateway-api');
 }
 
 function channelsApiUrl(url: string): string {

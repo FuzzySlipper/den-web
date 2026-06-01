@@ -26,7 +26,7 @@ export async function initClient(): Promise<void> {
 export function resetClient(): void {
   resetCoreClient();
   reinitChannelsBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE ?? '/api');
-  reinitGatewayBase(import.meta.env.VITE_DEN_GATEWAY_API_BASE ?? '/api/gateway');
+  reinitGatewayBase(import.meta.env.VITE_DEN_GATEWAY_API_BASE ?? '/den-gateway-api');
 }
 export type {
   ListSpacesOpts,

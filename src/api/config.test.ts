@@ -44,7 +44,7 @@ describe('getConfig - no runtime config (404)', () => {
 
     expect(config.denCoreApiBase).toBe('/den-core-api');
     expect(config.denChannelsApiBase).toBe('/api');
-    expect(config.denGatewayApiBase).toBe('/api/gateway');
+    expect(config.denGatewayApiBase).toBe('/den-gateway-api');
     expect(config.appBasePath).toBe('/');
     expect(config.environmentName).toBe('development');
   });

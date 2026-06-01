@@ -4,7 +4,7 @@
  * Precedence (highest to lowest):
  * 1. Runtime config fetched from `/den-web-config.json` (deploy-time JSON file)
  * 2. Vite build-time env variables (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`)
- * 3. Safe local defaults (`/den-core-api`, `/api`, `/api/gateway`)
+ * 3. Safe local defaults (`/den-core-api`, `/api`, `/den-gateway-api`)
  *
  * Malformed or inaccessible config triggers a console diagnostic and falls back
  * gracefully — it never silently points at wrong API endpoints.
@@ -21,7 +21,7 @@ export interface DenWebRuntimeConfig {
 const DEFAULTS: DenWebRuntimeConfig = {
   denCoreApiBase: '/den-core-api',
   denChannelsApiBase: '/api',
-  denGatewayApiBase: '/api/gateway',
+  denGatewayApiBase: '/den-gateway-api',
   appBasePath: '/',
   environmentName: 'development',
 };

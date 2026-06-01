@@ -13,6 +13,7 @@ services.
 | Den Web static service | `den-srv:18080` | `/` | SPA frontend, static assets, runtime config |
 | Den Core (backend) | `den-srv:5299` (127.0.0.1) | `/den-core-api/*` | Core REST facade (tasks, docs, messages) |
 | Den Channels (backend) | `den-srv:18081` | `/api/*` | Channels/Gateway/Agents API |
+| Den Gateway (backend) | `den-srv:5300` (127.0.0.1) | `/den-gateway-api/*` → `/api/gateway/*` | FleetOps and Den Gateway-owned APIs |
 | Public operator URL | `http://192.168.1.10:18080/` | — | Entry point for browser users |
 
 ## Deploy root
@@ -54,7 +55,7 @@ Expected contents for `den-srv`:
 {
   "denCoreApiBase": "/den-core-api",
   "denChannelsApiBase": "/api",
-  "denGatewayApiBase": "/api/gateway",
+  "denGatewayApiBase": "/den-gateway-api",
   "appBasePath": "/",
   "environmentName": "den-srv"
 }
@@ -129,6 +130,7 @@ Environment=HOST=0.0.0.0
 Environment=STATIC_ROOT=/data/services/den-web/wwwroot
 Environment=DEN_CORE_TARGET=http://127.0.0.1:5299
 Environment=DEN_CHANNELS_TARGET=http://127.0.0.1:18081
+Environment=DEN_GATEWAY_TARGET=http://127.0.0.1:5300
 
 # Hardening
 NoNewPrivileges=true
@@ -176,6 +178,7 @@ Expected output: all PASS lines, exit code 0.
 | `STATIC_ROOT` | `/data/services/den-web/wwwroot` | Static asset directory |
 | `DEN_CORE_TARGET` | `http://127.0.0.1:5299` | Den Core backend URL |
 | `DEN_CHANNELS_TARGET` | `http://127.0.0.1:18081` | Den Channels backend URL |
+| `DEN_GATEWAY_TARGET` | `http://127.0.0.1:5300` | Den Gateway backend URL |
 | `DEN_WEB_CONFIG_PATH` | `${STATIC_ROOT}/den-web-config.json` | Path to runtime config |
 | `DEN_WEB_BUILD_SENTINEL` | `${STATIC_ROOT}/den-web-build.json` | Path to build sentinel |
 | `CACHE_MAX_AGE_SECONDS` | `31536000` | max-age for hashed assets |
@@ -184,7 +187,7 @@ Expected output: all PASS lines, exit code 0.
 | `ENVIRONMENT_NAME` | `den-srv` | Environment name for config defaults |
 | `DEN_CORE_API_BASE` | `/den-core-api` | Core API base for config defaults |
 | `DEN_CHANNELS_API_BASE` | `/api` | Channels API base for config defaults |
-| `DEN_GATEWAY_API_BASE` | `/api/gateway` | Gateway API base for config defaults |
+| `DEN_GATEWAY_API_BASE` | `/den-gateway-api` | Gateway API base for config defaults |
 
 ## Cutover from den-channels
 

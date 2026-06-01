@@ -178,7 +178,7 @@ export function FleetOpsCockpit() {
         <div className="fops-error">
           Failed to load fleet ops: {error.message}
           <div className="fops-error-hint">
-            This requires the Gateway /api/gateway/fleet-ops endpoint.
+            This requires the Gateway /den-gateway-api/fleet-ops route.
             If unavailable, the UI gracefully shows this error.
           </div>
         </div>
