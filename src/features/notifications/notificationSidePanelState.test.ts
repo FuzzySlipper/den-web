@@ -29,12 +29,24 @@ describe('notification side-panel interaction model', () => {
     expect(shouldRenderNotificationSidePanel(true, 'window')).toBe(false);
   });
 
-  it('keeps notification overlay stacking explicitly above detail overlays', () => {
-    expect(NOTIFICATION_SIDE_PANEL_Z_INDEX).toBeGreaterThan(DETAIL_OVERLAY_Z_INDEX);
+  it('keeps docked notification panel below detail overlays', () => {
+    expect(NOTIFICATION_SIDE_PANEL_Z_INDEX).toBeLessThan(DETAIL_OVERLAY_Z_INDEX);
   });
 
   it('keeps TypeScript overlay constants aligned with CSS tokens', () => {
     expect(readCssVarNumber('src/styles/app-shell.css', '--z-detail-overlay')).toBe(DETAIL_OVERLAY_Z_INDEX);
     expect(readCssVarNumber('src/styles/features/notifications.css', '--z-notification-side-panel')).toBe(NOTIFICATION_SIDE_PANEL_Z_INDEX);
+  });
+
+  it('documents the docked notification layout in CSS', () => {
+    const layoutCss = readFileSync(resolve(process.cwd(), 'src/styles/layout.css'), 'utf8');
+    const notificationsCss = readFileSync(resolve(process.cwd(), 'src/styles/features/notifications.css'), 'utf8');
+
+    expect(layoutCss).toContain('.dashboard-notification-docked');
+    expect(layoutCss).toContain('var(--pref-notification-panel-width, 400px)');
+    expect(layoutCss).toContain('.dashboard-notification-docked .dashboard-workspace');
+    expect(notificationsCss).toContain('grid-column: 3');
+    expect(notificationsCss).toContain('grid-row: 1');
+    expect(notificationsCss).not.toContain('position: fixed;');
   });
 });

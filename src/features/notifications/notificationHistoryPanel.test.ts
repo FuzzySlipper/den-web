@@ -127,6 +127,12 @@ describe('notificationFeed adapter', () => {
       expect(result.items).toHaveLength(2);
       expect(result.loading).toBe(false);
       expect(result.error).toBeNull();
+
+      const firstFetchUrl = String((globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0]);
+      expect(firstFetchUrl).toContain('/api/user-notifications?');
+      expect(firstFetchUrl).toContain('readFor=web-ui');
+      expect(firstFetchUrl).toContain('limit=50');
+      expect(firstFetchUrl).not.toContain('projectId=');
       // First item should be agent_work_complete
       const agentItem = result.items.find(i => i.type === 'agent_work_complete');
       expect(agentItem).toBeDefined();
@@ -680,15 +686,15 @@ describe('App.tsx notification integration', () => {
     expect(appSource).toContain('standalone');
   });
 
-  it('renders NotificationHistoryPanel as side panel overlay when mode is sidePanel', () => {
-    // Should render NotificationHistoryPanel inside a side-panel overlay div
+  it('renders NotificationHistoryPanel as a docked side panel when mode is sidePanel', () => {
+    // Should render NotificationHistoryPanel inside a docked side-panel grid area.
     expect(appSource).toContain('notification-side-panel');
-    expect(appSource).toContain('showNotificationPanel');
-    // Should conditionally render based on notificationHistoryMode through the helper model.
-    expect(appSource).toContain('shouldRenderNotificationSidePanel(showNotificationPanel, prefs.layout.notificationHistoryMode)');
+    expect(appSource).toContain('dashboard-notification-docked');
+    expect(appSource).toContain('renderNotificationSidePanel');
+    expect(appSource).toContain('shouldRenderNotificationSidePanel(\n    showNotificationPanel,\n    prefs.layout.notificationHistoryMode,\n  )');
   });
 
-  it('has close button in side panel notification overlay', () => {
+  it('has close button in side panel notification dock', () => {
     expect(appSource).toContain('notification-side-panel-close');
   });
 
@@ -696,7 +702,7 @@ describe('App.tsx notification integration', () => {
     expect(notificationsCss).toContain('.notification-side-panel-close');
   });
 
-  it('uses explicit z-index tokens for notification/detail overlay stacking', () => {
+  it('uses explicit z-index tokens with detail overlays above docked notification panel', () => {
     expect(notificationsCss).toContain('--z-notification-side-panel');
     expect(appShellCss).toContain('--z-detail-overlay');
     expect(notificationsCss).toContain('z-index: var(--z-notification-side-panel');

@@ -3,7 +3,7 @@
    ========================================================================= */
 
 :root {
-  --z-notification-side-panel: 140;
+  --z-notification-side-panel: 10;
 }
 
 /* Container */
@@ -299,17 +299,16 @@
   flex-shrink: 0;
 }
 
-/* Side panel overlay (in-app, not standalone popup) */
+/* Docked side panel (in-app, not standalone popup) */
 .notification-side-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  grid-column: 3;
+  grid-row: 1;
+  min-height: 0;
   width: var(--pref-notification-panel-width, 400px);
   background: var(--bg-surface);
   border-left: 1px solid var(--border);
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.4);
-  z-index: var(--z-notification-side-panel, 140);
+  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.24);
+  z-index: var(--z-notification-side-panel, 10);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -335,9 +334,18 @@
   overflow: hidden;
 }
 
-/* Responsive: on narrow windows, side panel overlays full width */
+/* Responsive: on narrow windows, the dock consumes the available app width. */
 @media (max-width: 700px) {
+  .dashboard-notification-docked {
+    grid-template-columns: var(--pref-sidebar-width, 200px) minmax(0, 1fr);
+  }
+
+  .dashboard-notification-docked .dashboard-workspace {
+    grid-column: 1 / -1;
+  }
+
   .notification-side-panel {
+    grid-column: 1 / -1;
     width: 100vw;
     max-width: 100vw;
   }

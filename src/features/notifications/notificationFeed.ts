@@ -182,19 +182,16 @@ function mapFeedItem(item: NotificationFeedItem): NotificationItem {
 /**
  * Fetch the notification feed from the canonical Core API.
  *
- * @param projectIds Project/space IDs (unused in global mode — kept for
- *   backward-compatible signature). When a single projectId is given,
- *   filters to that project via the API query param.
+ * @param projectIds Project/space IDs are intentionally ignored. Kept for
+ *   backward-compatible call sites while the panel remains a global feed.
  * @returns A feed result with items sorted newest-first.
  */
-export async function fetchNotificationFeed(projectIds: string[]): Promise<NotificationFeedResult> {
+export async function fetchNotificationFeed(_projectIds: string[]): Promise<NotificationFeedResult> {
+  void _projectIds;
   const startTime = Date.now();
 
   try {
-    // Use global feed endpoint with optional project filter
-    const projectId = projectIds.length === 1 ? projectIds[0] : undefined;
     const feedItems = await getUserNotifications({
-      projectId,
       readFor: DEFAULT_READ_FOR,
       limit: 50,
     });

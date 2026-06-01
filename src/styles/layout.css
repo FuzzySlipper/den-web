@@ -12,6 +12,17 @@
   background: var(--border);
 }
 
+.dashboard-notification-docked {
+  grid-template-columns:
+    var(--pref-sidebar-width, 200px)
+    minmax(0, 1fr)
+    var(--pref-notification-panel-width, 400px);
+}
+
+.dashboard-notification-docked .dashboard-workspace {
+  grid-column: 1 / 3;
+}
+
 .dashboard-channel-size-small {
   grid-template-rows: minmax(0, 1fr) minmax(200px, 25vh);
 }

@@ -595,8 +595,19 @@ export default function App() {
       return <NotificationHistoryPanel projectIds={notificationProjectIds} standalone />;
     }
 
+  const renderNotificationSidePanel = shouldRenderNotificationSidePanel(
+    showNotificationPanel,
+    prefs.layout.notificationHistoryMode,
+  );
+
+  const dashboardClasses = [
+    'dashboard',
+    `dashboard-channel-size-${channelPanelSize}`,
+    renderNotificationSidePanel ? 'dashboard-notification-docked' : '',
+  ].filter(Boolean).join(' ');
+
     return (
-    <div className={`dashboard dashboard-channel-size-${channelPanelSize}`}>
+    <div className={dashboardClasses}>
       <div className="dashboard-workspace">
         <ProjectSidebar
           spaces={spaces}
@@ -800,6 +811,26 @@ export default function App() {
         onOpenAssignmentTrace={handleAssignmentTraceSelect}
       />
 
+      {/* Notification dock (when mode is sidePanel and toggled open) */}
+      {renderNotificationSidePanel && (
+        <div className="notification-side-panel">
+          <div className="notification-side-panel-header">
+            <button
+              type="button"
+              className="notification-side-panel-close detail-close"
+              onClick={() => setShowNotificationPanel(closeNotificationSidePanel())}
+              aria-label="Close notification side panel"
+            >
+              ✕
+            </button>
+          </div>
+          <NotificationHistoryPanel
+            projectIds={(spaces ?? []).filter(s => s.id !== ALL_SPACES_ID).map(s => s.id)}
+            onOpenTask={handleTaskSelect}
+          />
+        </div>
+      )}
+
       {/* Detail overlays */}
       {selectedTaskId != null && effectiveSpaceId && (
         <TaskDetail
@@ -890,28 +921,6 @@ export default function App() {
         />
       )}
 
-      {/* Notification side panel overlay (when mode is sidePanel and toggled open) */}
-      {shouldRenderNotificationSidePanel(showNotificationPanel, prefs.layout.notificationHistoryMode) && (
-        <div className="notification-side-panel">
-          <div className="notification-side-panel-header">
-            <button
-              type="button"
-              className="notification-side-panel-close detail-close"
-              onClick={() => setShowNotificationPanel(closeNotificationSidePanel())}
-              aria-label="Close notification side panel"
-            >
-              ✕
-            </button>
-          </div>
-          <NotificationHistoryPanel
-            projectIds={effectiveSpaceId && effectiveSpaceId !== ALL_SPACES_ID && effectiveSpaceId !== GLOBAL_SPACE_ID
-              ? [effectiveSpaceId]
-              : (spaces ?? []).filter(s => s.id !== ALL_SPACES_ID).map(s => s.id)
-            }
-            onOpenTask={handleTaskSelect}
-          />
-        </div>
-      )}
     </div>
   );
 }
