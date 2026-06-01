@@ -199,6 +199,27 @@
   accent-color: var(--accent);
 }
 
+/* Radio group */
+.preferences-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.preferences-radio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.preferences-radio input[type="radio"] {
+  accent-color: var(--accent);
+}
+
 /* Field row (text input) */
 .preferences-field-row {
   display: flex;

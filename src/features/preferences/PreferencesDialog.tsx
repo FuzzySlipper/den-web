@@ -107,7 +107,41 @@ function LayoutSection({ value, onChange }: { value: LayoutPreferences; onChange
 
   return (
     <div className="preferences-section">
-      <h3>Chat vs participants sizing</h3>
+      <h3>Panel layout</h3>
+
+      <h4 className="preferences-subheading">Notification history</h4>
+      <div className="preferences-radio-group">
+        <label className="preferences-radio">
+          <input
+            type="radio"
+            name="notificationHistoryMode"
+            value="window"
+            checked={value.notificationHistoryMode === 'window'}
+            onChange={() => set('notificationHistoryMode', 'window')}
+          />
+          Popup window
+        </label>
+        <label className="preferences-radio">
+          <input
+            type="radio"
+            name="notificationHistoryMode"
+            value="sidePanel"
+            checked={value.notificationHistoryMode === 'sidePanel'}
+            onChange={() => set('notificationHistoryMode', 'sidePanel')}
+          />
+          In-app side panel
+        </label>
+      </div>
+      <p className="preferences-note">
+        Popup window reuses the existing named browser window. Side panel opens inside the app as an overlay drawer.
+      </p>
+
+      <h4 className="preferences-subheading">Panel widths</h4>
+      <SliderRow label="Spaces sidebar width (px)" min={140} max={500} step={10} value={value.sidebarWidth} onChange={v => set('sidebarWidth', v)} />
+      <SliderRow label="Notification panel width (px)" min={280} max={800} step={10} value={value.notificationPanelWidth} onChange={v => set('notificationPanelWidth', v)} />
+      <SliderRow label="Detail drawer width (px)" min={200} max={1200} step={10} value={value.detailPanelWidth} onChange={v => set('detailPanelWidth', v)} />
+
+      <h4 className="preferences-subheading">Chat vs participants sizing</h4>
       <SliderRow label="Chat area fraction" min={0.55} max={0.95} step={0.05} value={value.chatFraction} onChange={v => set('chatFraction', Math.round(v * 100) / 100)} />
       <label className="preferences-toggle">
         <input
@@ -180,6 +214,11 @@ function FontSection({ value, onChange }: { value: FontPreferences; onChange: (v
       </label>
       <SliderRow label="UI base font size (px)" min={10} max={22} step={1} value={value.baseSize} onChange={v => set('baseSize', v)} />
       <SliderRow label="Chat transcript font size (px)" min={10} max={22} step={1} value={value.chatSize} onChange={v => set('chatSize', v)} />
+      <SliderRow label="List/tree font size (px)" min={8} max={22} step={1} value={value.listSize} onChange={v => set('listSize', v)} />
+      <SliderRow label="Detail drawer font size (px)" min={8} max={22} step={1} value={value.detailSize} onChange={v => set('detailSize', v)} />
+      <p className="preferences-note">
+        List size affects spaces, tasks, docs, and other enumerated views. Detail size affects drawers, panels, and document content.
+      </p>
     </div>
   );
 }

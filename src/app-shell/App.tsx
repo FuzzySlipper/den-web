@@ -106,6 +106,7 @@ export default function App() {
   const [sortMode, setSortMode] = useState('priority');
   const [channelPanelSize, setChannelPanelSize] = useState<ChannelChatPanelSize>('medium');
   const [showPreferences, setShowPreferences] = useState(false);
+  const [showNotificationPanel, setShowNotificationPanel] = useState(false);
   const { prefs, updateSection, resetToDefaults } = usePreferences();
 
   // Agents sub-view toggle: 'overview' (default) or 'worker-pool'
@@ -596,6 +597,8 @@ export default function App() {
           spaces={spaces}
           selectedId={effectiveSpaceId}
           onSelect={handleProjectSelect}
+          notificationHistoryMode={prefs.layout.notificationHistoryMode}
+          onToggleNotificationPanel={() => setShowNotificationPanel(prev => !prev)}
         />
 
         <div className="panel panel-main">
@@ -880,6 +883,29 @@ export default function App() {
           onReset={resetToDefaults}
           onClose={() => setShowPreferences(false)}
         />
+      )}
+
+      {/* Notification side panel overlay (when mode is sidePanel and toggled open) */}
+      {showNotificationPanel && prefs.layout.notificationHistoryMode === 'sidePanel' && (
+        <div className="notification-side-panel">
+          <div className="notification-side-panel-header">
+            <button
+              type="button"
+              className="notification-side-panel-close detail-close"
+              onClick={() => setShowNotificationPanel(false)}
+              aria-label="Close notification side panel"
+            >
+              ✕
+            </button>
+          </div>
+          <NotificationHistoryPanel
+            projectIds={effectiveSpaceId && effectiveSpaceId !== ALL_SPACES_ID && effectiveSpaceId !== GLOBAL_SPACE_ID
+              ? [effectiveSpaceId]
+              : (spaces ?? []).filter(s => s.id !== ALL_SPACES_ID).map(s => s.id)
+            }
+            onOpenTask={handleTaskSelect}
+          />
+        </div>
       )}
     </div>
   );

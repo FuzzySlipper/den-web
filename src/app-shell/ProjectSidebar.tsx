@@ -13,6 +13,10 @@ interface Props {
   spaces: Space[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /** Notification history display mode from preferences */
+  notificationHistoryMode?: 'window' | 'sidePanel';
+  /** Callback to toggle the side panel notification view */
+  onToggleNotificationPanel?: () => void;
 }
 
 function hasRootCapability(space: Space): boolean {
@@ -26,7 +30,7 @@ function spaceCapabilityLabel(space: Space): string {
   return hasRootCapability(space) ? 'root-backed' : 'no repo';
 }
 
-export function ProjectSidebar({ spaces: rawSpaces, selectedId, onSelect }: Props) {
+export function ProjectSidebar({ spaces: rawSpaces, selectedId, onSelect, notificationHistoryMode, onToggleNotificationPanel }: Props) {
   // In-memory pin state (read once; UI toggles are optimistically applied)
   const [pinnedIds, setPinnedIds] = useState<string[]>(() => readPinnedProjectIds());
 
@@ -107,8 +111,18 @@ export function ProjectSidebar({ spaces: rawSpaces, selectedId, onSelect }: Prop
         <button
           type="button"
           className="notification-sidebar-button"
-          onClick={openNotificationPanelWindow}
-          title="Open notification history panel in a separate window (requires user gesture)"
+          onClick={() => {
+            if (notificationHistoryMode === 'sidePanel') {
+              onToggleNotificationPanel?.();
+            } else {
+              openNotificationPanelWindow();
+            }
+          }}
+          title={
+            notificationHistoryMode === 'sidePanel'
+              ? 'Open notification history in side panel (toggle on/off)'
+              : 'Open notification history panel in a separate window (requires user gesture)'
+          }
         >
           🔔 Notification History
         </button>

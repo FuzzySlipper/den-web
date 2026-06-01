@@ -72,11 +72,46 @@ function deepClone<T>(value: T): T {
 
 function mergeDefaults(partial: Partial<DenWebPreferences>): DenWebPreferences {
   const defaults = DEFAULT_PREFERENCES;
-  return {
+  const merged: DenWebPreferences = {
     chat: { ...defaults.chat, ...partial.chat },
-    layout: { ...defaults.layout, ...partial.layout },
+    layout: clampLayout({ ...defaults.layout, ...partial.layout }),
     theme: { ...defaults.theme, ...partial.theme },
-    font: { ...defaults.font, ...partial.font },
+    font: clampFont({ ...defaults.font, ...partial.font }),
     keyboard: { ...defaults.keyboard, ...partial.keyboard },
   };
+  // Guard invalid notificationHistoryMode values
+  if (
+    merged.layout.notificationHistoryMode !== 'window' &&
+    merged.layout.notificationHistoryMode !== 'sidePanel'
+  ) {
+    merged.layout.notificationHistoryMode = 'window';
+  }
+  return merged;
+}
+
+/** Clamp layout dimensions to safe bounds. */
+function clampLayout(layout: DenWebPreferences['layout']): DenWebPreferences['layout'] {
+  const defaults = DEFAULT_PREFERENCES.layout;
+  return {
+    ...layout,
+    sidebarWidth: clampNumber(layout.sidebarWidth, 140, 500, defaults.sidebarWidth),
+    notificationPanelWidth: clampNumber(layout.notificationPanelWidth, 280, 800, defaults.notificationPanelWidth),
+    detailPanelWidth: clampNumber(layout.detailPanelWidth, 200, 1200, defaults.detailPanelWidth),
+  };
+}
+
+/** Clamp font sizes to sane range. */
+function clampFont(font: DenWebPreferences['font']): DenWebPreferences['font'] {
+  const defaults = DEFAULT_PREFERENCES.font;
+  return {
+    ...font,
+    listSize: clampNumber(font.listSize, 8, 32, defaults.listSize),
+    detailSize: clampNumber(font.detailSize, 8, 32, defaults.detailSize),
+  };
+}
+
+function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(max, Math.max(min, value))
+    : fallback;
 }

@@ -40,6 +40,8 @@ export function applyThemeVars(prefs: DenWebPreferences): void {
   root.style.setProperty('--font-sans', prefs.font.sansStack);
   root.style.setProperty('--pref-font-base-size', `${prefs.font.baseSize}px`);
   root.style.setProperty('--pref-font-chat-size', `${prefs.font.chatSize}px`);
+  root.style.setProperty('--pref-font-list-size', `${prefs.font.listSize}px`);
+  root.style.setProperty('--pref-font-detail-size', `${prefs.font.detailSize}px`);
   root.style.fontSize = `${prefs.font.baseSize}px`;
 
   // CSS custom properties for sub-components that read chat density
@@ -50,8 +52,16 @@ export function applyThemeVars(prefs: DenWebPreferences): void {
   // Use a data attribute instead of a CSS custom property so that CSS
   // can select it via :root[data-show-participants="0"] without fragile
   // body:has([style*=...]) substring matching (which doesn't work when
-  // the property is set on <html>, not <body>).
+  // property is set on <html>, not <body>).
   root.dataset.showParticipants = prefs.layout.showParticipants ? '' : '0';
+
+  // Layout dimensions — central token layer for panel widths
+  root.style.setProperty('--pref-sidebar-width', `${prefs.layout.sidebarWidth}px`);
+  root.style.setProperty('--pref-notification-panel-width', `${prefs.layout.notificationPanelWidth}px`);
+  root.style.setProperty('--pref-detail-panel-width', `${prefs.layout.detailPanelWidth}px`);
+
+  // Notification history display mode
+  root.dataset.notificationHistoryMode = prefs.layout.notificationHistoryMode;
 }
 
 /** Produce a dimmed/desaturated variant of a hex colour by reducing brightness. */

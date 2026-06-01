@@ -30,6 +30,14 @@ export interface LayoutPreferences {
   chatFraction: number;
   /** Whether participants sidebar is visible */
   showParticipants: boolean;
+  /** Notification history display mode: named popup window or in-app side panel */
+  notificationHistoryMode: 'window' | 'sidePanel';
+  /** Spaces/sidebar width in px (clamped 140–500) */
+  sidebarWidth: number;
+  /** Notification side panel width in px (clamped 280–800) */
+  notificationPanelWidth: number;
+  /** Detail drawer/panel width in px (clamped 200–1200) */
+  detailPanelWidth: number;
 }
 
 /** Theme controls — V1 covers accent and background colors; more surfaces can be added. */
@@ -63,6 +71,10 @@ export interface FontPreferences {
   baseSize: number;
   /** Chat transcript font size (px) */
   chatSize: number;
+  /** List/spaces/task list font size (px) */
+  listSize: number;
+  /** Detail panel/drawer font size (px) */
+  detailSize: number;
 }
 
 /** Keyboard shortcuts. Empty strings disable the binding. */
@@ -125,6 +137,10 @@ export const DEFAULT_PREFERENCES: DenWebPreferences = {
   layout: {
     chatFraction: 0.8,
     showParticipants: true,
+    notificationHistoryMode: 'window',
+    sidebarWidth: 200,
+    notificationPanelWidth: 400,
+    detailPanelWidth: 500,
   },
   theme: {
     accent: '#7aa2f7',
@@ -138,6 +154,8 @@ export const DEFAULT_PREFERENCES: DenWebPreferences = {
     sansStack: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     baseSize: 13,
     chatSize: 12,
+    listSize: 12,
+    detailSize: 12,
   },
   keyboard: {
     closePanel: 'Escape',

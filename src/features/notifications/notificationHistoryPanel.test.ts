@@ -632,6 +632,16 @@ describe('ProjectSidebar notification button', () => {
   it('imports from notificationWindow', () => {
     expect(sidebarSource).toContain("import { openNotificationPanelWindow } from '../features/notifications/notificationWindow'");
   });
+
+  it('uses notificationHistoryMode preference to decide open behavior', () => {
+    expect(sidebarSource).toContain('notificationHistoryMode');
+  });
+
+  it('calls openNotificationPanelWindow for window mode or sets side panel state', () => {
+    // Should have branching logic for window vs sidePanel
+    expect(sidebarSource).toContain("'window'");
+    expect(sidebarSource).toContain("'sidePanel'");
+  });
 });
 
 describe('App.tsx notification integration', () => {
@@ -660,5 +670,17 @@ describe('App.tsx notification integration', () => {
 
   it('sets standalone prop when hash route is active', () => {
     expect(appSource).toContain('standalone');
+  });
+
+  it('renders NotificationHistoryPanel as side panel overlay when mode is sidePanel', () => {
+    // Should render NotificationHistoryPanel inside a side-panel overlay div
+    expect(appSource).toContain('notification-side-panel');
+    expect(appSource).toContain('showNotificationPanel');
+    // Should conditionally render based on notificationHistoryMode
+    expect(appSource).toContain("prefs.layout.notificationHistoryMode === 'sidePanel'");
+  });
+
+  it('has close button in side panel notification overlay', () => {
+    expect(appSource).toContain('notification-side-panel-close');
   });
 });

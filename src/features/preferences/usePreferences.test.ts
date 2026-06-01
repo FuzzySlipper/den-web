@@ -66,6 +66,8 @@ describe('applyThemeVars', () => {
         sansStack: '"Inter", sans-serif',
         baseSize: 15,
         chatSize: 13,
+        listSize: 11,
+        detailSize: 14,
       },
     };
     applyThemeVars(custom);
@@ -75,6 +77,8 @@ describe('applyThemeVars', () => {
     expect(el.style.setProperty).toHaveBeenCalledWith('--font-sans', '"Inter", sans-serif');
     expect(el.style.setProperty).toHaveBeenCalledWith('--pref-font-base-size', '15px');
     expect(el.style.setProperty).toHaveBeenCalledWith('--pref-font-chat-size', '13px');
+    expect(el.style.setProperty).toHaveBeenCalledWith('--pref-font-list-size', '11px');
+    expect(el.style.setProperty).toHaveBeenCalledWith('--pref-font-detail-size', '14px');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((el.style as any).fontSize).toBe('15px');
   });
@@ -95,7 +99,7 @@ describe('applyThemeVars', () => {
   it('sets layout chat-fraction CSS custom property', () => {
     const custom: DenWebPreferences = {
       ...DEFAULT_PREFERENCES,
-      layout: { chatFraction: 0.65, showParticipants: true },
+      layout: { ...DEFAULT_PREFERENCES.layout, chatFraction: 0.65, showParticipants: true },
     };
     applyThemeVars(custom);
 
@@ -106,7 +110,7 @@ describe('applyThemeVars', () => {
   it('sets data-show-participants to "0" when participants are hidden', () => {
     const custom: DenWebPreferences = {
       ...DEFAULT_PREFERENCES,
-      layout: { chatFraction: 0.8, showParticipants: false },
+      layout: { ...DEFAULT_PREFERENCES.layout, showParticipants: false },
     };
     applyThemeVars(custom);
 
@@ -116,7 +120,7 @@ describe('applyThemeVars', () => {
   it('sets data-show-participants to "" when participants are shown', () => {
     const custom: DenWebPreferences = {
       ...DEFAULT_PREFERENCES,
-      layout: { chatFraction: 0.8, showParticipants: true },
+      layout: { ...DEFAULT_PREFERENCES.layout, showParticipants: true },
     };
     applyThemeVars(custom);
 
@@ -139,5 +143,31 @@ describe('applyThemeVars', () => {
     delete (globalThis as any).document;
     // Should not throw
     applyThemeVars(DEFAULT_PREFERENCES);
+  });
+
+  it('sets layout dimension CSS custom properties', () => {
+    const custom: DenWebPreferences = {
+      ...DEFAULT_PREFERENCES,
+      layout: {
+        chatFraction: 0.7,
+        showParticipants: true,
+        notificationHistoryMode: 'sidePanel',
+        sidebarWidth: 220,
+        notificationPanelWidth: 450,
+        detailPanelWidth: 600,
+      },
+    };
+    applyThemeVars(custom);
+
+    const el = doc.documentElement;
+    expect(el.style.setProperty).toHaveBeenCalledWith('--pref-sidebar-width', '220px');
+    expect(el.style.setProperty).toHaveBeenCalledWith('--pref-notification-panel-width', '450px');
+    expect(el.style.setProperty).toHaveBeenCalledWith('--pref-detail-panel-width', '600px');
+    expect(el.dataset.notificationHistoryMode).toBe('sidePanel');
+  });
+
+  it('sets notificationHistoryMode dataset to window by default', () => {
+    applyThemeVars(DEFAULT_PREFERENCES);
+    expect(doc.documentElement.dataset.notificationHistoryMode).toBe('window');
   });
 });
