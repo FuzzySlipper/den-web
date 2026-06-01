@@ -124,22 +124,57 @@ describe('preferencesStorage', () => {
   it('defaults malformed numeric preference fields instead of returning NaN', () => {
     mock.setItem('den-web-preferences', JSON.stringify({
       layout: {
+        chatFraction: Number.NaN,
         sidebarWidth: 'enormous',
         notificationPanelWidth: null,
         detailPanelWidth: Number.NaN,
       },
       font: {
+        baseSize: null,
+        chatSize: 'large',
         listSize: 'tiny',
         detailSize: Number.POSITIVE_INFINITY,
       },
     }));
 
     const prefs = readPreferences();
+    expect(prefs.layout.chatFraction).toBe(0.8);
     expect(prefs.layout.sidebarWidth).toBe(200);
     expect(prefs.layout.notificationPanelWidth).toBe(400);
     expect(prefs.layout.detailPanelWidth).toBe(500);
+    expect(prefs.font.baseSize).toBe(13);
+    expect(prefs.font.chatSize).toBe(12);
     expect(prefs.font.listSize).toBe(12);
     expect(prefs.font.detailSize).toBe(12);
+  });
+
+  it('clamps migrated chatFraction to the PreferencesDialog slider range', () => {
+    mock.setItem('den-web-preferences', JSON.stringify({
+      layout: { chatFraction: 1.2 },
+    }));
+    expect(readPreferences().layout.chatFraction).toBe(0.95);
+
+    mock.setItem('den-web-preferences', JSON.stringify({
+      layout: { chatFraction: 0.1 },
+    }));
+    expect(readPreferences().layout.chatFraction).toBe(0.55);
+  });
+
+  it('clamps migrated font sizes to the PreferencesDialog slider ranges', () => {
+    mock.setItem('den-web-preferences', JSON.stringify({
+      font: {
+        baseSize: 4,
+        chatSize: 99,
+        listSize: 30,
+        detailSize: 32,
+      },
+    }));
+
+    const prefs = readPreferences();
+    expect(prefs.font.baseSize).toBe(10);
+    expect(prefs.font.chatSize).toBe(22);
+    expect(prefs.font.listSize).toBe(22);
+    expect(prefs.font.detailSize).toBe(22);
   });
 
   it('returns defaults on corrupt JSON', () => {

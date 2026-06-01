@@ -26,7 +26,7 @@ export interface ChatPreferences {
 
 /** Layout controls */
 export interface LayoutPreferences {
-  /** Chat vs participants split ratio expressed as chat fraction (0.6–0.9) */
+  /** Chat vs participants split ratio expressed as chat fraction (clamped 0.55–0.95) */
   chatFraction: number;
   /** Whether participants sidebar is visible */
   showParticipants: boolean;

@@ -43,6 +43,11 @@ import { PreferencesDialog } from '../features/preferences/PreferencesDialog';
 import { matchHotkey } from '../features/preferences/hotkeyParse';
 import { NotificationHistoryPanel } from '../features/notifications/NotificationHistoryPanel';
 import { isNotificationPanelRoute } from '../features/notifications/notificationWindow';
+import {
+  closeNotificationSidePanel,
+  shouldRenderNotificationSidePanel,
+  toggleNotificationSidePanel,
+} from '../features/notifications/notificationSidePanelState';
 
 const ALL_SPACES_ID = '_all';
 const GLOBAL_SPACE_ID = '_global';
@@ -598,7 +603,7 @@ export default function App() {
           selectedId={effectiveSpaceId}
           onSelect={handleProjectSelect}
           notificationHistoryMode={prefs.layout.notificationHistoryMode}
-          onToggleNotificationPanel={() => setShowNotificationPanel(prev => !prev)}
+          onToggleNotificationPanel={() => setShowNotificationPanel(toggleNotificationSidePanel)}
         />
 
         <div className="panel panel-main">
@@ -886,13 +891,13 @@ export default function App() {
       )}
 
       {/* Notification side panel overlay (when mode is sidePanel and toggled open) */}
-      {showNotificationPanel && prefs.layout.notificationHistoryMode === 'sidePanel' && (
+      {shouldRenderNotificationSidePanel(showNotificationPanel, prefs.layout.notificationHistoryMode) && (
         <div className="notification-side-panel">
           <div className="notification-side-panel-header">
             <button
               type="button"
               className="notification-side-panel-close detail-close"
-              onClick={() => setShowNotificationPanel(false)}
+              onClick={() => setShowNotificationPanel(closeNotificationSidePanel())}
               aria-label="Close notification side panel"
             >
               ✕

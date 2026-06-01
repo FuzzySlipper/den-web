@@ -649,6 +649,14 @@ describe('App.tsx notification integration', () => {
     resolve(process.cwd(), 'src/app-shell/App.tsx'),
     'utf8',
   );
+  const notificationsCss = readFileSync(
+    resolve(process.cwd(), 'src/styles/features/notifications.css'),
+    'utf8',
+  );
+  const appShellCss = readFileSync(
+    resolve(process.cwd(), 'src/styles/app-shell.css'),
+    'utf8',
+  );
 
   it('imports NotificationHistoryPanel component', () => {
     expect(appSource).toContain("import { NotificationHistoryPanel } from '../features/notifications/NotificationHistoryPanel'");
@@ -676,11 +684,28 @@ describe('App.tsx notification integration', () => {
     // Should render NotificationHistoryPanel inside a side-panel overlay div
     expect(appSource).toContain('notification-side-panel');
     expect(appSource).toContain('showNotificationPanel');
-    // Should conditionally render based on notificationHistoryMode
-    expect(appSource).toContain("prefs.layout.notificationHistoryMode === 'sidePanel'");
+    // Should conditionally render based on notificationHistoryMode through the helper model.
+    expect(appSource).toContain('shouldRenderNotificationSidePanel(showNotificationPanel, prefs.layout.notificationHistoryMode)');
   });
 
   it('has close button in side panel notification overlay', () => {
     expect(appSource).toContain('notification-side-panel-close');
+  });
+
+  it('styles the notification side-panel close affordance explicitly', () => {
+    expect(notificationsCss).toContain('.notification-side-panel-close');
+  });
+
+  it('uses explicit z-index tokens for notification/detail overlay stacking', () => {
+    expect(notificationsCss).toContain('--z-notification-side-panel');
+    expect(appShellCss).toContain('--z-detail-overlay');
+    expect(notificationsCss).toContain('z-index: var(--z-notification-side-panel');
+    expect(appShellCss).toContain('z-index: var(--z-detail-overlay');
+  });
+
+  it('routes notification side-panel visibility through interaction helpers', () => {
+    expect(appSource).toContain('toggleNotificationSidePanel');
+    expect(appSource).toContain('closeNotificationSidePanel');
+    expect(appSource).toContain('shouldRenderNotificationSidePanel');
   });
 });

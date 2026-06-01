@@ -94,19 +94,22 @@ function clampLayout(layout: DenWebPreferences['layout']): DenWebPreferences['la
   const defaults = DEFAULT_PREFERENCES.layout;
   return {
     ...layout,
+    chatFraction: clampNumber(layout.chatFraction, 0.55, 0.95, defaults.chatFraction),
     sidebarWidth: clampNumber(layout.sidebarWidth, 140, 500, defaults.sidebarWidth),
     notificationPanelWidth: clampNumber(layout.notificationPanelWidth, 280, 800, defaults.notificationPanelWidth),
     detailPanelWidth: clampNumber(layout.detailPanelWidth, 200, 1200, defaults.detailPanelWidth),
   };
 }
 
-/** Clamp font sizes to sane range. */
+/** Clamp font sizes to the PreferencesDialog slider ranges. */
 function clampFont(font: DenWebPreferences['font']): DenWebPreferences['font'] {
   const defaults = DEFAULT_PREFERENCES.font;
   return {
     ...font,
-    listSize: clampNumber(font.listSize, 8, 32, defaults.listSize),
-    detailSize: clampNumber(font.detailSize, 8, 32, defaults.detailSize),
+    baseSize: clampNumber(font.baseSize, 10, 22, defaults.baseSize),
+    chatSize: clampNumber(font.chatSize, 10, 22, defaults.chatSize),
+    listSize: clampNumber(font.listSize, 8, 22, defaults.listSize),
+    detailSize: clampNumber(font.detailSize, 8, 22, defaults.detailSize),
   };
 }
 
