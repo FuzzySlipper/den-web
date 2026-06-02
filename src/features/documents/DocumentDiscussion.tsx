@@ -77,10 +77,10 @@ export function DocumentDiscussion({ summary }: Props) {
     }
   }, [comments.length, loading]);
 
-  const rootComments = comments.filter(c => c.parent_comment_id === null);
+  const rootComments = comments.filter(c => c.parent_comment_id == null);
   const repliesByParent = new Map<number, DiscussionComment[]>();
   for (const c of comments) {
-    if (c.parent_comment_id !== null) {
+    if (c.parent_comment_id != null) {
       const existing = repliesByParent.get(c.parent_comment_id) ?? [];
       existing.push(c);
       repliesByParent.set(c.parent_comment_id, existing);

@@ -621,7 +621,20 @@ export function getDocumentDiscussion(projectId: string, slug: string): Promise<
       if (res.status === 404) return null;
       if (!res.ok) throw new Error(`GET discussion: ${res.status}`);
       return res.json();
-    });
+    })
+    .then(normalizeDocumentDiscussion);
+}
+
+function normalizeDocumentDiscussion(discussion: DocumentDiscussion | null): DocumentDiscussion | null {
+  if (!discussion) return null;
+
+  return {
+    ...discussion,
+    comments: (discussion.comments ?? []).map(comment => ({
+      ...comment,
+      parent_comment_id: comment.parent_comment_id ?? null,
+    })),
+  };
 }
 
 export interface PostDiscussionCommentRequest {

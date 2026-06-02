@@ -1,9 +1,16 @@
 /// <reference types="node" />
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { getDocumentDiscussion, resetClient } from '../../api/client';
 
 const cwd = process.cwd();
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  resetClient();
+});
 
 function readClientSource(...relativeParts: string[]): string {
   return readFileSync(resolve(cwd, 'src', ...relativeParts), 'utf8');
@@ -65,6 +72,39 @@ describe('Document Discussion panel (#1680)', () => {
       expect(client).toContain("res.status === 404");
       expect(client).toContain('return null');
     });
+
+    it('normalizes Core root comments that omit parent_comment_id so bodies render', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          thread: { id: 5, title: 'Discussion for document', status: 'open' },
+          comments: [
+            {
+              id: 5,
+              thread_id: 5,
+              author_identity: 'system-architect',
+              body_markdown: '## System Architect\'s perspective\n\nReadable body text',
+              comment_kind: 'comment',
+              status: 'active',
+              created_at: '2026-06-02T01:12:43',
+            },
+          ],
+        }),
+      }));
+
+      const discussion = await getDocumentDiscussion(
+        'den-hermes-bridge',
+        'hermes-integration-pain-points-den-workflows',
+      );
+
+      expect(discussion?.comments).toHaveLength(1);
+      expect(discussion?.comments[0]).toMatchObject({
+        author_identity: 'system-architect',
+        body_markdown: expect.stringContaining('Readable body text'),
+        parent_comment_id: null,
+      });
+    });
   });
 
   describe('comment rendering', () => {
@@ -78,6 +118,7 @@ describe('Document Discussion panel (#1680)', () => {
     it('supports reply threading with parent context', () => {
       const component = readClientSource('features', 'documents', 'DocumentDiscussion.tsx');
       expect(component).toContain('parent_comment_id');
+      expect(component).toContain('parent_comment_id == null');
       expect(component).toContain('replyTo');
       expect(component).toContain('discussion-reply');
       expect(component).toContain('Replying to comment');

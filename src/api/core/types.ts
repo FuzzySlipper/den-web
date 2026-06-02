@@ -781,7 +781,11 @@ export interface ListDesktopSessionEventsOptions {
 export interface DiscussionComment {
   id: number;
   thread_id: number;
-  parent_comment_id: number | null;
+  /**
+   * Core omits this field for root comments in older discussion responses.
+   * Client normalization fills it as null before UI code consumes comments.
+   */
+  parent_comment_id?: number | null;
   author_identity: string;
   body_markdown: string;
   comment_kind: string;
