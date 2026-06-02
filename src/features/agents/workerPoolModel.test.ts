@@ -15,6 +15,7 @@ import type { WorkerPoolMemberPresence } from '../../api/types';
 
 describe('availabilityLabel', () => {
   it('returns human-readable labels for each availability state', () => {
+    expect(availabilityLabel('idle')).toBe('Idle');
     expect(availabilityLabel('available')).toBe('Available');
     expect(availabilityLabel('leased')).toBe('Leased');
     expect(availabilityLabel('busy')).toBe('Busy');
@@ -28,6 +29,7 @@ describe('availabilityLabel', () => {
 
 describe('availabilityClass', () => {
   it('returns appropriate CSS classes', () => {
+    expect(availabilityClass('idle')).toBe('wpool-avail-available');
     expect(availabilityClass('available')).toBe('wpool-avail-available');
     expect(availabilityClass('leased')).toBe('wpool-avail-leased');
     expect(availabilityClass('busy')).toBe('wpool-avail-busy');

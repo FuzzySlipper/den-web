@@ -278,7 +278,58 @@ export interface WorkerPoolMemberPresence {
   isQuarantined: boolean;
 }
 
+// =============================================================================
+// Raw Channels worker-pool lobby API shape
+// =============================================================================
+
+/** Raw member record from GET /api/worker-pool/lobby/presence. */
+export interface RawWorkerPoolMember {
+  id?: number;
+  channelId?: number;
+  memberIdentity?: string;
+  identity?: string;
+  agentInstanceId?: string | null;
+  poolMemberId?: string | null;
+  profile?: string | null;
+  role?: string | null;
+  status?: string | null;
+  availabilityState?: string | null;
+  currentAssignmentId?: string | number | null;
+  currentTaskId?: number | null;
+  currentProjectId?: string | null;
+  lastActivityAt?: string | null;
+  lastSeenAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  isLegacyPilot?: boolean;
+  isQuarantined?: boolean;
+}
+
+/** Raw role grouping from GET /api/worker-pool/lobby/presence. */
+export interface RawWorkerPoolRoleGroup {
+  role?: string | null;
+  profile?: string | null;
+  count?: number | null;
+  members?: RawWorkerPoolMember[] | null;
+}
+
+/** Raw Channels response. Field names intentionally reflect the deployed API. */
+export interface RawWorkerPoolLobbyResponse {
+  lobbySlug?: string;
+  lobbyDisplayName?: string;
+  lobbyChannelId?: number;
+  channelId?: number;
+  totalMembers?: number;
+  totalCandidateCount?: number;
+  availableCount?: number;
+  roleCounts?: Record<string, number>;
+  byRole?: RawWorkerPoolRoleGroup[] | null;
+  members?: RawWorkerPoolMember[] | null;
+  observedAt?: string | null;
+}
+
 export type WorkerPoolAvailabilityState =
+  | 'idle'
   | 'available'
   | 'leased'
   | 'busy'

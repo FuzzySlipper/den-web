@@ -8,6 +8,9 @@ import type {
   AgentDetailResponse,
   AssignmentTraceResponse,
   WorkerPoolLobbyPresence,
+  WorkerPoolMemberPresence,
+  RawWorkerPoolLobbyResponse,
+  RawWorkerPoolMember,
   FleetOpsResponse,
   FleetOpsActionRunRequest,
   FleetOpsActionRunResponse,
@@ -170,8 +173,65 @@ export function getAssignmentTrace(assignmentId: string, opts: { projectId?: str
 // Worker-pool lobby presence (#1781)
 // GET /api/worker-pool/lobby/presence — proxied through static server to Channels
 
+function mapWorkerPoolAvailabilityState(status: string | null | undefined): WorkerPoolMemberPresence['availabilityState'] {
+  switch (status) {
+    case 'idle':
+    case 'available':
+    case 'leased':
+    case 'busy':
+    case 'draining':
+    case 'cleanup':
+    case 'quarantined':
+    case 'offline':
+      return status;
+    default:
+      return 'unknown';
+  }
+}
+
+function mapRawWorkerPoolMember(raw: RawWorkerPoolMember): WorkerPoolMemberPresence {
+  const assignmentId = raw.currentAssignmentId == null ? null : String(raw.currentAssignmentId);
+  const availabilityState = mapWorkerPoolAvailabilityState(raw.availabilityState ?? raw.status);
+  const isBusy = availabilityState === 'leased' || availabilityState === 'busy';
+  const isQuarantined = raw.isQuarantined ?? availabilityState === 'quarantined';
+
+  return {
+    identity: raw.identity ?? raw.memberIdentity ?? raw.poolMemberId ?? 'unknown-worker',
+    role: raw.role ?? raw.profile ?? 'unknown',
+    availabilityState,
+    statusDetail: assignmentId ? `Assignment ${assignmentId}` : null,
+    activeAssignmentCount: isBusy ? 1 : 0,
+    completedAssignmentCount: 0,
+    activeAssignmentIds: assignmentId ? [assignmentId] : [],
+    lastSeenAt: raw.lastSeenAt ?? raw.lastActivityAt ?? raw.updatedAt ?? null,
+    isLegacyPilot: raw.isLegacyPilot ?? false,
+    isQuarantined,
+  };
+}
+
+function mapWorkerPoolLobbyPresence(raw: RawWorkerPoolLobbyResponse): WorkerPoolLobbyPresence {
+  const members = (raw.members ?? []).map(mapRawWorkerPoolMember);
+  const roleCounts: Record<string, number> = { ...(raw.roleCounts ?? {}) };
+
+  if (Object.keys(roleCounts).length === 0) {
+    for (const group of raw.byRole ?? []) {
+      if (!group.role) continue;
+      roleCounts[group.role] = group.count ?? group.members?.length ?? 0;
+    }
+  }
+
+  return {
+    channelId: raw.channelId ?? raw.lobbyChannelId ?? 0,
+    availableCount: raw.availableCount ?? members.filter(m => m.availabilityState === 'available' || m.availabilityState === 'idle').length,
+    totalCandidateCount: raw.totalCandidateCount ?? raw.totalMembers ?? members.filter(m => !m.isLegacyPilot).length,
+    roleCounts,
+    members,
+    observedAt: raw.observedAt ?? new Date().toISOString(),
+  };
+}
+
 export function getWorkerPoolLobbyPresence(): Promise<WorkerPoolLobbyPresence> {
-  return getChannels('/worker-pool/lobby/presence');
+  return getChannels<RawWorkerPoolLobbyResponse>('/worker-pool/lobby/presence').then(mapWorkerPoolLobbyPresence);
 }
 
 // =============================================================================

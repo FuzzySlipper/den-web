@@ -21,6 +21,7 @@ export type { WorkerPoolAvailabilityState };
 
 export function availabilityLabel(state: WorkerPoolAvailabilityState): string {
   switch (state) {
+    case 'idle': return 'Idle';
     case 'available': return 'Available';
     case 'leased': return 'Leased';
     case 'busy': return 'Busy';
@@ -35,6 +36,7 @@ export function availabilityLabel(state: WorkerPoolAvailabilityState): string {
 
 export function availabilityClass(state: WorkerPoolAvailabilityState): string {
   switch (state) {
+    case 'idle': return 'wpool-avail-available';
     case 'available': return 'wpool-avail-available';
     case 'leased': return 'wpool-avail-leased';
     case 'busy': return 'wpool-avail-busy';
@@ -112,11 +114,12 @@ export function filterCandidateWorkers(members: WorkerPoolMemberPresence[]): Wor
 // =============================================================================
 
 export function buildLobbySummary(presence: WorkerPoolLobbyPresence): string {
+  const roleCounts = presence.roleCounts ?? {};
   const parts: string[] = [];
   parts.push(`Channel #${presence.channelId}`);
   parts.push(`${presence.availableCount} available`);
   parts.push(`${presence.totalCandidateCount} candidates`);
-  const roleLabels = Object.entries(presence.roleCounts)
+  const roleLabels = Object.entries(roleCounts)
     .map(([role, count]) => `${role}: ${count}`)
     .join(', ');
   if (roleLabels) parts.push(`[${roleLabels}]`);
