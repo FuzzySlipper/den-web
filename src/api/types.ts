@@ -85,6 +85,7 @@ export type {
 // === Channels types ===
 export type {
   Channel,
+  ChannelProjectLink,
   ChannelMessage,
   ChannelReactionSummary,
   ChannelActivityEvent,

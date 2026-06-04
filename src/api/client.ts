@@ -109,6 +109,8 @@ export type {
 } from './channels/client';
 export {
   listChannels,
+  listProjectLinkedChannels,
+  listChannelLinkedProjects,
   ensureProjectDefaultChannel,
   ensureAgentCommonsChannel,
   listChannelMessages,

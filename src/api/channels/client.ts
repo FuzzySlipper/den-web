@@ -1,4 +1,4 @@
-import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent } from './types';
+import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink } from './types';
 import { normalizeApiBase } from '../config';
 
 let denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
@@ -62,6 +62,14 @@ export interface ListChannelsOpts {
 export function listChannels(opts: ListChannelsOpts = {}): Promise<Channel[]> {
   const q = buildQuery({ projectId: opts.projectId, kind: opts.kind, limit: opts.limit });
   return getChannels(`/channels${q}`);
+}
+
+export function listProjectLinkedChannels(projectId: string): Promise<Channel[]> {
+  return getChannels(`/projects/${esc(projectId)}/linked-channels`);
+}
+
+export function listChannelLinkedProjects(channelId: number): Promise<ChannelProjectLink[]> {
+  return getChannels(`/channels/${channelId}/linked-projects`);
 }
 
 export interface EnsureProjectDefaultChannelRequest {

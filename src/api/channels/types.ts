@@ -13,6 +13,16 @@ export interface Channel {
   archivedAt: string | null;
 }
 
+export interface ChannelProjectLink {
+  id: number;
+  channelId: number;
+  projectId: string;
+  relationKind: string;
+  isPrimary: boolean;
+  settingsJson: string | null;
+  createdAt: string;
+}
+
 export interface ChannelMessage {
   id: number;
   channelId: number;
@@ -23,6 +33,16 @@ export interface ChannelMessage {
   sourceKind: string | null;
   sourceId: string | null;
   sourceProjectId: string | null;
+  targetProjectId?: string | null;
+  targetTaskId?: number | null;
+  assignmentId?: string | null;
+  workerRunId?: string | null;
+  workerRole?: string | null;
+  profileIdentity?: string | null;
+  agentInstanceId?: string | null;
+  poolMemberId?: string | null;
+  sessionOwnerId?: string | null;
+  sessionId?: string | null;
   summary: string | null;
   deepLink: string | null;
   threadRootMessageId: number | null;

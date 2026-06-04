@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent, KeyboardEvent, UIEvent } from 'react';
-import type { Channel, ChannelActivityEvent, ChannelMessage, ChannelReactionSummary, GatewayDirectAgentMessage, GatewayMember, GatewayMemberships, GatewayTestWake } from '../../api/types';
+import type { Channel, ChannelActivityEvent, ChannelMessage, ChannelProjectLink, ChannelReactionSummary, GatewayDirectAgentMessage, GatewayMember, GatewayMemberships, GatewayTestWake } from '../../api/types';
 import {
   ensureAgentCommonsChannel,
   ensureProjectDefaultChannel,
@@ -8,6 +8,8 @@ import {
   listChannelMessages,
   listChannelReactions,
   listChannels,
+  listProjectLinkedChannels,
+  listChannelLinkedProjects,
   listGatewayMemberships,
   postChannelMessage,
   addChannelReaction,
@@ -21,6 +23,14 @@ import { findActiveMentionQuery, getMentionSuggestions, groupActivityEventsForCh
 import { findSlashCommandSuggestions, getSlashCommandHelpLines } from './channelSlashCommands';
 import { appendHistory, persistHistory, readHistory, subscribeToHistoryChanges } from './channelComposerHistory';
 import { useComposerHotkeys } from './useComposerHotkeys';
+import {
+  channelRole,
+  isSharedProjectChannel,
+  linkedProjectIds,
+  messageProjectAttribution,
+  preferredProjectChannel,
+  selectProjectChannels,
+} from './channelRouting';
 import type { ChannelSendMode } from './useComposerHotkeys';
 
 const SENDER_IDENTITY_STORAGE_KEY = 'den-channel-sender-identity';
@@ -76,6 +86,14 @@ function channelLabel(channel: Channel | null, projectId: string | null): string
   return '#agent-commons';
 }
 
+function channelOptionLabel(channel: Channel, projectId: string | null): string {
+  const base = channelLabel(channel, projectId);
+  const scope = projectChannelScopeLabel(channel);
+  if (scope) return `${base} — ${scope}`;
+  if (channel.kind === 'project_default') return `${base} — legacy project lane`;
+  return base;
+}
+
 function isScrollElementPinnedToBottom(element: HTMLElement): boolean {
   return element.scrollHeight - element.scrollTop - element.clientHeight <= SCROLL_BOTTOM_PIN_THRESHOLD_PX;
 }
@@ -93,11 +111,11 @@ async function resolveAgentCommonsChannel(): Promise<Channel> {
   return existing ?? ensureAgentCommonsChannel();
 }
 
-function preferredDefaultChannel(channels: Channel[], projectId: string | null): Channel | undefined {
-  if (!projectId) {
-    return channels.find(candidate => candidate.slug === 'agent-commons') ?? channels[0];
-  }
-  return channels.find(candidate => candidate.kind === 'project_default') ?? channels[0];
+function projectChannelScopeLabel(channel: Channel | null): string | null {
+  if (!channel || !isSharedProjectChannel(channel)) return null;
+  const role = channelRole(channel);
+  if (role === 'den_system_ops') return 'shared Den system lane';
+  return 'shared project lane';
 }
 
 function messageSender(message: ChannelMessage): string {
@@ -367,6 +385,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   const previousProjectIdRef = useRef<string | null>(projectId);
   const pendingProjectDefaultSelectionRef = useRef<string | null>(null);
   const historyUnsentDraftRef = useRef('');
+  const [projectAttributionFilter, setProjectAttributionFilter] = useState('');
   const [targetMemberIdentity, setTargetMemberIdentity] = useState('');
   const [inviteIdentity, setInviteIdentity] = useState('');
   const [inviteWakePolicy, setInviteWakePolicy] = useState(DEFAULT_WAKE_POLICY);
@@ -385,8 +404,20 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   const fetchChannels = useCallback(async () => {
     const agentCommons = await resolveAgentCommonsChannel();
     if (!projectId) return [agentCommons];
-    const projectChannels = await listChannels({ projectId, limit: 100 });
-    if (projectChannels.length > 0) return [...projectChannels, agentCommons];
+
+    const [projectChannels, linkedChannels] = await Promise.all([
+      listChannels({ projectId, limit: 100 }),
+      listProjectLinkedChannels(projectId).catch(error => {
+        console.warn(`Failed to load linked channels for ${projectId}; falling back to project defaults`, error);
+        return [] as Channel[];
+      }),
+    ]);
+
+    const selectedChannels = selectProjectChannels(projectId, projectChannels, linkedChannels, agentCommons);
+    if (selectedChannels.length > 1 || linkedChannels.length > 0 || projectChannels.length > 0) {
+      return selectedChannels;
+    }
+
     const ensured = await ensureProjectDefaultChannel(projectId, {
       displayName: spaceName?.trim() || projectId,
       createdBy: normalizedSenderIdentity || 'den-web',
@@ -402,8 +433,8 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   } = usePolling<Channel[]>(fetchChannels, 15000);
 
   const availableChannels = useMemo(
-    () => (channels ?? []).filter(candidate => candidate.projectId === projectId || candidate.slug === 'agent-commons'),
-    [channels, projectId],
+    () => channels ?? [],
+    [channels],
   );
 
   useEffect(() => {
@@ -414,37 +445,18 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
       return;
     }
 
-    const projectDefaultChannel = projectId
-      ? availableChannels.find(candidate => candidate.kind === 'project_default')
-      : undefined;
+    const preferredChannel = preferredProjectChannel(availableChannels, projectId);
     const projectChanged = previousProjectIdRef.current !== projectId;
     previousProjectIdRef.current = projectId;
 
     if (projectChanged) {
-      if (!projectId) {
-        pendingProjectDefaultSelectionRef.current = null;
-        setSelectedChannelId(preferredDefaultChannel(availableChannels, projectId)?.id ?? null);
-        return;
-      }
-
-      pendingProjectDefaultSelectionRef.current = projectId;
-      if (projectDefaultChannel) {
-        pendingProjectDefaultSelectionRef.current = null;
-        setSelectedChannelId(projectDefaultChannel.id);
-      } else if (!selectedChannelId || !availableChannels.some(candidate => candidate.id === selectedChannelId)) {
-        setSelectedChannelId(preferredDefaultChannel(availableChannels, projectId)?.id ?? null);
-      }
-      return;
-    }
-
-    if (projectId && pendingProjectDefaultSelectionRef.current === projectId && projectDefaultChannel) {
       pendingProjectDefaultSelectionRef.current = null;
-      setSelectedChannelId(projectDefaultChannel.id);
+      setSelectedChannelId(preferredChannel?.id ?? null);
       return;
     }
 
     if (!selectedChannelId || !availableChannels.some(candidate => candidate.id === selectedChannelId)) {
-      setSelectedChannelId(preferredDefaultChannel(availableChannels, projectId)?.id ?? null);
+      setSelectedChannelId(preferredChannel?.id ?? null);
     }
   }, [availableChannels, projectId, selectedChannelId]);
 
@@ -495,12 +507,38 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     refresh: refreshMemberships,
   } = usePolling<GatewayMemberships | null>(fetchMemberships, 5000);
 
+  const fetchLinkedProjects = useCallback(
+    () => activeChannel && isSharedProjectChannel(activeChannel)
+      ? listChannelLinkedProjects(activeChannel.id)
+      : Promise.resolve([]),
+    [activeChannel],
+  );
+  const {
+    data: activeChannelLinkedProjects,
+  } = usePolling<ChannelProjectLink[]>(fetchLinkedProjects, 15000);
+
+  const activeChannelScopeLabel = projectChannelScopeLabel(activeChannel);
+  const activeChannelLinkedProjectIds = useMemo(
+    () => linkedProjectIds(activeChannelLinkedProjects ?? []),
+    [activeChannelLinkedProjects],
+  );
+
+  useEffect(() => {
+    setProjectAttributionFilter(current => {
+      if (!current) return current;
+      return activeChannelLinkedProjectIds.includes(current) ? current : '';
+    });
+  }, [activeChannelLinkedProjectIds]);
+
   const sortedMessages = useMemo(() => {
-    const visibleMessages = activeChannel
+    const channelMessages = activeChannel
       ? (messages ?? []).filter(message => message.channelId === activeChannel.id)
       : [];
+    const visibleMessages = projectAttributionFilter
+      ? channelMessages.filter(message => messageProjectAttribution(message) === projectAttributionFilter)
+      : channelMessages;
     return [...visibleMessages].sort((left, right) => left.id - right.id);
-  }, [activeChannel, messages]);
+  }, [activeChannel, messages, projectAttributionFilter]);
 
   const reactionsByMessageId = useMemo(() => {
     const grouped = new Map<number, ChannelReactionSummary[]>();
@@ -591,7 +629,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     : channelError
       ? channelError.message
       : activeChannel
-        ? `${activeChannel.displayName} · ${activeChannel.kind} · ${activeAgentMembers.length} active agent binding${activeAgentMembers.length === 1 ? '' : 's'}`
+        ? `${activeChannel.displayName} · ${activeChannel.kind}${activeChannelScopeLabel ? ` · ${activeChannelScopeLabel}` : ''} · ${activeAgentMembers.length} active agent binding${activeAgentMembers.length === 1 ? '' : 's'}`
         : 'No project channel selected';
 
   const handleSenderIdentityChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
@@ -957,9 +995,26 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
           {availableChannels.length === 0 ? (
             <option value="">{channelLabel(activeChannel, projectId)}</option>
           ) : availableChannels.map(candidate => (
-            <option key={candidate.id} value={candidate.id}>{channelLabel(candidate, projectId)}</option>
+            <option key={candidate.id} value={candidate.id}>{channelOptionLabel(candidate, projectId)}</option>
           ))}
         </select>
+        {activeChannelLinkedProjectIds.length > 1 && (
+          <>
+            <label className="channel-chat-selector-label" htmlFor="channel-chat-project-filter">Project</label>
+            <select
+              id="channel-chat-project-filter"
+              className="channel-chat-selector"
+              value={projectAttributionFilter}
+              onChange={event => setProjectAttributionFilter(event.target.value)}
+              title="Filter the shared channel by project attribution."
+            >
+              <option value="">All linked projects</option>
+              {activeChannelLinkedProjectIds.map(linkedProjectId => (
+                <option key={linkedProjectId} value={linkedProjectId}>{linkedProjectId}</option>
+              ))}
+            </select>
+          </>
+        )}
         <button
           type="button"
           className="channel-chat-refresh"
@@ -994,10 +1049,14 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
                 const wakeProgress = deriveWakeProgress(message, sortedMessages);
                 const messageReactions = reactionsByMessageId.get(message.id) ?? [];
                 const anchoredActivityEvents = activityEventsByMessageId.get(message.id) ?? [];
+                const attributedProjectId = messageProjectAttribution(message);
                 return (
-                <div key={message.id} className="channel-chat-message">
+                <div key={message.id} className={`channel-chat-message ${isSharedProjectChannel(activeChannel) ? 'channel-chat-message-shared' : ''}`}>
                   <span className="message-time">{formatTimeAgo(message.createdAt)}</span>
                   <span className={`channel-chat-sender channel-chat-sender-${message.senderType}`}>{messageSender(message)}</span>
+                  {isSharedProjectChannel(activeChannel) && (
+                    <span className="channel-chat-project-badge" title="Message project attribution">{attributedProjectId ?? 'unattributed'}</span>
+                  )}
                   <span className="channel-chat-body">
                     <MessageBody body={message.body} />
                     <ActivityTimeline events={anchoredActivityEvents} compact />
