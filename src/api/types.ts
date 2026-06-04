@@ -90,6 +90,12 @@ export type {
   ChannelReactionSummary,
   ChannelActivityEvent,
   ChannelWakePolicy,
+  ActiveWorkRoute,
+  ActiveWorkRouteHandles,
+  ActiveWorkRouteEvidence,
+  ActiveWorkRouteSourceEvidence,
+  ActiveWorkRoutesResponse,
+  ActiveWorkRouteResponse,
 } from './channels/types';
 
 // === Gateway types ===

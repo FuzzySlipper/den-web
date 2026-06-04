@@ -1,15 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import type { Channel, ChannelMessage, DesktopSessionEvent, DesktopSessionSnapshot, GatewayMember, GatewayMemberships } from '../../api/types';
+import type { Channel, ChannelMessage, DesktopSessionEvent, DesktopSessionSnapshot, GatewayMember, GatewayMemberships, ActiveWorkRoutesResponse } from '../../api/types';
 import {
   ensureProjectDefaultChannel,
   listChannelMessages,
-  listChannels,
   listDesktopSessionEvents,
   listDesktopSessionSnapshots,
   listGatewayMemberships,
+  listProjectLinkedChannels,
+  listActiveWorkRoutes,
   postChannelMessage,
 } from '../../api/client';
+import { preferredProjectChannel } from '../channels/channelRouting';
+import {
+  activeOwnerLabel,
+  activeRouteKey,
+  activeWorkTargetLabel,
+  continuationPreview,
+  groupRoutesByOwner,
+  resetScopeForRoute,
+  resetScopeLabel,
+  routeAllows,
+  sourceContextLabel,
+} from './sessionPolicy';
 import { usePolling } from '../../hooks/usePolling';
 import { formatTimeAgo, truncate } from '../../utils';
 
@@ -161,9 +174,9 @@ function buildLaneLabel(
   projectId: string | null,
 ): string {
   const project = snapshot?.project_id ?? channel.projectId ?? projectId ?? 'project';
-  const task = snapshot?.task_id != null ? `task #${snapshot.task_id}` : 'no task';
+  const task = snapshot?.task_id != null ? `target task #${snapshot.task_id}` : 'no target task';
   const thread = threadId != null ? `thread #${threadId}` : 'no thread';
-  const agent = snapshot?.agent_identity ?? 'channel lane';
+  const agent = snapshot?.agent_identity ?? 'source context only';
   const status = snapshot?.status ?? state;
   const lastActivity = displayTime(snapshot ? sessionActivityAt(snapshot) : channel.updatedAt);
   const modelProfile = sessionModelProfile(snapshot);
@@ -238,7 +251,7 @@ function currentToolLabel(snapshot: DesktopSessionSnapshot | null, events: Deskt
 }
 
 function statusDetail(snapshot: DesktopSessionSnapshot | null): string {
-  if (!snapshot) return 'Channel lane selected; waiting for durable session snapshot evidence.';
+  if (!snapshot) return 'Source channel context selected; no durable active-owner session snapshot is attached yet.';
   const parts = [
     snapshot.status ?? 'unknown status',
     snapshot.current_phase ? `phase ${snapshot.current_phase}` : null,
@@ -263,6 +276,7 @@ function messageEvidenceLink(message: ChannelMessage): string {
 
 export function FocusedSessionView({ projectId, spaceName }: Props) {
   const [selectedLaneKey, setSelectedLaneKey] = useState('');
+  const [selectedRouteKey, setSelectedRouteKey] = useState('');
   const [senderIdentity, setSenderIdentity] = useState(readStoredSenderIdentity);
   const [targetMemberIdentity, setTargetMemberIdentity] = useState('');
   const [draft, setDraft] = useState('');
@@ -273,7 +287,7 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
 
   const fetchChannels = useCallback(async () => {
     if (!projectId) return [];
-    const channels = await listChannels({ projectId, limit: 100 });
+    const channels = await listProjectLinkedChannels(projectId);
     if (channels.length > 0) return channels;
     const ensured = await ensureProjectDefaultChannel(projectId, {
       displayName: spaceName?.trim() || projectId,
@@ -284,13 +298,13 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
   const { data: channels, loading: channelsLoading, error: channelsError, refresh: refreshChannels } = usePolling<Channel[]>(fetchChannels, 15000);
 
   const availableChannels = useMemo(
-    () => (channels ?? []).filter(channel => channel.projectId === projectId),
-    [channels, projectId],
+    () => (channels ?? []).filter(channel => channel.visibility !== 'archived'),
+    [channels],
   );
 
   const primaryChannel = useMemo(
-    () => availableChannels.find(channel => channel.kind === 'project_default') ?? availableChannels[0] ?? null,
-    [availableChannels],
+    () => preferredProjectChannel(availableChannels, projectId) ?? null,
+    [availableChannels, projectId],
   );
 
   const selectedChannelLane = useMemo(
@@ -304,6 +318,13 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
     [projectId],
   );
   const { data: snapshots, loading: snapshotsLoading, error: snapshotsError, refresh: refreshSnapshots } = usePolling<DesktopSessionSnapshot[]>(fetchSnapshots, 5000);
+
+  const fetchActiveRoutes = useCallback(
+    () => projectId ? listActiveWorkRoutes({ targetProjectId: projectId, includeStale: true, limit: 50 }) : Promise.resolve(null),
+    [projectId],
+  );
+  const { data: activeRoutesResponse, loading: activeRoutesLoading, error: activeRoutesError, refresh: refreshActiveRoutes } = usePolling<ActiveWorkRoutesResponse | null>(fetchActiveRoutes, 5000);
+  const activeRoutes = useMemo(() => activeRoutesResponse?.routes ?? [], [activeRoutesResponse]);
 
   const fetchMessages = useCallback(
     () => activeChannel ? listChannelMessages(activeChannel.id, { limit: 150 }) : Promise.resolve([]),
@@ -404,6 +425,31 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
   );
   const selectedSnapshot = selectedLane?.snapshot ?? null;
 
+  const activeRouteGroups = useMemo(() => groupRoutesByOwner(activeRoutes), [activeRoutes]);
+  const selectedActiveRoute = useMemo(
+    () => activeRoutes.find(route => activeRouteKey(route) === selectedRouteKey) ?? activeRoutes[0] ?? null,
+    [activeRoutes, selectedRouteKey],
+  );
+  const selectedSourceContext = useMemo(() => ({
+    kind: selectedLane?.kind ?? 'channel' as const,
+    channelSlug: selectedLane?.channel.slug ?? activeChannel?.slug ?? null,
+    sessionId: selectedSnapshot?.session_id ?? null,
+    sourceInstanceId: selectedSnapshot?.source_instance_id ?? null,
+  }), [activeChannel?.slug, selectedLane, selectedSnapshot]);
+  const selectedResetScope = resetScopeForRoute(selectedActiveRoute, selectedSnapshot, selectedSourceContext);
+  const routePreview = continuationPreview(selectedActiveRoute, selectedSnapshot, selectedSourceContext);
+  const selectedRouteAllowsReset = routeAllows(selectedActiveRoute, 'reset');
+
+  useEffect(() => {
+    if (activeRoutes.length === 0) {
+      setSelectedRouteKey('');
+      return;
+    }
+    if (!selectedRouteKey || !activeRoutes.some(route => activeRouteKey(route) === selectedRouteKey)) {
+      setSelectedRouteKey(activeRouteKey(activeRoutes[0]));
+    }
+  }, [activeRoutes, selectedRouteKey]);
+
   const fetchEvents = useCallback(
     () => projectId && selectedSnapshot
       ? listDesktopSessionEvents(projectId, {
@@ -447,7 +493,7 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
   const selectedTarget = activeAgentMembers.find(member => member.memberIdentity === targetMemberIdentity) ?? null;
   const identityRequired = Boolean(projectId) && normalizedSenderIdentity.length === 0;
   const composerDisabled = !activeChannel || sending || identityRequired || Boolean(channelsError);
-  const topError = sendError ?? channelsError ?? snapshotsError ?? messagesError ?? membershipsError ?? eventsError;
+  const topError = sendError ?? channelsError ?? snapshotsError ?? activeRoutesError ?? messagesError ?? membershipsError ?? eventsError;
   const viewState = selectedLane?.state ?? 'queued';
 
   const handleSenderIdentityChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
@@ -461,8 +507,9 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
     refreshSnapshots();
     refreshMessages();
     refreshMemberships();
+    refreshActiveRoutes();
     refreshEvents();
-  }, [refreshChannels, refreshEvents, refreshMemberships, refreshMessages, refreshSnapshots]);
+  }, [refreshActiveRoutes, refreshChannels, refreshEvents, refreshMemberships, refreshMessages, refreshSnapshots]);
 
   const snapTranscriptToBottom = useCallback(() => {
     const transcript = transcriptRef.current;
@@ -479,20 +526,46 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
     setSendError(null);
     try {
       const metadata = {
-        laneKind: selectedLane?.kind ?? 'channel',
-        selectedLaneKey: selectedLane?.key ?? null,
-        sessionId: selectedSnapshot?.session_id ?? null,
+        sourceContextKind: selectedLane?.kind ?? 'channel',
+        sourceChannelId: activeChannel.id,
+        sourceChannelSlug: activeChannel.slug,
+        selectedContextKey: selectedLane?.key ?? null,
+        targetProjectId: selectedActiveRoute?.targetProjectId ?? projectId ?? null,
+        targetTaskId: selectedActiveRoute?.targetTaskId ?? selectedSnapshot?.task_id ?? null,
+        assignmentId: selectedActiveRoute?.assignmentId ?? null,
+        workerRunId: selectedActiveRoute?.workerRunId ?? null,
+        workerRole: selectedActiveRoute?.workerRole ?? null,
+        agentInstanceId: selectedActiveRoute?.agentInstanceId ?? null,
+        poolMemberId: selectedActiveRoute?.poolMemberId ?? null,
+        profileIdentity: selectedActiveRoute?.profileIdentity ?? selectedTarget?.memberIdentity ?? null,
+        sessionOwnerId: selectedActiveRoute?.sessionOwnerId ?? null,
+        sessionId: selectedActiveRoute?.sessionId ?? selectedSnapshot?.session_id ?? null,
         sourceInstanceId: selectedSnapshot?.source_instance_id ?? null,
         workspaceId: selectedSnapshot?.workspace_id ?? null,
-        taskId: selectedSnapshot?.task_id ?? null,
-        deliveryMode: selectedTarget ? 'direct_agent_message' : 'channel_message',
-        targetMemberIdentity: selectedTarget?.memberIdentity ?? null,
+        deliveryMode: selectedTarget || selectedActiveRoute ? 'direct_agent_message' : 'channel_message',
+        targetMemberIdentity: selectedTarget?.memberIdentity ?? selectedActiveRoute?.profileIdentity ?? null,
+        activeWorkRouteKey: selectedActiveRoute ? activeRouteKey(selectedActiveRoute) : null,
+        activeWorkRouteStatus: selectedActiveRoute ? (selectedActiveRoute.isStale ? 'stale' : 'routed') : 'no_active_route',
+        resetScope: selectedResetScope,
         slashCommand: body.startsWith('/') ? body.split(/\s+/, 1)[0] : null,
       };
       await postChannelMessage(activeChannel.id, {
         senderType: 'user',
         senderIdentity: normalizedSenderIdentity,
         messageKind: body.startsWith('/') ? 'command' : 'human_text',
+        sourceKind: 'den_web_active_work',
+        sourceId: selectedLane?.key ?? null,
+        sourceProjectId: projectId ?? null,
+        targetProjectId: selectedActiveRoute?.targetProjectId ?? projectId ?? null,
+        targetTaskId: selectedActiveRoute?.targetTaskId ?? selectedSnapshot?.task_id ?? null,
+        assignmentId: selectedActiveRoute?.assignmentId ?? null,
+        workerRunId: selectedActiveRoute?.workerRunId ?? null,
+        workerRole: selectedActiveRoute?.workerRole ?? null,
+        profileIdentity: selectedActiveRoute?.profileIdentity ?? selectedTarget?.memberIdentity ?? null,
+        agentInstanceId: selectedActiveRoute?.agentInstanceId ?? null,
+        poolMemberId: selectedActiveRoute?.poolMemberId ?? null,
+        sessionOwnerId: selectedActiveRoute?.sessionOwnerId ?? null,
+        sessionId: selectedActiveRoute?.sessionId ?? selectedSnapshot?.session_id ?? null,
         body,
         threadRootMessageId: selectedLane?.threadId ?? null,
         metadataJson: JSON.stringify(metadata),
@@ -504,17 +577,17 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
     } finally {
       setSending(false);
     }
-  }, [activeChannel, composerDisabled, draft, normalizedSenderIdentity, refreshMessages, selectedLane, selectedSnapshot, selectedTarget]);
+  }, [activeChannel, composerDisabled, draft, normalizedSenderIdentity, projectId, refreshMessages, selectedActiveRoute, selectedLane, selectedResetScope, selectedSnapshot, selectedTarget]);
 
   return (
-    <section className="focused-session-view" aria-label="Focused durable channel sessions">
+    <section className="focused-session-view" aria-label="Focused active-owner sessions">
       <div className="focused-session-toolbar">
         <div className="focused-session-title">
-          <span>Sessions</span>
-          <strong>{selectedLane ? channelLabel(selectedLane.channel, projectId) : channelLabel(null, projectId)}</strong>
+          <span>Active work</span>
+          <strong>{selectedActiveRoute ? activeOwnerLabel(selectedActiveRoute) : selectedLane ? channelLabel(selectedLane.channel, projectId) : channelLabel(null, projectId)}</strong>
           <span className={`focused-session-state focused-session-state-${viewState}`}>{viewState}</span>
         </div>
-        <label className="focused-session-selector-label" htmlFor="focused-session-selector">Session lane</label>
+        <label className="focused-session-selector-label" htmlFor="focused-session-selector">Active owner / source context</label>
         <select
           id="focused-session-selector"
           className="focused-session-selector"
@@ -526,20 +599,37 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
             <option value="">{channelsLoading || snapshotsLoading ? 'Loading sessions…' : 'No sessions or channels'}</option>
           ) : (
             <>
-              <optgroup label="Live sessions">
+              <optgroup label="Live active-owner sessions">
                 {liveSessionLanes.length === 0 ? (
                   <option value="" disabled>No live sessions</option>
                 ) : liveSessionLanes.map(lane => (
                   <option key={lane.key} value={lane.key}>{lane.label}</option>
                 ))}
               </optgroup>
-              <optgroup label="Recent sessions">
+              <optgroup label="Recent runtime/source contexts">
                 {recentSessionLanes.map(lane => (
                   <option key={lane.key} value={lane.key}>{lane.label}</option>
                 ))}
               </optgroup>
             </>
           )}
+        </select>
+        <label className="focused-session-selector-label" htmlFor="focused-active-route-selector">Continuation route</label>
+        <select
+          id="focused-active-route-selector"
+          className="focused-session-selector"
+          value={selectedActiveRoute ? activeRouteKey(selectedActiveRoute) : ''}
+          onChange={event => setSelectedRouteKey(event.target.value)}
+          disabled={activeRoutes.length === 0}
+          title="Routes by target project/task/assignment/run; source channel is metadata only"
+        >
+          {activeRoutes.length === 0 ? (
+            <option value="">{activeRoutesLoading ? 'Resolving active work…' : 'No active route for this project'}</option>
+          ) : activeRoutes.map(route => (
+            <option key={activeRouteKey(route)} value={activeRouteKey(route)}>
+              {activeWorkTargetLabel(route)} → {activeOwnerLabel(route)}{route.isStale ? ' (stale)' : ''}
+            </option>
+          ))}
         </select>
         <button type="button" className="focused-session-refresh" onClick={refreshAll}>Refresh</button>
         <button
@@ -621,13 +711,14 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
           <section className="focused-session-card">
             <h3>Den context</h3>
             <dl className="focused-session-context-list">
-              <dt>Project</dt><dd>{projectId ?? 'Select a project'}</dd>
-              <dt>Channel</dt><dd>{channelLabel(activeChannel ?? null, projectId)}</dd>
-              <dt>Task</dt><dd>{selectedSnapshot?.task_id != null ? `#${selectedSnapshot.task_id}` : 'No task metadata'}</dd>
-              <dt>Thread</dt><dd>{selectedLane?.threadId != null ? `#${selectedLane.threadId}` : 'No thread metadata'}</dd>
-              <dt>Workspace</dt><dd>{selectedSnapshot?.workspace_id ?? 'No workspace metadata'}</dd>
-              <dt>Session</dt><dd>{selectedSnapshot?.session_id ?? 'Channel-only lane'}</dd>
-              <dt>Agent</dt><dd>{selectedSnapshot?.agent_identity ?? selectedTarget?.memberIdentity ?? 'No agent selected'}</dd>
+              <dt>Target work</dt><dd>{selectedActiveRoute ? activeWorkTargetLabel(selectedActiveRoute) : selectedSnapshot?.task_id != null ? `project ${projectId} · task #${selectedSnapshot.task_id}` : `project ${projectId ?? 'Select a project'}`}</dd>
+              <dt>Active owner</dt><dd>{selectedActiveRoute ? activeOwnerLabel(selectedActiveRoute) : selectedSnapshot?.source_instance_id ?? 'No active owner route'}</dd>
+              <dt>Source context</dt><dd>{sourceContextLabel(selectedActiveRoute, selectedSourceContext)}</dd>
+              <dt>Runtime session</dt><dd>{selectedActiveRoute?.sessionId ?? selectedSnapshot?.session_id ?? 'No runtime session evidence'}</dd>
+              <dt>Task</dt><dd>{selectedActiveRoute?.targetTaskId ?? selectedSnapshot?.task_id != null ? `#${selectedActiveRoute?.targetTaskId ?? selectedSnapshot?.task_id}` : 'No task metadata'}</dd>
+              <dt>Assignment/run</dt><dd>{[selectedActiveRoute?.assignmentId, selectedActiveRoute?.workerRunId].filter(Boolean).join(' / ') || 'No assignment/run metadata'}</dd>
+              <dt>Agent instance</dt><dd>{selectedActiveRoute?.agentInstanceId ?? selectedSnapshot?.source_instance_id ?? 'Not reported'}</dd>
+              <dt>Pool/profile</dt><dd>{[selectedActiveRoute?.poolMemberId, selectedActiveRoute?.profileIdentity, selectedTarget?.memberIdentity].filter(Boolean).join(' / ') || 'Not reported'}</dd>
               <dt>Model/Profile</dt><dd>{sessionModelProfile(selectedSnapshot) ?? 'Not reported'}</dd>
             </dl>
           </section>
@@ -636,6 +727,11 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
             <h3>Status evidence</h3>
             <div className={`focused-session-status-pill focused-session-state-${viewState}`}>{viewState}</div>
             <p>{statusDetail(selectedSnapshot)}</p>
+            <div className="focused-session-routing-preview">
+              <strong>Route preview</strong>
+              <span>{routePreview}</span>
+              <span>Reset scope: {resetScopeLabel(selectedResetScope)}{selectedRouteAllowsReset ? '' : ' (route does not advertise reset action)'}</span>
+            </div>
             {selectedSnapshot?.warnings?.length ? (
               <ul className="focused-session-warning-list">
                 {selectedSnapshot.warnings.slice(0, 4).map(warning => <li key={warning}>{warning}</li>)}
@@ -658,6 +754,46 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
                   <p>{eventPayloadPreview(event)}</p>
                 </div>
               ))}
+            </div>
+          </section>
+
+          <section className="focused-session-card">
+            <h3>Policy refs</h3>
+            <p className="focused-session-subtitle">
+              Copy follows the accepted session-owner policy; source channels are metadata, while concrete agent instances or assignment runs own active work.
+            </p>
+            <div className="focused-session-ref-list">
+              <a href="/den-core-api/api/projects/_global/documents/agent-session-boundary-policy" target="_blank" rel="noreferrer">_global/agent-session-boundary-policy</a>
+              <a href="/den-core-api/api/projects/den-channels/tasks/1873" target="_blank" rel="noreferrer">den-channels #1873 active-work routing</a>
+              <a href="/den-core-api/api/projects/den-hermes-bridge/tasks/1890" target="_blank" rel="noreferrer">den-hermes-bridge #1890 Hermes session behavior</a>
+            </div>
+          </section>
+
+          <section className="focused-session-card">
+            <h3>Active-work routes</h3>
+            <div className="focused-session-subtitle">
+              {activeRoutesLoading ? 'resolving routes…' : `${activeRoutes.length} route(s), ${activeRouteGroups.size} concrete owner group(s)`}
+            </div>
+            <div className="focused-session-route-list">
+              {activeRoutes.length === 0 ? (
+                <div className="focused-session-empty">No active route for this target project. Source-channel messages will remain ordinary channel context.</div>
+              ) : activeRoutes.map(route => {
+                const key = activeRouteKey(route);
+                const selected = selectedActiveRoute ? activeRouteKey(selectedActiveRoute) === key : false;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`focused-session-route ${selected ? 'selected' : ''}`}
+                    onClick={() => setSelectedRouteKey(key)}
+                    title={`${activeWorkTargetLabel(route)} · ${sourceContextLabel(route, selectedSourceContext)}`}
+                  >
+                    <strong>{activeWorkTargetLabel(route)}</strong>
+                    <span>{activeOwnerLabel(route)}</span>
+                    <span>{sourceContextLabel(route, selectedSourceContext)} · actions {route.allowedActions.join(', ') || 'none'}</span>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
@@ -695,14 +831,14 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
           spellCheck={false}
           autoComplete="nickname"
         />
-        <label htmlFor="focused-session-target">Direct agent target</label>
+        <label htmlFor="focused-session-target">Direct agent / owner hint</label>
         <select
           id="focused-session-target"
           value={targetMemberIdentity}
           onChange={event => setTargetMemberIdentity(event.target.value)}
           disabled={activeAgentMembers.length === 0 || !activeChannel || sending}
         >
-          <option value="">Channel lane</option>
+          <option value="">Use active-work route/source channel</option>
           {activeAgentMembers.map(member => (
             <option key={member.id} value={member.memberIdentity}>@{member.memberIdentity}</option>
           ))}
@@ -712,11 +848,11 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
           value={draft}
           onChange={event => setDraft(event.target.value)}
           disabled={composerDisabled}
-          placeholder={identityRequired ? 'Set Posting as before sending' : 'Message session lane or type /new'}
-          aria-label="Focused session message"
+          placeholder={identityRequired ? 'Set Posting as before sending' : 'Ask/continue via active owner or type /new with scoped reset'}
+          aria-label="Focused active-work message"
         />
         <button type="submit" disabled={composerDisabled || draft.trim().length === 0}>{sending ? 'Sending…' : 'Send'}</button>
-        <div className="focused-session-composer-help">Slash commands such as /new use postChannelMessage through the selected channel/session lane.</div>
+        <div className="focused-session-composer-help">{routePreview}</div>
       </form>
     </section>
   );

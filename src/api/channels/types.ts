@@ -63,6 +63,59 @@ export interface ChannelReactionSummary {
   reactors: string[];
 }
 
+export interface ActiveWorkRouteHandles {
+  transcriptUrl: string | null;
+  traceUrl: string | null;
+  deliveryHandle: string | null;
+  agentDetailUrl: string | null;
+}
+
+export interface ActiveWorkRoute {
+  targetProjectId: string | null;
+  targetTaskId: number | null;
+  assignmentId: string | null;
+  workerRunId: string | null;
+  workerRole: string | null;
+  agentInstanceId: string | null;
+  profileIdentity: string | null;
+  poolMemberId: string | null;
+  sessionOwnerId: string | null;
+  sessionId: string | null;
+  sourceChannelId: number | null;
+  sourceControlProjectId: string | null;
+  lastActivityAt: string | null;
+  assignmentPhase: string | null;
+  isStale: boolean;
+  allowedActions: string[];
+  handles: ActiveWorkRouteHandles | null;
+}
+
+export interface ActiveWorkRouteSourceEvidence {
+  source: string;
+  available: boolean;
+  recordsExamined: number;
+  detail: string | null;
+}
+
+export interface ActiveWorkRouteEvidence {
+  sources: ActiveWorkRouteSourceEvidence[];
+  candidatesConsidered: number;
+  resolvedAt: string;
+}
+
+export interface ActiveWorkRoutesResponse {
+  routes: ActiveWorkRoute[];
+  totalCount: number;
+  evidence: ActiveWorkRouteEvidence;
+}
+
+export interface ActiveWorkRouteResponse {
+  routeStatus: 'routed' | 'no_active_route' | 'stale' | string;
+  reason: string;
+  route: ActiveWorkRoute | null;
+  evidence: ActiveWorkRouteEvidence;
+}
+
 export interface ChannelActivityEvent {
   id: number;
   channelId: number;

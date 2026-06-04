@@ -106,6 +106,8 @@ export type {
   PostChannelMessageRequest,
   EnsureProjectDefaultChannelRequest,
   AddChannelReactionRequest,
+  ResolveActiveWorkRouteRequest,
+  ListActiveWorkRoutesOpts,
 } from './channels/client';
 export {
   listChannels,
@@ -115,6 +117,8 @@ export {
   ensureAgentCommonsChannel,
   listChannelMessages,
   listChannelActivityEvents,
+  resolveActiveWorkRoute,
+  listActiveWorkRoutes,
   postChannelMessage,
   listChannelReactions,
   addChannelReaction,

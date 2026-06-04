@@ -1,4 +1,4 @@
-import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink } from './types';
+import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse } from './types';
 import { normalizeApiBase } from '../config';
 
 let denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
@@ -72,6 +72,41 @@ export function listChannelLinkedProjects(channelId: number): Promise<ChannelPro
   return getChannels(`/channels/${channelId}/linked-projects`);
 }
 
+export interface ResolveActiveWorkRouteRequest {
+  targetProjectId?: string | null;
+  targetTaskId?: number | null;
+  assignmentId?: string | null;
+  workerRunId?: string | null;
+  profileIdentity?: string | null;
+  sourceChannelId?: number | null;
+  sourceProjectId?: string | null;
+}
+
+export interface ListActiveWorkRoutesOpts {
+  targetProjectId?: string | null;
+  targetTaskId?: number | null;
+  assignmentId?: string | null;
+  profileIdentity?: string | null;
+  includeStale?: boolean;
+  limit?: number;
+}
+
+export function resolveActiveWorkRoute(request: ResolveActiveWorkRouteRequest): Promise<ActiveWorkRouteResponse> {
+  return postChannels('/active-work/resolve', request);
+}
+
+export function listActiveWorkRoutes(opts: ListActiveWorkRoutesOpts = {}): Promise<ActiveWorkRoutesResponse> {
+  const q = buildQuery({
+    targetProjectId: opts.targetProjectId,
+    targetTaskId: opts.targetTaskId,
+    assignmentId: opts.assignmentId,
+    profileIdentity: opts.profileIdentity,
+    includeStale: opts.includeStale,
+    limit: opts.limit,
+  });
+  return getChannels(`/active-work/routes${q}`);
+}
+
 export interface EnsureProjectDefaultChannelRequest {
   displayName?: string;
   createdBy?: string;
@@ -136,6 +171,16 @@ export interface PostChannelMessageRequest {
   sourceKind?: string | null;
   sourceId?: string | null;
   sourceProjectId?: string | null;
+  targetProjectId?: string | null;
+  targetTaskId?: number | null;
+  assignmentId?: string | null;
+  workerRunId?: string | null;
+  workerRole?: string | null;
+  profileIdentity?: string | null;
+  agentInstanceId?: string | null;
+  poolMemberId?: string | null;
+  sessionOwnerId?: string | null;
+  sessionId?: string | null;
   summary?: string | null;
   deepLink?: string | null;
   threadRootMessageId?: number | null;
