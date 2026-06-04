@@ -6,7 +6,9 @@ import type { ChannelActivityEvent, ChannelMessage } from '../../api/types';
 import {
   activityMatchesChannelMessage,
   channelMessageDeliveryRequestId,
+  channelMessagePrimaryBody,
   deriveAssignmentBadge,
+  directAgentMessageDisplay,
   findActiveMentionQuery,
   getMentionSuggestions,
   groupActivityEventsForChannelMessages,
@@ -88,6 +90,70 @@ describe('parseMessageBodySegments', () => {
       { type: 'details', summary: 'What I would propose', body: '1. Take #1308\n2. Store findings' },
       { type: 'text', text: '\nAfter' },
     ]);
+  });
+});
+
+describe('direct agent message display', () => {
+  it('uses the human request body as primary content when a wake event also has a generated summary', () => {
+    const msg = channelMessage({
+      senderType: 'user',
+      senderIdentity: 'Patch',
+      body: 'lol. Can you add a task for that to den-web? runner is still working through them',
+      messageKind: 'human_text',
+      sourceKind: 'wake_event',
+      sourceId: 'direct-agent-message:672:den-mcp-planner:76c86c5c61e342dab98b2048d642c1fa',
+      summary: 'Direct agent request to den-mcp-planner: recorded, pending claim/completion',
+      metadataJson: JSON.stringify({ deliveryMode: 'direct_agent_message', targetMemberIdentity: 'den-mcp-planner' }),
+    });
+
+    const display = directAgentMessageDisplay(msg);
+
+    expect(display.isDirectAgentWake).toBe(true);
+    expect(display.primaryBody).toBe('lol. Can you add a task for that to den-web? runner is still working through them');
+    expect(channelMessagePrimaryBody(msg)).toBe(display.primaryBody);
+    expect(display.deliverySummary).toBe('Direct agent request to den-mcp-planner: recorded, pending claim/completion');
+  });
+
+  it('recovers the request body from direct-agent metadata before falling back to generated status', () => {
+    const msg = channelMessage({
+      body: '',
+      sourceKind: 'wake_event',
+      sourceId: 'direct-agent-message:672:den-mcp-planner:request-1',
+      summary: 'Direct agent request to den-mcp-planner: recorded, pending claim/completion',
+      metadataJson: JSON.stringify({ requestBody: 'Please handle the real request text', deliveryMode: 'direct_agent_message' }),
+    });
+
+    expect(directAgentMessageDisplay(msg)).toMatchObject({
+      primaryBody: 'Please handle the real request text',
+      deliverySummary: 'Direct agent request to den-mcp-planner: recorded, pending claim/completion',
+      isDirectAgentWake: true,
+    });
+  });
+
+  it('does not promote generated direct-agent status to the primary body when the request body is missing', () => {
+    const msg = channelMessage({
+      body: '',
+      sourceKind: 'wake_event',
+      sourceId: 'direct-agent-message:672:den-mcp-planner:request-2',
+      summary: 'Direct agent request to den-mcp-planner: recorded, pending claim/completion',
+      metadataJson: null,
+    });
+
+    expect(directAgentMessageDisplay(msg)).toMatchObject({
+      primaryBody: '',
+      deliverySummary: 'Direct agent request to den-mcp-planner: recorded, pending claim/completion',
+      isDirectAgentWake: true,
+    });
+  });
+
+  it('keeps ordinary summary fallback available for non-wake messages without a body', () => {
+    const msg = channelMessage({ body: '', sourceKind: null, sourceId: null, summary: 'ordinary imported summary' });
+
+    expect(directAgentMessageDisplay(msg)).toMatchObject({
+      primaryBody: 'ordinary imported summary',
+      deliverySummary: null,
+      isDirectAgentWake: false,
+    });
   });
 });
 

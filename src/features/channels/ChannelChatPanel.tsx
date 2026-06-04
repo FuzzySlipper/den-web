@@ -19,7 +19,7 @@ import {
 } from '../../api/client';
 import { usePolling } from '../../hooks/usePolling';
 import { formatTimeAgo } from '../../utils';
-import { findActiveMentionQuery, getMentionSuggestions, groupActivityEventsForChannelMessages, insertMentionToken, parseMessageBodySegments, sortActivityEvents, toActivityDisplayModel, deriveAssignmentBadge } from './channelChatRenderModel';
+import { channelMessagePrimaryBody, directAgentMessageDisplay, findActiveMentionQuery, getMentionSuggestions, groupActivityEventsForChannelMessages, insertMentionToken, parseMessageBodySegments, sortActivityEvents, toActivityDisplayModel, deriveAssignmentBadge } from './channelChatRenderModel';
 import { findSlashCommandSuggestions, getSlashCommandHelpLines } from './channelSlashCommands';
 import { appendHistory, persistHistory, readHistory, subscribeToHistoryChanges } from './channelComposerHistory';
 import { useComposerHotkeys } from './useComposerHotkeys';
@@ -1050,6 +1050,8 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
                 const messageReactions = reactionsByMessageId.get(message.id) ?? [];
                 const anchoredActivityEvents = activityEventsByMessageId.get(message.id) ?? [];
                 const attributedProjectId = messageProjectAttribution(message);
+                const messageDisplay = directAgentMessageDisplay(message);
+                const primaryBody = channelMessagePrimaryBody(message);
                 return (
                 <div key={message.id} className={`channel-chat-message ${isSharedProjectChannel(activeChannel) ? 'channel-chat-message-shared' : ''}`}>
                   <span className="message-time">{formatTimeAgo(message.createdAt)}</span>
@@ -1058,7 +1060,12 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
                     <span className="channel-chat-project-badge" title="Message project attribution">{attributedProjectId ?? 'unattributed'}</span>
                   )}
                   <span className="channel-chat-body">
-                    <MessageBody body={message.body} />
+                    <MessageBody body={primaryBody} />
+                    {messageDisplay.deliverySummary && (
+                      <span className="channel-chat-delivery-summary" title="Generated delivery summary">
+                        {messageDisplay.deliverySummary}
+                      </span>
+                    )}
                     <ActivityTimeline events={anchoredActivityEvents} compact />
                     {wakeProgress && (
                       <span className={`channel-chat-wake-progress channel-chat-wake-progress-${wakeProgress.state}`}>
