@@ -109,8 +109,13 @@ export function upsertChannelMembership(channelId: number, request: UpsertChanne
   return putChannels(`/channels/${channelId}/memberships`, request);
 }
 
-export function listGatewayMemberships(opts: { channelId?: number; projectId?: string }): Promise<GatewayMemberships> {
-  const q = buildQuery({ channelId: opts.channelId, projectId: opts.projectId });
+export function listGatewayMemberships(opts: { channelId?: number; projectId?: string; includeLeft?: boolean; leftGraceMinutes?: number }): Promise<GatewayMemberships> {
+  const q = buildQuery({
+    channelId: opts.channelId,
+    projectId: opts.projectId,
+    includeLeft: opts.includeLeft,
+    leftGraceMinutes: opts.leftGraceMinutes,
+  });
   return getChannels(`/gateway/memberships${q}`);
 }
 

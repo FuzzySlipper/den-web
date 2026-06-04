@@ -12,6 +12,10 @@ export interface GatewayMember {
   cooldownSeconds: number;
   maxAutoRepliesPerWindow: number;
   settingsLabel: string | null;
+  membershipPurpose?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  leftAt?: string | null;
 }
 
 export interface GatewayMemberships {

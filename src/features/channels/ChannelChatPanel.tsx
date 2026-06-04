@@ -20,6 +20,7 @@ import {
 import { usePolling } from '../../hooks/usePolling';
 import { formatTimeAgo } from '../../utils';
 import { channelMessagePrimaryBody, directAgentMessageDisplay, findActiveMentionQuery, getMentionSuggestions, groupActivityEventsForChannelMessages, insertMentionToken, parseMessageBodySegments, sortActivityEvents, toActivityDisplayModel, deriveAssignmentBadge } from './channelChatRenderModel';
+import { NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS, isVisibleNormalParticipant } from './participantVisibility';
 import { findSlashCommandSuggestions, getSlashCommandHelpLines } from './channelSlashCommands';
 import { appendHistory, persistHistory, readHistory, subscribeToHistoryChanges } from './channelComposerHistory';
 import { useComposerHotkeys } from './useComposerHotkeys';
@@ -497,7 +498,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   } = usePolling<ChannelReactionSummary[]>(fetchReactions, 5000);
 
   const fetchMemberships = useCallback(
-    () => activeChannel ? listGatewayMemberships({ channelId: activeChannel.id }) : Promise.resolve(null),
+    () => activeChannel ? listGatewayMemberships({ channelId: activeChannel.id, ...NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS }) : Promise.resolve(null),
     [activeChannel],
   );
   const {
@@ -558,7 +559,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   const deliveryProgressBlocks = groupedActivityEvents.displayBlocks;
   const unanchoredActivityEvents = groupedActivityEvents.unanchoredEvents;
 
-  const members = useMemo(() => memberships?.members ?? [], [memberships]);
+  const members = useMemo(() => (memberships?.members ?? []).filter(member => isVisibleNormalParticipant(member)), [memberships]);
   const memberActivityByIdentity = useMemo(() => {
     const entries = members.map(member => [member.memberIdentity, deriveParticipantActivity(member, sortedMessages)] as const);
     return new Map(entries);

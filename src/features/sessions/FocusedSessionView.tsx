@@ -23,6 +23,7 @@ import {
   routeAllows,
   sourceContextLabel,
 } from './sessionPolicy';
+import { NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS, isVisibleNormalParticipant } from '../channels/participantVisibility';
 import { usePolling } from '../../hooks/usePolling';
 import { formatTimeAgo, truncate } from '../../utils';
 
@@ -342,12 +343,12 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
   const selectedThreadId: number | null = null;
 
   const fetchMemberships = useCallback(
-    () => activeChannel ? listGatewayMemberships({ channelId: activeChannel.id }) : Promise.resolve(null),
+    () => activeChannel ? listGatewayMemberships({ channelId: activeChannel.id, ...NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS }) : Promise.resolve(null),
     [activeChannel],
   );
   const { data: memberships, loading: membershipsLoading, error: membershipsError, refresh: refreshMemberships } = usePolling<GatewayMemberships | null>(fetchMemberships, 5000);
 
-  const members = useMemo(() => memberships?.members ?? [], [memberships]);
+  const members = useMemo(() => (memberships?.members ?? []).filter(member => isVisibleNormalParticipant(member)), [memberships]);
   const activeAgentMembers = useMemo(
     () => members.filter(member => member.memberType === 'agent' && member.membershipStatus === 'active'),
     [members],
