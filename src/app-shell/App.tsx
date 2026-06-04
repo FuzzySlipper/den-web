@@ -17,7 +17,7 @@ import { TaskDetail } from '../features/tasks/TaskDetail';
 import { FilterBar } from './FilterBar';
 import { WORKSPACE_VIEW_MODES } from './workspaceViewModes';
 import type { WorkspaceViewMode } from './workspaceViewModes';
-import { TASK_FILTERS } from '../features/tasks/taskStatuses';
+import { ACTIVE_TASK_FILTER, TASK_FILTERS, coreStatusForTaskFilter, taskFilterLabel, taskMatchesStatusFilter } from '../features/tasks/taskStatuses';
 import { isDependencyWaitingTask } from '../features/tasks/taskAvailability';
 import { MessageDetail } from '../features/messages/MessageDetail';
 import { MessagesInbox } from '../features/messages/MessagesInbox';
@@ -101,7 +101,7 @@ export default function App() {
   const [pendingDocumentSwitch, setPendingDocumentSwitch] = useState<DocumentSummary | null>(null);
   const [gitFocus, setGitFocus] = useState<GitFocus | null>(null);
   const [viewMode, setViewMode] = useState<WorkspaceViewMode>('tasks');
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(ACTIVE_TASK_FILTER);
   const [streamKindFilter, setStreamKindFilter] = useState<'ops' | 'message'>('ops');
   const [streamEventFilter, setStreamEventFilter] = useState('');
   const [streamProjectFilter, setStreamProjectFilter] = useState('');
@@ -159,7 +159,7 @@ export default function App() {
   const fetchTasks = useCallback(async () => {
     if (!effectiveSpaceId) return [];
 
-    const coreStatusFilter = statusFilter === 'waiting_on_dependencies' ? 'planned' : statusFilter;
+    const coreStatusFilter = coreStatusForTaskFilter(statusFilter);
     const options = { tree: true, status: coreStatusFilter ?? undefined };
     if (!isAllSpaces) {
       return listTasks(effectiveSpaceId, options);
@@ -249,15 +249,13 @@ export default function App() {
 
   const displayedTasks = useMemo(() => {
     const currentTasks = tasks ?? [];
-    return statusFilter === 'waiting_on_dependencies'
-      ? currentTasks.filter(isDependencyWaitingTask)
-      : currentTasks;
+    return currentTasks.filter(task => taskMatchesStatusFilter(task, statusFilter));
   }, [statusFilter, tasks]);
 
   const taskCount = displayedTasks.length;
   const dependencyWaitingTaskCount = (tasks ?? []).filter(isDependencyWaitingTask).length;
   const manualBlockedTaskCount = (tasks ?? []).filter(task => task.status === 'blocked' && !isDependencyWaitingTask(task)).length;
-  const filterLabel = statusFilter ? ` [${statusFilter.replace(/_/g, ' ')}]` : '';
+  const filterLabel = statusFilter ? ` [${taskFilterLabel(statusFilter)}]` : '';
   const sortLabel = sortMode !== 'priority' ? ` ↕${sortMode}` : '';
   const mainTitle = viewMode === 'tasks'
     ? 'Tasks'

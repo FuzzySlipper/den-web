@@ -1,5 +1,5 @@
 import type { WorkspaceViewMode } from './workspaceViewModes';
-import { TASK_FILTERS } from '../features/tasks/taskStatuses';
+import { TASK_FILTERS, taskFilterLabel } from '../features/tasks/taskStatuses';
 
 export type { WorkspaceViewMode } from './workspaceViewModes';
 
@@ -30,7 +30,7 @@ export function FilterBar({
           >
             <option value="">All</option>
             {TASK_FILTERS.map(s => (
-              <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+              <option key={s} value={s}>{taskFilterLabel(s)}</option>
             ))}
           </select>
 

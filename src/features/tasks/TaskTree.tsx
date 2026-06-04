@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { TaskSummary } from '../../api/types';
 import { isDependencyWaitingTask, taskAvailabilityLabel, taskAvailabilityTitle, taskStatusIcon } from './taskAvailability';
+import { taskMatchesStatusFilter } from './taskStatuses';
 
 export interface TaskNode {
   task: TaskSummary;
@@ -78,11 +79,10 @@ function priorityLabel(p: number): string {
 export function TaskTree({ tasks, selectedTaskId, onSelect, statusFilter, sortMode, showProjectLabels = false, projectNames }: Props) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
-  const filtered = useMemo(() => {
-    if (!statusFilter) return tasks;
-    if (statusFilter === 'waiting_on_dependencies') return tasks.filter(isDependencyWaitingTask);
-    return tasks.filter(t => t.status === statusFilter);
-  }, [tasks, statusFilter]);
+  const filtered = useMemo(
+    () => tasks.filter(task => taskMatchesStatusFilter(task, statusFilter)),
+    [tasks, statusFilter],
+  );
 
   const tree = useMemo(() => sortNodes(buildTree(filtered), sortMode), [filtered, sortMode]);
 
