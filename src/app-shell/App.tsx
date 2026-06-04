@@ -17,7 +17,8 @@ import { TaskDetail } from '../features/tasks/TaskDetail';
 import { FilterBar } from './FilterBar';
 import { WORKSPACE_VIEW_MODES } from './workspaceViewModes';
 import type { WorkspaceViewMode } from './workspaceViewModes';
-import { STATUSES } from '../features/tasks/taskStatuses';
+import { TASK_FILTERS } from '../features/tasks/taskStatuses';
+import { isDependencyWaitingTask } from '../features/tasks/taskAvailability';
 import { MessageDetail } from '../features/messages/MessageDetail';
 import { MessagesInbox } from '../features/messages/MessagesInbox';
 import { AgentStreamFeed } from '../features/agents/AgentStreamFeed';
@@ -158,7 +159,8 @@ export default function App() {
   const fetchTasks = useCallback(async () => {
     if (!effectiveSpaceId) return [];
 
-    const options = { tree: true, status: statusFilter ?? undefined };
+    const coreStatusFilter = statusFilter === 'waiting_on_dependencies' ? 'planned' : statusFilter;
+    const options = { tree: true, status: coreStatusFilter ?? undefined };
     if (!isAllSpaces) {
       return listTasks(effectiveSpaceId, options);
     }
@@ -245,8 +247,17 @@ export default function App() {
     return Array.from(options).sort((left, right) => left.localeCompare(right));
   }, [agentStream, streamEventFilter]);
 
-  const taskCount = tasks?.length ?? 0;
-  const filterLabel = statusFilter ? ` [${statusFilter}]` : '';
+  const displayedTasks = useMemo(() => {
+    const currentTasks = tasks ?? [];
+    return statusFilter === 'waiting_on_dependencies'
+      ? currentTasks.filter(isDependencyWaitingTask)
+      : currentTasks;
+  }, [statusFilter, tasks]);
+
+  const taskCount = displayedTasks.length;
+  const dependencyWaitingTaskCount = (tasks ?? []).filter(isDependencyWaitingTask).length;
+  const manualBlockedTaskCount = (tasks ?? []).filter(task => task.status === 'blocked' && !isDependencyWaitingTask(task)).length;
+  const filterLabel = statusFilter ? ` [${statusFilter.replace(/_/g, ' ')}]` : '';
   const sortLabel = sortMode !== 'priority' ? ` ↕${sortMode}` : '';
   const mainTitle = viewMode === 'tasks'
     ? 'Tasks'
@@ -515,7 +526,7 @@ export default function App() {
       if (kb.cycleTaskFilter && matchHotkey(event, kb.cycleTaskFilter)) {
         if (viewMode !== 'tasks') return;
         event.preventDefault();
-        const allIncludingAll = ['', ...STATUSES];
+        const allIncludingAll = ['', ...TASK_FILTERS];
         const currentIdx = statusFilter
           ? allIncludingAll.indexOf(statusFilter)
           : 0;
@@ -630,6 +641,16 @@ export default function App() {
             viewMode={viewMode}
             onViewModeChange={setViewMode}
           />
+          {viewMode === 'tasks' && (
+            <div className="task-availability-summary" title="Dependency waits are computed by Core and clear automatically; manual blocked tasks need attention and an explicit unblock/status change.">
+              <span className="task-availability-summary-item task-availability-summary-waiting">
+                {dependencyWaitingTaskCount} auto dependency wait{dependencyWaitingTaskCount === 1 ? '' : 's'}
+              </span>
+              <span className="task-availability-summary-item task-availability-summary-blocked">
+                {manualBlockedTaskCount} manual block{manualBlockedTaskCount === 1 ? '' : 's'}
+              </span>
+            </div>
+          )}
           {viewMode === 'agent-stream' && (
             <div className="feed-toolbar agent-stream-toolbar">
               <label className="panel-filter-label" htmlFor="stream-kind-filter">Kind</label>
@@ -702,7 +723,7 @@ export default function App() {
           <div className="panel-body">
             {viewMode === 'tasks' ? (
               <TaskTree
-                tasks={tasks ?? []}
+                tasks={displayedTasks}
                 selectedTaskId={selectedTaskId}
                 onSelect={handleTaskSelect}
                 statusFilter={statusFilter}

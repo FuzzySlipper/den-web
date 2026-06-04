@@ -17,6 +17,7 @@ import { messageIntentLabel } from '../messages/messageIntents';
 import { buildTaskGitFocus, dirtyCount, reviewGitAlignmentWarnings, summarizeGitStatus, type GitFocus } from '../git/git';
 import { renderFindingMeta } from './reviewFindings';
 import { sendTaskStartWork, type StartWorkEvidence, type StartWorkPhase } from './startWork';
+import { dependencyStatusSatisfied, isDependencyWaitingDetail, taskAvailabilityLabel, taskAvailabilityTitle } from './taskAvailability';
 
 interface Props {
   projectId: string;
@@ -85,7 +86,8 @@ function nextAction(detail: TaskDetailType, runs: SubagentRunSummary[]): string 
   const currentRound = detail.review_workflow.current_round;
   if (activeRun) return `Monitor ${activeRun.role ?? 'agent'} run ${activeRun.run_id.slice(0, 8)} or abort if it drifts.`;
   if (currentProblemRun) return `Inspect latest ${currentProblemRun.state} run ${currentProblemRun.run_id.slice(0, 8)} and rerun or fix the task.`;
-  if (detail.task.status === 'blocked') return 'Resolve dependencies or unblock the task before assigning more work.';
+  if (detail.task.status === 'blocked') return 'Manual blocker: resolve the attention-requiring blocker and explicitly unblock/status-change this task.';
+  if (isDependencyWaitingDetail(detail)) return 'Waiting on dependencies; Core will make this task available automatically when dependencies resolve.';
   if (detail.open_review_findings.length > 0) return 'Address open review findings, then request rereview.';
   if (detail.task.status === 'review' && currentRound?.verdict === 'looks_good') return 'Confirm the reviewed head still matches, then merge.';
   if (detail.task.status === 'review') return 'Wait for review or launch a reviewer run if none is active.';
@@ -225,6 +227,9 @@ export function TaskDetail({ projectId, taskId, onSelectTask, onSelectMessage, o
   const activeRuns = runs.filter(run => isActiveRunState(run.state));
   const latestRun = runs[0] ?? null;
   const latestProblemRun = latestRun && isProblemRunState(latestRun.state) ? latestRun : null;
+  const dependencyWaiting = isDependencyWaitingDetail(detail);
+  const availabilityLabel = taskAvailabilityLabel(task);
+  const availabilityTitle = taskAvailabilityTitle(task);
   const operatorNextAction = nextAction(detail, runs);
   const gitWarnings = reviewGitAlignmentWarnings(currentRound, gitStatus);
   const gitFocus = buildTaskGitFocus(projectId, task.id, gitWorkspace, currentRound?.branch);
@@ -254,6 +259,12 @@ export function TaskDetail({ projectId, taskId, onSelectTask, onSelectMessage, o
                 {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </dd>
+            <dt>Availability</dt>
+            <dd>
+              <span className={`task-availability-chip task-availability-${dependencyWaiting ? 'dependency-waiting' : task.status}`} title={availabilityTitle}>
+                {availabilityLabel}
+              </span>
+            </dd>
             <dt>Priority</dt>
             <dd className={`priority-${task.priority}`}>P{task.priority}</dd>
             <dt>Assigned</dt>
@@ -266,7 +277,14 @@ export function TaskDetail({ projectId, taskId, onSelectTask, onSelectMessage, o
             )}
           </dl>
           <div className="start-work-row">
-            {task.assigned_to ? (
+            {dependencyWaiting ? (
+              <>
+                <button type="button" className="start-work-button start-work-disabled" disabled>
+                  Waiting on dependencies
+                </button>
+                <span className="start-work-hint">Automatic wait: this is not a runnable queue item until Core marks its dependencies satisfied.</span>
+              </>
+            ) : task.assigned_to ? (
               <>
                 <button
                   type="button"
@@ -466,18 +484,27 @@ export function TaskDetail({ projectId, taskId, onSelectTask, onSelectMessage, o
         {detail.dependencies.length > 0 && (
           <div className="detail-section">
             <h3>Dependencies</h3>
-            {detail.dependencies.map(dep => (
+            {dependencyWaiting && (
+              <p className="detail-hint">Automatic wait: unfinished dependencies defer this task without creating a manual blocker.</p>
+            )}
+            {detail.dependencies.map(dep => {
+              const satisfied = dependencyStatusSatisfied(dep.status);
+              return (
               <button
                 key={dep.task_id}
                 type="button"
-                className="list-item detail-nav-button"
+                className={`list-item detail-nav-button dependency-item ${satisfied ? 'dependency-item-satisfied' : 'dependency-item-waiting'}`}
                 onClick={() => handleTaskNavigation(dep.task_id)}
-                title={`Open task #${dep.task_id}`}
+                title={`${satisfied ? 'Satisfied' : 'Unfinished dependency'}: open task #${dep.task_id}`}
               >
                 <span className={`badge badge-${dep.status}`}>{dep.status}</span>
+                <span className={`dependency-state ${satisfied ? 'dependency-state-satisfied' : 'dependency-state-waiting'}`}>
+                  {satisfied ? 'satisfied' : 'waiting'}
+                </span>
                 {' '}#{dep.task_id} {dep.title}
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
 

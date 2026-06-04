@@ -1,5 +1,5 @@
 import type { WorkspaceViewMode } from './workspaceViewModes';
-import { STATUSES } from '../features/tasks/taskStatuses';
+import { TASK_FILTERS } from '../features/tasks/taskStatuses';
 
 export type { WorkspaceViewMode } from './workspaceViewModes';
 
@@ -29,8 +29,8 @@ export function FilterBar({
             onChange={e => onStatusFilterChange(e.target.value || null)}
           >
             <option value="">All</option>
-            {STATUSES.map(s => (
-              <option key={s} value={s}>{s}</option>
+            {TASK_FILTERS.map(s => (
+              <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
             ))}
           </select>
 

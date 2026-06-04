@@ -66,6 +66,84 @@
   flex-shrink: 0;
 }
 
+.tree-availability-pill,
+.task-availability-chip,
+.dependency-state {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.035em;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.tree-availability-waiting,
+.task-availability-dependency-waiting,
+.dependency-state-waiting,
+.status-dependency-waiting {
+  background: #3b2a14;
+  color: var(--yellow);
+  border-color: rgba(224, 175, 104, 0.35);
+}
+
+.tree-availability-blocked,
+.task-availability-blocked {
+  background: #3a1a24;
+  color: var(--red);
+  border-color: rgba(247, 118, 142, 0.35);
+}
+
+.dependency-state-satisfied {
+  background: #1a2e1a;
+  color: var(--green);
+  border-color: rgba(158, 206, 106, 0.35);
+}
+
+.dependency-item-waiting {
+  border-color: rgba(224, 175, 104, 0.4);
+}
+
+.detail-hint {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.task-availability-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 7px;
+  border-bottom: 1px solid rgba(122, 162, 247, 0.12);
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.task-availability-summary-item {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.task-availability-summary-waiting {
+  background: rgba(224, 175, 104, 0.1);
+  color: var(--yellow);
+  border-color: rgba(224, 175, 104, 0.28);
+}
+
+.task-availability-summary-blocked {
+  background: rgba(247, 118, 142, 0.1);
+  color: var(--red);
+  border-color: rgba(247, 118, 142, 0.28);
+}
+
 /* Workspace section */
 .workspace-section {
   border-color: #4a5575;

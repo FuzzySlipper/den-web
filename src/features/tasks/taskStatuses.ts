@@ -6,4 +6,6 @@
  */
 
 export const STATUSES = ['planned', 'in_progress', 'review', 'blocked', 'done', 'cancelled'] as const;
-export type TaskFilterStatus = (typeof STATUSES)[number];
+export const TASK_AVAILABILITY_FILTERS = ['waiting_on_dependencies'] as const;
+export const TASK_FILTERS = [...STATUSES, ...TASK_AVAILABILITY_FILTERS] as const;
+export type TaskFilterStatus = (typeof TASK_FILTERS)[number];

@@ -89,6 +89,10 @@ export interface ProjectTask {
   assigned_to: string | null;
   parent_id: number | null;
   tags: string[] | null;
+  availability?: string | null;
+  dependency_count?: number;
+  unfinished_dependency_count?: number;
+  subtask_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -103,6 +107,8 @@ export interface TaskSummary {
   parent_id: number | null;
   tags: string[] | null;
   dependency_count: number;
+  unfinished_dependency_count: number;
+  availability: string;
   subtask_count: number;
 }
 

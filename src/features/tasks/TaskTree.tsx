@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
-import type { TaskSummary, TaskStatus } from '../../api/types';
+import type { TaskSummary } from '../../api/types';
+import { isDependencyWaitingTask, taskAvailabilityLabel, taskAvailabilityTitle, taskStatusIcon } from './taskAvailability';
 
 export interface TaskNode {
   task: TaskSummary;
@@ -43,7 +44,7 @@ function sortNodes(nodes: TaskNode[], mode: string): TaskNode[] {
       sorted.sort((a, b) => a.task.id - b.task.id);
       break;
     case 'status':
-      sorted.sort((a, b) => statusOrder(a.task.status) - statusOrder(b.task.status)
+      sorted.sort((a, b) => statusOrder(a.task) - statusOrder(b.task)
         || a.task.priority - b.task.priority
         || a.task.id - b.task.id);
       break;
@@ -63,19 +64,9 @@ const STATUS_ORDER: Record<string, number> = {
   planned: 0, in_progress: 1, review: 2, blocked: 3, done: 4, cancelled: 5,
 };
 
-function statusOrder(s: TaskStatus): number {
-  return STATUS_ORDER[s] ?? 99;
-}
-
-function statusIcon(s: TaskStatus): { icon: string; cls: string } {
-  switch (s) {
-    case 'planned':     return { icon: '[ ]', cls: 'status-planned' };
-    case 'in_progress': return { icon: '[>]', cls: 'status-in_progress' };
-    case 'review':      return { icon: '[?]', cls: 'status-review' };
-    case 'blocked':     return { icon: '[!]', cls: 'status-blocked' };
-    case 'done':        return { icon: '[x]', cls: 'status-done' };
-    case 'cancelled':   return { icon: '[-]', cls: 'status-cancelled' };
-  }
+function statusOrder(task: Pick<TaskSummary, 'status' | 'availability' | 'unfinished_dependency_count'>): number {
+  if (isDependencyWaitingTask(task)) return 0.5;
+  return STATUS_ORDER[task.status] ?? 99;
 }
 
 function priorityLabel(p: number): string {
@@ -89,6 +80,7 @@ export function TaskTree({ tasks, selectedTaskId, onSelect, statusFilter, sortMo
 
   const filtered = useMemo(() => {
     if (!statusFilter) return tasks;
+    if (statusFilter === 'waiting_on_dependencies') return tasks.filter(isDependencyWaitingTask);
     return tasks.filter(t => t.status === statusFilter);
   }, [tasks, statusFilter]);
 
@@ -108,8 +100,11 @@ export function TaskTree({ tasks, selectedTaskId, onSelect, statusFilter, sortMo
     const { task } = node;
     const hasChildren = node.children.length > 0;
     const isExpanded = expanded.has(task.id);
-    const si = statusIcon(task.status);
+    const waitingOnDependencies = isDependencyWaitingTask(task);
+    const si = taskStatusIcon(task.status, waitingOnDependencies);
     const projectLabel = projectNames?.get(task.project_id) ?? task.project_id;
+    const availabilityLabel = taskAvailabilityLabel(task);
+    const availabilityTitle = taskAvailabilityTitle(task);
 
     return (
       <div key={task.id}>
@@ -117,7 +112,7 @@ export function TaskTree({ tasks, selectedTaskId, onSelect, statusFilter, sortMo
           className={`tree-node${task.id === selectedTaskId ? ' selected' : ''}`}
           style={{ paddingLeft: `${10 + depth * 16}px` }}
           onClick={() => onSelect(task.id, task.project_id)}
-          title={showProjectLabels ? `${projectLabel} · #${task.id} ${task.title}` : undefined}
+          title={showProjectLabels ? `${projectLabel} · #${task.id} ${task.title} · ${availabilityLabel}` : availabilityTitle}
         >
           {hasChildren ? (
             <span className="tree-toggle" onClick={(e) => toggleExpand(task.id, e)}>
@@ -126,7 +121,7 @@ export function TaskTree({ tasks, selectedTaskId, onSelect, statusFilter, sortMo
           ) : (
             <span className="tree-toggle" />
           )}
-          <span className={`tree-status-icon ${si.cls}`}>{si.icon}</span>
+          <span className={`tree-status-icon ${si.cls}`} title={availabilityTitle}>{si.icon}</span>
           <span className={`priority-${task.priority}`}>{priorityLabel(task.priority)}</span>
           <span className="tree-id">#{task.id}</span>
           {showProjectLabels && (
@@ -135,6 +130,12 @@ export function TaskTree({ tasks, selectedTaskId, onSelect, statusFilter, sortMo
           <span className={`tree-title${task.status === 'cancelled' ? ' status-cancelled' : ''}`}>
             {task.title}
           </span>
+          {waitingOnDependencies && (
+            <span className="tree-availability-pill tree-availability-waiting" title={availabilityTitle}>deps wait</span>
+          )}
+          {task.status === 'blocked' && (
+            <span className="tree-availability-pill tree-availability-blocked" title={availabilityTitle}>manual block</span>
+          )}
           {task.subtask_count > 0 && !isExpanded && (
             <span className="tree-subtask-count">(+{task.subtask_count})</span>
           )}
