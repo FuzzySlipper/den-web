@@ -128,6 +128,9 @@ export interface ChannelActivityEvent {
   parentAgentIdentity: string | null;
   workerRunId: string | null;
   workerRole: string | null;
+  assignmentId?: string | null;
+  agentInstanceId?: string | null;
+  poolMemberId?: string | null;
   taskId: number | null;
   threadId: number | null;
   anchorMessageId: number | null;
@@ -145,6 +148,103 @@ export interface ChannelActivityEvent {
   finalChannelMessageId: number | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AgentWorkCurrentItem {
+  agentIdentity: string;
+  workerRunId: string | null;
+  projectId: string | null;
+  taskId: number | null;
+  assignmentId: string | null;
+  workerRole: string | null;
+  profileIdentity: string | null;
+  poolMemberId: string | null;
+  agentInstanceId: string | null;
+  state: string;
+  stateReason: string | null;
+  lastActivityAt: string | null;
+  stalenessDeadline: string | null;
+  lastActivityEventId: number | null;
+  evidenceLink: string | null;
+  evidenceProvenance: string[];
+  evidenceLinks: string[];
+  sessionId: string | null;
+  deliveryRequestId: string | null;
+  directAgentEventId: string | null;
+  hostId: string | null;
+  processId: string | null;
+  currentWorkState: string | null;
+  stalenessDiagnostic: string | null;
+  flags: string[];
+}
+
+export interface AgentWorkCurrentResponse {
+  items: AgentWorkCurrentItem[];
+  totalCount: number;
+  generatedAt: string;
+  stalenessSummary: {
+    totalTracked: number;
+    stale: number;
+    staleDiagnostics: string[];
+  } | null;
+  migrationNote: string | null;
+}
+
+export interface AgentWorkLifecycleEvent {
+  id: number;
+  channelId: number;
+  projectId: string | null;
+  taskId: number | null;
+  agentIdentity: string;
+  eventType: string;
+  state: string | null;
+  workerRunId: string | null;
+  assignmentId: string | null;
+  deliveryRequestId: string | null;
+  sessionId: string | null;
+  evidenceLink: string | null;
+  summary: string | null;
+  createdAt: string;
+}
+
+export interface AgentWorkEventsResponse {
+  items: AgentWorkLifecycleEvent[];
+  count: number;
+  channelId: number | null;
+  filters: Record<string, string | number | boolean | null>;
+}
+
+export interface DirectAgentEvent {
+  id: number;
+  channelId: number;
+  messageKind: string;
+  senderType: string;
+  senderIdentity: string;
+  sourceKind: string | null;
+  sourceId: string | null;
+  sourceProjectId: string | null;
+  targetProjectId: string | null;
+  targetTaskId: number | null;
+  assignmentId: string | null;
+  workerRunId: string | null;
+  workerRole: string | null;
+  profileIdentity: string | null;
+  poolMemberId: string | null;
+  agentInstanceId: string | null;
+  sessionOwnerId: string | null;
+  sessionId: string | null;
+  deliveryRequestId: string | null;
+  dedupeKey: string | null;
+  deepLink: string | null;
+  summary: string | null;
+  body: string | null;
+  createdAt: string;
+}
+
+export interface DirectAgentEventsResponse {
+  items: DirectAgentEvent[];
+  nextAfterId: number | null;
+  hasMore: boolean;
 }
 
 export type ChannelWakePolicy =

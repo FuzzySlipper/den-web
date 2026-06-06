@@ -108,6 +108,8 @@ export type {
   AddChannelReactionRequest,
   ResolveActiveWorkRouteRequest,
   ListActiveWorkRoutesOpts,
+  ListAgentWorkOpts,
+  ListDirectAgentEventsOpts,
 } from './channels/client';
 export {
   listChannels,
@@ -117,6 +119,9 @@ export {
   ensureAgentCommonsChannel,
   listChannelMessages,
   listChannelActivityEvents,
+  listAgentWorkCurrent,
+  listAgentWorkEvents,
+  listDirectAgentEvents,
   resolveActiveWorkRoute,
   listActiveWorkRoutes,
   postChannelMessage,

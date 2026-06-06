@@ -1,4 +1,4 @@
-import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse } from './types';
+import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse, AgentWorkCurrentResponse, AgentWorkEventsResponse, DirectAgentEventsResponse } from './types';
 import { normalizeApiBase } from '../config';
 
 let denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
@@ -161,6 +161,45 @@ export function listChannelActivityEvents(channelId: number, opts: ListChannelAc
     limit: opts.limit,
   });
   return getChannels(`/channels/${channelId}/activity-events${q}`);
+}
+
+export interface ListAgentWorkOpts {
+  channelId?: number;
+  agentIdentity?: string;
+  taskId?: number;
+  workerRunId?: string;
+  assignmentId?: string;
+  sessionId?: string;
+  limit?: number;
+}
+
+export function listAgentWorkCurrent(opts: Pick<ListAgentWorkOpts, 'channelId' | 'limit'> = {}): Promise<AgentWorkCurrentResponse> {
+  const q = buildQuery({ channelId: opts.channelId, limit: opts.limit });
+  return getChannels(`/agent-work/current${q}`);
+}
+
+export function listAgentWorkEvents(opts: ListAgentWorkOpts = {}): Promise<AgentWorkEventsResponse> {
+  const q = buildQuery({
+    channelId: opts.channelId,
+    agentIdentity: opts.agentIdentity,
+    taskId: opts.taskId,
+    workerRunId: opts.workerRunId,
+    assignmentId: opts.assignmentId,
+    sessionId: opts.sessionId,
+    limit: opts.limit,
+  });
+  return getChannels(`/agent-work/events${q}`);
+}
+
+export interface ListDirectAgentEventsOpts {
+  channelId?: number;
+  afterId?: number;
+  limit?: number;
+}
+
+export function listDirectAgentEvents(opts: ListDirectAgentEventsOpts = {}): Promise<DirectAgentEventsResponse> {
+  const q = buildQuery({ channelId: opts.channelId, afterId: opts.afterId, limit: opts.limit });
+  return getChannels(`/direct-agent-events${q}`);
 }
 
 export interface PostChannelMessageRequest {

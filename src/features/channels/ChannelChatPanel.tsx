@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent, KeyboardEvent, UIEvent } from 'react';
-import type { Channel, ChannelActivityEvent, ChannelMessage, ChannelProjectLink, ChannelReactionSummary, GatewayDirectAgentMessage, GatewayMember, GatewayMemberships, GatewayTestWake } from '../../api/types';
+import type { AgentWorkCurrentResponse, AgentWorkEventsResponse, Channel, ChannelActivityEvent, ChannelMessage, ChannelProjectLink, ChannelReactionSummary, DirectAgentEventsResponse, GatewayDirectAgentMessage, GatewayMember, GatewayMemberships, GatewayTestWake } from '../../api/types';
 import {
   ensureAgentCommonsChannel,
   ensureProjectDefaultChannel,
+  listAgentWorkCurrent,
+  listAgentWorkEvents,
   listChannelActivityEvents,
   listChannelMessages,
   listChannelReactions,
   listChannels,
+  listDirectAgentEvents,
   listProjectLinkedChannels,
   listChannelLinkedProjects,
   listGatewayMemberships,
@@ -24,6 +27,7 @@ import { NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS, isVisibleNormalParticipant } fro
 import { findSlashCommandSuggestions, getSlashCommandHelpLines } from './channelSlashCommands';
 import { appendHistory, persistHistory, readHistory, subscribeToHistoryChanges } from './channelComposerHistory';
 import { useComposerHotkeys } from './useComposerHotkeys';
+import { AgentWorkOpsPanel } from './AgentWorkOpsPanel';
 import {
   channelRole,
   isSharedProjectChannel,
@@ -488,6 +492,46 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     refresh: refreshActivityEvents,
   } = usePolling<ChannelActivityEvent[]>(fetchActivityEvents, 4000);
 
+  const fetchAgentWorkCurrent = useCallback(
+    () => activeChannel ? listAgentWorkCurrent({ channelId: activeChannel.id, limit: 12 }) : Promise.resolve(null),
+    [activeChannel],
+  );
+  const {
+    data: agentWorkCurrent,
+    loading: agentWorkCurrentLoading,
+    error: agentWorkCurrentError,
+    refresh: refreshAgentWorkCurrent,
+  } = usePolling<AgentWorkCurrentResponse | null>(fetchAgentWorkCurrent, 4000);
+
+  const fetchAgentWorkEvents = useCallback(
+    () => activeChannel ? listAgentWorkEvents({ channelId: activeChannel.id, limit: 24 }) : Promise.resolve(null),
+    [activeChannel],
+  );
+  const {
+    data: agentWorkEvents,
+    loading: agentWorkEventsLoading,
+    error: agentWorkEventsError,
+    refresh: refreshAgentWorkEvents,
+  } = usePolling<AgentWorkEventsResponse | null>(fetchAgentWorkEvents, 4000);
+
+  const fetchDirectAgentEvents = useCallback(
+    () => activeChannel ? listDirectAgentEvents({ channelId: activeChannel.id, limit: 24 }) : Promise.resolve(null),
+    [activeChannel],
+  );
+  const {
+    data: directAgentEvents,
+    loading: directAgentEventsLoading,
+    error: directAgentEventsError,
+    refresh: refreshDirectAgentEvents,
+  } = usePolling<DirectAgentEventsResponse | null>(fetchDirectAgentEvents, 4000);
+
+  const refreshAgentWorkEvidence = useCallback(() => {
+    refreshAgentWorkCurrent();
+    refreshAgentWorkEvents();
+    refreshActivityEvents();
+    refreshDirectAgentEvents();
+  }, [refreshActivityEvents, refreshAgentWorkCurrent, refreshAgentWorkEvents, refreshDirectAgentEvents]);
+
   const fetchReactions = useCallback(
     () => activeChannel ? listChannelReactions(activeChannel.id) : Promise.resolve([]),
     [activeChannel],
@@ -622,6 +666,8 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   const disabledReason = channelError
     ? 'Channel unavailable. Check den-channels API health.'
     : null;
+  const agentWorkLoading = agentWorkCurrentLoading || agentWorkEventsLoading || directAgentEventsLoading || activityLoading;
+  const agentWorkError = agentWorkCurrentError ?? agentWorkEventsError ?? directAgentEventsError ?? null;
   const identityRequired = normalizedSenderIdentity.length === 0;
   const directModeRequiresTarget = sendMode === 'direct' && !selectedTarget;
   const isComposerDisabled = !activeChannel || sending || Boolean(disabledReason) || identityRequired || directModeRequiresTarget;
@@ -1023,6 +1069,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
             refreshChannels();
             refreshMessages();
             refreshActivityEvents();
+            refreshAgentWorkEvidence();
             refreshReactions();
             refreshMemberships();
           }}
@@ -1134,7 +1181,16 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
           <div className="channel-chat-scroll-anchor" ref={scrollAnchorRef} aria-hidden="true" />
         </div>
 
-        <aside className="channel-chat-members" aria-label="Channel participants and active Hermes profile bindings">
+        <aside className="channel-chat-members" aria-label="Channel participants, current agent work, and active Hermes profile bindings">
+          <AgentWorkOpsPanel
+            current={agentWorkCurrent}
+            lifecycle={agentWorkEvents}
+            activityEvents={activityEvents ?? []}
+            directAgentEvents={directAgentEvents?.items ?? []}
+            loading={agentWorkLoading}
+            error={agentWorkError}
+            onRefresh={refreshAgentWorkEvidence}
+          />
           <section className="channel-chat-members-panel" aria-label="Channel participants">
             <div className="channel-chat-members-header">
               <strong>Participants</strong>
