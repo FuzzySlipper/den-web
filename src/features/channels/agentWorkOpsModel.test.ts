@@ -140,12 +140,31 @@ describe('buildAgentWorkOpsModel', () => {
     expect(model.timelineItems[0]).toMatchObject({ source: 'activity' });
   });
 
+  it('shows activity fallback evidence when lifecycle and current projections are empty', () => {
+    const model = buildAgentWorkOpsModel(currentResponse([]), lifecycleResponse([]), [activityEvent({})], []);
+
+    expect(model.mode).toBe('activity_fallback');
+    expect(model.diagnostic).toContain('legacy channel activity breadcrumbs');
+    expect(model.currentRows).toHaveLength(0);
+    expect(model.timelineItems[0]).toMatchObject({ source: 'activity', agentIdentity: 'spawned-reviewer' });
+  });
+
   it('surfaces direct-agent recorded-only evidence when current and activity rows are absent', () => {
     const model = buildAgentWorkOpsModel(currentResponse([]), lifecycleResponse([]), [], [directEvent({})]);
 
     expect(model.mode).toBe('direct_agent_fallback');
     expect(model.currentRows[0]).toMatchObject({ agentIdentity: 'spawned-coder', state: 'recorded_only' });
     expect(model.currentRows[0].stalenessDiagnostic).toContain('recorded-only');
+  });
+
+  it('reports an explicit no-evidence diagnostic when every source is empty', () => {
+    const model = buildAgentWorkOpsModel(null, null, [], []);
+
+    expect(model.mode).toBe('none');
+    expect(model.currentRows).toHaveLength(0);
+    expect(model.timelineItems).toHaveLength(0);
+    expect(model.diagnostic).toContain('No producer telemetry for this channel');
+    expect(model.headingDetail).toBe('0 current · 0 recent');
   });
 
   it('keeps stale diagnostics visible on current rows', () => {
