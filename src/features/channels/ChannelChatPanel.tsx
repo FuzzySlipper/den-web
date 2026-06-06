@@ -26,6 +26,7 @@ import { channelMessagePrimaryBody, directAgentMessageDisplay, findActiveMention
 import { NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS, isVisibleNormalParticipant } from './participantVisibility';
 import { findSlashCommandSuggestions, getSlashCommandHelpLines } from './channelSlashCommands';
 import { appendHistory, persistHistory, readHistory, subscribeToHistoryChanges } from './channelComposerHistory';
+import { filterLoadedChannelMessages } from './channelMessageSearch';
 import { useComposerHotkeys } from './useComposerHotkeys';
 import { AgentWorkOpsPanel } from './AgentWorkOpsPanel';
 import {
@@ -375,6 +376,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   const [composerHistoryEntries, setComposerHistoryEntries] = useState<ReturnType<typeof readHistory>>([]);
   const [historyNavigateIndex, setHistoryNavigateIndex] = useState<number | null>(null);
   const [slashActiveIndex, setSlashActiveIndex] = useState(0);
+  const [messageSearchQuery, setMessageSearchQuery] = useState('');
   const slashCommandSuggestions = useMemo(
     () => findSlashCommandSuggestions(draft),
     [draft],
@@ -585,6 +587,12 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     return [...visibleMessages].sort((left, right) => left.id - right.id);
   }, [activeChannel, messages, projectAttributionFilter]);
 
+  const displayedMessages = useMemo(
+    () => filterLoadedChannelMessages(sortedMessages, messageSearchQuery),
+    [messageSearchQuery, sortedMessages],
+  );
+  const isMessageSearchActive = messageSearchQuery.trim().length > 0;
+
   const reactionsByMessageId = useMemo(() => {
     const grouped = new Map<number, ChannelReactionSummary[]>();
     for (const reaction of reactions ?? []) {
@@ -596,8 +604,8 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   }, [reactions]);
 
   const groupedActivityEvents = useMemo(
-    () => groupActivityEventsForChannelMessages(sortedMessages, activityEvents ?? []),
-    [activityEvents, sortedMessages],
+    () => groupActivityEventsForChannelMessages(displayedMessages, isMessageSearchActive ? [] : (activityEvents ?? [])),
+    [activityEvents, displayedMessages, isMessageSearchActive],
   );
   const activityEventsByMessageId = groupedActivityEvents.byMessageId;
   const deliveryProgressBlocks = groupedActivityEvents.displayBlocks;
@@ -977,7 +985,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
       pendingAutoScrollSnapKeyRef.current = null;
       pendingAutoScrollObservedLoadingRef.current = false;
     }
-  }, [activeChannel, activeChannel?.id, activityEvents?.length, activityLoading, autoScroll, messagesLoading, projectId, scrollResetKey, sortedMessages.length]);
+  }, [activeChannel, activeChannel?.id, activityEvents?.length, activityLoading, autoScroll, displayedMessages.length, messagesLoading, projectId, scrollResetKey]);
 
   return (
     <section className={`panel channel-chat-panel channel-chat-panel-size-${panelSize}`} aria-label="Project channel chat">
@@ -1062,6 +1070,19 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
             </select>
           </>
         )}
+        <label className="channel-chat-selector-label" htmlFor="channel-chat-message-search">Search</label>
+        <input
+          id="channel-chat-message-search"
+          className="channel-chat-message-search"
+          type="search"
+          value={messageSearchQuery}
+          onChange={event => setMessageSearchQuery(event.target.value)}
+          placeholder="Filter loaded messages"
+          title="Client-side filter over the currently loaded channel scrollback only."
+          aria-label="Filter loaded channel messages"
+          autoComplete="off"
+          spellCheck={false}
+        />
         <button
           type="button"
           className="channel-chat-refresh"
@@ -1086,13 +1107,22 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
             <div className="channel-chat-state">Loading channel messages…</div>
           ) : messagesError || activityError ? (
             <div className="channel-chat-state channel-chat-state-error">{(messagesError ?? activityError)?.message}</div>
+          ) : isMessageSearchActive && displayedMessages.length === 0 ? (
+            <div className="channel-chat-state channel-chat-state-muted">
+              No loaded messages match “{messageSearchQuery.trim()}”. This search filters the {sortedMessages.length} messages currently loaded in the browser, not full channel history.
+            </div>
           ) : sortedMessages.length === 0 && unanchoredActivityEvents.length === 0 && deliveryProgressBlocks.length === 0 ? (
             <div className="channel-chat-state channel-chat-state-muted">No channel messages yet. Start the scrollback below.</div>
           ) : (
             <>
-              <ActivityTimeline events={unanchoredActivityEvents} />
-              <DeliveryProgressCards blocks={deliveryProgressBlocks} />
-              {sortedMessages.map(message => {
+              {isMessageSearchActive && (
+                <div className="channel-chat-search-status">
+                  Showing {displayedMessages.length} of {sortedMessages.length} loaded message{sortedMessages.length === 1 ? '' : 's'} for “{messageSearchQuery.trim()}”. Full channel-history search is not available yet.
+                </div>
+              )}
+              {!isMessageSearchActive && <ActivityTimeline events={unanchoredActivityEvents} />}
+              {!isMessageSearchActive && <DeliveryProgressCards blocks={deliveryProgressBlocks} />}
+              {displayedMessages.map(message => {
                 const evidence = directMessageEvidence(message);
                 const wakeProgress = deriveWakeProgress(message, sortedMessages);
                 const messageReactions = reactionsByMessageId.get(message.id) ?? [];

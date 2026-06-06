@@ -11,7 +11,7 @@
 
 .channel-chat-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto minmax(110px, 160px) auto minmax(180px, 260px) auto minmax(140px, 220px) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto minmax(110px, 160px) auto minmax(180px, 260px) auto minmax(140px, 220px) auto minmax(180px, 260px) auto;
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
@@ -53,6 +53,7 @@
   .channel-chat-identity,
   .channel-chat-selector-label,
   .channel-chat-selector,
+  .channel-chat-message-search,
   .channel-chat-quick-controls,
   .channel-chat-refresh {
     grid-column: span 1;
@@ -503,6 +504,7 @@
 
 .channel-chat-identity,
 .channel-chat-selector,
+.channel-chat-message-search,
 .channel-chat-composer input,
 .channel-chat-composer select,
 .channel-chat-invite input,
@@ -516,17 +518,32 @@
 }
 
 .channel-chat-identity,
-.channel-chat-selector {
+.channel-chat-selector,
+.channel-chat-message-search {
   padding: 3px 8px;
   font-size: 12px;
 }
 
 .channel-chat-identity { min-width: 0; }
 
-.channel-chat-identity:focus,
-.channel-chat-composer input:focus {
-  outline: none;
+.channel-chat-identity:focus-visible,
+.channel-chat-selector:focus-visible,
+.channel-chat-message-search:focus-visible,
+.channel-chat-composer input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
   border-color: var(--accent-dim);
+}
+
+.channel-chat-search-status {
+  border: 1px solid rgba(125, 207, 255, 0.25);
+  border-radius: 6px;
+  background: rgba(125, 207, 255, 0.08);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 8px;
+  padding: 6px 8px;
 }
 
 .channel-chat-refresh,
