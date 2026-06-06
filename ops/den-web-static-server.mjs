@@ -205,18 +205,42 @@ function proxyRequest(targetBase, req, res, pathRewrite) {
     headers: proxyHeaders,
   };
 
+  const failProxyResponse = (err) => {
+    console.error(`[den-web-static-server] proxy error for ${req.url}: ${err.message}`);
+
+    if (res.destroyed || res.writableEnded) {
+      return;
+    }
+
+    if (!res.headersSent) {
+      res.writeHead(502, { 'Content-Type': 'text/plain' });
+      res.end(`Bad Gateway: ${err.message}`);
+      return;
+    }
+
+    // Headers/body are already in flight, so writing a synthetic 502 would
+    // throw ERR_HTTP_HEADERS_SENT and can crash Node. Abort the downstream
+    // response instead; clients see the truncated/reset response and the
+    // server stays alive for subsequent requests.
+    res.destroy(err);
+  };
+
   const proxyReq = http.request(options, (proxyRes) => {
     // Forward response headers
     const responseHeaders = { ...proxyRes.headers };
     delete responseHeaders['transfer-encoding']; // let Node handle chunking
     res.writeHead(proxyRes.statusCode, responseHeaders);
+    proxyRes.on('error', failProxyResponse);
+    proxyRes.on('aborted', () => failProxyResponse(new Error('upstream response aborted')));
     proxyRes.pipe(res);
   });
 
-  proxyReq.on('error', (err) => {
-    console.error(`[den-web-static-server] proxy error for ${req.url}: ${err.message}`);
-    res.writeHead(502, { 'Content-Type': 'text/plain' });
-    res.end(`Bad Gateway: ${err.message}`);
+  proxyReq.on('error', failProxyResponse);
+
+  res.on('close', () => {
+    if (!proxyReq.destroyed) {
+      proxyReq.destroy();
+    }
   });
 
   req.pipe(proxyReq);
@@ -314,17 +338,31 @@ function handleRequest(req, res) {
 
 // ── Server start ───────────────────────────────────────────────────────────────
 
-const server = http.createServer(handleRequest);
+function createStaticServer() {
+  return http.createServer(handleRequest);
+}
 
-server.listen(PORT, HOST, () => {
-  console.log(`[den-web-static-server] listening on ${HOST}:${PORT}`);
-  console.log(`[den-web-static-server] static root: ${STATIC_ROOT}`);
-  console.log(`[den-web-static-server] Den Core target: ${DEN_CORE_TARGET}`);
-  console.log(`[den-web-static-server] Den Channels target: ${DEN_CHANNELS_TARGET}`);
-  console.log(`[den-web-static-server] Den Gateway target: ${DEN_GATEWAY_TARGET}`);
-  if (configData) {
-    console.log(`[den-web-static-server] config: ${CONFIG_PATH}`);
-  } else {
-    console.log(`[den-web-static-server] config: defaults (no file at ${CONFIG_PATH})`);
-  }
-});
+function startServer() {
+  const server = createStaticServer();
+
+  server.listen(PORT, HOST, () => {
+    console.log(`[den-web-static-server] listening on ${HOST}:${PORT}`);
+    console.log(`[den-web-static-server] static root: ${STATIC_ROOT}`);
+    console.log(`[den-web-static-server] Den Core target: ${DEN_CORE_TARGET}`);
+    console.log(`[den-web-static-server] Den Channels target: ${DEN_CHANNELS_TARGET}`);
+    console.log(`[den-web-static-server] Den Gateway target: ${DEN_GATEWAY_TARGET}`);
+    if (configData) {
+      console.log(`[den-web-static-server] config: ${CONFIG_PATH}`);
+    } else {
+      console.log(`[den-web-static-server] config: defaults (no file at ${CONFIG_PATH})`);
+    }
+  });
+
+  return server;
+}
+
+if (process.argv[1] && import.meta.url === url.pathToFileURL(path.resolve(process.argv[1])).href) {
+  startServer();
+}
+
+export { createStaticServer, handleRequest, proxyRequest, startServer };

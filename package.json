@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:static-server": "node --test ops/den-web-static-server-regression.mjs",
     "test:rendering": "vitest run src/components/channelChatRenderModel.test.ts",
     "preview": "vite preview",
     "serve:static": "node ops/den-web-static-server.mjs",
