@@ -178,7 +178,26 @@ describe('Den Host FleetOps client', () => {
 
     await getFleetOps();
 
-    expect(fetchMock).toHaveBeenCalledWith('/custom-den-host/fleet-ops');
+    expect(fetchMock).toHaveBeenCalledWith('/custom-den-host/fleet-ops', { cache: 'no-store' });
+  });
+
+  it('passes cache: no-store to Channels GET calls so polling bypasses the browser cache', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        lobbyChannelId: 604,
+        byRole: [],
+        members: [],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await getWorkerPoolLobbyPresence();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/worker-pool/lobby/presence',
+      { cache: 'no-store' },
+    );
   });
 
   it('routes FleetOps action runs and run details through Den Host, not Gateway', async () => {
@@ -197,6 +216,6 @@ describe('Den Host FleetOps client', () => {
     await getFleetOpsRun('run-1');
 
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/den-host-api/fleet-ops/actions/fleet-status/runs', expect.objectContaining({ method: 'POST' }));
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/den-host-api/fleet-ops/runs/run-1');
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/den-host-api/fleet-ops/runs/run-1', { cache: 'no-store' });
   });
 });

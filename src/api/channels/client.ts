@@ -15,7 +15,7 @@ function channelsApiUrl(url: string): string {
 
 async function getChannels<T>(url: string): Promise<T> {
   const requestUrl = channelsApiUrl(url);
-  const res = await fetch(requestUrl);
+  const res = await fetch(requestUrl, { cache: 'no-store' });
   if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
   return res.json();
 }

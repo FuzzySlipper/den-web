@@ -80,7 +80,7 @@ function coreApiUrl(url: string): string {
 
 async function get<T>(url: string): Promise<T> {
   const requestUrl = coreApiUrl(url);
-  const res = await fetch(requestUrl);
+  const res = await fetch(requestUrl, { cache: 'no-store' });
   if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
   return res.json();
 }
@@ -213,7 +213,7 @@ export interface GetMessagesOpts {
 }
 
 export function getMessage(projectId: string, messageId: number): Promise<Message | null> {
-  return fetch(coreApiUrl(`/api/projects/${esc(projectId)}/messages/${messageId}`))
+  return fetch(coreApiUrl(`/api/projects/${esc(projectId)}/messages/${messageId}`), { cache: 'no-store' })
     .then(res => {
       if (res.status === 404) return null;
       if (!res.ok) throw new Error(`GET message: ${res.status}`);
@@ -248,7 +248,7 @@ export function listDocuments(projectId?: string, docType?: string, tags?: strin
 }
 
 export function getDocument(projectId: string, slug: string): Promise<Document | null> {
-  return fetch(coreApiUrl(`/api/projects/${esc(projectId)}/documents/${esc(slug)}`))
+  return fetch(coreApiUrl(`/api/projects/${esc(projectId)}/documents/${esc(slug)}`), { cache: 'no-store' })
     .then(res => {
       if (res.status === 404) return null;
       if (!res.ok) throw new Error(`GET document: ${res.status}`);
@@ -616,7 +616,7 @@ export function rejectDispatch(dispatchId: number, decidedBy: string): Promise<D
 // Document Discussion (#1680)
 
 export function getDocumentDiscussion(projectId: string, slug: string): Promise<DocumentDiscussion | null> {
-  return fetch(coreApiUrl(`/api/projects/${esc(projectId)}/documents/${esc(slug)}/discussion`))
+  return fetch(coreApiUrl(`/api/projects/${esc(projectId)}/documents/${esc(slug)}/discussion`), { cache: 'no-store' })
     .then(res => {
       if (res.status === 404) return null;
       if (!res.ok) throw new Error(`GET discussion: ${res.status}`);
