@@ -526,6 +526,12 @@
 
 .channel-chat-identity { min-width: 0; }
 
+.channel-chat-identity:focus,
+.channel-chat-composer input:focus {
+  outline: none;
+  border-color: var(--accent-dim);
+}
+
 .channel-chat-identity:focus-visible,
 .channel-chat-selector:focus-visible,
 .channel-chat-message-search:focus-visible,
