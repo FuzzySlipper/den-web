@@ -42,6 +42,7 @@ import type { GitFocus } from '../features/git/git';
 import { usePreferences } from '../features/preferences/usePreferences';
 import { PreferencesDialog } from '../features/preferences/PreferencesDialog';
 import { matchHotkey } from '../features/preferences/hotkeyParse';
+import { editableTarget } from '../utils';
 import { NotificationHistoryPanel } from '../features/notifications/NotificationHistoryPanel';
 import { isNotificationPanelRoute } from '../features/notifications/notificationWindow';
 import {
@@ -79,12 +80,6 @@ function defaultSpaceId(spaces: Space[]): string | null {
 
 function spaceSupportsGit(space: Space | null | undefined, isAllSpaces: boolean): boolean {
   return isAllSpaces || space?.kind === 'project' || Boolean(space?.root_path?.trim());
-}
-
-function editableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName.toLowerCase();
-  return target.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select';
 }
 
 export default function App() {
@@ -457,17 +452,10 @@ export default function App() {
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.defaultPrevented) return;
-      // All navigation shortcuts require the user to not be typing in an editable element
-      if (editableTarget(event.target)) return;
 
-      // 1) Open preferences (existing behavior)
-      if (kb.openPreferences && matchHotkey(event, kb.openPreferences)) {
-        event.preventDefault();
-        setShowPreferences(true);
-        return;
-      }
-
-      // 2) Close panel (existing behavior, now through the same configurable matcher)
+      // 1) Close panel — must work even when focus is in an editable element.
+      //    The user pressing Escape in a textbox wants to dismiss the overlay,
+      //    not type an Escape character.
       if (kb.closePanel && matchHotkey(event, kb.closePanel)) {
         if (showPreferences) {
           event.preventDefault();
@@ -495,6 +483,16 @@ export default function App() {
             setSelectedTaskProjectId(null);
           }
         }
+        return;
+      }
+
+      // All navigation shortcuts require the user to not be typing in an editable element
+      if (editableTarget(event.target)) return;
+
+      // 2) Open preferences (existing behavior)
+      if (kb.openPreferences && matchHotkey(event, kb.openPreferences)) {
+        event.preventDefault();
+        setShowPreferences(true);
         return;
       }
 
