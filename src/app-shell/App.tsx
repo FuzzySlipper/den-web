@@ -35,6 +35,9 @@ import { ChannelChatPanel } from '../features/channels/ChannelChatPanel';
 import type { ChannelChatPanelSize } from '../features/channels/ChannelChatPanel';
 import { FocusedSessionView } from '../features/sessions/FocusedSessionView';
 import { AgentsOverviewView } from '../features/agents/AgentsOverviewView';
+import { DmConversationList } from '../features/dm/DmConversationList';
+import { DmTranscriptView } from '../features/dm/DmTranscriptView';
+import type { DirectConversation } from '../api/channels/types';
 import { agentStreamEntryVisibility } from '../features/agents/subagentRuns';
 import { FleetOpsCockpit } from '../features/fleetops/FleetOpsCockpit';
 import { documentSelectionAction } from '../features/documents/documentEditor';
@@ -135,6 +138,10 @@ export default function App() {
 
   // Agents sub-view toggle: 'overview' (default) or 'worker-pool'
   const [agentsSubView, setAgentsSubView] = useState<'overview' | 'worker-pool'>('overview');
+
+  // DM transcript state
+  const [selectedDmAgent, setSelectedDmAgent] = useState<string | null>(null);
+  const [selectedDmConversation, setSelectedDmConversation] = useState<DirectConversation | null>(null);
 
   // Standalone notification popup: detect #/notification-panel hash route
   const [standalonePopup, setStandalonePopup] = useState(false);
@@ -331,11 +338,13 @@ export default function App() {
               ? 'Agent Stream'
               : viewMode === 'agents'
                 ? 'Agents'
-                : viewMode === 'fleet-ops'
-                  ? 'Fleet Ops'
-                  : viewMode === 'notifications'
-                    ? 'Notifications'
-                    : 'Librarian';
+                : viewMode === 'dm'
+                  ? 'Direct Messages'
+                  : viewMode === 'fleet-ops'
+                    ? 'Fleet Ops'
+                    : viewMode === 'notifications'
+                      ? 'Notifications'
+                      : 'Librarian';
   const mainCount = viewMode === 'tasks'
     ? `(${taskCount}${filterLabel}${sortLabel})`
     : viewMode === 'documents'
@@ -353,6 +362,8 @@ export default function App() {
     setSelectedSubagentRun(null);
     setSelectedDispatch(null);
     setSelectedDoc(null);
+    setSelectedDmAgent(null);
+    setSelectedDmConversation(null);
   }, []);
 
   const handleTaskSelect = useCallback((taskId: number, projectId?: string | null) => {
@@ -411,6 +422,21 @@ export default function App() {
     setSelectedSubagentRun(null);
     setSelectedDoc(null);
     setSelectedDispatch(null);
+  }, []);
+
+  const handleOpenDmTranscript = useCallback((agentIdentity: string) => {
+    setSelectedDmAgent(agentIdentity);
+    setSelectedDmConversation(null);
+    setViewMode('dm');
+    // Clear other selections to avoid overlay conflicts
+    setSelectedTaskId(null);
+    setSelectedTaskProjectId(null);
+    setSelectedMessage(null);
+    setSelectedStreamEntry(null);
+    setSelectedSubagentRun(null);
+    setSelectedDispatch(null);
+    setSelectedDoc(null);
+    setSelectedAssignmentTrace(null);
   }, []);
 
   const applyDocumentSelection = useCallback((doc: DocumentSummary) => {
@@ -525,6 +551,17 @@ export default function App() {
         if (showPreferences) {
           event.preventDefault();
           setShowPreferences(false);
+          return;
+        }
+        if (viewMode === 'dm' && selectedDmConversation) {
+          event.preventDefault();
+          setSelectedDmConversation(null);
+          return;
+        }
+        if (viewMode === 'dm' && selectedDmAgent) {
+          event.preventDefault();
+          setSelectedDmAgent(null);
+          setSelectedDmConversation(null);
           return;
         }
         if (selectedDoc || selectedDispatch || selectedSubagentRun || selectedStreamEntry || selectedMessage || selectedTaskId != null || selectedAssignmentTrace) {
@@ -650,6 +687,8 @@ export default function App() {
     selectedSubagentRun,
     selectedTaskId,
     selectedAssignmentTrace,
+    selectedDmAgent,
+    selectedDmConversation,
     showPreferences,
     spaces,
     effectiveSpaceId,
@@ -913,6 +952,7 @@ export default function App() {
                     isAggregate={isAggregateSpace}
                     closePanelKey={prefs.keyboard.closePanel}
                     onOpenAssignmentTrace={handleAssignmentTraceSelect}
+                    onOpenDmTranscript={handleOpenDmTranscript}
                   />
                 ) : (
                   <WorkerPoolLobbyView
@@ -920,6 +960,24 @@ export default function App() {
                   />
                 )}
               </>
+            ) : viewMode === 'dm' ? (
+              selectedDmAgent ? (
+                selectedDmConversation ? (
+                  <DmTranscriptView
+                    conversation={selectedDmConversation}
+                    onBack={() => setSelectedDmConversation(null)}
+                  />
+                ) : (
+                  <DmConversationList
+                    onSelectConversation={setSelectedDmConversation}
+                    initialAgentIdentity={selectedDmAgent}
+                  />
+                )
+              ) : (
+                <DmConversationList
+                  onSelectConversation={setSelectedDmConversation}
+                />
+              )
             ) : viewMode === 'fleet-ops' ? (
               <FleetOpsCockpit />
             ) : viewMode === 'notifications' ? (
