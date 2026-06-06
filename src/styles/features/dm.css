@@ -1,0 +1,303 @@
+/* =========================================================================
+ * Direct-agent DM transcript UI (den-web #2004)
+ * ========================================================================= */
+
+/* --- Conversation list (sidebar) --- */
+
+.dm-conversation-list {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: var(--bg-secondary);
+  min-width: 240px;
+  max-width: 300px;
+  overflow-y: auto;
+}
+
+.dm-conversation-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dm-conversation-list-header h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dm-conversation-items {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.dm-conversation-item {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.dm-conversation-item:hover {
+  background: var(--bg-hover);
+}
+
+.dm-conversation-selected {
+  background: var(--bg-active);
+}
+
+.dm-agent-identity {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.dm-unread-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.dm-conversation-preview {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dm-conversation-meta {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 8px;
+}
+
+/* --- Transcript view --- */
+
+.dm-transcript-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.dm-transcript-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.dm-back-button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+}
+
+.dm-transcript-title h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dm-transcript-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.dm-refresh-button {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 2px 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Focused-readback warning banner */
+.dm-warning-banner {
+  padding: 6px 12px;
+  background: var(--warning-bg, #fff8e1);
+  border-bottom: 1px solid var(--warning-border, #ffe082);
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* --- Entry rendering --- */
+
+.dm-entries-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+
+.dm-entry {
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--bg-primary);
+  border-left: 3px solid var(--border);
+}
+
+.dm-entry-sent {
+  border-left-color: var(--accent);
+}
+
+.dm-entry-received {
+  border-left-color: var(--success, #4caf50);
+}
+
+.dm-entry-system {
+  border-left-color: var(--text-muted);
+  opacity: 0.8;
+}
+
+.dm-entry-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
+.dm-entry-sender {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dm-entry-direction {
+  color: var(--text-muted);
+}
+
+.dm-entry-time {
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.dm-entry-body {
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.dm-entry-summary {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.dm-entry-source-badge {
+  margin-top: 4px;
+  display: inline-flex;
+  gap: 4px;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--badge-bg, #e8eaf6);
+  color: var(--text-secondary);
+}
+
+/* --- Composer --- */
+
+.dm-composer {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+  align-items: flex-end;
+}
+
+.dm-composer-input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  resize: none;
+  font-family: inherit;
+  min-height: 36px;
+  max-height: 120px;
+}
+
+.dm-send-button {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dm-send-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.dm-send-status {
+  margin-top: 6px;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.dm-send-ok {
+  color: var(--success, #2e7d32);
+  background: var(--success-bg, #e8f5e9);
+}
+
+.dm-send-error {
+  color: var(--error, #c62828);
+  background: var(--error-bg, #ffebee);
+}
+
+/* --- Shared utility --- */
+
+.dm-loading,
+.dm-empty,
+.dm-error {
+  padding: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.dm-error {
+  color: var(--error, #c62828);
+}
+
+/* --- DM panel layout (list + transcript side by side) --- */
+
+.dm-panel {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}

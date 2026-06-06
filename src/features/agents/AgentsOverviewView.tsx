@@ -21,6 +21,7 @@ interface Props {
   isAggregate: boolean;
   closePanelKey?: string;
   onOpenAssignmentTrace?: (assignmentId: string) => void;
+  onOpenDmTranscript?: (agentIdentity: string) => void;
 }
 
 interface FullDetailItem {
@@ -113,7 +114,7 @@ function formatTimestamp(ts: string | null | undefined): string {
   }
 }
 
-export function AgentsOverviewView({ projectId, isAggregate, closePanelKey = 'Escape', onOpenAssignmentTrace }: Props) {
+export function AgentsOverviewView({ projectId, isAggregate, closePanelKey = 'Escape', onOpenAssignmentTrace, onOpenDmTranscript }: Props) {
   const [selectedAgentIdentity, setSelectedAgentIdentity] = useState<string | null>(null);
 
   const fetchOverview = useCallback(
@@ -302,6 +303,7 @@ export function AgentsOverviewView({ projectId, isAggregate, closePanelKey = 'Es
           closePanelKey={closePanelKey}
           onClose={handleCloseDetail}
           onOpenAssignmentTrace={onOpenAssignmentTrace}
+          onOpenDmTranscript={onOpenDmTranscript}
         />
       )}
     </div>
@@ -388,6 +390,7 @@ function AgentDetailOverlay({
   closePanelKey,
   onClose,
   onOpenAssignmentTrace,
+  onOpenDmTranscript,
 }: {
   agentIdentity: string;
   projectId: string | null;
@@ -395,6 +398,7 @@ function AgentDetailOverlay({
   closePanelKey: string;
   onClose: () => void;
   onOpenAssignmentTrace?: (assignmentId: string) => void;
+  onOpenDmTranscript?: (agentIdentity: string) => void;
 }) {
   const fetchDetail = useCallback(
     () => getAgentDetail(agentIdentity, {
@@ -457,6 +461,14 @@ function AgentDetailOverlay({
           )}
         </div>
         <div className="detail-actions">
+          {onOpenDmTranscript && (
+            <button
+              className="detail-action dm-open-button"
+              onClick={() => onOpenDmTranscript(agentIdentity)}
+            >
+              Open DM Transcript
+            </button>
+          )}
           <button className="detail-action" onClick={refresh} disabled={loading}>
             Refresh
           </button>

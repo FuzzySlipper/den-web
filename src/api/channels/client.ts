@@ -1,4 +1,4 @@
-import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse, AgentWorkCurrentResponse, AgentWorkEventsResponse, DirectAgentEventsResponse } from './types';
+import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse, AgentWorkCurrentResponse, AgentWorkEventsResponse, DirectAgentEventsResponse, DirectConversation, DirectConversationEntriesResponse, DirectConversationSendResponse, ReadCursor } from './types';
 import { normalizeApiBase } from '../config';
 
 let denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
@@ -245,4 +245,57 @@ export interface AddChannelReactionRequest {
 
 export function addChannelReaction(messageId: number, request: AddChannelReactionRequest): Promise<unknown> {
   return postChannels(`/channel-messages/${messageId}/reactions`, request);
+}
+
+// =========================================================================
+// Direct Conversation / DM Transcript API (task #2003 / den-web #2004)
+// =========================================================================
+
+export interface ListDirectConversationsOpts {
+  humanIdentity?: string;
+  limit?: number;
+  afterId?: number;
+}
+
+export function listDirectConversations(opts: ListDirectConversationsOpts = {}): Promise<DirectConversation[]> {
+  const q = buildQuery({ humanIdentity: opts.humanIdentity, limit: opts.limit, afterId: opts.afterId });
+  return getChannels(`/direct-conversations${q}`);
+}
+
+export function createDirectConversation(request: { humanIdentity: string; agentIdentity: string }): Promise<DirectConversation> {
+  return postChannels('/direct-conversations', request);
+}
+
+export function getDirectConversation(conversationId: number): Promise<DirectConversation> {
+  return getChannels(`/direct-conversations/${conversationId}`);
+}
+
+export interface ListDirectConversationEntriesOpts {
+  limit?: number;
+  afterId?: number;
+}
+
+export function listDirectConversationEntries(conversationId: number, opts: ListDirectConversationEntriesOpts = {}): Promise<DirectConversationEntriesResponse> {
+  const q = buildQuery({ limit: opts.limit, afterId: opts.afterId });
+  return getChannels(`/direct-conversations/${conversationId}/entries${q}`);
+}
+
+export function sendDirectMessage(conversationId: number, request: {
+  senderIdentity: string;
+  body: string;
+  summary?: string | null;
+  sourceProjectId?: string | null;
+  sourceTaskId?: number | null;
+  assignmentId?: string | null;
+  workerRunId?: string | null;
+}): Promise<DirectConversationSendResponse> {
+  return postChannels(`/direct-conversations/${conversationId}/send`, request);
+}
+
+export function updateReadCursor(conversationId: number, request: { readerIdentity: string; lastReadEntryId?: number | null }): Promise<ReadCursor> {
+  return putChannels(`/direct-conversations/${conversationId}/read-cursor`, request);
+}
+
+export function getReadCursor(conversationId: number, readerIdentity: string): Promise<ReadCursor> {
+  return getChannels(`/direct-conversations/${conversationId}/read-cursor?readerIdentity=${esc(readerIdentity)}`);
 }

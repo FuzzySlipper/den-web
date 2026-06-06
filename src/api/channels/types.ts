@@ -254,3 +254,86 @@ export type ChannelWakePolicy =
   | 'substantive_digest'
   | 'all_human_messages'
   | 'all_messages_except_self';
+
+// =========================================================================
+// Direct Conversation / DM Transcript (task #2003 / den-web #2004)
+// =========================================================================
+
+export type DmDirection = 'human_to_agent' | 'agent_to_human' | 'system_note';
+
+export interface DirectConversation {
+  id: number;
+  humanIdentity: string;
+  agentIdentity: string;
+  projectId: string | null;
+  lastEntryAt: string | null;
+  lastEntryPreview: string | null;
+  entryCount: number;
+  unreadCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DirectConversationEntry {
+  id: number;
+  conversationId: number;
+  channelMessageId: number | null;
+  direction: DmDirection;
+  senderIdentity: string;
+  body: string;
+  summary: string | null;
+  sourceChannelId: number | null;
+  sourceProjectId: string | null;
+  sourceTaskId: number | null;
+  sourceWorkerRunId: string | null;
+  sourceSessionOwnerId: string | null;
+  createdAt: string;
+}
+
+export interface DirectConversationListResponse {
+  conversations: DirectConversation[];
+  totalCount: number;
+}
+
+export interface DirectConversationEntriesResponse {
+  entries: DirectConversationEntry[];
+  totalCount: number;
+  nextAfterId: number | null;
+  hasMore: boolean;
+}
+
+export interface DirectConversationSendRequest {
+  senderIdentity: string;
+  body: string;
+  summary?: string | null;
+  sourceProjectId?: string | null;
+  sourceTaskId?: number | null;
+  assignmentId?: string | null;
+  workerRunId?: string | null;
+}
+
+export interface DirectConversationSendResponse {
+  entry: DirectConversationEntry;
+  channelMessageId: number;
+  channelId: number;
+  requestId: string;
+  evidenceSummary: string;
+}
+
+export interface DirectConversationCreateRequest {
+  humanIdentity: string;
+  agentIdentity: string;
+}
+
+export interface LinkMessageRequest {
+  channelMessageId: number;
+  direction: DmDirection;
+}
+
+export interface ReadCursor {
+  conversationId: number;
+  readerIdentity: string;
+  lastReadEntryId: number | null;
+  unreadCount: number;
+  updatedAt: string;
+}
