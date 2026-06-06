@@ -16,9 +16,6 @@ import {
 /** The focused-readback warning copy that must appear in the transcript. */
 const DM_WARNING_TEXT = "This is a focused direct-message transcript. The agent's actual context may include project channels, task packets, tool output, and other durable state not shown here.";
 
-/** Send status text when message is delivered via the normal direct-agent wake path. */
-const DM_SEND_OK_TEXT = 'Sent — delivered via normal direct-agent wake path.';
-
 /** Empty state message in the transcript. */
 const DM_EMPTY_TRANSCRIPT_TEXT = 'No messages yet. Send a message to start the DM transcript.';
 
@@ -153,9 +150,11 @@ describe('DmTranscriptView — entry rendering', () => {
     });
 
     it('send status shows normal direct-agent wake path', () => {
-      expect(DM_SEND_OK_TEXT).toContain('normal direct-agent wake path');
-      expect(DM_SEND_OK_TEXT).not.toContain('Hermes session');
-      expect(DM_SEND_OK_TEXT).not.toContain('private lane');
+      const evidenceSummary = 'sent via direct-agent wake';
+      const status = `Sent → ch:600 msg:1 req:abc — ${evidenceSummary}.`;
+      expect(status).toContain('direct-agent wake');
+      expect(status).not.toContain('Hermes session');
+      expect(status).not.toContain('private lane');
     });
 
     it('empty state message is correct', () => {
@@ -269,5 +268,93 @@ describe('DmTranscriptView — send/mark-read/unread behavior', () => {
       const body = '   ';
       expect(body.trim()).toBe('');
     });
+  });
+
+  describe('send response canonical handles', () => {
+    it('DirectConversationSendResponse exposes channelMessageId', () => {
+      // The send status must surface canonical channelMessageId from the response
+      const channelMessageId = 42;
+      const status = `Sent → ch:600 msg:${channelMessageId} req:abc — normal direct-agent wake.`;
+      expect(status).toContain('msg:42');
+      expect(status).toContain('ch:600');
+    });
+
+    it('DirectConversationSendResponse exposes channelId', () => {
+      const channelId = 600;
+      const status = `Sent → ch:${channelId} msg:99 req:xyz — normal direct-agent wake.`;
+      expect(status).toContain('ch:600');
+    });
+
+    it('DirectConversationSendResponse exposes requestId', () => {
+      const requestId = 'req-abc123';
+      const status = `Sent → ch:600 msg:1 req:${requestId} — normal direct-agent wake.`;
+      expect(status).toContain('req:req-abc123');
+    });
+
+    it('DirectConversationSendResponse exposes evidenceSummary', () => {
+      const evidenceSummary = 'sent via direct-agent wake';
+      const status = `Sent → ch:600 msg:1 req:abc — ${evidenceSummary}.`;
+      expect(status).toContain('sent via direct-agent wake');
+    });
+
+    it('send status format includes all canonical handles', () => {
+      const status = 'Sent → ch:604 msg:1024 req:xyz789 — sent via direct-agent wake.';
+      expect(status).toMatch(/ch:\d+/);
+      expect(status).toMatch(/msg:\d+/);
+      expect(status).toMatch(/req:\S+/);
+      expect(status).toContain('direct-agent wake');
+    });
+  });
+});
+
+describe('dmSourceBadge — canonical channel-message and session attribution', () => {
+  const newBadge = dmSourceBadge;
+
+  it('displays channelMessageId as msg:N', () => {
+    const badge = newBadge(makeEntry({
+      channelMessageId: 42,
+    }));
+    expect(badge).toBe('msg:42');
+  });
+
+  it('displays sourceSessionOwnerId as session:owner', () => {
+    const badge = newBadge(makeEntry({
+      sourceSessionOwnerId: 'spawned-coder',
+    }));
+    expect(badge).toBe('session:spawned-coder');
+  });
+
+  it('combines channelMessageId with other fields', () => {
+    const badge = newBadge(makeEntry({
+      sourceProjectId: 'den-core',
+      sourceTaskId: 1990,
+      channelMessageId: 1024,
+    }));
+    expect(badge).toBe('den-core#1990 · msg:1024');
+  });
+
+  it('combines sourceSessionOwnerId with other fields', () => {
+    const badge = newBadge(makeEntry({
+      sourceProjectId: 'den-channels',
+      channelMessageId: 99,
+      sourceSessionOwnerId: 'spawned-reviewer',
+    }));
+    expect(badge).toBe('den-channels · msg:99 · session:spawned-reviewer');
+  });
+
+  it('renders all fields including channelMessageId and sourceSessionOwnerId', () => {
+    const badge = newBadge(makeEntry({
+      sourceProjectId: 'den-core',
+      sourceTaskId: 2071,
+      sourceChannelId: 672,
+      channelMessageId: 512,
+      sourceWorkerRunId: 'piw_abc123',
+      sourceSessionOwnerId: 'spawned-coder',
+    }));
+    expect(badge).toContain('den-core#2071');
+    expect(badge).toContain('ch:672');
+    expect(badge).toContain('msg:512');
+    expect(badge).toContain('run:piw_abc123');
+    expect(badge).toContain('session:spawned-coder');
   });
 });

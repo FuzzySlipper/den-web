@@ -85,12 +85,14 @@ export function DmTranscriptView({ conversation, onBack, readIdentity }: Props) 
     setSending(true);
     setSendStatus(null);
     try {
-      await sendDirectMessage(conversation.id, {
+      const resp = await sendDirectMessage(conversation.id, {
         senderIdentity: DM_HUMAN_IDENTITY,
         body,
       });
       setComposing('');
-      setSendStatus('Sent — delivered via normal direct-agent wake path.');
+      setSendStatus(
+        `Sent → ch:${resp.channelId} msg:${resp.channelMessageId} req:${resp.requestId} — ${resp.evidenceSummary}.`,
+      );
       refresh();
     } catch (err: unknown) {
       setSendStatus(`Failed to send: ${err instanceof Error ? err.message : 'unknown error'}`);

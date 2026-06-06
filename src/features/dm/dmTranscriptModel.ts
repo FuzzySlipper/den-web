@@ -33,7 +33,9 @@ export function dmSourceBadge(entry: DirectConversationEntry): string | null {
     }
   }
   if (entry.sourceChannelId != null) parts.push(`ch:${entry.sourceChannelId}`);
+  if (entry.channelMessageId != null) parts.push(`msg:${entry.channelMessageId}`);
   if (entry.sourceWorkerRunId) parts.push(`run:${entry.sourceWorkerRunId}`);
+  if (entry.sourceSessionOwnerId) parts.push(`session:${entry.sourceSessionOwnerId}`);
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
