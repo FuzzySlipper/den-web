@@ -19,11 +19,11 @@ import type {
 import { normalizeApiBase } from '../config';
 
 const denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
-let denGatewayApiBase = normalizeApiBase(import.meta.env.VITE_DEN_GATEWAY_API_BASE, '/den-gateway-api');
+let denHostApiBase = normalizeApiBase(import.meta.env.VITE_DEN_HOST_API_BASE, '/den-host-api');
 
-/** Reinitialize Gateway-specific base URL from runtime config. */
-export function reinitGatewayBase(base: string): void {
-  denGatewayApiBase = normalizeApiBase(base, '/den-gateway-api');
+/** Reinitialize Den Host-specific base URL from runtime config. */
+export function reinitHostBase(base: string): void {
+  denHostApiBase = normalizeApiBase(base, '/den-host-api');
 }
 
 function channelsApiUrl(url: string): string {
@@ -31,9 +31,9 @@ function channelsApiUrl(url: string): string {
   return `${denChannelsApiBase}${url.startsWith('/') ? url : `/${url}`}`;
 }
 
-function gatewayApiUrl(url: string): string {
+function hostApiUrl(url: string): string {
   if (/^https?:\/\//i.test(url)) return url;
-  return `${denGatewayApiBase}${url.startsWith('/') ? url : `/${url}`}`;
+  return `${denHostApiBase}${url.startsWith('/') ? url : `/${url}`}`;
 }
 
 async function putChannels<T>(url: string, body: unknown): Promise<T> {
@@ -65,15 +65,15 @@ async function getChannels<T>(url: string): Promise<T> {
   return res.json();
 }
 
-async function getGateway<T>(url: string): Promise<T> {
-  const requestUrl = gatewayApiUrl(url);
+async function getHost<T>(url: string): Promise<T> {
+  const requestUrl = hostApiUrl(url);
   const res = await fetch(requestUrl);
   if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
   return res.json();
 }
 
-async function postGateway<T>(url: string, body: unknown): Promise<T> {
-  const requestUrl = gatewayApiUrl(url);
+async function postHost<T>(url: string, body: unknown): Promise<T> {
+  const requestUrl = hostApiUrl(url);
   const res = await fetch(requestUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -240,18 +240,18 @@ export function getWorkerPoolLobbyPresence(): Promise<WorkerPoolLobbyPresence> {
 }
 
 // =============================================================================
-// Fleet Ops cockpit (task #1797)
-// Gateway FleetOps API — fleet status, actions, runs.
+// Fleet Ops cockpit
+// Den Host FleetOps API — bounded Hermes fleet status, actions, runs.
 // =============================================================================
 
 export function getFleetOps(): Promise<FleetOpsResponse> {
-  return getGateway('/fleet-ops');
+  return getHost('/fleet-ops');
 }
 
 export function postFleetOpsActionRun(request: FleetOpsActionRunRequest): Promise<FleetOpsActionRunResponse> {
-  return postGateway(`/fleet-ops/actions/${encodeURIComponent(request.actionId)}/runs`, request);
+  return postHost(`/fleet-ops/actions/${encodeURIComponent(request.actionId)}/runs`, request);
 }
 
 export function getFleetOpsRun(runId: string): Promise<FleetOpsRunDetailResponse> {
-  return getGateway(`/fleet-ops/runs/${encodeURIComponent(runId)}`);
+  return getHost(`/fleet-ops/runs/${encodeURIComponent(runId)}`);
 }

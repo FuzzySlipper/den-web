@@ -5,10 +5,10 @@
  * status labels, CSS classes, action grouping, and fixture
  * factories live here so the TSX stays focused on layout.
  *
- * Types are aligned with the den-gateway #1796 contract:
- *   FleetOpsServiceUnit  → Gateway FleetServiceUnit
- *   FleetOpsAction       → Gateway FleetActionDescriptor
- *   FleetOpsActionRun    → Gateway FleetOpsActionRun
+ * Types are aligned with the Den Host FleetOps contract:
+ *   FleetOpsServiceUnit  → Den Host FleetServiceUnit
+ *   FleetOpsAction       → Den Host FleetActionDescriptor
+ *   FleetOpsActionRun    → Den Host FleetOpsActionRun
  */
 
 import type {
@@ -19,7 +19,7 @@ import type {
 } from '../../api/types';
 
 // =============================================================================
-// Service unit status helpers (using activeState from Gateway)
+// Service unit status helpers (using activeState from Den Host)
 // =============================================================================
 
 export function unitStatusLabel(activeState: string): string {
@@ -60,11 +60,11 @@ export function unitStatusClass(activeState: string): string {
 }
 
 // =============================================================================
-// Action helpers (using Gateway FleetActionDescriptor fields)
+// Action helpers (using Den Host FleetActionDescriptor fields)
 // =============================================================================
 
 /**
- * Derive whether an action is disabled (has a disabledReason from Gateway).
+ * Derive whether an action is disabled (has a disabledReason from Den Host).
  */
 export function isActionDisabled(action: FleetOpsAction): boolean {
   return action.disabledReason != null && action.disabledReason !== '';
@@ -80,7 +80,7 @@ export function isActionExecutable(action: FleetOpsAction): boolean {
 
 /**
  * Check if an action needs confirmation before execution.
- * Uses Gateway needsConfirmation flag; also true for mutating actions as a
+ * Uses Den Host needsConfirmation flag; also true for mutating actions as a
  * safety net.
  */
 export function actionNeedsConfirmation(action: FleetOpsAction): boolean {
@@ -90,7 +90,7 @@ export function actionNeedsConfirmation(action: FleetOpsAction): boolean {
 
 /**
  * Get the confirmation prompt text for an action.
- * Uses Gateway confirmationCopy when present; otherwise a generic message
+ * Uses Den Host confirmationCopy when present; otherwise a generic message
  * for mutating actions.
  */
 export function actionConfirmationPrompt(action: FleetOpsAction): string {
@@ -100,7 +100,7 @@ export function actionConfirmationPrompt(action: FleetOpsAction): string {
 }
 
 /**
- * Derive risk-level CSS class from Gateway riskLevel field.
+ * Derive risk-level CSS class from Den Host riskLevel field.
  */
 export function riskLevelClass(riskLevel: string): string {
   const normalized = riskLevel.toLowerCase().trim();
@@ -113,7 +113,7 @@ export function riskLevelClass(riskLevel: string): string {
 }
 
 /**
- * Derive a UI risk label from Gateway riskLevel field.
+ * Derive a UI risk label from Den Host riskLevel field.
  */
 export function riskLevelLabel(riskLevel: string): string {
   const cap = riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1).toLowerCase();
@@ -122,7 +122,7 @@ export function riskLevelLabel(riskLevel: string): string {
 
 /**
  * Extract profile names from serviceUnits for the restart-profile action.
- * Uses Gateway profileName field directly.
+ * Uses Den Host profileName field directly.
  */
 export function extractProfileNames(units: FleetOpsServiceUnit[]): string[] {
   const profiles = new Set<string>();
@@ -136,14 +136,14 @@ export function extractProfileNames(units: FleetOpsServiceUnit[]): string[] {
 
 /**
  * Sanitize a profile name: only allow alphanumeric, dash, underscore
- * (matching Gateway pattern ^[a-zA-Z0-9_-]+$ — no dots).
+ * (matching Den Host pattern ^[a-zA-Z0-9_-]+$ — no dots).
  */
 export function sanitizeProfileName(raw: string): string {
   return raw.replace(/[^a-zA-Z0-9_-]/g, '');
 }
 
 // =============================================================================
-// Run status helpers (using Gateway FleetOpsActionRun fields)
+// Run status helpers (using Den Host FleetOpsActionRun fields)
 // =============================================================================
 
 export function runStatusClass(status: string): string {
@@ -248,7 +248,7 @@ export function formatRunDuration(
 }
 
 // =============================================================================
-// Fake fixture factories for testing — aligned with Gateway #1796 contract
+// Fake fixture factories for testing — aligned with Den Host FleetOps contract
 // =============================================================================
 
 export interface FakeFleetOpsOpts {
@@ -303,7 +303,7 @@ export function fakeFleetOpsResponse(opts: FakeFleetOpsOpts = {}): FleetOpsRespo
     : defaultRuns;
 
   return {
-    service: opts.service ?? 'gateway-fleet-ops',
+    service: opts.service ?? 'den-host',
     generatedAt: '2026-05-31T23:00:00Z',
     serviceUnits: units,
     actions: actions,

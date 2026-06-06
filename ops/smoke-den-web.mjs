@@ -170,10 +170,10 @@ async function checkConfig() {
     fail('config.denChannelsApiBase', `expected "/api", got "${config.denChannelsApiBase}"`);
   }
 
-  if (config.denGatewayApiBase === '/den-gateway-api') {
-    pass('config.denGatewayApiBase == "/den-gateway-api"');
+  if (config.denHostApiBase === '/den-host-api') {
+    pass('config.denHostApiBase == "/den-host-api"');
   } else {
-    fail('config.denGatewayApiBase', `expected "/den-gateway-api", got "${config.denGatewayApiBase}"`);
+    fail('config.denHostApiBase', `expected "/den-host-api", got "${config.denHostApiBase}"`);
   }
 
   if (config.environmentName === EXPECTED_ENV_NAME) {
@@ -247,22 +247,29 @@ async function checkChannelsApi() {
   assertJson('/api/agents/overview returns JSON', overview);
 }
 
-async function checkDenGatewayApi() {
-  console.log('\n── Den Gateway API (via /den-gateway-api/) ──');
+async function checkDenHostApi() {
+  console.log('\n── Den Host API (via /den-host-api/) ──');
 
-  const fleetOps = await fetchUrl(fullUrl('/den-gateway-api/fleet-ops'));
-  assertStatus('GET /den-gateway-api/fleet-ops', fleetOps);
-  assertJson('/den-gateway-api/fleet-ops returns JSON', fleetOps);
+  const fleetOps = await fetchUrl(fullUrl('/den-host-api/fleet-ops'));
+  assertStatus('GET /den-host-api/fleet-ops', fleetOps);
+  assertJson('/den-host-api/fleet-ops returns JSON', fleetOps);
 
   try {
     const body = JSON.parse(fleetOps.body);
-    if (body.service === 'den-gateway' && Array.isArray(body.actions)) {
-      pass('/den-gateway-api/fleet-ops returns FleetOps overview shape');
+    if (body.service === 'den-host' && Array.isArray(body.actions)) {
+      pass('/den-host-api/fleet-ops returns FleetOps overview shape');
     } else {
-      fail('/den-gateway-api/fleet-ops shape', 'expected service="den-gateway" and actions array');
+      fail('/den-host-api/fleet-ops shape', 'expected service="den-host" and actions array');
     }
   } catch (e) {
-    fail('/den-gateway-api/fleet-ops shape', `invalid JSON: ${e.message}`);
+    fail('/den-host-api/fleet-ops shape', `invalid JSON: ${e.message}`);
+  }
+
+  const retiredGateway = await fetchUrl(fullUrl('/den-gateway-api/fleet-ops'));
+  if (retiredGateway.status === 410 || retiredGateway.status === 404) {
+    pass('retired /den-gateway-api/fleet-ops no longer returns misleading 502');
+  } else {
+    fail('/den-gateway-api/fleet-ops retired route', `expected 410/404, got ${retiredGateway.status}`);
   }
 }
 
@@ -300,7 +307,7 @@ async function main() {
     await checkBuildSentinel();
     await checkCoreApi();
     await checkChannelsApi();
-    await checkDenGatewayApi();
+    await checkDenHostApi();
     await checkDocumentDiscussion();
   } catch (err) {
     console.error(`\n  ERROR  Unhandled exception: ${err.message}`);

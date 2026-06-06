@@ -178,8 +178,8 @@ export function FleetOpsCockpit() {
         <div className="fops-error">
           Failed to load fleet ops: {error.message}
           <div className="fops-error-hint">
-            This requires the Gateway /den-gateway-api/fleet-ops route.
-            If unavailable, the UI gracefully shows this error.
+            This requires Den Host at /den-host-api/fleet-ops.
+            If unavailable, verify den-host.service and DEN_HOST_TARGET on the static server.
           </div>
         </div>
       )}
@@ -189,7 +189,7 @@ export function FleetOpsCockpit() {
 
       {fleetData && (
         <>
-          {/* Discovery Diagnostics (plain text from Gateway) */}
+          {/* Discovery Diagnostics (plain text from Den Host) */}
           {fleetData.discoveryDiagnostics && (
             <FleetDiagnostics text={fleetData.discoveryDiagnostics} />
           )}

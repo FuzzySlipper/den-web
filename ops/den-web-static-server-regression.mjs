@@ -59,7 +59,7 @@ async function waitForReady(baseUrl, child) {
 async function startStaticServer(targetUrl, t) {
   const staticRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'den-web-static-root-'));
   await fs.writeFile(path.join(staticRoot, 'index.html'), '<!doctype html><title>den-web-test</title>');
-  await fs.writeFile(path.join(staticRoot, 'den-web-config.json'), JSON.stringify({ denCoreApiBase: '/den-core-api', denChannelsApiBase: '/api' }));
+  await fs.writeFile(path.join(staticRoot, 'den-web-config.json'), JSON.stringify({ denCoreApiBase: '/den-core-api', denChannelsApiBase: '/api', denHostApiBase: '/den-host-api' }));
 
   const portProbe = http.createServer();
   const port = await listen(portProbe);
@@ -75,7 +75,7 @@ async function startStaticServer(targetUrl, t) {
       DEN_WEB_CONFIG_PATH: path.join(staticRoot, 'den-web-config.json'),
       DEN_CORE_TARGET: targetUrl,
       DEN_CHANNELS_TARGET: targetUrl,
-      DEN_GATEWAY_TARGET: targetUrl,
+      DEN_HOST_TARGET: targetUrl,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -113,6 +113,28 @@ test('static proxy returns bounded 502 before response headers are sent', async 
   assert.equal(response.statusCode, 502);
   assert.match(response.body, /Bad Gateway:/);
   assert.equal(child.exitCode, null, 'static server should remain alive after early proxy failure');
+});
+
+test('Den Host FleetOps proxy rewrites /den-host-api and retires stale Gateway route', async (t) => {
+  let observedPath = null;
+  const upstream = http.createServer((req, res) => {
+    observedPath = req.url;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ service: 'den-host', actions: [] }));
+  });
+  const upstreamPort = await listen(upstream);
+  t.after(() => new Promise(resolve => upstream.close(resolve)));
+
+  const { baseUrl } = await startStaticServer(`http://127.0.0.1:${upstreamPort}`, t);
+
+  const hostResponse = await request(`${baseUrl}/den-host-api/fleet-ops?dryRun=true`);
+  assert.equal(hostResponse.statusCode, 200);
+  assert.equal(observedPath, '/api/host/fleet-ops?dryRun=true');
+  assert.match(hostResponse.body, /"service":"den-host"/);
+
+  const retiredResponse = await request(`${baseUrl}/den-gateway-api/fleet-ops`);
+  assert.equal(retiredResponse.statusCode, 410);
+  assert.match(retiredResponse.body, /den_gateway_api_retired/);
 });
 
 test('static proxy survives upstream reset after response headers have been sent', async (t) => {

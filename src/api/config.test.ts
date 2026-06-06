@@ -44,7 +44,7 @@ describe('getConfig - no runtime config (404)', () => {
 
     expect(config.denCoreApiBase).toBe('/den-core-api');
     expect(config.denChannelsApiBase).toBe('/api');
-    expect(config.denGatewayApiBase).toBe('/den-gateway-api');
+    expect(config.denHostApiBase).toBe('/den-host-api');
     expect(config.appBasePath).toBe('/');
     expect(config.environmentName).toBe('development');
   });
@@ -52,13 +52,13 @@ describe('getConfig - no runtime config (404)', () => {
   it('uses VITE env values when runtime config is missing', async () => {
     vi.stubEnv('VITE_DEN_CORE_API_BASE', '/env-core-api/');
     vi.stubEnv('VITE_DEN_CHANNELS_API_BASE', '/env-channels-api/');
-    vi.stubEnv('VITE_DEN_GATEWAY_API_BASE', '/env-gateway-api/');
+    vi.stubEnv('VITE_DEN_HOST_API_BASE', '/env-host-api/');
 
     const config = await getConfig();
 
     expect(config.denCoreApiBase).toBe('/env-core-api');
     expect(config.denChannelsApiBase).toBe('/env-channels-api');
-    expect(config.denGatewayApiBase).toBe('/env-gateway-api');
+    expect(config.denHostApiBase).toBe('/env-host-api');
     expect(config.appBasePath).toBe('/');
     expect(config.environmentName).toBe('development');
   });
@@ -84,7 +84,7 @@ describe('getConfig - with runtime config loaded', () => {
       json: () => Promise.resolve({
         denCoreApiBase: '/custom-core-api/',
         denChannelsApiBase: '/custom-channels-api',
-        denGatewayApiBase: '/custom-gateway-api',
+        denHostApiBase: '/custom-host-api',
         appBasePath: '/den-web/',
         environmentName: 'test-env',
       }),
@@ -95,7 +95,7 @@ describe('getConfig - with runtime config loaded', () => {
     const config = await getConfig();
     expect(config.denCoreApiBase).toBe('/custom-core-api');
     expect(config.denChannelsApiBase).toBe('/custom-channels-api');
-    expect(config.denGatewayApiBase).toBe('/custom-gateway-api');
+    expect(config.denHostApiBase).toBe('/custom-host-api');
     expect(config.appBasePath).toBe('/den-web');
     expect(config.environmentName).toBe('test-env');
   });

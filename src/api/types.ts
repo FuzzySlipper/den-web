@@ -5,7 +5,7 @@
  * New code should import from the specific type module:
  *   - `@api/core/types`     — Spaces, Projects, Tasks, Messages, Documents, Stream, Git, etc.
  *   - `@api/channels/types`  — Channel, ChannelMessage, ChannelReactionSummary, etc.
- *   - `@api/gateway/types`  — Gateway memberships, test wake, direct agent, agents overview
+ *   - `@api/gateway/types`  — Channels gateway helpers, agents overview, Den Host FleetOps
  */
 
 // === Core types ===

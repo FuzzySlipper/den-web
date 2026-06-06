@@ -15,6 +15,7 @@ It does **not** own backend state:
 - Den Core owns spaces/projects/tasks/documents/task messages/review/worker state.
 - Den Channels owns channels, channel messages, channel activity events, memberships, reactions, and channel-local Gateway-facing APIs.
 - Den Gateway owns delivery/wake/binding/claim/session routing authority.
+- Den Host owns bounded machine/Hermes fleet status and maintenance APIs.
 
 Any backend contract gap discovered during extraction should become a task in the owning backend project, not an ad hoc backend in `den-web`.
 
@@ -49,15 +50,16 @@ The browser app must use explicit configured API bases and must not infer backen
 | Den Core | `den-core` | `/den-core-api` | `/den-core-api/health`, `/den-core-api/api/projects` | Canonical tasks/docs/messages/workflow REST facade. Current live health returns commit/version metadata. |
 | Den Channels | `den-channels` | `/api` | `/api/channels?limit=1` | Channel/chat/membership/reaction/activity APIs. The current extracted app may temporarily keep this base for compatibility. |
 | Gateway-visible Channels helpers | `den-channels` | `/api/gateway` | `/api/gateway/memberships?projectId=den-web` | Direct-agent message, membership, test-wake, and delivery-observability helpers exposed through Channels. |
-| Den Gateway service APIs | `den-gateway` | `/den-gateway-api` | `/den-gateway-api/fleet-ops` | Den Gateway-owned APIs. The static service rewrites `/den-gateway-api/*` to den-gateway's internal `/api/gateway/*` namespace to avoid colliding with Channels' `/api/gateway/*` helpers. |
+| Den Host FleetOps APIs | `den-host` | `/den-host-api` | `/den-host-api/fleet-ops` | Bounded Hermes fleet status/actions. The static service rewrites `/den-host-api/*` to Den Host's internal `/api/host/*` namespace and does not consume Channels' `/api/gateway/*` helpers. |
 | Agents overview | `den-channels` aggregate over Gateway/Core | `/api/agents` | `/api/agents/overview` | Read-only operator overview; must degrade gracefully if Gateway data is unavailable. |
 
-Current ClientApp code already uses two Vite build-time variables:
+Current app code uses explicit Vite build-time variables for backend bases:
 
 - `VITE_DEN_CORE_API_BASE`, fallback `/den-core-api`;
-- `VITE_DEN_CHANNELS_API_BASE`, fallback `/api`.
+- `VITE_DEN_CHANNELS_API_BASE`, fallback `/api`;
+- `VITE_DEN_HOST_API_BASE`, fallback `/den-host-api`.
 
-During scaffold extraction (#1706), keep those names working for compatibility. Channels helper routes under `/api/gateway/...` continue to use the Channels API base. Den Gateway-owned APIs use the separate Gateway-specific frontend adapter and `/den-gateway-api` runtime base.
+During scaffold extraction (#1706), keep those names working for compatibility. Channels helper routes under `/api/gateway/...` continue to use the Channels API base. FleetOps uses the separate Den Host frontend adapter and `/den-host-api` runtime base.
 
 ## Runtime config strategy
 
@@ -66,8 +68,8 @@ The standalone static site should support deploy-time runtime configuration inst
 Required precedence for the extracted app:
 
 1. Runtime config loaded from `/den-web-config.json` when present.
-2. Vite build-time env values (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, and future `VITE_DEN_GATEWAY_API_BASE`) as fallback.
-3. Safe local defaults: `/den-core-api`, `/api`, and `/den-gateway-api`.
+2. Vite build-time env values (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, and `VITE_DEN_HOST_API_BASE`) as fallback.
+3. Safe local defaults: `/den-core-api`, `/api`, and `/den-host-api`.
 
 Recommended runtime config keys:
 
@@ -75,7 +77,7 @@ Recommended runtime config keys:
 | --- | --- | --- |
 | `denCoreApiBase` | `/den-core-api` | Core REST facade base path. |
 | `denChannelsApiBase` | `/api` | Channels API base path. |
-| `denGatewayApiBase` | `/den-gateway-api` | Den Gateway-owned service API base; currently used by FleetOps and rewritten by the static service to den-gateway's internal `/api/gateway` route. |
+| `denHostApiBase` | `/den-host-api` | Den Host FleetOps API base; rewritten by the static service to Den Host's internal `/api/host` route. |
 | `appBasePath` | `/` | Static app base path. |
 | `environmentName` | `den-srv` | Human-readable deployment/environment label. |
 
@@ -117,9 +119,10 @@ After standalone deployment (#1707), smoke the public URL and API-backed UI path
 3. Channels API reachability:
    - `curl -fsS 'http://192.168.1.10:18080/api/channels?limit=1'`.
    - For the Den Web project channel, `curl -fsS 'http://192.168.1.10:18080/api/gateway/memberships?projectId=den-web'` should return the project default channel and membership list, even if the member list is empty.
-4. Gateway/agents overview and Den Gateway API reachability:
+4. Agents overview and Den Host FleetOps reachability:
    - `curl -fsS http://192.168.1.10:18080/api/agents/overview` returns JSON or a UI-degradable health warning, not a hard app crash.
-   - `curl -fsS http://192.168.1.10:18080/den-gateway-api/fleet-ops` returns the FleetOps overview JSON shape without consuming `/api/gateway/*`.
+   - `curl -fsS http://192.168.1.10:18080/den-host-api/fleet-ops` returns the Den Host FleetOps overview JSON shape without consuming `/api/gateway/*`.
+   - `curl -fsS -o /dev/null -w '%{http_code}' http://192.168.1.10:18080/den-gateway-api/fleet-ops` returns `410` or `404`, not a misleading Gateway `502`.
 5. Browser behavior smoke:
    - project/space list loads from Core;
    - document list/detail and discussion panel load without mixing comments into document body;
@@ -130,7 +133,7 @@ After standalone deployment (#1707), smoke the public URL and API-backed UI path
 ## Rollback notes
 
 - Keep the previous live `den-channels` static asset bundle or service deployment identifiable until the first `den-web` live smoke passes.
-- If static asset serving fails but APIs are healthy, revert only the reverse-proxy/static root. Do not roll back Core/Channels/Gateway services.
+- If static asset serving fails but APIs are healthy, revert only the reverse-proxy/static root. Do not roll back Core/Channels/Host services.
 - If API base config is wrong, prefer fixing `/den-web-config.json` and refreshing the static service over rebuilding assets unless the code lacks runtime config support.
 - Post rollback evidence to the relevant Den task thread: failing URL, restored asset root, restored asset hash/sentinel, and API health checks.
 

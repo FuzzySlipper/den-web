@@ -5,13 +5,13 @@
  * New code should import directly from the specific API module:
  *   - `@api/core/client`   — Spaces, Projects, Tasks, Messages, Documents, Stream, Git, Desktop, Dispatch
  *   - `@api/channels/client` — Channels, Messages, Activity Events, Reactions
- *   - `@api/gateway/client` — Memberships, Test Wake, Direct Agent, Agents Overview
+ *   - `@api/gateway/client` — Channels gateway helpers, Agents Overview, Den Host FleetOps
  */
 
 import { getConfig } from './config';
 import { initClient as initCoreClient, resetClient as resetCoreClient } from './core/client';
 import { reinitChannelsBase } from './channels/client';
-import { reinitGatewayBase } from './gateway/client';
+import { reinitHostBase } from './gateway/client';
 
 // Core API
 export { getApiBases } from './core/client';
@@ -20,13 +20,13 @@ export async function initClient(): Promise<void> {
   await initCoreClient();
   const config = await getConfig();
   reinitChannelsBase(config.denChannelsApiBase);
-  reinitGatewayBase(config.denGatewayApiBase);
+  reinitHostBase(config.denHostApiBase);
 }
 
 export function resetClient(): void {
   resetCoreClient();
   reinitChannelsBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE ?? '/api');
-  reinitGatewayBase(import.meta.env.VITE_DEN_GATEWAY_API_BASE ?? '/den-gateway-api');
+  reinitHostBase(import.meta.env.VITE_DEN_HOST_API_BASE ?? '/den-host-api');
 }
 export type {
   ListSpacesOpts,

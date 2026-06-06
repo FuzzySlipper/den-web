@@ -433,11 +433,11 @@ export type TraceSourceAvailability =
   | 'pending';
 
 // =============================================================================
-// Fleet Ops cockpit (task #1797)
-// Gateway FleetOps API types — aligned with den-gateway #1796 contract.
+// Fleet Ops cockpit
+// Den Host FleetOps API types — aligned with the den-host FleetOps contract.
 // =============================================================================
 
-/** Maps to Gateway FleetServiceUnit */
+/** Maps to Den Host FleetServiceUnit */
 export interface FleetOpsServiceUnit {
   unitName: string;
   profileName: string;
@@ -457,7 +457,7 @@ export interface FleetOpsActionArgSchema {
   pattern?: string;
 }
 
-/** Maps to Gateway FleetActionDescriptor */
+/** Maps to Den Host FleetActionDescriptor */
 export interface FleetOpsAction {
   actionId: string;
   label: string;
@@ -471,7 +471,7 @@ export interface FleetOpsAction {
   disabledReason?: string | null;
 }
 
-/** Maps to Gateway FleetOpsActionRun */
+/** Maps to Den Host FleetOpsActionRun */
 export interface FleetOpsActionRun {
   runId: string;
   actionId: string;
@@ -487,7 +487,7 @@ export interface FleetOpsActionRun {
   wasDryRun: boolean;
 }
 
-/** Maps to Gateway FleetOpsOverviewResponse */
+/** Maps to Den Host FleetOpsOverviewResponse */
 export interface FleetOpsResponse {
   service: string;
   generatedAt: string;

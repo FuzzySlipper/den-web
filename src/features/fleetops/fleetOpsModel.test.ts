@@ -61,7 +61,7 @@ describe('unitStatusClass', () => {
 });
 
 // =============================================================================
-// Action helpers (Gateway FleetActionDescriptor fields)
+// Action helpers (Den Host FleetActionDescriptor fields)
 // =============================================================================
 
 describe('isActionDisabled', () => {
@@ -230,7 +230,7 @@ describe('riskLevelLabel', () => {
 });
 
 // =============================================================================
-// Profile extraction (profileName from Gateway FleetServiceUnit)
+// Profile extraction (profileName from Den Host FleetServiceUnit)
 // =============================================================================
 
 describe('extractProfileNames', () => {
@@ -262,13 +262,13 @@ describe('extractProfileNames', () => {
 });
 
 describe('sanitizeProfileName', () => {
-  it('allows alphanumeric, dash, underscore (Gateway pattern ^[a-zA-Z0-9_-]+$)', () => {
+  it('allows alphanumeric, dash, underscore (Den Host pattern ^[a-zA-Z0-9_-]+$)', () => {
     expect(sanitizeProfileName('hermes-coder')).toBe('hermes-coder');
     expect(sanitizeProfileName('my_agent')).toBe('my_agent');
     expect(sanitizeProfileName('abc123')).toBe('abc123');
   });
 
-  it('strips dots (Gateway pattern does not allow dots)', () => {
+  it('strips dots (Den Host pattern does not allow dots)', () => {
     expect(sanitizeProfileName('test.profile')).toBe('testprofile');
   });
 
@@ -281,7 +281,7 @@ describe('sanitizeProfileName', () => {
 });
 
 // =============================================================================
-// Run status helpers (Gateway FleetOpsActionRun fields)
+// Run status helpers (Den Host FleetOpsActionRun fields)
 // =============================================================================
 
 describe('runStatusClass', () => {
@@ -366,20 +366,20 @@ describe('formatRunDuration', () => {
 });
 
 // =============================================================================
-// Fake fixture factory — aligned with Gateway #1796 contract
+// Fake fixture factory — aligned with Den Host FleetOps contract
 // =============================================================================
 
 describe('fakeFleetOpsResponse', () => {
-  it('creates a valid FleetOpsResponse with Gateway-shaped defaults', () => {
+  it('creates a valid FleetOpsResponse with Den Host-shaped defaults', () => {
     const response = fakeFleetOpsResponse();
-    expect(response.service).toBe('gateway-fleet-ops');
+    expect(response.service).toBe('den-host');
     expect(response.serviceUnits.length).toBeGreaterThanOrEqual(3);
     expect(response.actions.length).toBeGreaterThanOrEqual(3);
     expect(typeof response.discoveryDiagnostics).toBe('string');
     expect(response.recentRuns!.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('uses Gateway field names on service units', () => {
+  it('uses Den Host field names on service units', () => {
     const response = fakeFleetOpsResponse();
     const unit = response.serviceUnits[0];
     expect(unit).toHaveProperty('unitName');
@@ -394,7 +394,7 @@ describe('fakeFleetOpsResponse', () => {
     expect(unit).not.toHaveProperty('uptimeSeconds');
   });
 
-  it('uses Gateway field names on actions', () => {
+  it('uses Den Host field names on actions', () => {
     const response = fakeFleetOpsResponse();
     const action = response.actions[0];
     expect(action).toHaveProperty('actionId');
@@ -412,7 +412,7 @@ describe('fakeFleetOpsResponse', () => {
     expect(action).not.toHaveProperty('requiresArgs');
   });
 
-  it('uses Gateway field names on runs', () => {
+  it('uses Den Host field names on runs', () => {
     const response = fakeFleetOpsResponse();
     const run = response.recentRuns![0];
     expect(run).toHaveProperty('runId');
@@ -479,7 +479,7 @@ describe('fakeFleetOpsResponse', () => {
     expect(purgeLogs.disabledReason).toBeTruthy();
   });
 
-  it('restart-profile has argsSchema with profile arg matching Gateway pattern', () => {
+  it('restart-profile has argsSchema with profile arg matching Den Host pattern', () => {
     const response = fakeFleetOpsResponse();
     const restartProfile = response.actions.find(a => a.actionId === 'restart-profile')!;
     expect(restartProfile.argsSchema).toBeDefined();
@@ -494,12 +494,12 @@ describe('fakeFleetOpsResponse', () => {
 // =============================================================================
 
 describe('restart-profile sanitized args', () => {
-  it('sanitizeProfileName strips dots to match Gateway pattern', () => {
-    // Gateway pattern is ^[a-zA-Z0-9_-]+$ — dots must be stripped
+  it('sanitizeProfileName strips dots to match Den Host pattern', () => {
+    // Den Host pattern is ^[a-zA-Z0-9_-]+$ — dots must be stripped
     expect(sanitizeProfileName('profile.with.dots')).toBe('profilewithdots');
   });
 
-  it('sanitizeProfileName preserves valid Gateway profile names', () => {
+  it('sanitizeProfileName preserves valid Den Host profile names', () => {
     expect(sanitizeProfileName('hermes-coder')).toBe('hermes-coder');
     expect(sanitizeProfileName('my_agent')).toBe('my_agent');
     expect(sanitizeProfileName('agent-123')).toBe('agent-123');
@@ -515,10 +515,10 @@ describe('restart-profile sanitized args', () => {
 });
 
 // =============================================================================
-// Gateway unavailable/error state
+// Den Host unavailable/error state
 // =============================================================================
 
-describe('gateway error state', () => {
+describe('Den Host error state', () => {
   it('buildFleetSummary handles empty serviceUnits gracefully', () => {
     const response = fakeFleetOpsResponse({
       serviceUnits: [],
