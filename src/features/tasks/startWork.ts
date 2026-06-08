@@ -1,13 +1,13 @@
 /**
  * Start Work — bounded workflow affordance for waking assigned agents via
- * Den Channels/Gateway direct-agent delivery (green path).
+ * Den Channels direct-agent delivery.
  *
  * This module does NOT set task status; it only sends a wake signal and
  * records delivery evidence. The operator monitors the chain: preflight
  * membership → send direct-agent message → display concrete evidence.
  *
- * The green-path contract (from _global/agent-message-wake-green-path):
- *   - Use Den Channels/Gateway direct-agent delivery.
+ * The direct-delivery contract:
+ *   - Use Den Channels direct-agent delivery.
  *   - Do NOT invent a parallel wake route or task-status ledger.
  */
 
@@ -36,7 +36,7 @@ export interface StartWorkEvidence {
   phase: 'sent' | 'failed';
   /** Human-readable one-line status for inline display */
   summary: string;
-  /** Structured fields (mirror GatewayDirectAgentMessage where available) */
+  /** Structured fields returned by the direct-agent delivery API where available */
   messageId?: number;
   channelId?: number;
   channelSlug?: string;
@@ -61,12 +61,12 @@ export interface StartWorkEvidence {
 // ---------------------------------------------------------------------------
 
 /**
- * Attempt to wake the assigned agent for a task via the green path.
+ * Attempt to wake the assigned agent for a task via Den Channels direct delivery.
  *
  * Step 1: Resolve project context from `task.project_id`.
  * Step 2: Preflight active channels membership for the assigned agent.
  * Step 3: Send one targeted direct-agent wake message with task context.
- * Step 4: Return recorded evidence from the gateway response.
+ * Step 4: Return recorded evidence from the direct-delivery response.
  *
  * Does NOT auto-set task status to in_progress — that is the operator's
  * explicit choice or a separate workflow contract.
@@ -98,7 +98,7 @@ export async function sendTaskStartWork(
       phase: 'failed',
       summary: 'Task has no project context for channel resolution.',
       error: 'Task has no project_id.',
-      recoveryHint: 'Ensure the task belongs to a project with a configured gateway channel.',
+      recoveryHint: 'Ensure the task belongs to a project with a configured Den Channels channel.',
     };
   }
 
@@ -110,9 +110,9 @@ export async function sendTaskStartWork(
     const msg = err instanceof Error ? err.message : String(err);
     return {
       phase: 'failed',
-      summary: `Could not check gateway memberships: ${msg}`,
-      error: `Failed to list gateway memberships for project ${projectId}: ${msg}`,
-      recoveryHint: 'Check that the Den Channels/Gateway service is running and reachable.',
+      summary: `Could not check channel memberships: ${msg}`,
+      error: `Failed to list channel memberships for project ${projectId}: ${msg}`,
+      recoveryHint: 'Check that the Den Channels service is running and reachable.',
     };
   }
 
@@ -180,7 +180,7 @@ export async function sendTaskStartWork(
       error: `postGatewayDirectAgentMessage failed: ${msg}`,
       channelId: memberships.channelId,
       channelSlug: memberships.channelSlug,
-      recoveryHint: 'Check the Den Channels/Gateway API status and try again.',
+      recoveryHint: 'Check the Den Channels API status and try again.',
     };
   }
 

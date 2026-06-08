@@ -299,7 +299,7 @@ export function TaskDetail({ projectId, taskId, onSelectTask, onSelectMessage, o
                   )}
                 </button>
                 {startWorkPhase === 'idle' && (
-                  <span className="start-work-hint">Sends a targeted wake to {task.assigned_to} via gateway green path.</span>
+                  <span className="start-work-hint">Sends a targeted direct delivery to {task.assigned_to} through Den Channels.</span>
                 )}
               </>
             ) : (
@@ -341,7 +341,7 @@ export function TaskDetail({ projectId, taskId, onSelectTask, onSelectMessage, o
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      Gateway message →
+                      Message record →
                     </a>
                   )}
                 </div>

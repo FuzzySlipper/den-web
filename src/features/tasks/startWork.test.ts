@@ -146,8 +146,8 @@ describe('sendTaskStartWork — preflight failures', () => {
     const ev = await sendTaskStartWork(ASSIGNED_TASK);
 
     expect(ev.phase).toBe('failed');
-    expect(ev.summary).toContain('Could not check gateway memberships');
-    expect(ev.recoveryHint).toContain('Den Channels/Gateway');
+    expect(ev.summary).toContain('Could not check channel memberships');
+    expect(ev.recoveryHint).toContain('Den Channels');
     expect(mockListGatewayMemberships).toHaveBeenCalledWith({ projectId: 'proj-demo' });
     expect(mockPostGatewayDirectAgentMessage).not.toHaveBeenCalled();
   });
