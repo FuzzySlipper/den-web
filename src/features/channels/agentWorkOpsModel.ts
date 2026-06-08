@@ -78,7 +78,7 @@ export function buildAgentWorkOpsModel(
     diagnostic = 'Showing canonical agent-work lifecycle evidence.';
   } else if (currentRows.length > 0 && hasComposedCurrent) {
     mode = 'composed';
-    diagnostic = current?.migrationNote ?? 'No lifecycle events yet; showing current work composed from activity, direct-agent, and gateway-delivery evidence.';
+    diagnostic = current?.migrationNote ?? 'No lifecycle events yet; showing current work composed from channel activity, direct-agent, and delivery evidence.';
   } else if (activityEvents.length > 0) {
     mode = 'activity_fallback';
     diagnostic = 'No lifecycle events yet; showing legacy channel activity breadcrumbs as fallback evidence.';

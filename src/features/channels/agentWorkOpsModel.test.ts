@@ -140,6 +140,19 @@ describe('buildAgentWorkOpsModel', () => {
     expect(model.timelineItems[0]).toMatchObject({ source: 'activity' });
   });
 
+  it('uses current delivery wording for composed fallback diagnostics', () => {
+    const model = buildAgentWorkOpsModel(
+      currentResponse([currentItem({ evidenceProvenance: ['activity_event', 'direct_agent_event'], flags: ['no_lifecycle'], currentWorkState: 'delivered_no_lifecycle' })]),
+      lifecycleResponse([]),
+      [activityEvent({})],
+      [directEvent({})],
+    );
+
+    expect(model.mode).toBe('composed');
+    expect(model.diagnostic).toBe('No lifecycle events yet; showing current work composed from channel activity, direct-agent, and delivery evidence.');
+    expect(model.diagnostic).not.toContain('gateway');
+  });
+
   it('shows activity fallback evidence when lifecycle and current projections are empty', () => {
     const model = buildAgentWorkOpsModel(currentResponse([]), lifecycleResponse([]), [activityEvent({})], []);
 
