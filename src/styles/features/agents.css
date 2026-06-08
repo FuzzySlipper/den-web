@@ -115,6 +115,24 @@
 .agents-delivery-active { border-color: rgba(122, 162, 247, 0.45); color: var(--accent); }
 .agents-delivery-failed { border-color: rgba(247, 118, 142, 0.45); color: var(--red); }
 .agents-delivery-id { display: block; color: var(--text-muted); font-size: 10px; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agents-project-attribution-badge,
+.agents-lane-source,
+.agents-control-channel-note {
+  display: inline-block;
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 10px;
+  line-height: 1.25;
+  margin-top: 2px;
+  padding: 1px 6px;
+}
+.agents-control-channel-note {
+  border-color: rgba(250, 208, 122, 0.45);
+  color: var(--yellow);
+  border-radius: 4px;
+  max-width: 260px;
+}
 
 .agents-cell-activity { min-width: 100px; max-width: 180px; }
 .agents-activity-summary { color: var(--text-muted); font-size: 10px; display: block; }

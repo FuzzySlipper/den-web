@@ -4,9 +4,11 @@ import {
   channelRole,
   isDenSystemOpsChannel,
   isSharedProjectChannel,
+  isWorkerPoolChannel,
   linkedProjectIds,
   messageProjectAttribution,
   preferredProjectChannel,
+  projectChannelScopeLabel,
   selectProjectChannels,
 } from './channelRouting';
 
@@ -58,6 +60,15 @@ const denSystem = channel({
   settingsJson: '{"channelRole":"den_system_ops"}',
 });
 
+const workerPool = channel({
+  id: 604,
+  slug: 'worker-pool',
+  displayName: '#worker-pool',
+  kind: 'system',
+  projectId: null,
+  settingsJson: '{"channelRole":"worker_pool"}',
+});
+
 describe('channel routing helpers', () => {
   it('recognizes den-system as a shared linked-project channel', () => {
     expect(channelRole(denSystem)).toBe('den_system_ops');
@@ -82,12 +93,34 @@ describe('channel routing helpers', () => {
 
     expect(selected.map(item => item.slug)).toEqual(['project-den-web', 'agent-commons']);
     expect(preferredProjectChannel(selected, 'den-web')?.slug).toBe('project-den-web');
+    expect(projectChannelScopeLabel(legacyProjectDefault)).toBe('project lane');
+    expect(projectChannelScopeLabel(legacyProjectDefault)).not.toContain('legacy');
+  });
+
+  it('does not let the worker-pool breadcrumb suppress project-default channel creation', () => {
+    const selected = selectProjectChannels('new-project', [], [], agentCommons, workerPool);
+
+    expect(selected.map(item => item.slug)).toEqual(['agent-commons']);
+  });
+
+  it('keeps a den-router-like project lane while surfacing shared worker-pool breadcrumbs', () => {
+    const projectDefault = channel({ id: 9, slug: 'project-den-router', kind: 'project_default', projectId: 'den-router' });
+
+    const selected = selectProjectChannels('den-router', [projectDefault], [], agentCommons, workerPool);
+
+    expect(selected.map(item => item.slug)).toEqual(['project-den-router', 'worker-pool', 'agent-commons']);
+    expect(projectChannelScopeLabel(projectDefault)).toBe('project lane');
+    expect(projectChannelScopeLabel(workerPool)).toBe('shared worker-pool lane');
+    expect(isWorkerPoolChannel(workerPool)).toBe(true);
+    expect(preferredProjectChannel(selected, 'den-router')?.slug).toBe('project-den-router');
   });
 
   it('extracts project attribution from first-class fields or metadata', () => {
     expect(messageProjectAttribution({ sourceProjectId: 'den-core', targetProjectId: null })).toBe('den-core');
     expect(messageProjectAttribution({ sourceProjectId: null, targetProjectId: 'den-web' })).toBe('den-web');
+    expect(messageProjectAttribution({ sourceProjectId: null, targetProjectId: null, projectId: 'den-router' })).toBe('den-router');
     expect(messageProjectAttribution({ sourceProjectId: null, targetProjectId: null, metadataJson: '{"projectId":"den-channels"}' })).toBe('den-channels');
+    expect(messageProjectAttribution({ sourceProjectId: null, targetProjectId: null, metadataJson: '{"sourceProjectId":"den-core","projectId":"den-web"}' })).toBe('den-core');
     expect(messageProjectAttribution({ sourceProjectId: null, targetProjectId: null, metadataJson: 'not-json' })).toBeNull();
   });
 

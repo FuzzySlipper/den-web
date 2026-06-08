@@ -61,6 +61,21 @@ import {
 const ALL_SPACES_ID = '_all';
 const GLOBAL_SPACE_ID = '_global';
 
+const WORKSPACE_VIEW_LABELS: Record<WorkspaceViewMode, string> = {
+  tasks: 'Tasks',
+  messages: 'Messages',
+  documents: 'Docs',
+  git: 'Git',
+  librarian: 'Librarian',
+  'agent-stream': 'Agent Stream',
+  sessions: 'Sessions',
+  agents: 'Agents',
+  'fleet-ops': 'Fleet Ops',
+  notifications: 'Notifications',
+};
+
+type MobilePrimarySection = 'workspace' | 'channel';
+
 const ALL_SPACES: Space = {
   id: ALL_SPACES_ID,
   name: 'All spaces',
@@ -103,6 +118,7 @@ export default function App() {
   const [pendingDocumentSwitch, setPendingDocumentSwitch] = useState<DocumentSummary | null>(null);
   const [gitFocus, setGitFocus] = useState<GitFocus | null>(null);
   const [viewMode, setViewMode] = useState<WorkspaceViewMode>('tasks');
+  const [mobilePrimarySection, setMobilePrimarySection] = useState<MobilePrimarySection>('workspace');
   const [statusFilter, setStatusFilter] = useState<string | null>(ACTIVE_TASK_FILTER);
   const [streamKindFilter, setStreamKindFilter] = useState<'ops' | 'message'>('ops');
   const [streamEventFilter, setStreamEventFilter] = useState('');
@@ -659,11 +675,64 @@ export default function App() {
   const dashboardClasses = [
     'dashboard',
     `dashboard-channel-size-${channelPanelSize}`,
+    `dashboard-mobile-section-${mobilePrimarySection}`,
     renderNotificationSidePanel ? 'dashboard-notification-docked' : '',
   ].filter(Boolean).join(' ');
 
     return (
     <div className={dashboardClasses}>
+      <div className="mobile-topbar" aria-label="Mobile navigation">
+        <label className="mobile-topbar-control">
+          <span>Project</span>
+          <select
+            value={effectiveSpaceId ?? ''}
+            onChange={event => handleProjectSelect(event.target.value)}
+            aria-label="Switch project or space"
+          >
+            {spaces.map(space => (
+              <option key={space.id} value={space.id}>{space.name || space.id}</option>
+            ))}
+          </select>
+        </label>
+        <label className="mobile-topbar-control">
+          <span>Section</span>
+          <select
+            value={mobilePrimarySection === 'channel' ? 'channel' : viewMode}
+            onChange={event => {
+              if (event.target.value === 'channel') {
+                setMobilePrimarySection('channel');
+                return;
+              }
+              setViewMode(event.target.value as WorkspaceViewMode);
+              setMobilePrimarySection('workspace');
+            }}
+            aria-label="Switch primary section"
+          >
+            {WORKSPACE_VIEW_MODES.map(mode => (
+              <option key={mode} value={mode}>{WORKSPACE_VIEW_LABELS[mode]}</option>
+            ))}
+            <option value="channel">Project lane</option>
+          </select>
+        </label>
+        <div className="mobile-section-tabs" role="tablist" aria-label="Primary panel">
+          <button
+            type="button"
+            className={mobilePrimarySection === 'workspace' ? 'active' : ''}
+            onClick={() => setMobilePrimarySection('workspace')}
+            aria-pressed={mobilePrimarySection === 'workspace'}
+          >
+            {WORKSPACE_VIEW_LABELS[viewMode]}
+          </button>
+          <button
+            type="button"
+            className={mobilePrimarySection === 'channel' ? 'active' : ''}
+            onClick={() => setMobilePrimarySection('channel')}
+            aria-pressed={mobilePrimarySection === 'channel'}
+          >
+            Project lane
+          </button>
+        </div>
+      </div>
       <div className="dashboard-workspace">
         <ProjectSidebar
           spaces={spaces}
@@ -689,7 +758,10 @@ export default function App() {
             sortMode={sortMode}
             onSortChange={setSortMode}
             viewMode={viewMode}
-            onViewModeChange={setViewMode}
+            onViewModeChange={mode => {
+              setViewMode(mode);
+              setMobilePrimarySection('workspace');
+            }}
           />
           {viewMode === 'tasks' && (
             <div className="task-availability-summary" title="Dependency waits are computed by Core and clear automatically; manual blocked tasks need attention and an explicit unblock/status change.">

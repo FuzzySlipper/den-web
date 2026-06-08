@@ -25,9 +25,24 @@ export function isDenSystemOpsChannel(channel: Channel | null | undefined): bool
   return channel?.slug === 'den-system' || channelRole(channel) === 'den_system_ops';
 }
 
+export function isWorkerPoolChannel(channel: Channel | null | undefined): boolean {
+  return channel?.slug === 'worker-pool' || channelRole(channel) === 'worker_pool';
+}
+
 export function isSharedProjectChannel(channel: Channel | null | undefined): boolean {
   if (!channel) return false;
   return channel.projectId == null && channel.kind === 'system' && !isAgentCommonsChannel(channel);
+}
+
+export function projectChannelScopeLabel(channel: Channel | null | undefined): string | null {
+  if (!channel) return null;
+  if (isSharedProjectChannel(channel)) {
+    if (isWorkerPoolChannel(channel)) return 'shared worker-pool lane';
+    return isDenSystemOpsChannel(channel) ? 'shared Den system lane' : 'shared project lane';
+  }
+  if (channel.kind === 'project_default') return 'project lane';
+  if (channel.projectId) return 'project channel';
+  return null;
 }
 
 export function dedupeChannels(channels: Channel[]): Channel[] {
@@ -46,19 +61,24 @@ export function selectProjectChannels(
   projectChannels: Channel[],
   linkedChannels: Channel[],
   agentCommons: Channel,
+  workerPoolChannel?: Channel | null,
 ): Channel[] {
   if (!projectId) return [agentCommons];
 
   const activeProjectChannels = projectChannels.filter(channel => channel.visibility !== 'archived');
+  const workerPoolChannels = workerPoolChannel ? [workerPoolChannel] : [];
   if (linkedChannels.length === 0) {
-    return dedupeChannels([...activeProjectChannels, agentCommons]);
+    if (activeProjectChannels.length === 0) {
+      return [agentCommons];
+    }
+    return dedupeChannels([...activeProjectChannels, ...workerPoolChannels, agentCommons]);
   }
 
   // Once a project has an explicit shared linked channel (for example #den-system),
   // old #project-den-* default channels are legacy lanes. Keep non-default ad-hoc
   // project channels visible, but make the shared lane the primary/default choice.
   const nonDefaultProjectChannels = activeProjectChannels.filter(channel => channel.kind !== 'project_default');
-  return dedupeChannels([...linkedChannels, ...nonDefaultProjectChannels, agentCommons]);
+  return dedupeChannels([...linkedChannels, ...nonDefaultProjectChannels, ...workerPoolChannels, agentCommons]);
 }
 
 export function preferredProjectChannel(channels: Channel[], projectId: string | null): Channel | undefined {
@@ -66,15 +86,16 @@ export function preferredProjectChannel(channels: Channel[], projectId: string |
     return channels.find(isAgentCommonsChannel) ?? channels[0];
   }
   return channels.find(isDenSystemOpsChannel)
-    ?? channels.find(isSharedProjectChannel)
+    ?? channels.find(candidate => isSharedProjectChannel(candidate) && !isWorkerPoolChannel(candidate))
     ?? channels.find(candidate => candidate.kind === 'project_default')
+    ?? channels.find(isWorkerPoolChannel)
     ?? channels[0];
 }
 
 export function messageProjectAttribution(
-  message: { sourceProjectId?: string | null; targetProjectId?: string | null; metadataJson?: string | null },
+  message: { sourceProjectId?: string | null; targetProjectId?: string | null; projectId?: string | null; metadataJson?: string | null },
 ): string | null {
-  const direct = (message.targetProjectId?.trim() || message.sourceProjectId?.trim() || '').trim();
+  const direct = (message.targetProjectId?.trim() || message.sourceProjectId?.trim() || message.projectId?.trim() || '').trim();
   if (direct) return direct;
   if (!message.metadataJson) return null;
   try {

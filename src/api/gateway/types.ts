@@ -171,6 +171,9 @@ export interface DeliveryOverviewDto {
   channelSlug: string | null;
   channelId: number | null;
   projectId: string | null;
+  sourceProjectId?: string | null;
+  targetProjectId?: string | null;
+  metadataJson?: string | null;
   taskId: number | null;
   isTerminal: boolean | null;
   latestActivityAt: string | null;
@@ -188,6 +191,9 @@ export interface ActivityEventOverviewDto {
   id: number;
   channelId: number;
   projectId: string | null;
+  sourceProjectId?: string | null;
+  targetProjectId?: string | null;
+  metadataJson?: string | null;
   agentIdentity: string;
   deliveryRequestId: string | null;
   hermesSessionKey: string | null;

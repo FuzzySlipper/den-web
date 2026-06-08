@@ -98,6 +98,12 @@ export function FilterBar({
         >
           Fleet Ops
         </button>
+        <button
+          className={viewMode === 'notifications' ? 'active' : ''}
+          onClick={() => onViewModeChange('notifications')}
+        >
+          Notifications
+        </button>
       </div>
     </div>
   );

@@ -222,3 +222,113 @@ button.list-item {
 
 .search-bar input:focus { border-color: var(--accent-dim); }
 .search-bar input::placeholder { color: var(--text-muted); }
+
+.mobile-topbar {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .dashboard,
+  .dashboard-channel-size-small,
+  .dashboard-channel-size-medium,
+  .dashboard-channel-size-large,
+  .dashboard-notification-docked {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100dvh;
+  }
+
+  .mobile-topbar {
+    grid-column: 1;
+    grid-row: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 6px;
+    padding: 8px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    z-index: 5;
+  }
+
+  .mobile-topbar-control {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .mobile-topbar-control select {
+    min-width: 0;
+    width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font: 12px var(--font-sans);
+    padding: 5px 7px;
+  }
+
+  .mobile-section-tabs {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .mobile-section-tabs button {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 8px;
+  }
+
+  .mobile-section-tabs button.active {
+    border-color: var(--accent-dim);
+    background: var(--bg-selected);
+    color: var(--accent);
+    box-shadow: inset 0 -2px 0 var(--accent);
+  }
+
+  .dashboard-workspace {
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .panel-projects {
+    display: none;
+  }
+
+  .panel-main {
+    grid-column: 1;
+  }
+
+  .channel-chat-panel {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 0;
+    border-top: 0;
+  }
+
+  .dashboard-mobile-section-workspace .channel-chat-panel {
+    display: none;
+  }
+
+  .dashboard-mobile-section-channel .dashboard-workspace {
+    display: none;
+  }
+
+  .notification-side-panel {
+    grid-column: 1;
+    grid-row: 2;
+  }
+}

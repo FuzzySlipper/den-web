@@ -9,6 +9,12 @@ import type {
 import { listAgentsOverview, getAgentDetail } from '../../api/client';
 import { usePolling } from '../../hooks/usePolling';
 import { formatTimeAgo } from '../../utils';
+import {
+  agentProjectAttributions,
+  bindingHasStaleControlChannel,
+  deliveryProjectAttribution,
+  membershipLaneLabel,
+} from './agentAttribution';
 
 interface Props {
   projectId: string | null;
@@ -76,6 +82,13 @@ function renderDeliveryId(deliveries: DeliveryOverviewDto[] | null): string {
     return terminalDelivered[0].deliveryRequestId ?? 'delivered';
   }
   return deliveries[0].deliveryRequestId ?? '—';
+}
+
+function renderDeliveryProject(deliveries: DeliveryOverviewDto[] | null): string | null {
+  if (!deliveries || deliveries.length === 0) return null;
+  const activeAttribution = deliveries.find(d => !d.terminal && deliveryProjectAttribution(d));
+  const firstAttribution = activeAttribution ?? deliveries.find(d => deliveryProjectAttribution(d));
+  return firstAttribution ? deliveryProjectAttribution(firstAttribution) : null;
 }
 
 function renderDeliveryState(deliveries: DeliveryOverviewDto[] | null): string {
@@ -204,9 +217,9 @@ export function AgentsOverviewView({ projectId, isAggregate, closePanelKey = 'Es
                         ))}
                       </div>
                     )}
-                    {agent.memberships && agent.memberships.length > 0 && (
-                      <div className="agents-agent-projects">
-                        {Array.from(new Set(agent.memberships.map(m => m.projectId).filter(Boolean))).join(', ')}
+                    {agentProjectAttributions(agent).length > 0 && (
+                      <div className="agents-agent-projects" title="Project attribution from memberships, deliveries, and activity">
+                        {agentProjectAttributions(agent).join(', ')}
                       </div>
                     )}
                   </td>
@@ -216,6 +229,11 @@ export function AgentsOverviewView({ projectId, isAggregate, closePanelKey = 'Es
                     </span>
                     {agent.bindings && agent.bindings.length > 0 && agent.bindings[0].bindingFreshness && (
                       <span className="agents-binding-freshness"> ({agent.bindings[0].bindingFreshness})</span>
+                    )}
+                    {agent.bindings?.some(binding => bindingHasStaleControlChannel(binding.adapterInstances)) && (
+                      <span className="agents-control-channel-note" title="Stale channel_id=5 gateway binding is a hidden control-channel binding, not an active visible channel residency.">
+                        hidden stale control binding
+                      </span>
                     )}
                   </td>
                   <td>
@@ -230,6 +248,11 @@ export function AgentsOverviewView({ projectId, isAggregate, closePanelKey = 'Es
                     {agent.deliverySummaries && agent.deliverySummaries.length > 0 && (
                       <span className="agents-delivery-id">
                         {renderDeliveryId(agent.deliverySummaries)}
+                      </span>
+                    )}
+                    {renderDeliveryProject(agent.deliverySummaries) && (
+                      <span className="agents-project-attribution-badge" title="Worker-pool delivery project attribution">
+                        {renderDeliveryProject(agent.deliverySummaries)}
                       </span>
                     )}
                   </td>
@@ -486,10 +509,12 @@ function AgentDetailOverlay({
                     </span>
                   </div>
                   <div className="agents-membership-details">
+                    <span className="agents-lane-source">{membershipLaneLabel(m, projectId)}</span>
                     <span>Wake: {m.wakePolicy}</span>
                     {m.projectId && <span>Project: {m.projectId}</span>}
                     <span>Send: {m.canSend ? 'yes' : 'no'}</span>
                     {m.settingsLabel && <span>Settings: {m.settingsLabel}</span>}
+                    {m.channelId === 5 && <span className="agents-control-channel-note">hidden control-channel; not active visible residency</span>}
                   </div>
                 </div>
               ))}
@@ -518,6 +543,11 @@ function AgentDetailOverlay({
                     </span>
                   )}
                 </div>
+                {bindingHasStaleControlChannel(b.adapterInstances) && (
+                  <div className="agents-control-channel-note">
+                    Stale channel_id=5 gateway binding is a hidden control-channel remnant, not active visible channel residency.
+                  </div>
+                )}
                 {b.deliveryCounts && (
                   <div className="agents-binding-counts">
                     <span>Active: {b.deliveryCounts.active}</span>
@@ -568,6 +598,9 @@ function AgentDetailOverlay({
                     {d.deliveryRequestId && (
                       <span className="agents-delivery-id">ID: {d.deliveryRequestId}</span>
                     )}
+                    {deliveryProjectAttribution(d) && (
+                      <span className="agents-project-attribution-badge">Project: {deliveryProjectAttribution(d)}</span>
+                    )}
                     {d.terminal && <span className="agents-terminal-badge">terminal</span>}
                     {d.isStale && <span className="agents-stale-badge">stale debt</span>}
                   </div>
@@ -612,6 +645,9 @@ function AgentDetailOverlay({
                     </span>
                     {d.deliveryRequestId && (
                       <span className="agents-delivery-id">ID: {d.deliveryRequestId}</span>
+                    )}
+                    {deliveryProjectAttribution(d) && (
+                      <span className="agents-project-attribution-badge">Project: {deliveryProjectAttribution(d)}</span>
                     )}
                     {d.terminal && <span className="agents-terminal-badge">terminal</span>}
                   </div>

@@ -29,11 +29,12 @@ import { filterLoadedChannelMessages } from './channelMessageSearch';
 import { useComposerHotkeys } from './useComposerHotkeys';
 import { AgentWorkOpsPanel } from './AgentWorkOpsPanel';
 import {
-  channelRole,
   isSharedProjectChannel,
+  isWorkerPoolChannel,
   linkedProjectIds,
   messageProjectAttribution,
   preferredProjectChannel,
+  projectChannelScopeLabel,
   selectProjectChannels,
 } from './channelRouting';
 import type { ChannelSendMode } from './useComposerHotkeys';
@@ -95,7 +96,6 @@ function channelOptionLabel(channel: Channel, projectId: string | null): string 
   const base = channelLabel(channel, projectId);
   const scope = projectChannelScopeLabel(channel);
   if (scope) return `${base} — ${scope}`;
-  if (channel.kind === 'project_default') return `${base} — legacy project lane`;
   return base;
 }
 
@@ -116,11 +116,9 @@ async function resolveAgentCommonsChannel(): Promise<Channel> {
   return existing ?? ensureAgentCommonsChannel();
 }
 
-function projectChannelScopeLabel(channel: Channel | null): string | null {
-  if (!channel || !isSharedProjectChannel(channel)) return null;
-  const role = channelRole(channel);
-  if (role === 'den_system_ops') return 'shared Den system lane';
-  return 'shared project lane';
+async function resolveWorkerPoolChannel(): Promise<Channel | null> {
+  const systemChannels = await listChannels({ kind: 'system', limit: 100 });
+  return systemChannels.find(channel => isWorkerPoolChannel(channel)) ?? null;
 }
 
 function messageSender(message: ChannelMessage): string {
@@ -414,15 +412,19 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     const agentCommons = await resolveAgentCommonsChannel();
     if (!projectId) return [agentCommons];
 
-    const [projectChannels, linkedChannels] = await Promise.all([
+    const [projectChannels, linkedChannels, workerPoolChannel] = await Promise.all([
       listChannels({ projectId, limit: 100 }),
       listProjectLinkedChannels(projectId).catch(error => {
         console.warn(`Failed to load linked channels for ${projectId}; falling back to project defaults`, error);
         return [] as Channel[];
       }),
+      resolveWorkerPoolChannel().catch(error => {
+        console.warn('Failed to load worker-pool channel; project channel list will omit shared worker-pool breadcrumbs', error);
+        return null;
+      }),
     ]);
 
-    const selectedChannels = selectProjectChannels(projectId, projectChannels, linkedChannels, agentCommons);
+    const selectedChannels = selectProjectChannels(projectId, projectChannels, linkedChannels, agentCommons, workerPoolChannel);
     if (selectedChannels.length > 1 || linkedChannels.length > 0 || projectChannels.length > 0) {
       return selectedChannels;
     }
@@ -431,7 +433,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
       displayName: spaceName?.trim() || projectId,
       createdBy: normalizedSenderIdentity || 'den-web',
     });
-    return [ensured, agentCommons];
+    return selectProjectChannels(projectId, [ensured], [], agentCommons, workerPoolChannel);
   }, [normalizedSenderIdentity, projectId, spaceName]);
 
   const {
@@ -567,6 +569,8 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   } = usePolling<ChannelProjectLink[]>(fetchLinkedProjects, 15000);
 
   const activeChannelScopeLabel = projectChannelScopeLabel(activeChannel);
+  const workerPoolProjectFilter = projectId && isWorkerPoolChannel(activeChannel) ? projectId : '';
+  const effectiveProjectAttributionFilter = projectAttributionFilter || workerPoolProjectFilter;
   const activeChannelLinkedProjectIds = useMemo(
     () => linkedProjectIds(activeChannelLinkedProjects ?? []),
     [activeChannelLinkedProjects],
@@ -583,11 +587,11 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     const channelMessages = activeChannel
       ? (messages ?? []).filter(message => message.channelId === activeChannel.id)
       : [];
-    const visibleMessages = projectAttributionFilter
-      ? channelMessages.filter(message => messageProjectAttribution(message) === projectAttributionFilter)
+    const visibleMessages = effectiveProjectAttributionFilter
+      ? channelMessages.filter(message => messageProjectAttribution(message) === effectiveProjectAttributionFilter)
       : channelMessages;
     return [...visibleMessages].sort((left, right) => left.id - right.id);
-  }, [activeChannel, messages, projectAttributionFilter]);
+  }, [activeChannel, effectiveProjectAttributionFilter, messages]);
 
   const displayedMessages = useMemo(
     () => filterLoadedChannelMessages(sortedMessages, messageSearchQuery),
@@ -605,9 +609,34 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     return grouped;
   }, [reactions]);
 
+  const scopedActivityEvents = useMemo(
+    () => effectiveProjectAttributionFilter
+      ? (activityEvents ?? []).filter(event => messageProjectAttribution(event) === effectiveProjectAttributionFilter)
+      : (activityEvents ?? []),
+    [activityEvents, effectiveProjectAttributionFilter],
+  );
+  const scopedDirectAgentEvents = useMemo(
+    () => effectiveProjectAttributionFilter
+      ? (directAgentEvents?.items ?? []).filter(event => messageProjectAttribution(event) === effectiveProjectAttributionFilter)
+      : (directAgentEvents?.items ?? []),
+    [directAgentEvents, effectiveProjectAttributionFilter],
+  );
+  const scopedAgentWorkCurrent = useMemo(
+    () => agentWorkCurrent && effectiveProjectAttributionFilter
+      ? { ...agentWorkCurrent, items: agentWorkCurrent.items.filter(item => item.projectId === effectiveProjectAttributionFilter) }
+      : agentWorkCurrent,
+    [agentWorkCurrent, effectiveProjectAttributionFilter],
+  );
+  const scopedAgentWorkEvents = useMemo(
+    () => agentWorkEvents && effectiveProjectAttributionFilter
+      ? { ...agentWorkEvents, items: agentWorkEvents.items.filter(item => item.projectId === effectiveProjectAttributionFilter) }
+      : agentWorkEvents,
+    [agentWorkEvents, effectiveProjectAttributionFilter],
+  );
+
   const groupedActivityEvents = useMemo(
-    () => groupActivityEventsForChannelMessages(displayedMessages, isMessageSearchActive ? [] : (activityEvents ?? [])),
-    [activityEvents, displayedMessages, isMessageSearchActive],
+    () => groupActivityEventsForChannelMessages(displayedMessages, isMessageSearchActive ? [] : scopedActivityEvents),
+    [displayedMessages, isMessageSearchActive, scopedActivityEvents],
   );
   const activityEventsByMessageId = groupedActivityEvents.byMessageId;
   const deliveryProgressBlocks = groupedActivityEvents.displayBlocks;
@@ -966,7 +995,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
       pendingAutoScrollSnapKeyRef.current = null;
       pendingAutoScrollObservedLoadingRef.current = false;
     }
-  }, [activeChannel, activeChannel?.id, activityEvents?.length, activityLoading, autoScroll, displayedMessages.length, messagesLoading, projectId, scrollResetKey]);
+  }, [activeChannel, activeChannel?.id, activityLoading, autoScroll, displayedMessages.length, messagesLoading, projectId, scopedActivityEvents.length, scrollResetKey]);
 
   return (
     <section className={`panel channel-chat-panel channel-chat-panel-size-${panelSize}`} aria-label="Project channel chat">
@@ -1186,10 +1215,10 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
 
         <aside className="channel-chat-members" aria-label="Channel participants, current agent work, and active Hermes profile bindings">
           <AgentWorkOpsPanel
-            current={agentWorkCurrent}
-            lifecycle={agentWorkEvents}
-            activityEvents={activityEvents ?? []}
-            directAgentEvents={directAgentEvents?.items ?? []}
+            current={scopedAgentWorkCurrent}
+            lifecycle={scopedAgentWorkEvents}
+            activityEvents={scopedActivityEvents}
+            directAgentEvents={scopedDirectAgentEvents}
             loading={agentWorkLoading}
             error={agentWorkError}
             onRefresh={refreshAgentWorkEvidence}
