@@ -48,6 +48,7 @@ import { focusArmedNotificationPanelWindow, isNotificationPanelRoute } from '../
 import { fetchNotificationFeed, type NotificationItem, countUnread } from '../features/notifications/notificationFeed';
 import {
   detectNewUnreadNotificationIds,
+  rememberPendingNotificationCueIds,
   notificationCueLabel,
   summarizeNotificationBellCue,
 } from '../features/notifications/notificationBell';
@@ -161,6 +162,7 @@ export default function App() {
       return;
     }
 
+    rememberPendingNotificationCueIds(newUnreadIds);
     const cue = summarizeNotificationBellCue(currentItems, newUnreadIds);
     const focusResult = prefs.layout.notificationHistoryMode === 'window'
       ? focusArmedNotificationPanelWindow()

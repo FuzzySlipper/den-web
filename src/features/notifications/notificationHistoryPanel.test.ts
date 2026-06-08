@@ -27,7 +27,10 @@ import {
   parseCoreNotificationId,
 } from './notificationFeed';
 import {
+  clearPendingNotificationCueIds,
   detectNewUnreadNotificationIds,
+  loadPendingNotificationCueIds,
+  rememberPendingNotificationCueIds,
   notificationCueLabel,
   summarizeNotificationBellCue,
 } from './notificationBell';
@@ -466,6 +469,22 @@ describe('notificationFeed adapter', () => {
 // ---------------------------------------------------------------------------
 
 describe('notificationBell helpers', () => {
+  beforeEach(() => {
+    const store: Record<string, string> = {};
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => store[key] ?? null,
+      setItem: (key: string, value: string) => { store[key] = value; },
+      clear: () => { for (const key in store) delete store[key]; },
+      removeItem: (key: string) => { delete store[key]; },
+      length: 0,
+      key: () => null,
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   const previous: NotificationItem[] = [
     {
       id: 'core:1', type: 'user_notification', timestamp: '2026-01-01T00:00:00Z',
@@ -500,6 +519,20 @@ describe('notificationBell helpers', () => {
     expect(ids).toEqual(['core:2']);
     const cue = summarizeNotificationBellCue(current, ids);
     expect(notificationCueLabel(cue)).toContain('agent finished work');
+  });
+
+  it('bridges pending cue IDs across windows until the panel clears them', () => {
+    localStorage.clear();
+    rememberPendingNotificationCueIds(['core:2', 'core:4']);
+    rememberPendingNotificationCueIds(['core:2', 'core:5']);
+
+    expect(loadPendingNotificationCueIds().sort()).toEqual(['core:2', 'core:4', 'core:5']);
+
+    clearPendingNotificationCueIds(['core:4']);
+    expect(loadPendingNotificationCueIds().sort()).toEqual(['core:2', 'core:5']);
+
+    clearPendingNotificationCueIds();
+    expect(loadPendingNotificationCueIds()).toEqual([]);
   });
 });
 

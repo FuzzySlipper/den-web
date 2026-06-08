@@ -29,7 +29,11 @@ import {
   clearLocalReadState,
   countUnread,
 } from './notificationFeed';
-import { detectNewUnreadNotificationIds } from './notificationBell';
+import {
+  clearPendingNotificationCueIds,
+  detectNewUnreadNotificationIds,
+  loadPendingNotificationCueIds,
+} from './notificationBell';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -107,14 +111,17 @@ export function NotificationHistoryPanel({
   );
   const { data: feed, loading, error, refresh } = usePolling(fetchFeed, POLL_INTERVAL_MS);
   const previousFeedItemsRef = useRef<NotificationItem[] | null>(null);
-  const [newSinceLastViewedIds, setNewSinceLastViewedIds] = useState<Set<string>>(() => new Set());
+  const [newSinceLastViewedIds, setNewSinceLastViewedIds] = useState<Set<string>>(
+    () => new Set(loadPendingNotificationCueIds()),
+  );
 
   useEffect(() => {
     if (!feed || feed.error) return;
     const newUnreadIds = detectNewUnreadNotificationIds(previousFeedItemsRef.current, feed.items);
     previousFeedItemsRef.current = feed.items;
-    if (newUnreadIds.length > 0) {
-      setNewSinceLastViewedIds(prev => new Set([...prev, ...newUnreadIds]));
+    const pendingCueIds = loadPendingNotificationCueIds().filter(id => feed.items.some(item => item.id === id && !item.read));
+    if (newUnreadIds.length > 0 || pendingCueIds.length > 0) {
+      setNewSinceLastViewedIds(prev => new Set([...prev, ...pendingCueIds, ...newUnreadIds]));
     }
   }, [feed]);
 
@@ -150,6 +157,7 @@ export function NotificationHistoryPanel({
   // Handlers
   const handleMarkAllRead = useCallback(() => {
     if (feed) markAllRead(feed.items.map(item => item.id));
+    clearPendingNotificationCueIds();
     setNewSinceLastViewedIds(new Set());
     refresh();
   }, [feed, refresh]);
@@ -163,6 +171,7 @@ export function NotificationHistoryPanel({
   const handleItemClick = useCallback((item: NotificationItem) => {
     if (!item.read) {
       markNotificationRead(item.id);
+      clearPendingNotificationCueIds([item.id]);
       setNewSinceLastViewedIds(prev => {
         const next = new Set(prev);
         next.delete(item.id);

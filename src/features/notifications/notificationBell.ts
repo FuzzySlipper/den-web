@@ -1,5 +1,7 @@
 import type { NotificationItem } from './notificationFeed';
 
+const PENDING_NOTIFICATION_CUE_IDS_KEY = 'den-web-notification-pending-cue-ids:v1';
+
 export interface NotificationBellCue {
   ids: string[];
   count: number;
@@ -51,4 +53,49 @@ export function notificationCueLabel(cue: NotificationBellCue | null): string | 
     return `${prefix} — agent finished work`;
   }
   return prefix;
+}
+
+function readStoredIdArray(): string[] {
+  try {
+    const raw = localStorage.getItem(PENDING_NOTIFICATION_CUE_IDS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredIdArray(ids: string[]): void {
+  try {
+    if (ids.length === 0) {
+      localStorage.removeItem(PENDING_NOTIFICATION_CUE_IDS_KEY);
+      return;
+    }
+    localStorage.setItem(PENDING_NOTIFICATION_CUE_IDS_KEY, JSON.stringify(ids));
+  } catch {
+    // Storage is only a cross-window UI cue bridge; never block notification rendering.
+  }
+}
+
+/** Store new unread ids so a panel/window opened after the bell rings can highlight them. */
+export function rememberPendingNotificationCueIds(ids: string[]): void {
+  if (ids.length === 0) return;
+  const merged = new Set([...readStoredIdArray(), ...ids]);
+  writeStoredIdArray(Array.from(merged));
+}
+
+/** Read pending cross-window cue ids without clearing them. */
+export function loadPendingNotificationCueIds(): string[] {
+  return readStoredIdArray();
+}
+
+/** Clear selected pending ids once the user reads/acknowledges them in the history panel. */
+export function clearPendingNotificationCueIds(ids?: string[]): void {
+  if (!ids) {
+    writeStoredIdArray([]);
+    return;
+  }
+  const remove = new Set(ids);
+  writeStoredIdArray(readStoredIdArray().filter(id => !remove.has(id)));
 }
