@@ -1012,6 +1012,7 @@ export default function App() {
         onPanelSizeChange={setChannelPanelSize}
         onOpenPreferences={() => setShowPreferences(true)}
         onOpenAssignmentTrace={handleAssignmentTraceSelect}
+        onOpenDmTranscript={handleOpenDmTranscript}
       />
 
       {/* Notification dock (when mode is sidePanel and toggled open) */}

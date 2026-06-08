@@ -70,6 +70,7 @@ interface Props {
   onPanelSizeChange: (size: ChannelChatPanelSize) => void;
   onOpenPreferences: () => void;
   onOpenAssignmentTrace?: (assignmentId: string) => void;
+  onOpenDmTranscript?: (agentIdentity: string) => void;
 }
 
 export type ChannelChatPanelSize = 'small' | 'medium' | 'large';
@@ -370,7 +371,7 @@ function activityStatusClass(status: string): string {
   return status.toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
 }
 
-export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetKey, onPanelSizeChange, onOpenPreferences, onOpenAssignmentTrace }: Props) {
+export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetKey, onPanelSizeChange, onOpenPreferences, onOpenAssignmentTrace, onOpenDmTranscript }: Props) {
   const [draft, setDraft] = useState('');
   const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
   const [senderIdentity, setSenderIdentity] = useState(readStoredSenderIdentity);
@@ -1259,8 +1260,9 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
                       type="button"
                       className={`channel-chat-member ${activityClass}`}
                       onClick={() => memberIsActiveAgent(member) && setTargetMemberIdentity(member.memberIdentity)}
+                      onDoubleClick={() => memberIsActiveAgent(member) && onOpenDmTranscript?.(member.memberIdentity)}
                       disabled={!memberIsActiveAgent(member)}
-                      title={visibleStatus}
+                      title={memberIsActiveAgent(member) && onOpenDmTranscript ? `${visibleStatus} · double-click to open DM transcript` : visibleStatus}
                     >
                       <span className={`channel-chat-member-type member-type-${member.memberType}`}>{member.memberType}</span>
                       <span className="channel-chat-member-identity">{member.memberIdentity}</span>

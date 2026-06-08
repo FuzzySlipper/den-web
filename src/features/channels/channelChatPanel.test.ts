@@ -206,6 +206,25 @@ describe('participant wake-policy matching (stable logic)', () => {
   });
 });
 
+describe('participant DM shortcut source invariants', () => {
+  const panelSource = readFileSync(resolve(process.cwd(), 'src/features/channels/ChannelChatPanel.tsx'), 'utf8');
+  const appSource = readFileSync(resolve(process.cwd(), 'src/app-shell/App.tsx'), 'utf8');
+
+  it('threads the App DM opener into the chat panel', () => {
+    expect(appSource).toContain('onOpenDmTranscript={handleOpenDmTranscript}');
+  });
+
+  it('exposes an optional DM opener callback on ChannelChatPanel', () => {
+    expect(panelSource).toContain('onOpenDmTranscript?: (agentIdentity: string) => void;');
+  });
+
+  it('opens the member DM transcript on double-click without replacing single-click targeting', () => {
+    expect(panelSource).toContain('onClick={() => memberIsActiveAgent(member) && setTargetMemberIdentity(member.memberIdentity)}');
+    expect(panelSource).toContain('onDoubleClick={() => memberIsActiveAgent(member) && onOpenDmTranscript?.(member.memberIdentity)}');
+    expect(panelSource).toContain("title={memberIsActiveAgent(member) && onOpenDmTranscript ? `${visibleStatus} · double-click to open DM transcript` : visibleStatus}");
+  });
+});
+
 describe('channel composer direct-agent targeting', () => {
   it('treats @mentions of active agents as canonical direct-agent targets', () => {
     const targets = directTargetsForComposerBody('hey @den-mcp-runner can you check this?', [
