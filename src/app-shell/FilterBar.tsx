@@ -93,6 +93,12 @@ export function FilterBar({
           Agents
         </button>
         <button
+          className={viewMode === 'dm' ? 'active' : ''}
+          onClick={() => onViewModeChange('dm')}
+        >
+          DM
+        </button>
+        <button
           className={viewMode === 'fleet-ops' ? 'active' : ''}
           onClick={() => onViewModeChange('fleet-ops')}
         >
