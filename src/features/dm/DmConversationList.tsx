@@ -4,7 +4,11 @@ import {
   listDirectConversations,
   createDirectConversation,
 } from '../../api/channels/client';
-import { DM_HUMAN_IDENTITY, sortConversationsByRecent } from './dmTranscriptModel';
+import {
+  DM_HUMAN_IDENTITY,
+  dmConversationSourceLabel,
+  sortConversationsByRecent,
+} from './dmTranscriptModel';
 import { usePolling } from '../../hooks/usePolling';
 import { formatTimeAgo } from '../../utils';
 
@@ -85,32 +89,35 @@ export function DmConversationList({ onSelectConversation, selectedId, initialAg
       )}
 
       <div className="dm-conversation-items">
-        {sorted.map(conv => (
-          <button
-            key={conv.id}
-            className={`dm-conversation-item ${selectedId === conv.id ? 'dm-conversation-selected' : ''}`}
-            onClick={() => onSelectConversation(conv)}
-            type="button"
-          >
-            <div className="dm-conversation-agent">
-              <span className="dm-agent-identity">{conv.agentIdentity}</span>
-              {conv.unreadCount > 0 && (
-                <span className="dm-unread-badge">{conv.unreadCount}</span>
+        {sorted.map(conv => {
+          const sourceLabel = dmConversationSourceLabel(conv);
+          return (
+            <button
+              key={conv.id}
+              className={`dm-conversation-item ${selectedId === conv.id ? 'dm-conversation-selected' : ''}`}
+              onClick={() => onSelectConversation(conv)}
+              type="button"
+            >
+              <div className="dm-conversation-agent">
+                <span className="dm-agent-identity">{conv.agentIdentity}</span>
+                {conv.unreadCount > 0 && (
+                  <span className="dm-unread-badge">{conv.unreadCount}</span>
+                )}
+              </div>
+              {conv.lastEntryPreview && (
+                <div className="dm-conversation-preview">{conv.lastEntryPreview}</div>
               )}
-            </div>
-            {conv.lastEntryPreview && (
-              <div className="dm-conversation-preview">{conv.lastEntryPreview}</div>
-            )}
-            <div className="dm-conversation-meta">
-              {conv.lastEntryAt && (
-                <span className="dm-conversation-time">{formatTimeAgo(conv.lastEntryAt)}</span>
-              )}
-              {conv.scopeProjectId && (
-                <span className="dm-conversation-project">project: {conv.scopeProjectId}</span>
-              )}
-            </div>
-          </button>
-        ))}
+              <div className="dm-conversation-meta">
+                {conv.lastEntryAt && (
+                  <span className="dm-conversation-time">{formatTimeAgo(conv.lastEntryAt)}</span>
+                )}
+                {sourceLabel && (
+                  <span className="dm-conversation-source">{sourceLabel}</span>
+                )}
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

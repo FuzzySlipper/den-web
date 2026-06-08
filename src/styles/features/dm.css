@@ -8,7 +8,7 @@
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border);
-  background: var(--bg-secondary);
+  background: var(--bg-surface);
   min-width: 240px;
   max-width: 300px;
   overflow-y: auto;
@@ -24,8 +24,9 @@
 
 .dm-conversation-list-header h3 {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--pref-font-base-size, 13px);
   font-weight: 600;
+  color: var(--text-bright);
 }
 
 .dm-conversation-items {
@@ -40,8 +41,10 @@
   border: none;
   border-bottom: 1px solid var(--border);
   background: transparent;
-  text-align: left;
+  color: var(--text);
   cursor: pointer;
+  font: inherit;
+  text-align: left;
   transition: background 0.1s;
 }
 
@@ -50,12 +53,13 @@
 }
 
 .dm-conversation-selected {
-  background: var(--bg-active);
+  background: var(--bg-selected);
 }
 
 .dm-agent-identity {
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--pref-font-base-size, 13px);
+  color: var(--text-bright);
 }
 
 .dm-unread-badge {
@@ -67,15 +71,15 @@
   height: 18px;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
+  color: var(--bg);
+  font-size: calc(var(--pref-font-base-size, 13px) - 2px);
+  font-weight: 700;
 }
 
 .dm-conversation-preview {
   margin-top: 3px;
-  font-size: 12px;
-  color: var(--text-secondary);
+  font-size: calc(var(--pref-font-base-size, 13px) - 1px);
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -83,7 +87,7 @@
 
 .dm-conversation-meta {
   margin-top: 2px;
-  font-size: 11px;
+  font-size: calc(var(--pref-font-base-size, 13px) - 2px);
   color: var(--text-muted);
   display: flex;
   gap: 8px;
@@ -104,7 +108,7 @@
   gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
-  background: var(--bg-secondary);
+  background: var(--bg-surface);
 }
 
 .dm-back-button {
@@ -112,38 +116,53 @@
   border: none;
   color: var(--accent);
   cursor: pointer;
-  font-size: 13px;
+  font: inherit;
   padding: 2px 6px;
+}
+
+.dm-back-button:hover {
+  color: var(--text-bright);
 }
 
 .dm-transcript-title h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(var(--pref-font-base-size, 13px) + 1px);
   font-weight: 600;
+  color: var(--text-bright);
 }
 
 .dm-transcript-meta {
-  font-size: 11px;
+  font-size: calc(var(--pref-font-base-size, 13px) - 2px);
   color: var(--text-muted);
 }
 
 .dm-refresh-button {
-  background: none;
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 4px;
+  color: var(--text-muted);
   cursor: pointer;
+  font: inherit;
   padding: 2px 8px;
-  font-size: 13px;
-  color: var(--text-secondary);
+}
+
+.dm-refresh-button:hover:not(:disabled) {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+.dm-refresh-button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* Focused-readback warning banner */
 .dm-warning-banner {
   padding: 6px 12px;
-  background: var(--warning-bg, #fff8e1);
-  border-bottom: 1px solid var(--warning-border, #ffe082);
-  font-size: 11px;
-  color: var(--text-secondary);
+  background: rgba(224, 175, 104, 0.1);
+  border-bottom: 1px solid rgba(224, 175, 104, 0.35);
+  color: var(--yellow);
+  font-size: calc(var(--pref-font-base-size, 13px) - 2px);
   line-height: 1.4;
 }
 
@@ -159,7 +178,7 @@
   margin-bottom: 12px;
   padding: 8px 10px;
   border-radius: 6px;
-  background: var(--bg-primary);
+  background: var(--bg-surface);
   border-left: 3px solid var(--border);
 }
 
@@ -168,12 +187,12 @@
 }
 
 .dm-entry-received {
-  border-left-color: var(--success, #4caf50);
+  border-left-color: var(--green);
 }
 
 .dm-entry-system {
   border-left-color: var(--text-muted);
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .dm-entry-header {
@@ -181,12 +200,12 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 4px;
-  font-size: 11px;
+  font-size: calc(var(--pref-font-base-size, 13px) - 2px);
 }
 
 .dm-entry-sender {
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-bright);
 }
 
 .dm-entry-direction {
@@ -199,7 +218,8 @@
 }
 
 .dm-entry-body {
-  font-size: 13px;
+  color: var(--text);
+  font-size: var(--pref-font-base-size, 13px);
   line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
@@ -209,7 +229,7 @@
   margin-top: 4px;
   padding-top: 4px;
   border-top: 1px dashed var(--border);
-  font-size: 11px;
+  font-size: calc(var(--pref-font-base-size, 13px) - 2px);
   color: var(--text-muted);
 }
 
@@ -217,11 +237,12 @@
   margin-top: 4px;
   display: inline-flex;
   gap: 4px;
-  font-size: 10px;
+  font-size: calc(var(--pref-font-base-size, 13px) - 3px);
   padding: 2px 6px;
   border-radius: 10px;
-  background: var(--badge-bg, #e8eaf6);
-  color: var(--text-secondary);
+  background: rgba(122, 162, 247, 0.1);
+  border: 1px solid rgba(122, 162, 247, 0.35);
+  color: var(--accent);
 }
 
 /* --- Composer --- */
@@ -231,7 +252,7 @@
   gap: 8px;
   padding: 8px 12px;
   border-top: 1px solid var(--border);
-  background: var(--bg-secondary);
+  background: var(--bg-surface);
   align-items: flex-end;
 }
 
@@ -240,11 +261,18 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px 10px;
-  font-size: 13px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--pref-font-chat-size, var(--pref-font-base-size, 13px));
   resize: none;
   font-family: inherit;
   min-height: 36px;
   max-height: 120px;
+}
+
+.dm-composer-input:focus {
+  outline: none;
+  border-color: var(--accent-dim);
 }
 
 .dm-send-button {
@@ -252,8 +280,9 @@
   border: none;
   border-radius: 6px;
   background: var(--accent);
-  color: #fff;
-  font-size: 13px;
+  color: var(--bg);
+  font: inherit;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -265,19 +294,21 @@
 
 .dm-send-status {
   margin-top: 6px;
-  font-size: 11px;
+  font-size: calc(var(--pref-font-base-size, 13px) - 2px);
   padding: 4px 8px;
   border-radius: 4px;
 }
 
 .dm-send-ok {
-  color: var(--success, #2e7d32);
-  background: var(--success-bg, #e8f5e9);
+  color: var(--green);
+  background: rgba(158, 206, 106, 0.1);
+  border: 1px solid rgba(158, 206, 106, 0.35);
 }
 
 .dm-send-error {
-  color: var(--error, #c62828);
-  background: var(--error-bg, #ffebee);
+  color: var(--red);
+  background: rgba(247, 118, 142, 0.1);
+  border: 1px solid rgba(247, 118, 142, 0.35);
 }
 
 /* --- Shared utility --- */
@@ -286,12 +317,12 @@
 .dm-empty,
 .dm-error {
   padding: 12px;
-  font-size: 13px;
+  font-size: var(--pref-font-base-size, 13px);
   color: var(--text-muted);
 }
 
 .dm-error {
-  color: var(--error, #c62828);
+  color: var(--red);
 }
 
 /* --- DM panel layout (list + transcript side by side) --- */

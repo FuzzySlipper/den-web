@@ -5,7 +5,7 @@ import {
   sendDirectMessage,
   updateReadCursor,
 } from '../../api/channels/client';
-import { DM_HUMAN_IDENTITY, dmDirectionLabel, dmSourceBadge, latestEntryId, sortEntriesChronological } from './dmTranscriptModel';
+import { DM_HUMAN_IDENTITY, dmConversationHeaderMeta, dmDirectionLabel, dmSourceBadge, latestEntryId, sortEntriesChronological } from './dmTranscriptModel';
 import { usePolling } from '../../hooks/usePolling';
 import { formatTimeAgo } from '../../utils';
 
@@ -114,7 +114,7 @@ export function DmTranscriptView({ conversation, onBack, readIdentity }: Props) 
         <div className="dm-transcript-title">
           <h3>{conversation.agentIdentity}</h3>
           <span className="dm-transcript-meta">
-            {conversation.scopeProjectId ? `project: ${conversation.scopeProjectId}` : 'no linked project'}
+            {dmConversationHeaderMeta(conversation)}
           </span>
         </div>
         <button className="dm-refresh-button" onClick={refresh} disabled={loading}>↻</button>

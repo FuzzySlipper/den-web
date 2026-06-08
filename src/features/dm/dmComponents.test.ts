@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { DirectConversation, DirectConversationEntry } from '../../api/channels/types';
 import {
+  dmConversationHeaderMeta,
+  dmConversationSourceLabel,
   dmDirectionLabel,
   dmSourceBadge,
   sortConversationsByRecent,
@@ -28,6 +33,15 @@ const DM_LOADING_TEXT = 'Loading conversations…';
 
 /** Error state text for conversation fetch failure. */
 const DM_ERROR_TEXT = 'Failed to load conversations.';
+
+const DM_CSS_PATH = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../styles/features/dm.css',
+);
+
+function dmCss(): string {
+  return readFileSync(DM_CSS_PATH, 'utf8');
+}
 
 // Direction label function (from model)
 function entryDirectionLabel(entry: DirectConversationEntry): string {
@@ -241,6 +255,43 @@ describe('DmConversationList — rendering logic', () => {
     it('error text is correct', () => {
       expect(DM_ERROR_TEXT).toBe('Failed to load conversations.');
     });
+
+    it('describes scopeProjectId as source attribution, not project-scoped DM', () => {
+      const conv = makeConv({ scopeProjectId: 'den-web' });
+      expect(dmConversationSourceLabel(conv)).toBe('source: den-web');
+      expect(dmConversationSourceLabel(conv)).not.toContain('project:');
+      expect(dmConversationHeaderMeta(conv)).toBe('global DM · source: den-web');
+    });
+
+    it('shows global DM when no source project exists', () => {
+      expect(dmConversationSourceLabel(makeConv({ scopeProjectId: null }))).toBeNull();
+      expect(dmConversationHeaderMeta(makeConv({ scopeProjectId: null }))).toBe('global DM');
+    });
+  });
+});
+
+describe('DM stylesheet', () => {
+  it('uses Den Web global theme tokens instead of undefined imported theme names', () => {
+    const css = dmCss();
+    expect(css).not.toContain('--bg-secondary');
+    expect(css).not.toContain('--bg-primary');
+    expect(css).not.toContain('--bg-active');
+    expect(css).not.toContain('--text-secondary');
+    expect(css).toContain('var(--bg-surface)');
+    expect(css).toContain('var(--bg-selected)');
+    expect(css).toContain('var(--text)');
+  });
+
+  it('does not use light-theme fallback alert/status colors in the dark DM panel', () => {
+    const css = dmCss();
+    expect(css).not.toContain('#fff8e1');
+    expect(css).not.toContain('#ffe082');
+    expect(css).not.toContain('#e8eaf6');
+    expect(css).not.toContain('#e8f5e9');
+    expect(css).not.toContain('#ffebee');
+    expect(css).toContain('var(--yellow)');
+    expect(css).toContain('var(--green)');
+    expect(css).toContain('var(--red)');
   });
 });
 

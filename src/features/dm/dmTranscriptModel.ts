@@ -61,6 +61,22 @@ export function dmPreviewText(entry: DirectConversationEntry, maxLen = 80): stri
 }
 
 /**
+ * Conversation-level project fields are attribution only. DM conversations are
+ * global human↔agent transcripts, not separate per-project sessions.
+ */
+export function dmConversationSourceLabel(conversation: DirectConversation): string | null {
+  return conversation.scopeProjectId ? `source: ${conversation.scopeProjectId}` : null;
+}
+
+/**
+ * Header meta copy that makes global scope explicit while preserving origin.
+ */
+export function dmConversationHeaderMeta(conversation: DirectConversation): string {
+  const sourceLabel = dmConversationSourceLabel(conversation);
+  return sourceLabel ? `global DM · ${sourceLabel}` : 'global DM';
+}
+
+/**
  * Live direct-conversation entries are paged newest-first; render oldest→newest.
  */
 export function sortEntriesChronological(entries: DirectConversationEntry[]): DirectConversationEntry[] {
