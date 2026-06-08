@@ -59,3 +59,17 @@ export function dmPreviewText(entry: DirectConversationEntry, maxLen = 80): stri
   if (text.length <= maxLen) return text;
   return text.slice(0, maxLen) + '…';
 }
+
+/**
+ * Live direct-conversation entries are paged newest-first; render oldest→newest.
+ */
+export function sortEntriesChronological(entries: DirectConversationEntry[]): DirectConversationEntry[] {
+  return [...entries].sort((a, b) => a.id - b.id);
+}
+
+/**
+ * Highest entry id is the newest read-cursor position regardless of render order.
+ */
+export function latestEntryId(entries: DirectConversationEntry[]): number | null {
+  return entries.reduce<number | null>((max, entry) => (max == null || entry.id > max ? entry.id : max), null);
+}

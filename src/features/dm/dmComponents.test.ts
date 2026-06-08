@@ -5,6 +5,7 @@ import {
   dmSourceBadge,
   sortConversationsByRecent,
   dmPreviewText,
+  latestEntryId,
   DM_HUMAN_IDENTITY,
 } from './dmTranscriptModel';
 
@@ -248,13 +249,18 @@ describe('DmTranscriptView — send/mark-read/unread behavior', () => {
     it('triggered when there are entries', () => {
       const entries = [makeEntry({ id: 1 }), makeEntry({ id: 5 })];
       // When entries exist, the latest id is used for read cursor update
-      const latestId = entries[entries.length - 1].id;
+      const latestId = latestEntryId(entries);
       expect(latestId).toBe(5);
+    });
+
+    it('uses max entry id when live entries arrive newest-first', () => {
+      const entries = [makeEntry({ id: 5 }), makeEntry({ id: 1 })];
+      expect(latestEntryId(entries)).toBe(5);
     });
 
     it('not triggered when entries array is empty', () => {
       const entries: DirectConversationEntry[] = [];
-      const latestId = entries.length > 0 ? entries[entries.length - 1].id : null;
+      const latestId = latestEntryId(entries);
       expect(latestId).toBeNull();
     });
   });

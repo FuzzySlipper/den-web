@@ -5,7 +5,7 @@ import {
   sendDirectMessage,
   updateReadCursor,
 } from '../../api/channels/client';
-import { DM_HUMAN_IDENTITY, dmDirectionLabel, dmSourceBadge } from './dmTranscriptModel';
+import { DM_HUMAN_IDENTITY, dmDirectionLabel, dmSourceBadge, latestEntryId, sortEntriesChronological } from './dmTranscriptModel';
 import { usePolling } from '../../hooks/usePolling';
 import { formatTimeAgo } from '../../utils';
 
@@ -56,11 +56,11 @@ export function DmTranscriptView({ conversation, onBack, readIdentity }: Props) 
     5000,
   );
 
-  const entries = entriesResp?.entries ?? [];
+  const entries = sortEntriesChronological(entriesResp?.entries ?? []);
 
   // Mark read on mount and when new entries arrive
   useEffect(() => {
-    const latestId = entries.length > 0 ? entries[entries.length - 1].id : null;
+    const latestId = latestEntryId(entries);
     if (latestId) {
       updateReadCursor(conversation.id, {
         readerIdentity: reader,

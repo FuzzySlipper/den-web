@@ -4,6 +4,8 @@ import {
   dmSourceBadge,
   sortConversationsByRecent,
   dmPreviewText,
+  sortEntriesChronological,
+  latestEntryId,
   DM_HUMAN_IDENTITY,
 } from './dmTranscriptModel';
 import type { DirectConversation, DirectConversationEntry } from '../../api/channels/types';
@@ -144,6 +146,22 @@ describe('dmTranscriptModel', () => {
     });
     it('falls back to empty string for empty bodyPreview', () => {
       expect(dmPreviewText(makeEntry({ bodyPreview: '' }))).toBe('');
+    });
+  });
+
+  describe('entry ordering and read cursor helpers', () => {
+    it('sorts live newest-first entries into chronological render order', () => {
+      const entries = [makeEntry({ id: 9 }), makeEntry({ id: 3 }), makeEntry({ id: 7 })];
+      expect(sortEntriesChronological(entries).map(entry => entry.id)).toEqual([3, 7, 9]);
+    });
+
+    it('uses the max entry id as latest read cursor', () => {
+      const entries = [makeEntry({ id: 9 }), makeEntry({ id: 3 }), makeEntry({ id: 7 })];
+      expect(latestEntryId(entries)).toBe(9);
+    });
+
+    it('returns null latest id for an empty transcript', () => {
+      expect(latestEntryId([])).toBeNull();
     });
   });
 });
