@@ -965,13 +965,16 @@ export default function App() {
               selectedDmConversation ? (
                 <DmTranscriptView
                   conversation={selectedDmConversation}
-                  onBack={() => setSelectedDmConversation(null)}
+                  onBack={() => {
+                    setSelectedDmConversation(null);
+                    setSelectedDmAgent(null);
+                  }}
                 />
               ) : (
                 <DmConversationList
                   onSelectConversation={conversation => {
                     setSelectedDmConversation(conversation);
-                    setSelectedDmAgent(conversation.agentIdentity);
+                    setSelectedDmAgent(null);
                   }}
                   initialAgentIdentity={selectedDmAgent}
                   scopeProjectId={!isAggregateSpace && !isGlobal ? effectiveSpaceId : null}
