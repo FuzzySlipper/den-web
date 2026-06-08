@@ -1,6 +1,7 @@
 import type { AgentWorkCurrentResponse, AgentWorkEventsResponse, ChannelActivityEvent, DirectAgentEvent } from '../../api/types';
 import { formatTimeAgo, truncate } from '../../utils';
 import { buildAgentWorkOpsModel } from './agentWorkOpsModel';
+import { StaleWorkerDiagnosticsPanel } from '../agents/StaleWorkerDiagnosticsPanel';
 
 interface AgentWorkOpsPanelProps {
   current: AgentWorkCurrentResponse | null;
@@ -10,9 +11,11 @@ interface AgentWorkOpsPanelProps {
   loading: boolean;
   error: Error | null;
   onRefresh: () => void;
+  projectId?: string | null;
+  onOpenAssignmentTrace?: (assignmentId: string) => void;
 }
 
-export function AgentWorkOpsPanel({ current, lifecycle, activityEvents, directAgentEvents, loading, error, onRefresh }: AgentWorkOpsPanelProps) {
+export function AgentWorkOpsPanel({ current, lifecycle, activityEvents, directAgentEvents, loading, error, onRefresh, projectId, onOpenAssignmentTrace }: AgentWorkOpsPanelProps) {
   const model = buildAgentWorkOpsModel(current, lifecycle, activityEvents, directAgentEvents);
 
   return (
@@ -26,6 +29,11 @@ export function AgentWorkOpsPanel({ current, lifecycle, activityEvents, directAg
         <div className="channel-chat-state channel-chat-state-error">{error.message}</div>
       ) : (
         <>
+          <StaleWorkerDiagnosticsPanel
+            projectId={projectId}
+            compact
+            onOpenAssignmentTrace={onOpenAssignmentTrace}
+          />
           <div className="channel-agent-work-diagnostic">
             <span className={`channel-agent-work-mode-pill mode-${model.mode}`}>{modeLabel(model.mode)}</span>
             <span>{model.diagnostic}</span>

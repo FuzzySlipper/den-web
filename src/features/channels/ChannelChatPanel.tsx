@@ -1235,6 +1235,8 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
             loading={agentWorkLoading}
             error={agentWorkError}
             onRefresh={refreshAgentWorkEvidence}
+            projectId={projectId}
+            onOpenAssignmentTrace={onOpenAssignmentTrace}
           />
           <section className="channel-chat-members-panel" aria-label="Channel participants">
             <div className="channel-chat-members-header">

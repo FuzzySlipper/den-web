@@ -49,6 +49,7 @@ export type {
   PostDiscussionCommentRequest,
   GetUserNotificationsOpts,
   MarkNotificationsReadBody,
+  ListStaleWorkerConditionsOpts,
 } from './core/client';
 export {
   listSpaces,
@@ -96,6 +97,7 @@ export {
   getUserNotifications,
   getProjectUserNotifications,
   markNotificationsRead,
+  listStaleWorkerConditions,
 } from './core/client';
 
 // Channels API

@@ -80,6 +80,8 @@ export type {
   DiscussionComment,
   DocumentDiscussion,
   NotificationFeedItem,
+  StaleWorkerCondition,
+  StaleWorkerSweepResponse,
 } from './core/types';
 
 // === Channels types ===

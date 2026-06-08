@@ -1111,3 +1111,66 @@
   color: var(--yellow);
   background: rgba(255, 179, 71, 0.08);
 }
+
+/* Stale worker diagnostics (#2038) */
+.stale-worker-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 12px;
+  background: rgba(17, 24, 39, 0.45);
+}
+.stale-worker-panel-worker_pool_stale,
+.stale-worker-panel-workflow_resume_gap {
+  border-color: rgba(247, 118, 142, 0.45);
+  background: rgba(247, 118, 142, 0.08);
+}
+.stale-worker-panel-source_unavailable {
+  border-color: rgba(255, 179, 71, 0.45);
+  background: rgba(255, 179, 71, 0.08);
+}
+.stale-worker-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.stale-worker-header > div:first-child,
+.stale-worker-actions { display: flex; flex-direction: column; gap: 3px; }
+.stale-worker-header strong { color: var(--text-bright); }
+.stale-worker-header span,
+.stale-worker-summary,
+.stale-worker-timestamps { color: var(--text-muted); font-size: 12px; }
+.stale-worker-actions { align-items: flex-end; }
+.stale-worker-actions button,
+.stale-worker-inline-link {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+.stale-worker-actions button { padding: 3px 8px; }
+.stale-worker-list { display: grid; gap: 8px; margin-top: 8px; }
+.stale-worker-row {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.16);
+}
+.stale-worker-row.severity-critical { border-color: rgba(247, 118, 142, 0.55); }
+.stale-worker-row-top,
+.stale-worker-evidence-ids,
+.stale-worker-timestamps { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.stale-worker-row-top strong { text-transform: capitalize; }
+.stale-worker-row-top span,
+.stale-worker-evidence-ids span {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.stale-worker-row p { margin: 6px 0; font-size: 12px; color: var(--text); }
+.stale-worker-next-action { margin-top: 6px; color: var(--yellow); font-size: 12px; }
+.stale-worker-inline-link { padding: 0 4px; margin-left: 2px; }

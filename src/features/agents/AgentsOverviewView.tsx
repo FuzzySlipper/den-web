@@ -15,6 +15,7 @@ import {
   deliveryProjectAttribution,
   membershipLaneLabel,
 } from './agentAttribution';
+import { StaleWorkerDiagnosticsPanel } from './StaleWorkerDiagnosticsPanel';
 
 interface Props {
   projectId: string | null;
@@ -153,6 +154,12 @@ export function AgentsOverviewView({ projectId, isAggregate, closePanelKey = 'Es
 
   return (
     <div className="agents-overview-view">
+      <StaleWorkerDiagnosticsPanel
+        projectId={isAggregate ? null : projectId}
+        compact
+        onOpenAssignmentTrace={onOpenAssignmentTrace}
+      />
+
       {healthWarnings.length > 0 && (
         <div className="agents-health-warnings">
           {healthWarnings.map((w, i) => (
@@ -477,7 +484,13 @@ function AgentDetailOverlay({
       </div>
 
       <div className="detail-body">
-        {healthWarnings.length > 0 && (
+        <StaleWorkerDiagnosticsPanel
+        projectId={isAggregate ? null : projectId}
+        compact
+        onOpenAssignmentTrace={onOpenAssignmentTrace}
+      />
+
+      {healthWarnings.length > 0 && (
           <div className="agents-health-warnings">
             {healthWarnings.map((w, i) => (
               <div key={i} className="agents-health-warning">{w}</div>

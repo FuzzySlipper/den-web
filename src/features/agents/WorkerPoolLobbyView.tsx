@@ -11,6 +11,7 @@ import {
   buildLobbySummary,
   formatObservedAt,
 } from './workerPoolModel';
+import { StaleWorkerDiagnosticsPanel } from './StaleWorkerDiagnosticsPanel';
 
 interface Props {
   onOpenAssignmentTrace?: (assignmentId: string) => void;
@@ -27,6 +28,8 @@ export function WorkerPoolLobbyView({ onOpenAssignmentTrace }: Props) {
 
   return (
     <div className="wpool-lobby-view">
+      <StaleWorkerDiagnosticsPanel compact onOpenAssignmentTrace={onOpenAssignmentTrace} />
+
       {/* Header */}
       {presence && (
         <div className="wpool-lobby-header">

@@ -32,6 +32,7 @@ import type {
   DocumentDiscussion,
   DiscussionComment,
   NotificationFeedItem,
+  StaleWorkerSweepResponse,
 } from './types';
 import { getConfig, normalizeApiBase, resetConfig } from '../config';
 
@@ -399,6 +400,31 @@ export function controlSubagentRun(runId: string, opts: ControlSubagentRunOpts):
     requested_by: opts.requestedBy ?? 'web-ui',
     reason: opts.reason,
   });
+}
+
+// Worker-pool stale diagnostics
+
+export interface ListStaleWorkerConditionsOpts {
+  projectId?: string | null;
+  taskId?: number | null;
+  ackThresholdMinutes?: number;
+  runningThresholdMinutes?: number;
+  reviewerThresholdMinutes?: number;
+  orchestratorThresholdMinutes?: number;
+  limit?: number;
+}
+
+export function listStaleWorkerConditions(opts: ListStaleWorkerConditionsOpts = {}): Promise<StaleWorkerSweepResponse> {
+  const q = buildQuery({
+    projectId: opts.projectId,
+    taskId: opts.taskId,
+    ackThresholdMinutes: opts.ackThresholdMinutes,
+    runningThresholdMinutes: opts.runningThresholdMinutes,
+    reviewerThresholdMinutes: opts.reviewerThresholdMinutes,
+    orchestratorThresholdMinutes: opts.orchestratorThresholdMinutes,
+    limit: opts.limit,
+  });
+  return get(`/api/worker-pool/stale${q}`);
 }
 
 // Git inspection
