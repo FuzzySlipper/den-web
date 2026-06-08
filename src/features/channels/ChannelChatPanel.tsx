@@ -22,6 +22,7 @@ import {
 import { usePolling } from '../../hooks/usePolling';
 import { formatTimeAgo } from '../../utils';
 import { channelMessagePrimaryBody, directAgentMessageDisplay, findActiveMentionQuery, getMentionSuggestions, groupActivityEventsForChannelMessages, insertMentionToken, parseMessageBodySegments, sortActivityEvents, toActivityDisplayModel, deriveAssignmentBadge } from './channelChatRenderModel';
+import { directTargetsForComposerBody } from './channelComposerDirectTargets';
 import { NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS, isVisibleNormalParticipant } from './participantVisibility';
 import { findSlashCommandSuggestions, getSlashCommandHelpLines } from './channelSlashCommands';
 import { appendHistory, persistHistory, readHistory, subscribeToHistoryChanges } from './channelComposerHistory';
@@ -851,6 +852,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
       if (sendMode === 'direct' && selectedTarget) {
         await postGatewayDirectAgentMessage({
           channelId: activeChannel.id,
+          projectId: projectId ?? undefined,
           memberIdentity: selectedTarget.memberIdentity,
           senderIdentity: normalizedSenderIdentity,
           body,
@@ -862,6 +864,16 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
           messageKind: 'human_text',
           body,
         });
+        const mentionedDirectTargets = directTargetsForComposerBody(body, activeAgentMembers);
+        if (mentionedDirectTargets.length > 0) {
+          await Promise.all(mentionedDirectTargets.map(target => postGatewayDirectAgentMessage({
+            channelId: activeChannel.id,
+            projectId: projectId ?? undefined,
+            memberIdentity: target.memberIdentity,
+            senderIdentity: normalizedSenderIdentity,
+            body,
+          })));
+        }
       }
       setDraft('');
       // Record message in composer history
@@ -877,7 +889,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     } finally {
       setSending(false);
     }
-  }, [activeChannel, composerHistoryEntries, draft, isComposerDisabled, normalizedSenderIdentity, refreshActivityEvents, refreshMessages, refreshReactions, selectedTarget, sendMode]);
+  }, [activeAgentMembers, activeChannel, composerHistoryEntries, draft, isComposerDisabled, normalizedSenderIdentity, projectId, refreshActivityEvents, refreshMessages, refreshReactions, selectedTarget, sendMode]);
 
   const handleReactToMessage = useCallback(async (message: ChannelMessage, reactionKey: string) => {
     const reactorIdentity = normalizedSenderIdentity || targetMemberIdentity;

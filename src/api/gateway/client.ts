@@ -1,6 +1,7 @@
 import type {
   GatewayMemberships,
   GatewayDirectAgentMessage,
+  DirectAgentEventResponse,
   PostGatewayDirectAgentMessageRequest,
   AgentsOverviewResponse,
   AgentDetailResponse,
@@ -118,7 +119,21 @@ export function listGatewayMemberships(opts: { channelId?: number; projectId?: s
 }
 
 export function postGatewayDirectAgentMessage(request: PostGatewayDirectAgentMessageRequest): Promise<GatewayDirectAgentMessage> {
-  return postChannels('/gateway/direct-agent-messages', request);
+  return postChannels<DirectAgentEventResponse>('/direct-agent-events', request).then(response => ({
+    status: response.status,
+    deliveryStatus: response.deliveryStatus ?? response.status,
+    claimStatus: response.claimStatus ?? 'unclaimed',
+    completionStatus: response.completionStatus ?? 'pending',
+    suppressionStatus: response.suppressionStatus ?? 'not_applicable',
+    memberIdentity: response.memberIdentity,
+    wakePolicy: response.wakePolicy ?? '',
+    messageId: response.eventId,
+    channelId: response.channelId,
+    requestId: response.requestId,
+    gatewayMessageUrl: response.eventUrl ?? `/api/direct-agent-events/${response.eventId}`,
+    gatewayEventsUrl: response.eventsUrl ?? `/api/direct-agent-events?channelId=${response.channelId}&afterId=${Math.max(0, response.eventId - 1)}&limit=10`,
+    evidenceSummary: response.evidenceSummary ?? `Direct agent wake_event recorded as event ${response.eventId}.`,
+  }));
 }
 
 // Agents Overview API (#1694 / #1695)

@@ -10,6 +10,7 @@ import {
   listProjectLinkedChannels,
   listActiveWorkRoutes,
   postChannelMessage,
+  postGatewayDirectAgentMessage,
 } from '../../api/client';
 import { preferredProjectChannel } from '../channels/channelRouting';
 import {
@@ -550,6 +551,11 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
         resetScope: selectedResetScope,
         slashCommand: body.startsWith('/') ? body.split(/\s+/, 1)[0] : null,
       };
+      const directTargetIdentity = selectedTarget?.memberIdentity ?? selectedActiveRoute?.profileIdentity ?? null;
+      const directTarget = directTargetIdentity
+        ? activeAgentMembers.find(member => member.memberIdentity === directTargetIdentity) ?? null
+        : null;
+
       await postChannelMessage(activeChannel.id, {
         senderType: 'user',
         senderIdentity: normalizedSenderIdentity,
@@ -571,6 +577,27 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
         threadRootMessageId: selectedLane?.threadId ?? null,
         metadataJson: JSON.stringify(metadata),
       });
+
+      if (directTarget) {
+        await postGatewayDirectAgentMessage({
+          channelId: activeChannel.id,
+          projectId: projectId ?? undefined,
+          memberIdentity: directTarget.memberIdentity,
+          senderIdentity: normalizedSenderIdentity,
+          body,
+          sourceProjectId: projectId ?? null,
+          targetProjectId: selectedActiveRoute?.targetProjectId ?? projectId ?? null,
+          targetTaskId: selectedActiveRoute?.targetTaskId ?? selectedSnapshot?.task_id ?? null,
+          assignmentId: selectedActiveRoute?.assignmentId ?? null,
+          workerRunId: selectedActiveRoute?.workerRunId ?? null,
+          workerRole: selectedActiveRoute?.workerRole ?? null,
+          profileIdentity: selectedActiveRoute?.profileIdentity ?? selectedTarget?.memberIdentity ?? null,
+          poolMemberId: selectedActiveRoute?.poolMemberId ?? null,
+          agentInstanceId: selectedActiveRoute?.agentInstanceId ?? null,
+          sessionOwnerId: selectedActiveRoute?.sessionOwnerId ?? null,
+          sessionId: selectedActiveRoute?.sessionId ?? selectedSnapshot?.session_id ?? null,
+        });
+      }
       setDraft('');
       refreshMessages();
     } catch (error) {
@@ -578,7 +605,7 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
     } finally {
       setSending(false);
     }
-  }, [activeChannel, composerDisabled, draft, normalizedSenderIdentity, projectId, refreshMessages, selectedActiveRoute, selectedLane, selectedResetScope, selectedSnapshot, selectedTarget]);
+  }, [activeAgentMembers, activeChannel, composerDisabled, draft, normalizedSenderIdentity, projectId, refreshMessages, selectedActiveRoute, selectedLane, selectedResetScope, selectedSnapshot, selectedTarget]);
 
   return (
     <section className="focused-session-view" aria-label="Focused active-owner sessions">

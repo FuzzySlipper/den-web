@@ -2,7 +2,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { Channel, ChannelMessage } from '../../api/types';
+import type { Channel, ChannelMessage, GatewayMember } from '../../api/types';
+import { directTargetsForComposerBody } from './channelComposerDirectTargets';
 import {
   type SlashCommand,
   applySlashSelection,
@@ -74,6 +75,26 @@ function gatewayMessage(overrides: Partial<ChannelMessage>): ChannelMessage {
     createdAt: '2026-05-19T00:00:00Z',
     editedAt: null,
     deletedAt: null,
+    ...overrides,
+  };
+}
+
+function member(overrides: Partial<GatewayMember>): GatewayMember {
+  return {
+    id: 1,
+    memberType: 'agent',
+    memberIdentity: 'den-mcp-runner',
+    membershipStatus: 'active',
+    wakePolicy: 'mentions_only',
+    canSend: true,
+    canReact: true,
+    canInvite: false,
+    cooldownSeconds: 60,
+    maxAutoRepliesPerWindow: 1,
+    settingsLabel: null,
+    createdAt: null,
+    updatedAt: null,
+    leftAt: null,
     ...overrides,
   };
 }
@@ -182,6 +203,26 @@ describe('participant wake-policy matching (stable logic)', () => {
     const msg = gatewayMessage({ senderType: 'user', messageKind: 'human_text', body: '@den-mcp-runner help' });
     // 'never' policy always returns false; verify message is user human_text
     expect(msg.senderType === 'user' && msg.messageKind === 'human_text').toBe(true);
+  });
+});
+
+describe('channel composer direct-agent targeting', () => {
+  it('treats @mentions of active agents as canonical direct-agent targets', () => {
+    const targets = directTargetsForComposerBody('hey @den-mcp-runner can you check this?', [
+      member({ memberIdentity: 'den-mcp-runner' }),
+      member({ memberIdentity: 'den-mcp-planner' }),
+    ]);
+
+    expect(targets.map(target => target.memberIdentity)).toEqual(['den-mcp-runner']);
+  });
+
+  it('does not direct-target left or human participants', () => {
+    const targets = directTargetsForComposerBody('@den-mcp-runner @patchfoot hello', [
+      member({ memberIdentity: 'den-mcp-runner', membershipStatus: 'left' }),
+      member({ memberIdentity: 'patchfoot', memberType: 'human' }),
+    ]);
+
+    expect(targets).toEqual([]);
   });
 });
 

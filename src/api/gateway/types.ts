@@ -32,6 +32,17 @@ export interface PostGatewayDirectAgentMessageRequest {
   memberIdentity: string;
   senderIdentity: string;
   body: string;
+  sourceProjectId?: string | null;
+  targetProjectId?: string | null;
+  targetTaskId?: number | null;
+  assignmentId?: string | null;
+  workerRunId?: string | null;
+  workerRole?: string | null;
+  profileIdentity?: string | null;
+  poolMemberId?: string | null;
+  agentInstanceId?: string | null;
+  sessionOwnerId?: string | null;
+  sessionId?: string | null;
 }
 
 export interface GatewayDirectAgentMessage {
@@ -48,6 +59,22 @@ export interface GatewayDirectAgentMessage {
   gatewayMessageUrl: string;
   gatewayEventsUrl: string;
   evidenceSummary: string;
+}
+
+export interface DirectAgentEventResponse {
+  status: string;
+  eventId: number;
+  channelId: number;
+  requestId: string;
+  memberIdentity: string;
+  wakePolicy?: string | null;
+  eventUrl?: string | null;
+  eventsUrl?: string | null;
+  evidenceSummary?: string | null;
+  deliveryStatus?: string | null;
+  claimStatus?: string | null;
+  completionStatus?: string | null;
+  suppressionStatus?: string | null;
 }
 
 export interface UpsertChannelMembershipRequest {
