@@ -25,13 +25,16 @@ export interface ChatPreferences {
 }
 
 /** Layout controls */
+/** Notification history display mode: named popup window or in-app side panel */
+export type NotificationHistoryMode = 'window' | 'sidePanel';
+
 export interface LayoutPreferences {
   /** Chat vs participants split ratio expressed as chat fraction (clamped 0.55–0.95) */
   chatFraction: number;
   /** Whether participants sidebar is visible */
   showParticipants: boolean;
   /** Notification history display mode: named popup window or in-app side panel */
-  notificationHistoryMode: 'window' | 'sidePanel';
+  notificationHistoryMode: NotificationHistoryMode;
   /** Spaces/sidebar width in px (clamped 140–500) */
   sidebarWidth: number;
   /** Notification side panel width in px (clamped 280–800) */

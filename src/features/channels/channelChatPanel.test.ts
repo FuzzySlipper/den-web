@@ -211,7 +211,7 @@ describe('participant DM shortcut source invariants', () => {
   const appSource = readFileSync(resolve(process.cwd(), 'src/app-shell/App.tsx'), 'utf8');
 
   it('threads the App DM opener into the chat panel', () => {
-    expect(appSource).toContain('onOpenDmTranscript={handleOpenDmTranscript}');
+    expect(appSource).toContain('onOpenDmTranscript={nav.handleOpenDmTranscript}');
   });
 
   it('exposes an optional DM opener callback on ChannelChatPanel', () => {

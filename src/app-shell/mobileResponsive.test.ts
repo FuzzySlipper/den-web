@@ -3,22 +3,32 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+function readSource(relativePath: string): string {
+  return readFileSync(resolve(process.cwd(), relativePath), 'utf8');
+}
+
 describe('mobile single-panel navigation smoke assertions', () => {
-  const appSource = readFileSync(resolve(process.cwd(), 'src/app-shell/App.tsx'), 'utf8');
-  const layoutCss = readFileSync(resolve(process.cwd(), 'src/styles/layout.css'), 'utf8');
+  const appSource = readSource('src/app-shell/App.tsx');
+  const mobileTopBarSource = readSource('src/app-shell/MobileTopBar.tsx');
+  const workspaceStateSource = readSource('src/app-shell/useWorkspaceState.ts');
+  const layoutCss = readSource('src/styles/layout.css');
 
   it('renders a mobile project switcher and major section switcher', () => {
-    expect(appSource).toContain('className="mobile-topbar"');
-    expect(appSource).toContain('aria-label="Switch project or space"');
-    expect(appSource).toContain('aria-label="Switch primary section"');
-    expect(appSource).toContain('Project lane');
+    expect(mobileTopBarSource).toContain('className="mobile-topbar"');
+    expect(mobileTopBarSource).toContain('aria-label="Switch project or space"');
+    expect(mobileTopBarSource).toContain('aria-label="Switch primary section"');
+    expect(mobileTopBarSource).toContain('Project lane');
+  });
+
+  it('mounts the mobile top bar in the app shell', () => {
+    expect(appSource).toContain('<MobileTopBar');
   });
 
   it('tracks the active mobile primary panel explicitly', () => {
-    expect(appSource).toContain("type MobilePrimarySection = 'workspace' | 'channel'");
-    expect(appSource).toContain('dashboard-mobile-section-${mobilePrimarySection}');
-    expect(appSource).toContain("setMobilePrimarySection('workspace')");
-    expect(appSource).toContain("setMobilePrimarySection('channel')");
+    expect(workspaceStateSource).toContain("export type MobilePrimarySection = 'workspace' | 'channel'");
+    expect(appSource).toContain('dashboard-mobile-section-${workspace.mobilePrimarySection}');
+    expect(mobileTopBarSource).toContain("onSelectSection('workspace')");
+    expect(mobileTopBarSource).toContain("onSelectSection('channel')");
   });
 
   it('uses a phone viewport media query that hides inactive primary panels', () => {

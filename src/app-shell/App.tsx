@@ -1,159 +1,62 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import type { AgentStreamEntry, DispatchEntry, Document, DocumentSummary, Message, Space, SubagentRunSummary, TaskSummary } from '../api/types';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { TaskSummary } from '../api/types';
 import {
-  getDispatch,
   listProjects,
   listSpaces,
   listTasks,
-  getMessage,
-  getThread,
   listAgentStream,
   listDocuments,
 } from '../api/client';
 import { usePolling } from '../hooks/usePolling';
 import { ProjectSidebar } from './ProjectSidebar';
-import { TaskTree } from '../features/tasks/TaskTree';
-import { TaskDetail } from '../features/tasks/TaskDetail';
-import { FilterBar } from './FilterBar';
-import { WORKSPACE_VIEW_MODES } from './workspaceViewModes';
-import type { WorkspaceViewMode } from './workspaceViewModes';
-import { ACTIVE_TASK_FILTER, TASK_FILTERS, coreStatusForTaskFilter, taskFilterLabel, taskMatchesStatusFilter } from '../features/tasks/taskStatuses';
+import {
+  coreStatusForTaskFilter,
+  taskFilterLabel,
+  taskMatchesStatusFilter,
+} from '../features/tasks/taskStatuses';
 import { isDependencyWaitingTask } from '../features/tasks/taskAvailability';
-import { MessageDetail } from '../features/messages/MessageDetail';
-import { MessagesInbox } from '../features/messages/MessagesInbox';
-import { AgentStreamFeed } from '../features/agents/AgentStreamFeed';
-import { AgentStreamDetail } from '../features/agents/AgentStreamDetail';
-import { SubagentRunDetail } from '../features/agents/SubagentRunDetail';
-import { AssignmentTraceView } from '../features/agents/AssignmentTraceView';
-import { WorkerPoolLobbyView } from '../features/agents/WorkerPoolLobbyView';
-import { DocumentList } from '../features/documents/DocumentList';
-import { DocumentDetail } from '../features/documents/DocumentDetail';
-import { LibrarianView } from '../features/librarian/LibrarianView';
-import { GitView } from '../features/git/GitView';
-import { DispatchDetail } from '../features/agents/DispatchDetail';
-import { ChannelChatPanel } from '../features/channels/ChannelChatPanel';
-import type { ChannelChatPanelSize } from '../features/channels/ChannelChatPanel';
-import { FocusedSessionView } from '../features/sessions/FocusedSessionView';
-import { AgentsOverviewView } from '../features/agents/AgentsOverviewView';
-import { DmConversationList } from '../features/dm/DmConversationList';
-import { DmTranscriptView } from '../features/dm/DmTranscriptView';
-import type { DirectConversation } from '../api/channels/types';
 import { agentStreamEntryVisibility } from '../features/agents/subagentRuns';
-import { FleetOpsCockpit } from '../features/fleetops/FleetOpsCockpit';
-import { documentSelectionAction } from '../features/documents/documentEditor';
-import type { GitFocus } from '../features/git/git';
 import { usePreferences } from '../features/preferences/usePreferences';
 import { PreferencesDialog } from '../features/preferences/PreferencesDialog';
-import { matchHotkey } from '../features/preferences/hotkeyParse';
-import { editableTarget } from '../utils';
+import { ChannelChatPanel } from '../features/channels/ChannelChatPanel';
+import type { ChannelChatPanelSize } from '../features/channels/ChannelChatPanel';
 import { NotificationHistoryPanel } from '../features/notifications/NotificationHistoryPanel';
-import { focusArmedNotificationPanelWindow, isNotificationPanelRoute } from '../features/notifications/notificationWindow';
-import { fetchNotificationFeed, type NotificationItem, countUnread } from '../features/notifications/notificationFeed';
-import {
-  detectNewUnreadNotificationIds,
-  rememberPendingNotificationCueIds,
-  notificationCueLabel,
-  summarizeNotificationBellCue,
-} from '../features/notifications/notificationBell';
+import { isNotificationPanelRoute } from '../features/notifications/notificationWindow';
+import { fetchNotificationFeed } from '../features/notifications/notificationFeed';
 import {
   closeNotificationSidePanel,
   shouldRenderNotificationSidePanel,
   toggleNotificationSidePanel,
 } from '../features/notifications/notificationSidePanelState';
-
-const ALL_SPACES_ID = '_all';
-const GLOBAL_SPACE_ID = '_global';
-
-const WORKSPACE_VIEW_LABELS: Record<WorkspaceViewMode, string> = {
-  tasks: 'Tasks',
-  messages: 'Messages',
-  documents: 'Docs',
-  git: 'Git',
-  librarian: 'Librarian',
-  'agent-stream': 'Agent Stream',
-  sessions: 'Sessions',
-  agents: 'Agents',
-  dm: 'DM',
-  'fleet-ops': 'Fleet Ops',
-  notifications: 'Notifications',
-};
-
-type MobilePrimarySection = 'workspace' | 'channel';
-
-const ALL_SPACES: Space = {
-  id: ALL_SPACES_ID,
-  name: 'All spaces',
-  kind: 'system',
-  visibility: 'hidden',
-  owner: null,
-  root_path: null,
-  description: 'Aggregate views across accessible spaces',
-  created_at: null,
-  updated_at: null,
-};
-
-function withAllSpacesAggregate(spaces: Space[] | null | undefined): Space[] {
-  const list = spaces ?? [];
-  return list.some(space => space.id === ALL_SPACES.id) ? list : [ALL_SPACES, ...list];
-}
-
-function defaultSpaceId(spaces: Space[]): string | null {
-  return spaces.find(space => space.kind === 'project' && space.visibility === 'normal')?.id
-    ?? spaces.find(space => space.id !== ALL_SPACES.id)?.id
-    ?? spaces[0]?.id
-    ?? null;
-}
-
-function spaceSupportsGit(space: Space | null | undefined, isAllSpaces: boolean): boolean {
-  return isAllSpaces || space?.kind === 'project' || Boolean(space?.root_path?.trim());
-}
+import {
+  ALL_SPACES_ID,
+  GLOBAL_SPACE_ID,
+  defaultSpaceId,
+  nextSpaceId,
+  notificationScopeProjectIds,
+  spaceSupportsGit,
+  withAllSpacesAggregate,
+} from './spaces';
+import {
+  mainPanelCountLabel,
+  mainPanelTitle,
+  nextTaskFilter,
+  nextViewMode,
+} from './workspaceState';
+import { useWorkspaceState } from './useWorkspaceState';
+import { useStreamFilters } from './useStreamFilters';
+import { useDetailSelection } from './useDetailSelection';
+import { useNotificationBell } from './useNotificationBell';
+import { useWorkspaceNavigation } from './useWorkspaceNavigation';
+import { useKeyboardShortcuts } from './useKeyboardShortcuts';
+import { MobileTopBar } from './MobileTopBar';
+import { MainPanel } from './MainPanel';
+import { DetailOverlays } from './DetailOverlays';
+import { NotificationSidePanel } from './NotificationSidePanel';
 
 export default function App() {
-  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
-  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
-  const [selectedTaskProjectId, setSelectedTaskProjectId] = useState<string | null>(null);
-  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
-  const [selectedStreamEntry, setSelectedStreamEntry] = useState<AgentStreamEntry | null>(null);
-  const [selectedSubagentRun, setSelectedSubagentRun] = useState<SubagentRunSummary | null>(null);
-  const [selectedDispatch, setSelectedDispatch] = useState<DispatchEntry | null>(null);
-  const [selectedAssignmentTrace, setSelectedAssignmentTrace] = useState<string | null>(null);
-  const [selectedDoc, setSelectedDoc] = useState<DocumentSummary | null>(null);
-  const [documentDetailDirty, setDocumentDetailDirty] = useState(false);
-  const [pendingDocumentSwitch, setPendingDocumentSwitch] = useState<DocumentSummary | null>(null);
-  const [gitFocus, setGitFocus] = useState<GitFocus | null>(null);
-  const [viewMode, setViewMode] = useState<WorkspaceViewMode>('tasks');
-  const [mobilePrimarySection, setMobilePrimarySection] = useState<MobilePrimarySection>('workspace');
-  const [statusFilter, setStatusFilter] = useState<string | null>(ACTIVE_TASK_FILTER);
-  const [streamKindFilter, setStreamKindFilter] = useState<'ops' | 'message'>('ops');
-  const [streamEventFilter, setStreamEventFilter] = useState('');
-  const [streamProjectFilter, setStreamProjectFilter] = useState('');
-  const [streamSenderFilter, setStreamSenderFilter] = useState('');
-  const [streamRecipientFilter, setStreamRecipientFilter] = useState('');
-  const [streamTaskFilter, setStreamTaskFilter] = useState('');
-  const [showRawSubagentWorkEvents, setShowRawSubagentWorkEvents] = useState(false);
-  const [sortMode, setSortMode] = useState('priority');
-  const [channelPanelSize, setChannelPanelSize] = useState<ChannelChatPanelSize>('medium');
-  const [showPreferences, setShowPreferences] = useState(false);
-  const [showNotificationPanel, setShowNotificationPanel] = useState(false);
-  const { prefs, updateSection, resetToDefaults } = usePreferences();
-
-  // Agents sub-view toggle: 'overview' (default) or 'worker-pool'
-  const [agentsSubView, setAgentsSubView] = useState<'overview' | 'worker-pool'>('overview');
-
-  // DM transcript state
-  const [selectedDmAgent, setSelectedDmAgent] = useState<string | null>(null);
-  const [selectedDmConversation, setSelectedDmConversation] = useState<DirectConversation | null>(null);
-
-  // Standalone notification popup: detect #/notification-panel hash route
+  // Standalone notification popup: detect the #/notification-panel hash route.
   const [standalonePopup, setStandalonePopup] = useState(false);
-  const previousNotificationItemsRef = useRef<NotificationItem[] | null>(null);
-  const [notificationBell, setNotificationBell] = useState({
-    unreadCount: 0,
-    newCount: 0,
-    cueLabel: null as string | null,
-    focusBlocked: false,
-  });
-
   useEffect(() => {
     function checkHash() {
       setStandalonePopup(isNotificationPanelRoute());
@@ -163,6 +66,18 @@ export default function App() {
     return () => window.removeEventListener('hashchange', checkHash);
   }, []);
 
+  // --- Shell-local state ---------------------------------------------------
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
+  const [channelPanelSize, setChannelPanelSize] = useState<ChannelChatPanelSize>('medium');
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [showNotificationPanel, setShowNotificationPanel] = useState(false);
+
+  const { prefs, updateSection, resetToDefaults } = usePreferences();
+  const workspace = useWorkspaceState();
+  const streamFilters = useStreamFilters();
+  const selection = useDetailSelection();
+
+  // --- Data (polling lives here; #2140 introduces the useLiveData boundary) ---
   const fetchProjects = useCallback(() => listProjects(), []);
   const { data: projects } = usePolling(fetchProjects, 5000);
   const fetchOperatorNotifications = useCallback(() => fetchNotificationFeed([]), []);
@@ -171,46 +86,16 @@ export default function App() {
   const { data: fetchedSpaces } = usePolling(fetchSpaces, 5000);
   const spaces = useMemo(() => withAllSpacesAggregate(fetchedSpaces), [fetchedSpaces]);
 
-  useEffect(() => {
-    if (!operatorNotificationFeed || operatorNotificationFeed.error) return;
+  const bell = useNotificationBell(operatorNotificationFeed, prefs.layout.notificationHistoryMode);
 
-    const currentItems = operatorNotificationFeed.items;
-    const newUnreadIds = detectNewUnreadNotificationIds(previousNotificationItemsRef.current, currentItems);
-    previousNotificationItemsRef.current = currentItems;
-    const unreadCount = countUnread(currentItems);
-
-    if (newUnreadIds.length === 0) {
-      // The operator bell mirrors a polled external Core feed; updating the cue here is the sync point.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setNotificationBell(prev => ({ ...prev, unreadCount }));
-      return;
-    }
-
-    rememberPendingNotificationCueIds(newUnreadIds);
-    const cue = summarizeNotificationBellCue(currentItems, newUnreadIds);
-    const focusResult = prefs.layout.notificationHistoryMode === 'window'
-      ? focusArmedNotificationPanelWindow()
-      : { blocked: false };
-
-    setNotificationBell({
-      unreadCount,
-      newCount: newUnreadIds.length,
-      cueLabel: notificationCueLabel(cue),
-      focusBlocked: focusResult.blocked,
-    });
-  }, [operatorNotificationFeed, prefs.layout.notificationHistoryMode]);
-
-  const acknowledgeNotificationCue = useCallback(() => {
-    setNotificationBell(prev => ({ ...prev, newCount: 0, cueLabel: null, focusBlocked: false }));
-  }, []);
-
-  // Auto-select a normal project-kind space when possible to preserve existing project-centric startup.
+  // Auto-select a normal project-kind space when possible to preserve project-centric startup.
   const effectiveSpaceId = selectedSpaceId ?? defaultSpaceId(spaces);
   const activeSpace = spaces.find(space => space.id === effectiveSpaceId) ?? null;
   const isAllSpaces = effectiveSpaceId === ALL_SPACES_ID;
   const isGlobal = effectiveSpaceId === GLOBAL_SPACE_ID;
   const isAggregateSpace = isAllSpaces;
   const activeSpaceSupportsGit = spaceSupportsGit(activeSpace, isAllSpaces);
+  const scopedProjectId = !isAggregateSpace && !isGlobal ? effectiveSpaceId : null;
 
   const taskSpaces = useMemo(
     () => spaces.filter(space => space.id !== ALL_SPACES_ID),
@@ -227,7 +112,7 @@ export default function App() {
   const fetchTasks = useCallback(async () => {
     if (!effectiveSpaceId) return [];
 
-    const coreStatusFilter = coreStatusForTaskFilter(statusFilter);
+    const coreStatusFilter = coreStatusForTaskFilter(workspace.statusFilter);
     const options = { tree: true, status: coreStatusFilter ?? undefined };
     if (!isAllSpaces) {
       return listTasks(effectiveSpaceId, options);
@@ -245,33 +130,28 @@ export default function App() {
       }
     }
     return aggregateTasks;
-  }, [effectiveSpaceId, isAllSpaces, statusFilter, taskSpaces]);
+  }, [effectiveSpaceId, isAllSpaces, workspace.statusFilter, taskSpaces]);
   const { data: tasks } = usePolling(fetchTasks, 5000);
-
-  const parsedStreamTaskId = useMemo(() => {
-    const trimmed = streamTaskFilter.trim();
-    return /^\d+$/.test(trimmed) ? Number(trimmed) : undefined;
-  }, [streamTaskFilter]);
 
   const fetchAgentStream = useCallback(
     () => effectiveSpaceId
       ? listAgentStream({
-        projectId: isAggregateSpace ? (streamProjectFilter.trim() || undefined) : effectiveSpaceId,
-        taskId: parsedStreamTaskId,
-        streamKind: streamKindFilter,
-        eventType: streamEventFilter || undefined,
-        sender: streamSenderFilter.trim() || undefined,
+        projectId: isAggregateSpace ? (streamFilters.streamProjectFilter.trim() || undefined) : effectiveSpaceId,
+        taskId: streamFilters.parsedStreamTaskId,
+        streamKind: streamFilters.streamKindFilter,
+        eventType: streamFilters.streamEventFilter || undefined,
+        sender: streamFilters.streamSenderFilter.trim() || undefined,
         limit: 100,
       })
       : Promise.resolve([]),
     [
       effectiveSpaceId,
       isAggregateSpace,
-      parsedStreamTaskId,
-      streamEventFilter,
-      streamKindFilter,
-      streamProjectFilter,
-      streamSenderFilter,
+      streamFilters.parsedStreamTaskId,
+      streamFilters.streamEventFilter,
+      streamFilters.streamKindFilter,
+      streamFilters.streamProjectFilter,
+      streamFilters.streamSenderFilter,
     ],
   );
   const { data: agentStream } = usePolling(fetchAgentStream, 5000);
@@ -289,9 +169,9 @@ export default function App() {
     [documents],
   );
   const filteredAgentStream = useMemo(() => {
-    const recipientFilter = streamRecipientFilter.trim().toLowerCase();
+    const recipientFilter = streamFilters.streamRecipientFilter.trim().toLowerCase();
     return (agentStream ?? []).filter(entry => {
-      if (!showRawSubagentWorkEvents && !streamEventFilter && agentStreamEntryVisibility(entry) === 'debug') {
+      if (!streamFilters.showRawSubagentWorkEvents && !streamFilters.streamEventFilter && agentStreamEntryVisibility(entry) === 'debug') {
         return false;
       }
       if (!recipientFilter) {
@@ -306,406 +186,76 @@ export default function App() {
         .map(value => value.toLowerCase());
       return recipients.some(value => value.includes(recipientFilter));
     });
-  }, [agentStream, showRawSubagentWorkEvents, streamEventFilter, streamRecipientFilter]);
+  }, [agentStream, streamFilters.showRawSubagentWorkEvents, streamFilters.streamEventFilter, streamFilters.streamRecipientFilter]);
   const streamEventOptions = useMemo(() => {
     const options = new Set((agentStream ?? []).map(entry => entry.event_type));
-    if (streamEventFilter) {
-      options.add(streamEventFilter);
+    if (streamFilters.streamEventFilter) {
+      options.add(streamFilters.streamEventFilter);
     }
     return Array.from(options).sort((left, right) => left.localeCompare(right));
-  }, [agentStream, streamEventFilter]);
+  }, [agentStream, streamFilters.streamEventFilter]);
 
   const displayedTasks = useMemo(() => {
     const currentTasks = tasks ?? [];
-    return currentTasks.filter(task => taskMatchesStatusFilter(task, statusFilter));
-  }, [statusFilter, tasks]);
+    return currentTasks.filter(task => taskMatchesStatusFilter(task, workspace.statusFilter));
+  }, [workspace.statusFilter, tasks]);
 
   const taskCount = displayedTasks.length;
   const dependencyWaitingTaskCount = (tasks ?? []).filter(isDependencyWaitingTask).length;
   const manualBlockedTaskCount = (tasks ?? []).filter(task => task.status === 'blocked' && !isDependencyWaitingTask(task)).length;
-  const filterLabel = statusFilter ? ` [${taskFilterLabel(statusFilter)}]` : '';
-  const sortLabel = sortMode !== 'priority' ? ` ↕${sortMode}` : '';
-  const mainTitle = viewMode === 'tasks'
-    ? 'Tasks'
-    : viewMode === 'messages'
-      ? 'Messages'
-      : viewMode === 'documents'
-        ? 'Documents'
-        : viewMode === 'git'
-          ? 'Git'
-          : viewMode === 'sessions'
-            ? 'Sessions'
-            : viewMode === 'agent-stream'
-              ? 'Agent Stream'
-              : viewMode === 'agents'
-                ? 'Agents'
-                : viewMode === 'dm'
-                  ? 'Direct Messages'
-                  : viewMode === 'fleet-ops'
-                    ? 'Fleet Ops'
-                    : viewMode === 'notifications'
-                      ? 'Notifications'
-                      : 'Librarian';
-  const mainCount = viewMode === 'tasks'
-    ? `(${taskCount}${filterLabel}${sortLabel})`
-    : viewMode === 'documents'
-      ? `(${sortedDocs.length})`
-      : viewMode === 'agent-stream'
-        ? `(${filteredAgentStream.length})`
-        : null;
 
-  const handleProjectSelect = useCallback((id: string) => {
-    setSelectedSpaceId(id);
-    setSelectedTaskId(null);
-    setSelectedTaskProjectId(null);
-    setSelectedMessage(null);
-    setSelectedStreamEntry(null);
-    setSelectedSubagentRun(null);
-    setSelectedDispatch(null);
-    setSelectedDoc(null);
-    setSelectedDmAgent(null);
-    setSelectedDmConversation(null);
-  }, []);
-
-  const handleTaskSelect = useCallback((taskId: number, projectId?: string | null) => {
-    const targetProjectId = projectId?.trim() || effectiveSpaceId;
-    if (targetProjectId && targetProjectId !== selectedSpaceId) {
-      setSelectedSpaceId(targetProjectId);
-    }
-    setSelectedTaskId(taskId);
-    setSelectedTaskProjectId(targetProjectId ?? null);
-    setSelectedMessage(null);
-    setSelectedStreamEntry(null);
-    setSelectedSubagentRun(null);
-    setSelectedDispatch(null);
-    setSelectedDoc(null);
-    setViewMode('tasks');
-  }, [effectiveSpaceId, selectedSpaceId]);
-
-  const handleMessageSelect = useCallback((message: Message) => {
-    setSelectedMessage(message);
-    setSelectedStreamEntry(null);
-    setSelectedSubagentRun(null);
-    setSelectedDispatch(null);
-    setSelectedDoc(null);
-  }, []);
-
-  const handleStreamSelect = useCallback((entry: AgentStreamEntry) => {
-    setSelectedStreamEntry(entry);
-    setSelectedSubagentRun(null);
-    setSelectedDispatch(null);
-    setSelectedDoc(null);
-    setViewMode('agent-stream');
-  }, []);
-
-  const handleSubagentRunSelect = useCallback((run: SubagentRunSummary) => {
-    setSelectedSubagentRun(run);
-    setSelectedStreamEntry(null);
-    setSelectedDispatch(null);
-    setSelectedDoc(null);
-  }, []);
-
-  const handleDispatchSelect = useCallback(async (dispatchId: number) => {
-    try {
-      const dispatch = await getDispatch(dispatchId);
-      setSelectedDispatch(dispatch);
-      setSelectedStreamEntry(null);
-      setSelectedSubagentRun(null);
-      setSelectedDoc(null);
-    } catch (error) {
-      console.error('Failed to load dispatch detail', error);
-    }
-  }, []);
-
-  const handleAssignmentTraceSelect = useCallback((assignmentId: string) => {
-    setSelectedAssignmentTrace(assignmentId);
-    setSelectedStreamEntry(null);
-    setSelectedSubagentRun(null);
-    setSelectedDoc(null);
-    setSelectedDispatch(null);
-  }, []);
-
-  const handleOpenDmTranscript = useCallback((agentIdentity: string) => {
-    setSelectedDmAgent(agentIdentity);
-    setSelectedDmConversation(null);
-    setViewMode('dm');
-    // Clear other selections to avoid overlay conflicts
-    setSelectedTaskId(null);
-    setSelectedTaskProjectId(null);
-    setSelectedMessage(null);
-    setSelectedStreamEntry(null);
-    setSelectedSubagentRun(null);
-    setSelectedDispatch(null);
-    setSelectedDoc(null);
-    setSelectedAssignmentTrace(null);
-  }, []);
-
-  const applyDocumentSelection = useCallback((doc: DocumentSummary) => {
-    if (doc.project_id && doc.project_id !== selectedSpaceId) {
-      setSelectedSpaceId(doc.project_id);
-    }
-    setSelectedDoc(doc);
-    setDocumentDetailDirty(false);
-    setPendingDocumentSwitch(null);
-    setSelectedTaskId(null);
-    setSelectedTaskProjectId(null);
-    setSelectedMessage(null);
-    setSelectedStreamEntry(null);
-    setSelectedSubagentRun(null);
-    setSelectedDispatch(null);
-    setViewMode('documents');
-  }, [selectedSpaceId]);
-
-  const handleDocumentSelect = useCallback((doc: DocumentSummary) => {
-    const action = documentSelectionAction(selectedDoc, doc, documentDetailDirty);
-    if (action === 'keep_current') {
-      setPendingDocumentSwitch(null);
-      return;
-    }
-    if (action === 'prompt_for_dirty_switch') {
-      setPendingDocumentSwitch(doc);
-      return;
-    }
-    applyDocumentSelection(doc);
-  }, [applyDocumentSelection, documentDetailDirty, selectedDoc]);
-
-  const handleDocumentSaved = useCallback((doc: Document) => {
-    setSelectedDoc({
-      id: doc.id,
-      project_id: doc.project_id,
-      slug: doc.slug,
-      title: doc.title,
-      doc_type: doc.doc_type,
-      tags: doc.tags,
-      updated_at: doc.updated_at,
-    });
-    refreshDocs();
-  }, [refreshDocs]);
-
-  const handleDocumentDirtyChange = useCallback((dirty: boolean) => {
-    setDocumentDetailDirty(dirty);
-    if (!dirty) {
-      setPendingDocumentSwitch(null);
-    }
-  }, []);
-
-  const handleMessageOpen = useCallback(async (projectId: string, messageId: number) => {
-    try {
-      const message = await getMessage(projectId, messageId);
-      if (!message) return;
-      setSelectedMessage(message);
-      setSelectedStreamEntry(null);
-      setSelectedSubagentRun(null);
-      setSelectedDispatch(null);
-      setSelectedDoc(null);
-    } catch (error) {
-      console.error('Failed to load message detail', error);
-    }
-  }, []);
-
-  const handleThreadOpen = useCallback(async (projectId: string, threadId: number) => {
-    try {
-      const thread = await getThread(projectId, threadId);
-      setSelectedMessage(thread.root);
-      setSelectedStreamEntry(null);
-      setSelectedSubagentRun(null);
-      setSelectedDispatch(null);
-      setSelectedDoc(null);
-    } catch (error) {
-      console.error('Failed to load thread detail', error);
-    }
-  }, []);
-
-  const handleOpenGitFocus = useCallback((focus: GitFocus) => {
-    if (focus.projectId !== selectedSpaceId) {
-      setSelectedSpaceId(focus.projectId);
-    }
-    setGitFocus(focus);
-    setViewMode('git');
-    setSelectedTaskId(null);
-    setSelectedTaskProjectId(null);
-    setSelectedMessage(null);
-    setSelectedStreamEntry(null);
-    setSelectedSubagentRun(null);
-    setSelectedDispatch(null);
-    setSelectedDoc(null);
-  }, [selectedSpaceId]);
-
-  const handleStreamThreadOpen = useCallback(async (entry: AgentStreamEntry) => {
-    if (!entry.project_id || entry.thread_id == null) {
-      return;
-    }
-
-    await handleThreadOpen(entry.project_id, entry.thread_id);
-  }, [handleThreadOpen]);
-
-  useEffect(() => {
-    const kb = prefs.keyboard;
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.defaultPrevented) return;
-
-      // 1) Close panel — must work even when focus is in an editable element.
-      //    The user pressing Escape in a textbox wants to dismiss the overlay,
-      //    not type an Escape character.
-      if (kb.closePanel && matchHotkey(event, kb.closePanel)) {
-        if (showPreferences) {
-          event.preventDefault();
-          setShowPreferences(false);
-          return;
-        }
-        if (viewMode === 'dm' && selectedDmConversation) {
-          event.preventDefault();
-          setSelectedDmConversation(null);
-          return;
-        }
-        if (viewMode === 'dm' && selectedDmAgent) {
-          event.preventDefault();
-          setSelectedDmAgent(null);
-          setSelectedDmConversation(null);
-          return;
-        }
-        if (selectedDoc || selectedDispatch || selectedSubagentRun || selectedStreamEntry || selectedMessage || selectedTaskId != null || selectedAssignmentTrace) {
-          event.preventDefault();
-          if (selectedAssignmentTrace) {
-            setSelectedAssignmentTrace(null);
-          } else if (selectedDoc) {
-            setSelectedDoc(null);
-            setDocumentDetailDirty(false);
-            setPendingDocumentSwitch(null);
-          } else if (selectedDispatch) {
-            setSelectedDispatch(null);
-          } else if (selectedSubagentRun) {
-            setSelectedSubagentRun(null);
-          } else if (selectedStreamEntry) {
-            setSelectedStreamEntry(null);
-          } else if (selectedMessage) {
-            setSelectedMessage(null);
-          } else {
-            setSelectedTaskId(null);
-            setSelectedTaskProjectId(null);
-          }
-        }
-        return;
-      }
-
-      // All navigation shortcuts require the user to not be typing in an editable element
-      if (editableTarget(event.target)) return;
-
-      // 2) Open preferences (existing behavior)
-      if (kb.openPreferences && matchHotkey(event, kb.openPreferences)) {
-        event.preventDefault();
-        setShowPreferences(true);
-        return;
-      }
-
-      // 3) Switch project/space — cycle forward through spaces order
-      if (kb.switchProject && matchHotkey(event, kb.switchProject)) {
-        event.preventDefault();
-        if (spaces.length > 0) {
-          const currentIdx = effectiveSpaceId
-            ? spaces.findIndex(s => s.id === effectiveSpaceId)
-            : -1;
-          const nextIdx = (currentIdx + 1) % spaces.length;
-          handleProjectSelect(spaces[nextIdx].id);
-        }
-        return;
-      }
-
-      // 4) Cycle main panel forward
-      if (kb.cycleMainPanel && matchHotkey(event, kb.cycleMainPanel)) {
-        event.preventDefault();
-        const currentIdx = WORKSPACE_VIEW_MODES.indexOf(viewMode);
-        const nextIdx = (currentIdx + 1) % WORKSPACE_VIEW_MODES.length;
-        setViewMode(WORKSPACE_VIEW_MODES[nextIdx]);
-        return;
-      }
-
-      // 5) Cycle task status filter (matters mostly in tasks mode)
-      if (kb.cycleTaskFilter && matchHotkey(event, kb.cycleTaskFilter)) {
-        if (viewMode !== 'tasks') return;
-        event.preventDefault();
-        const allIncludingAll = ['', ...TASK_FILTERS];
-        const currentIdx = statusFilter
-          ? allIncludingAll.indexOf(statusFilter)
-          : 0;
-        const nextIdx = (currentIdx + 1) % allIncludingAll.length;
-        setStatusFilter(allIncludingAll[nextIdx] || null);
-        return;
-      }
-
-      // 6) Direct panel jumps
-      if (kb.jumpToTasks && matchHotkey(event, kb.jumpToTasks)) {
-        event.preventDefault();
-        setViewMode('tasks');
-        return;
-      }
-      if (kb.jumpToAgents && matchHotkey(event, kb.jumpToAgents)) {
-        event.preventDefault();
-        setViewMode('agents');
-        return;
-      }
-      if (kb.jumpToMessages && matchHotkey(event, kb.jumpToMessages)) {
-        event.preventDefault();
-        setViewMode('messages');
-        return;
-      }
-      if (kb.jumpToDocs && matchHotkey(event, kb.jumpToDocs)) {
-        event.preventDefault();
-        setViewMode('documents');
-        return;
-      }
-      if (kb.jumpToGit && matchHotkey(event, kb.jumpToGit)) {
-        event.preventDefault();
-        setViewMode('git');
-        return;
-      }
-      if (kb.jumpToSessions && matchHotkey(event, kb.jumpToSessions)) {
-        event.preventDefault();
-        setViewMode('sessions');
-        return;
-      }
-      if (kb.jumpToLibrarian && matchHotkey(event, kb.jumpToLibrarian)) {
-        event.preventDefault();
-        setViewMode('librarian');
-        return;
-      }
-      if (kb.jumpToAgentStream && matchHotkey(event, kb.jumpToAgentStream)) {
-        event.preventDefault();
-        setViewMode('agent-stream');
-        return;
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
-    prefs.keyboard,
-    selectedDispatch,
-    selectedDoc,
-    selectedMessage,
-    selectedStreamEntry,
-    selectedSubagentRun,
-    selectedTaskId,
-    selectedAssignmentTrace,
-    selectedDmAgent,
-    selectedDmConversation,
-    showPreferences,
-    spaces,
+  // --- Navigation + keyboard ----------------------------------------------
+  const nav = useWorkspaceNavigation({
+    selection,
+    selectedSpaceId,
     effectiveSpaceId,
-    handleProjectSelect,
-    viewMode,
-    statusFilter,
-    setViewMode,
-  ]);
+    setSelectedSpaceId,
+    setViewMode: workspace.setViewMode,
+    refreshDocs,
+  });
 
-  // Standalone notification popup: render full-screen panel when #/notification-panel hash is present
+  useKeyboardShortcuts({
+    keyboard: prefs.keyboard,
+    context: {
+      showPreferences,
+      viewMode: workspace.viewMode,
+      dmConversationOpen: nav.selectedDmConversation != null,
+      dmAgentOpen: nav.selectedDmAgent != null,
+      hasDetailSelection: selection.value !== null,
+    },
+    actions: {
+      closePreferences: () => setShowPreferences(false),
+      closeDmConversation: nav.closeDmConversation,
+      closeDmAgent: nav.closeDmAgent,
+      closeDetail: nav.closeDetail,
+      openPreferences: () => setShowPreferences(true),
+      switchProject: () => {
+        const next = nextSpaceId(spaces, effectiveSpaceId);
+        if (next) nav.handleProjectSelect(next);
+      },
+      cycleMainPanel: () => workspace.setViewMode(nextViewMode(workspace.viewMode)),
+      cycleTaskFilter: () => workspace.setStatusFilter(nextTaskFilter(workspace.statusFilter)),
+      jump: view => workspace.setViewMode(view),
+    },
+  });
+
+  // --- Derived presentation ------------------------------------------------
+  const filterLabel = workspace.statusFilter ? ` [${taskFilterLabel(workspace.statusFilter)}]` : '';
+  const sortLabel = workspace.sortMode !== 'priority' ? ` ↕${workspace.sortMode}` : '';
+  const mainTitle = mainPanelTitle(workspace.viewMode);
+  const mainCount = mainPanelCountLabel(workspace.viewMode, {
+    taskCount,
+    filterLabel,
+    sortLabel,
+    docCount: sortedDocs.length,
+    streamCount: filteredAgentStream.length,
+  });
+  const selectedTaskId = selection.value?.kind === 'task' ? selection.value.taskId : null;
+
+  // Standalone notification popup: render full-screen panel when the hash route is present.
   if (standalonePopup) {
-      const notificationProjectIds = effectiveSpaceId && effectiveSpaceId !== ALL_SPACES_ID && effectiveSpaceId !== GLOBAL_SPACE_ID
-        ? [effectiveSpaceId]
-        : (spaces ?? []).filter(s => s.id !== ALL_SPACES_ID).map(s => s.id);
-      return <NotificationHistoryPanel projectIds={notificationProjectIds} standalone />;
-    }
+    return <NotificationHistoryPanel projectIds={notificationScopeProjectIds(effectiveSpaceId, spaces)} standalone />;
+  }
 
   const renderNotificationSidePanel = shouldRenderNotificationSidePanel(
     showNotificationPanel,
@@ -715,406 +265,90 @@ export default function App() {
   const dashboardClasses = [
     'dashboard',
     `dashboard-channel-size-${channelPanelSize}`,
-    `dashboard-mobile-section-${mobilePrimarySection}`,
+    `dashboard-mobile-section-${workspace.mobilePrimarySection}`,
     renderNotificationSidePanel ? 'dashboard-notification-docked' : '',
   ].filter(Boolean).join(' ');
 
-    return (
+  return (
     <div className={dashboardClasses}>
-      <div className="mobile-topbar" aria-label="Mobile navigation">
-        <label className="mobile-topbar-control">
-          <span>Project</span>
-          <select
-            value={effectiveSpaceId ?? ''}
-            onChange={event => handleProjectSelect(event.target.value)}
-            aria-label="Switch project or space"
-          >
-            {spaces.map(space => (
-              <option key={space.id} value={space.id}>{space.name || space.id}</option>
-            ))}
-          </select>
-        </label>
-        <label className="mobile-topbar-control">
-          <span>Section</span>
-          <select
-            value={mobilePrimarySection === 'channel' ? 'channel' : viewMode}
-            onChange={event => {
-              if (event.target.value === 'channel') {
-                setMobilePrimarySection('channel');
-                return;
-              }
-              setViewMode(event.target.value as WorkspaceViewMode);
-              setMobilePrimarySection('workspace');
-            }}
-            aria-label="Switch primary section"
-          >
-            {WORKSPACE_VIEW_MODES.map(mode => (
-              <option key={mode} value={mode}>{WORKSPACE_VIEW_LABELS[mode]}</option>
-            ))}
-            <option value="channel">Project lane</option>
-          </select>
-        </label>
-        <div className="mobile-section-tabs" role="tablist" aria-label="Primary panel">
-          <button
-            type="button"
-            className={mobilePrimarySection === 'workspace' ? 'active' : ''}
-            onClick={() => setMobilePrimarySection('workspace')}
-            aria-pressed={mobilePrimarySection === 'workspace'}
-          >
-            {WORKSPACE_VIEW_LABELS[viewMode]}
-          </button>
-          <button
-            type="button"
-            className={mobilePrimarySection === 'channel' ? 'active' : ''}
-            onClick={() => setMobilePrimarySection('channel')}
-            aria-pressed={mobilePrimarySection === 'channel'}
-          >
-            Project lane
-          </button>
-        </div>
-      </div>
+      <MobileTopBar
+        spaces={spaces}
+        effectiveSpaceId={effectiveSpaceId}
+        viewMode={workspace.viewMode}
+        mobilePrimarySection={workspace.mobilePrimarySection}
+        onProjectSelect={nav.handleProjectSelect}
+        onSelectViewMode={mode => {
+          workspace.setViewMode(mode);
+          workspace.setMobilePrimarySection('workspace');
+        }}
+        onSelectSection={workspace.setMobilePrimarySection}
+      />
       <div className="dashboard-workspace">
         <ProjectSidebar
           spaces={spaces}
           selectedId={effectiveSpaceId}
-          onSelect={handleProjectSelect}
+          onSelect={nav.handleProjectSelect}
           notificationHistoryMode={prefs.layout.notificationHistoryMode}
           onToggleNotificationPanel={() => setShowNotificationPanel(toggleNotificationSidePanel)}
-          notificationUnreadCount={notificationBell.unreadCount}
-          notificationNewCount={notificationBell.newCount}
-          notificationCue={notificationBell.cueLabel}
-          notificationFocusBlocked={notificationBell.focusBlocked}
-          onAcknowledgeNotificationCue={acknowledgeNotificationCue}
+          notificationUnreadCount={bell.unreadCount}
+          notificationNewCount={bell.newCount}
+          notificationCue={bell.cueLabel}
+          notificationFocusBlocked={bell.focusBlocked}
+          onAcknowledgeNotificationCue={bell.acknowledgeCue}
         />
 
-        <div className="panel panel-main">
-          <div className="panel-header">
-            {mainTitle}
-            {effectiveSpaceId && mainCount && <span className="count">{mainCount}</span>}
-          </div>
-          <FilterBar
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            sortMode={sortMode}
-            onSortChange={setSortMode}
-            viewMode={viewMode}
-            onViewModeChange={mode => {
-              setViewMode(mode);
-              setMobilePrimarySection('workspace');
-            }}
-          />
-          {viewMode === 'tasks' && (
-            <div className="task-availability-summary" title="Dependency waits are computed by Core and clear automatically; manual blocked tasks need attention and an explicit unblock/status change.">
-              <span className="task-availability-summary-item task-availability-summary-waiting">
-                {dependencyWaitingTaskCount} auto dependency wait{dependencyWaitingTaskCount === 1 ? '' : 's'}
-              </span>
-              <span className="task-availability-summary-item task-availability-summary-blocked">
-                {manualBlockedTaskCount} manual block{manualBlockedTaskCount === 1 ? '' : 's'}
-              </span>
-            </div>
-          )}
-          {viewMode === 'agent-stream' && (
-            <div className="feed-toolbar agent-stream-toolbar">
-              <label className="panel-filter-label" htmlFor="stream-kind-filter">Kind</label>
-              <select
-                id="stream-kind-filter"
-                className="panel-filter-select"
-                value={streamKindFilter}
-                onChange={e => setStreamKindFilter(e.target.value as 'ops' | 'message')}
-              >
-                <option value="ops">Ops</option>
-                <option value="message">Messages</option>
-              </select>
-
-              <label className="panel-filter-label" htmlFor="stream-event-filter">Event</label>
-              <select
-                id="stream-event-filter"
-                className="panel-filter-select"
-                value={streamEventFilter}
-                onChange={e => setStreamEventFilter(e.target.value)}
-              >
-                <option value="">All</option>
-                {streamEventOptions.map(eventType => (
-                  <option key={eventType} value={eventType}>{eventType}</option>
-                ))}
-              </select>
-
-              {isAggregateSpace && (
-                <input
-                  className="feed-text-filter"
-                  value={streamProjectFilter}
-                  onChange={e => setStreamProjectFilter(e.target.value)}
-                  placeholder="Space"
-                />
-              )}
-
-              <input
-                className="feed-text-filter"
-                value={streamSenderFilter}
-                onChange={e => setStreamSenderFilter(e.target.value)}
-                placeholder="Sender"
-              />
-
-              <input
-                className="feed-text-filter"
-                value={streamRecipientFilter}
-                onChange={e => setStreamRecipientFilter(e.target.value)}
-                placeholder="Recipient"
-              />
-
-              <input
-                className="feed-text-filter feed-text-filter-short"
-                value={streamTaskFilter}
-                onChange={e => setStreamTaskFilter(e.target.value)}
-                placeholder="Task #"
-              />
-
-              <label
-                className="thought-raw-toggle"
-                title="Show verbose subagent_work_* audit events in the normal stream feed"
-              >
-                <input
-                  type="checkbox"
-                  checked={showRawSubagentWorkEvents}
-                  onChange={e => setShowRawSubagentWorkEvents(e.target.checked)}
-                />
-                Raw sub-agent work
-              </label>
-            </div>
-          )}
-          <div className="panel-body">
-            {viewMode === 'tasks' ? (
-              <TaskTree
-                tasks={displayedTasks}
-                selectedTaskId={selectedTaskId}
-                onSelect={handleTaskSelect}
-                statusFilter={statusFilter}
-                sortMode={sortMode}
-                showProjectLabels={isAllSpaces}
-                projectNames={taskSpaceNames}
-              />
-            ) : viewMode === 'messages' ? (
-              <MessagesInbox
-                spaces={spaces}
-                currentSpaceId={effectiveSpaceId}
-                isAggregate={isAggregateSpace}
-                onSelect={handleMessageSelect}
-                onOpenTask={handleTaskSelect}
-              />
-            ) : viewMode === 'documents' ? (
-              <DocumentList
-                documents={sortedDocs}
-                projectId={effectiveSpaceId}
-                isGlobal={isAggregateSpace}
-                onSelect={handleDocumentSelect}
-              />
-            ) : viewMode === 'git' ? (
-              <GitView
-                projectId={activeSpaceSupportsGit ? effectiveSpaceId : null}
-                projects={projects ?? []}
-                isGlobal={isAggregateSpace}
-                scopeSupportsGit={activeSpaceSupportsGit}
-                focus={gitFocus}
-                onClearFocus={() => setGitFocus(null)}
-              />
-            ) : viewMode === 'agent-stream' ? (
-              <AgentStreamFeed
-                entries={filteredAgentStream}
-                isGlobal={isAggregateSpace}
-                onSelect={handleStreamSelect}
-                onOpenTask={handleTaskSelect}
-                onOpenThread={entry => void handleStreamThreadOpen(entry)}
-                onOpenDispatch={dispatchId => void handleDispatchSelect(dispatchId)}
-              />
-            ) : viewMode === 'sessions' ? (
-              <FocusedSessionView
-                projectId={!isAggregateSpace && !isGlobal ? effectiveSpaceId : null}
-                spaceName={activeSpace?.name ?? effectiveSpaceId}
-              />
-            ) : viewMode === 'agents' ? (
-              <>
-                <div className="agents-sub-view-tabs">
-                  <button
-                    className={`agents-sub-view-tab ${agentsSubView === 'overview' ? 'active' : ''}`}
-                    onClick={() => setAgentsSubView('overview')}
-                  >
-                    Overview
-                  </button>
-                  <button
-                    className={`agents-sub-view-tab ${agentsSubView === 'worker-pool' ? 'active' : ''}`}
-                    onClick={() => setAgentsSubView('worker-pool')}
-                  >
-                    Worker Pool
-                  </button>
-                </div>
-                {agentsSubView === 'overview' ? (
-                  <AgentsOverviewView
-                    projectId={!isAggregateSpace && !isGlobal ? effectiveSpaceId : null}
-                    isAggregate={isAggregateSpace}
-                    closePanelKey={prefs.keyboard.closePanel}
-                    onOpenAssignmentTrace={handleAssignmentTraceSelect}
-                    onOpenDmTranscript={handleOpenDmTranscript}
-                  />
-                ) : (
-                  <WorkerPoolLobbyView
-                    onOpenAssignmentTrace={handleAssignmentTraceSelect}
-                  />
-                )}
-              </>
-            ) : viewMode === 'dm' ? (
-              selectedDmConversation ? (
-                <DmTranscriptView
-                  conversation={selectedDmConversation}
-                  onBack={() => {
-                    setSelectedDmConversation(null);
-                    setSelectedDmAgent(null);
-                  }}
-                />
-              ) : (
-                <DmConversationList
-                  onSelectConversation={conversation => {
-                    setSelectedDmConversation(conversation);
-                    setSelectedDmAgent(null);
-                  }}
-                  initialAgentIdentity={selectedDmAgent}
-                  scopeProjectId={!isAggregateSpace && !isGlobal ? effectiveSpaceId : null}
-                />
-              )
-            ) : viewMode === 'fleet-ops' ? (
-              <FleetOpsCockpit />
-            ) : viewMode === 'notifications' ? (
-              <NotificationHistoryPanel
-                projectIds={effectiveSpaceId && effectiveSpaceId !== ALL_SPACES_ID && effectiveSpaceId !== GLOBAL_SPACE_ID
-                  ? [effectiveSpaceId]
-                  : (spaces ?? []).filter(s => s.id !== ALL_SPACES_ID).map(s => s.id)
-                }
-                onOpenTask={handleTaskSelect}
-              />
-            ) : (
-              <LibrarianView
-                projects={spaces}
-                currentProjectId={effectiveSpaceId}
-                onOpenTask={handleTaskSelect}
-                onOpenDocument={handleDocumentSelect}
-                onOpenMessage={(projectId, messageId) => void handleMessageOpen(projectId, messageId)}
-                onOpenThread={(projectId, threadId) => void handleThreadOpen(projectId, threadId)}
-              />
-            )}
-          </div>
-        </div>
+        <MainPanel
+          mainTitle={mainTitle}
+          mainCount={mainCount}
+          spaces={spaces}
+          effectiveSpaceId={effectiveSpaceId}
+          activeSpace={activeSpace}
+          isAllSpaces={isAllSpaces}
+          isGlobal={isGlobal}
+          isAggregateSpace={isAggregateSpace}
+          activeSpaceSupportsGit={activeSpaceSupportsGit}
+          projects={projects ?? []}
+          taskSpaceNames={taskSpaceNames}
+          displayedTasks={displayedTasks}
+          sortedDocs={sortedDocs}
+          filteredAgentStream={filteredAgentStream}
+          streamEventOptions={streamEventOptions}
+          dependencyWaitingTaskCount={dependencyWaitingTaskCount}
+          manualBlockedTaskCount={manualBlockedTaskCount}
+          selectedTaskId={selectedTaskId}
+          closePanelKey={prefs.keyboard.closePanel}
+          workspace={workspace}
+          filters={streamFilters}
+          nav={nav}
+        />
       </div>
 
       <ChannelChatPanel
-        projectId={!isAggregateSpace && !isGlobal ? effectiveSpaceId : null}
+        projectId={scopedProjectId}
         spaceName={activeSpace?.name ?? effectiveSpaceId}
         panelSize={channelPanelSize}
         scrollResetKey={effectiveSpaceId}
         onPanelSizeChange={setChannelPanelSize}
         onOpenPreferences={() => setShowPreferences(true)}
-        onOpenAssignmentTrace={handleAssignmentTraceSelect}
-        onOpenDmTranscript={handleOpenDmTranscript}
+        onOpenAssignmentTrace={nav.handleAssignmentTraceSelect}
+        onOpenDmTranscript={nav.handleOpenDmTranscript}
       />
 
-      {/* Notification dock (when mode is sidePanel and toggled open) */}
       {renderNotificationSidePanel && (
-        <div className="notification-side-panel">
-          <div className="notification-side-panel-header">
-            <button
-              type="button"
-              className="notification-side-panel-close detail-close"
-              onClick={() => setShowNotificationPanel(closeNotificationSidePanel())}
-              aria-label="Close notification side panel"
-            >
-              ✕
-            </button>
-          </div>
-          <NotificationHistoryPanel
-            projectIds={(spaces ?? []).filter(s => s.id !== ALL_SPACES_ID).map(s => s.id)}
-            onOpenTask={handleTaskSelect}
-          />
-        </div>
-      )}
-
-      {/* Detail overlays */}
-      {selectedTaskId != null && effectiveSpaceId && (
-        <TaskDetail
-          key={`${selectedTaskProjectId ?? effectiveSpaceId}:${selectedTaskId}`}
-          projectId={selectedTaskProjectId ?? effectiveSpaceId}
-          taskId={selectedTaskId}
-          onSelectTask={handleTaskSelect}
-          onSelectMessage={handleMessageSelect}
-          onSelectRun={handleSubagentRunSelect}
-          onOpenGit={handleOpenGitFocus}
-          onClose={() => {
-            setSelectedTaskId(null);
-            setSelectedTaskProjectId(null);
-          }}
+        <NotificationSidePanel
+          projectIds={spaces.filter(space => space.id !== ALL_SPACES_ID).map(space => space.id)}
+          onClose={() => setShowNotificationPanel(closeNotificationSidePanel())}
+          onOpenTask={nav.handleTaskSelect}
         />
       )}
 
-      {selectedMessage && (
-        <MessageDetail
-          key={`${selectedMessage.project_id}:${selectedMessage.id}`}
-          message={selectedMessage}
-          onClose={() => setSelectedMessage(null)}
-        />
-      )}
-
-      {selectedStreamEntry && (
-        <AgentStreamDetail
-          key={selectedStreamEntry.id}
-          entry={selectedStreamEntry}
-          onClose={() => setSelectedStreamEntry(null)}
-          onOpenTask={handleTaskSelect}
-          onOpenThread={entry => void handleStreamThreadOpen(entry)}
-          onOpenDispatch={dispatchId => void handleDispatchSelect(dispatchId)}
-        />
-      )}
-
-      {selectedSubagentRun && (
-        <SubagentRunDetail
-          key={selectedSubagentRun.run_id}
-          run={selectedSubagentRun}
-          onClose={() => setSelectedSubagentRun(null)}
-          onOpenTask={handleTaskSelect}
-          onOpenEntry={handleStreamSelect}
-        />
-      )}
-
-      {selectedDispatch && (
-        <DispatchDetail
-          dispatch={selectedDispatch}
-          onClose={() => setSelectedDispatch(null)}
-          onOpenTask={handleTaskSelect}
-        />
-      )}
-
-      {selectedAssignmentTrace && (
-        <AssignmentTraceView
-          key={selectedAssignmentTrace}
-          assignmentId={selectedAssignmentTrace}
-          projectId={!isAggregateSpace && !isGlobal ? effectiveSpaceId : null}
-          closePanelKey={prefs.keyboard.closePanel}
-          onClose={() => setSelectedAssignmentTrace(null)}
-        />
-      )}
-
-      {selectedDoc && (
-        <DocumentDetail
-          summary={selectedDoc}
-          onClose={() => {
-            setSelectedDoc(null);
-            setDocumentDetailDirty(false);
-            setPendingDocumentSwitch(null);
-          }}
-          onSaved={handleDocumentSaved}
-          onOpenDocument={handleDocumentSelect}
-          onDirtyChange={handleDocumentDirtyChange}
-          pendingSwitch={pendingDocumentSwitch}
-          onCancelSwitch={() => setPendingDocumentSwitch(null)}
-          onConfirmSwitch={applyDocumentSelection}
-        />
-      )}
+      <DetailOverlays
+        selection={selection.value}
+        effectiveSpaceId={effectiveSpaceId}
+        scopedProjectId={scopedProjectId}
+        closePanelKey={prefs.keyboard.closePanel}
+        nav={nav}
+      />
 
       {showPreferences && (
         <PreferencesDialog
@@ -1124,7 +358,6 @@ export default function App() {
           onClose={() => setShowPreferences(false)}
         />
       )}
-
     </div>
   );
 }

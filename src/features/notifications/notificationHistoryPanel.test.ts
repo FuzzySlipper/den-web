@@ -768,19 +768,32 @@ describe('App.tsx notification integration', () => {
     resolve(process.cwd(), 'src/styles/app-shell.css'),
     'utf8',
   );
+  // The app-shell refactor (#2138) split notification wiring into focused modules.
+  const bellSource = readFileSync(
+    resolve(process.cwd(), 'src/app-shell/useNotificationBell.ts'),
+    'utf8',
+  );
+  const mainPanelSource = readFileSync(
+    resolve(process.cwd(), 'src/app-shell/MainPanel.tsx'),
+    'utf8',
+  );
+  const sidePanelSource = readFileSync(
+    resolve(process.cwd(), 'src/app-shell/NotificationSidePanel.tsx'),
+    'utf8',
+  );
 
   it('imports NotificationHistoryPanel component', () => {
     expect(appSource).toContain("import { NotificationHistoryPanel } from '../features/notifications/NotificationHistoryPanel'");
   });
 
   it('imports notification window helpers', () => {
-    expect(appSource).toContain('focusArmedNotificationPanelWindow');
+    expect(bellSource).toContain('focusArmedNotificationPanelWindow');
     expect(appSource).toContain('isNotificationPanelRoute');
   });
 
   it('renders NotificationHistoryPanel in the notifications view mode', () => {
-    expect(appSource).toContain("viewMode === 'notifications'");
-    expect(appSource).toContain('<NotificationHistoryPanel');
+    expect(mainPanelSource).toContain("viewMode === 'notifications'");
+    expect(mainPanelSource).toContain('<NotificationHistoryPanel');
   });
 
   it('detects standalone popup via hash route', () => {
@@ -794,14 +807,14 @@ describe('App.tsx notification integration', () => {
 
   it('renders NotificationHistoryPanel as a docked side panel when mode is sidePanel', () => {
     // Should render NotificationHistoryPanel inside a docked side-panel grid area.
-    expect(appSource).toContain('notification-side-panel');
+    expect(sidePanelSource).toContain('notification-side-panel');
     expect(appSource).toContain('dashboard-notification-docked');
     expect(appSource).toContain('renderNotificationSidePanel');
     expect(appSource).toContain('shouldRenderNotificationSidePanel(\n    showNotificationPanel,\n    prefs.layout.notificationHistoryMode,\n  )');
   });
 
   it('has close button in side panel notification dock', () => {
-    expect(appSource).toContain('notification-side-panel-close');
+    expect(sidePanelSource).toContain('notification-side-panel-close');
   });
 
   it('styles the notification side-panel close affordance explicitly', () => {
@@ -823,9 +836,9 @@ describe('App.tsx notification integration', () => {
 
   it('polls the canonical feed and drives operator-bell cues', () => {
     expect(appSource).toContain('fetchOperatorNotifications');
-    expect(appSource).toContain('detectNewUnreadNotificationIds');
-    expect(appSource).toContain('notificationBell');
-    expect(appSource).toContain('notificationUnreadCount={notificationBell.unreadCount}');
+    expect(appSource).toContain('useNotificationBell');
+    expect(bellSource).toContain('detectNewUnreadNotificationIds');
+    expect(appSource).toContain('notificationUnreadCount={bell.unreadCount}');
   });
 
   it('styles operator-bell attention state', () => {
