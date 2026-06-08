@@ -15,7 +15,7 @@
  * in a full-window layout.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePolling } from '../../hooks/usePolling';
 import { formatTimeAgo, truncate } from '../../utils';
 import {
@@ -29,6 +29,7 @@ import {
   clearLocalReadState,
   countUnread,
 } from './notificationFeed';
+import { detectNewUnreadNotificationIds } from './notificationBell';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -39,6 +40,7 @@ const POLL_INTERVAL_MS = 10000;
 const SOURCE_KIND_OPTIONS: Array<{ value: NotificationSourceKind | 'all'; label: string }> = [
   { value: 'all', label: 'All' },
   { value: 'agent_work_complete', label: 'Agent Done' },
+  { value: 'user_directed_message', label: 'User messages' },
   { value: 'user_notification', label: 'Notifications' },
 ];
 
@@ -61,6 +63,7 @@ function severityClass(severity: NotificationSeverity): string {
 function sourceTypeLabel(type: NotificationSourceKind): string {
   switch (type) {
     case 'agent_work_complete': return 'Agent Done';
+    case 'user_directed_message': return 'User Message';
     case 'user_notification': return 'Notification';
   }
 }
@@ -103,6 +106,17 @@ export function NotificationHistoryPanel({
     [projectIds],
   );
   const { data: feed, loading, error, refresh } = usePolling(fetchFeed, POLL_INTERVAL_MS);
+  const previousFeedItemsRef = useRef<NotificationItem[] | null>(null);
+  const [newSinceLastViewedIds, setNewSinceLastViewedIds] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    if (!feed || feed.error) return;
+    const newUnreadIds = detectNewUnreadNotificationIds(previousFeedItemsRef.current, feed.items);
+    previousFeedItemsRef.current = feed.items;
+    if (newUnreadIds.length > 0) {
+      setNewSinceLastViewedIds(prev => new Set([...prev, ...newUnreadIds]));
+    }
+  }, [feed]);
 
   // Derive error display from feed.result.error (API-caught errors as string)
   // falling back to usePolling's thrown-error state as a safety net.
@@ -136,6 +150,7 @@ export function NotificationHistoryPanel({
   // Handlers
   const handleMarkAllRead = useCallback(() => {
     if (feed) markAllRead(feed.items.map(item => item.id));
+    setNewSinceLastViewedIds(new Set());
     refresh();
   }, [feed, refresh]);
 
@@ -148,6 +163,11 @@ export function NotificationHistoryPanel({
   const handleItemClick = useCallback((item: NotificationItem) => {
     if (!item.read) {
       markNotificationRead(item.id);
+      setNewSinceLastViewedIds(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
       refresh();
     }
   }, [refresh]);
@@ -277,14 +297,24 @@ export function NotificationHistoryPanel({
           </div>
         ) : (
           <div className="notification-panel-list">
-            {filteredItems.map(item => (
-              <NotificationRow
-                key={item.id}
-                item={item}
-                onClick={handleItemClick}
-                onOpenTask={onOpenTask}
-              />
-            ))}
+            {filteredItems.map((item, index) => {
+              const isNew = newSinceLastViewedIds.has(item.id);
+              const previousItem = index > 0 ? filteredItems[index - 1] : null;
+              const showNewDivider = isNew && (!previousItem || !newSinceLastViewedIds.has(previousItem.id));
+              return (
+                <Fragment key={item.id}>
+                  {showNewDivider && (
+                    <div className="notification-new-divider">New since last viewed</div>
+                  )}
+                  <NotificationRow
+                    item={item}
+                    isNew={isNew}
+                    onClick={handleItemClick}
+                    onOpenTask={onOpenTask}
+                  />
+                </Fragment>
+              );
+            })}
           </div>
         )}
       </div>
@@ -311,14 +341,15 @@ export function NotificationHistoryPanel({
 
 interface NotificationRowProps {
   item: NotificationItem;
+  isNew: boolean;
   onClick: (item: NotificationItem) => void;
   onOpenTask?: (taskId: number, projectId?: string | null) => void;
 }
 
-function NotificationRow({ item, onClick, onOpenTask }: NotificationRowProps) {
+function NotificationRow({ item, isNew, onClick, onOpenTask }: NotificationRowProps) {
   return (
     <article
-      className={`notification-item ${item.read ? 'notification-item-read' : 'notification-item-unread'} ${severityClass(item.severity)}`}
+      className={`notification-item ${item.read ? 'notification-item-read' : 'notification-item-unread'} ${isNew ? 'notification-item-new' : ''} ${severityClass(item.severity)}`}
       onClick={() => onClick(item)}
     >
       <div className="notification-item-topline">

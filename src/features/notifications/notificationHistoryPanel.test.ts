@@ -27,7 +27,13 @@ import {
   parseCoreNotificationId,
 } from './notificationFeed';
 import {
+  detectNewUnreadNotificationIds,
+  notificationCueLabel,
+  summarizeNotificationBellCue,
+} from './notificationBell';
+import {
   openNotificationPanelWindow,
+  focusArmedNotificationPanelWindow,
   isNotificationPanelRoute,
 } from './notificationWindow';
 
@@ -456,6 +462,48 @@ describe('notificationFeed adapter', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Operator bell detection tests
+// ---------------------------------------------------------------------------
+
+describe('notificationBell helpers', () => {
+  const previous: NotificationItem[] = [
+    {
+      id: 'core:1', type: 'user_notification', timestamp: '2026-01-01T00:00:00Z',
+      sourceKind: 'Notification', agentService: 'runner', projectId: null, taskId: null,
+      threadId: null, dispatchId: null, runId: null, summary: 'old unread',
+      severity: 'info', status: null, read: false,
+    },
+  ];
+
+  it('does not ring on initial baseline fetch', () => {
+    expect(detectNewUnreadNotificationIds(null, previous)).toEqual([]);
+  });
+
+  it('rings only for newly arrived unread IDs', () => {
+    const current: NotificationItem[] = [
+      previous[0],
+      {
+        id: 'core:2', type: 'agent_work_complete', timestamp: '2026-01-02T00:00:00Z',
+        sourceKind: 'Agent work complete', agentService: 'runner', projectId: 'den-web', taskId: 2124,
+        threadId: null, dispatchId: null, runId: 'run-2124', summary: 'Agent finished #2124',
+        severity: 'success', status: 'completed', read: false,
+      },
+      {
+        id: 'core:3', type: 'user_notification', timestamp: '2026-01-03T00:00:00Z',
+        sourceKind: 'Notification', agentService: 'runner', projectId: 'den-web', taskId: null,
+        threadId: null, dispatchId: null, runId: null, summary: 'already read new item',
+        severity: 'info', status: null, read: true,
+      },
+    ];
+
+    const ids = detectNewUnreadNotificationIds(previous, current);
+    expect(ids).toEqual(['core:2']);
+    const cue = summarizeNotificationBellCue(current, ids);
+    expect(notificationCueLabel(cue)).toContain('agent finished work');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Window management tests
 // ---------------------------------------------------------------------------
 
@@ -501,6 +549,11 @@ describe('notificationWindow utilities', () => {
       mockLocation.hash = '';
     });
 
+    it('reports blocked focus before the notification window is armed', () => {
+      const result = focusArmedNotificationPanelWindow();
+      expect(result).toEqual({ focused: false, blocked: true, reason: 'not_armed' });
+    });
+
     it('calls window.open with the named target and hash URL', () => {
       mockWindow.open.mockReturnValue({ closed: true } as Window);
 
@@ -521,6 +574,19 @@ describe('notificationWindow utilities', () => {
       openNotificationPanelWindow();
 
       expect(mockWindow.open).toHaveBeenCalledWith('', 'den-web-notification-panel');
+      expect(mockFocus).toHaveBeenCalled();
+    });
+
+    it('focuses the armed named window for later operator events', () => {
+      const mockFocus = vi.fn();
+      const mockWin = { closed: false, focus: mockFocus, location: { href: '' } } as unknown as Window;
+      mockWindow.open.mockReturnValue(mockWin);
+
+      openNotificationPanelWindow();
+      const result = focusArmedNotificationPanelWindow();
+
+      expect(result.focused).toBe(true);
+      expect(result.blocked).toBe(false);
       expect(mockFocus).toHaveBeenCalled();
     });
   });
@@ -620,7 +686,13 @@ describe('notificationWindow source invariants', () => {
   });
 
   it('tries to focus existing window before reopening', () => {
-    expect(windowSource).toContain('existing.focus()');
+    expect(windowSource).toContain('pointAndFocus(existing)');
+  });
+
+  it('exposes armed-window focus result for new operator events', () => {
+    expect(windowSource).toContain('export function focusArmedNotificationPanelWindow');
+    expect(windowSource).toContain('not_armed');
+    expect(windowSource).toContain('popup_blocked');
   });
 });
 
@@ -668,8 +740,9 @@ describe('App.tsx notification integration', () => {
     expect(appSource).toContain("import { NotificationHistoryPanel } from '../features/notifications/NotificationHistoryPanel'");
   });
 
-  it('imports isNotificationPanelRoute', () => {
-    expect(appSource).toContain("import { isNotificationPanelRoute } from '../features/notifications/notificationWindow'");
+  it('imports notification window helpers', () => {
+    expect(appSource).toContain('focusArmedNotificationPanelWindow');
+    expect(appSource).toContain('isNotificationPanelRoute');
   });
 
   it('renders NotificationHistoryPanel in the notifications view mode', () => {
@@ -713,5 +786,18 @@ describe('App.tsx notification integration', () => {
     expect(appSource).toContain('toggleNotificationSidePanel');
     expect(appSource).toContain('closeNotificationSidePanel');
     expect(appSource).toContain('shouldRenderNotificationSidePanel');
+  });
+
+  it('polls the canonical feed and drives operator-bell cues', () => {
+    expect(appSource).toContain('fetchOperatorNotifications');
+    expect(appSource).toContain('detectNewUnreadNotificationIds');
+    expect(appSource).toContain('notificationBell');
+    expect(appSource).toContain('notificationUnreadCount={notificationBell.unreadCount}');
+  });
+
+  it('styles operator-bell attention state', () => {
+    expect(appShellCss).toContain('notification-sidebar-button-attention');
+    expect(appShellCss).toContain('notification-sidebar-badge');
+    expect(notificationsCss).toContain('notification-new-divider');
   });
 });

@@ -156,6 +156,25 @@
   background: rgba(122, 162, 247, 0.04);
 }
 
+.notification-item-new {
+  box-shadow: inset 0 0 0 1px rgba(122, 162, 247, 0.28);
+}
+
+.notification-new-divider {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 4px 12px;
+  background: rgba(122, 162, 247, 0.16);
+  color: var(--accent);
+  border-top: 1px solid var(--accent-dim);
+  border-bottom: 1px solid var(--accent-dim);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .notification-item-read {
   border-left: 3px solid transparent;
   opacity: 0.75;

@@ -17,6 +17,16 @@ interface Props {
   notificationHistoryMode?: 'window' | 'sidePanel';
   /** Callback to toggle the side panel notification view */
   onToggleNotificationPanel?: () => void;
+  /** Unread notification count from the global operator feed. */
+  notificationUnreadCount?: number;
+  /** Newly arrived unread notifications since the current session baseline. */
+  notificationNewCount?: number;
+  /** Short text cue for the latest new operator event. */
+  notificationCue?: string | null;
+  /** True when window-mode focus/open was blocked or not armed. */
+  notificationFocusBlocked?: boolean;
+  /** Called when the user explicitly opens/acknowledges the notification surface. */
+  onAcknowledgeNotificationCue?: () => void;
 }
 
 function hasRootCapability(space: Space): boolean {
@@ -30,7 +40,18 @@ function spaceCapabilityLabel(space: Space): string {
   return hasRootCapability(space) ? 'root-backed' : 'no repo';
 }
 
-export function ProjectSidebar({ spaces: rawSpaces, selectedId, onSelect, notificationHistoryMode, onToggleNotificationPanel }: Props) {
+export function ProjectSidebar({
+  spaces: rawSpaces,
+  selectedId,
+  onSelect,
+  notificationHistoryMode,
+  onToggleNotificationPanel,
+  notificationUnreadCount = 0,
+  notificationNewCount = 0,
+  notificationCue = null,
+  notificationFocusBlocked = false,
+  onAcknowledgeNotificationCue,
+}: Props) {
   // In-memory pin state (read once; UI toggles are optimistically applied)
   const [pinnedIds, setPinnedIds] = useState<string[]>(() => readPinnedProjectIds());
 
@@ -110,13 +131,14 @@ export function ProjectSidebar({ spaces: rawSpaces, selectedId, onSelect, notifi
       <div className="panel-subheader notification-sidebar-action">
         <button
           type="button"
-          className="notification-sidebar-button"
+          className={`notification-sidebar-button ${notificationNewCount > 0 ? 'notification-sidebar-button-attention' : ''}`}
           onClick={() => {
             if (notificationHistoryMode === 'sidePanel') {
               onToggleNotificationPanel?.();
             } else {
               openNotificationPanelWindow();
             }
+            onAcknowledgeNotificationCue?.();
           }}
           title={
             notificationHistoryMode === 'sidePanel'
@@ -124,7 +146,18 @@ export function ProjectSidebar({ spaces: rawSpaces, selectedId, onSelect, notifi
               : 'Open notification history panel in a separate window (requires user gesture)'
           }
         >
-          🔔 Notification History
+          <span className="notification-sidebar-button-main">
+            🔔 Notification History
+            {notificationUnreadCount > 0 && (
+              <span className="notification-sidebar-badge">{notificationUnreadCount}</span>
+            )}
+          </span>
+          {notificationCue && (
+            <span className="notification-sidebar-cue">
+              {notificationCue}
+              {notificationFocusBlocked && ' — open the panel once to arm pop-out focus'}
+            </span>
+          )}
         </button>
       </div>
     </div>

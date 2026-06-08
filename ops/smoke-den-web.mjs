@@ -16,6 +16,8 @@
  *   DEN_WEB_URL           - Base URL of the deployed Den Web (default: http://192.168.1.10:18080)
  *   EXPECTED_BUILD_COMMIT - If set, verify den-web-build.json contains this commit hash
  *   EXPECTED_ENV_NAME     - Expected environmentName value (default: den-srv)
+ *   REQUIRE_AGENT_WORK_COMPLETE_NOTIFICATION - If set to 1, require at least one
+ *                         agent_work_complete row in the Core notification feed
  */
 
 import * as http from 'node:http';
@@ -26,6 +28,7 @@ import * as url from 'node:url';
 const DEN_WEB_URL       = process.env.DEN_WEB_URL ?? 'http://192.168.1.10:18080';
 const EXPECTED_BUILD_COMMIT = process.env.EXPECTED_BUILD_COMMIT ?? '';
 const EXPECTED_ENV_NAME = process.env.EXPECTED_ENV_NAME ?? 'den-srv';
+const REQUIRE_AGENT_WORK_COMPLETE_NOTIFICATION = process.env.REQUIRE_AGENT_WORK_COMPLETE_NOTIFICATION === '1';
 
 // Parse base URL
 const BASE = new URL(DEN_WEB_URL.endsWith('/') ? DEN_WEB_URL : DEN_WEB_URL + '/');
@@ -112,6 +115,15 @@ function assertBodyContains(label, result, needle) {
     pass(label);
   } else {
     fail(label, `body does not contain "${needle}"`);
+  }
+}
+
+function parseJsonBody(label, result) {
+  try {
+    return JSON.parse(result.body);
+  } catch (e) {
+    fail(label, `invalid JSON: ${e.message}`);
+    return null;
   }
 }
 
@@ -231,6 +243,39 @@ async function checkCoreApi() {
   assertJson('/den-core-api/api/projects returns JSON', projects);
 }
 
+async function checkNotificationFeed() {
+  console.log('\n── Operator notification feed (via /den-core-api/) ──');
+
+  const feed = await fetchUrl(fullUrl('/den-core-api/api/user-notifications?readFor=web-ui&limit=5'));
+  assertStatus('GET /den-core-api/api/user-notifications', feed);
+  assertJson('/den-core-api/api/user-notifications returns JSON', feed);
+
+  const feedItems = parseJsonBody('/den-core-api/api/user-notifications shape', feed);
+  if (Array.isArray(feedItems)) {
+    pass('notification feed returns an array of Core notification rows');
+    if (feedItems.length > 0 && Object.prototype.hasOwnProperty.call(feedItems[0], 'is_read')) {
+      pass('notification feed includes server-backed read state');
+    } else if (feedItems.length === 0) {
+      pass('notification feed is empty (acceptable without a seeded operator event)');
+    } else {
+      fail('notification feed read state', 'expected rows to include is_read');
+    }
+  } else if (feedItems !== null) {
+    fail('notification feed shape', 'expected JSON array');
+  }
+
+  const agentDone = await fetchUrl(fullUrl('/den-core-api/api/user-notifications?readFor=web-ui&limit=5&metadataType=agent_work_complete'));
+  assertStatus('GET /den-core-api/api/user-notifications?metadataType=agent_work_complete', agentDone);
+  const agentDoneItems = parseJsonBody('agent_work_complete notification feed shape', agentDone);
+  if (Array.isArray(agentDoneItems) && agentDoneItems.length > 0) {
+    pass('agent_work_complete notification sample is available for rendering');
+  } else if (REQUIRE_AGENT_WORK_COMPLETE_NOTIFICATION) {
+    fail('agent_work_complete notification sample', 'required by env but none were returned');
+  } else {
+    pass('agent_work_complete notification sample not required (set REQUIRE_AGENT_WORK_COMPLETE_NOTIFICATION=1 to enforce)');
+  }
+}
+
 async function checkChannelsApi() {
   console.log('\n── Den Channels API (via /api/) ──');
 
@@ -306,6 +351,7 @@ async function main() {
     await checkConfig();
     await checkBuildSentinel();
     await checkCoreApi();
+    await checkNotificationFeed();
     await checkChannelsApi();
     await checkDenHostApi();
     await checkDocumentDiscussion();

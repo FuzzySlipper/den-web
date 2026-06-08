@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import type { AgentStreamEntry, DispatchEntry, Document, DocumentSummary, Message, Space, SubagentRunSummary, TaskSummary } from '../api/types';
 import {
   getDispatch,
@@ -44,7 +44,13 @@ import { PreferencesDialog } from '../features/preferences/PreferencesDialog';
 import { matchHotkey } from '../features/preferences/hotkeyParse';
 import { editableTarget } from '../utils';
 import { NotificationHistoryPanel } from '../features/notifications/NotificationHistoryPanel';
-import { isNotificationPanelRoute } from '../features/notifications/notificationWindow';
+import { focusArmedNotificationPanelWindow, isNotificationPanelRoute } from '../features/notifications/notificationWindow';
+import { fetchNotificationFeed, type NotificationItem, countUnread } from '../features/notifications/notificationFeed';
+import {
+  detectNewUnreadNotificationIds,
+  notificationCueLabel,
+  summarizeNotificationBellCue,
+} from '../features/notifications/notificationBell';
 import {
   closeNotificationSidePanel,
   shouldRenderNotificationSidePanel,
@@ -115,6 +121,13 @@ export default function App() {
 
   // Standalone notification popup: detect #/notification-panel hash route
   const [standalonePopup, setStandalonePopup] = useState(false);
+  const previousNotificationItemsRef = useRef<NotificationItem[] | null>(null);
+  const [notificationBell, setNotificationBell] = useState({
+    unreadCount: 0,
+    newCount: 0,
+    cueLabel: null as string | null,
+    focusBlocked: false,
+  });
 
   useEffect(() => {
     function checkHash() {
@@ -127,9 +140,43 @@ export default function App() {
 
   const fetchProjects = useCallback(() => listProjects(), []);
   const { data: projects } = usePolling(fetchProjects, 5000);
+  const fetchOperatorNotifications = useCallback(() => fetchNotificationFeed([]), []);
+  const { data: operatorNotificationFeed } = usePolling(fetchOperatorNotifications, 10000);
   const fetchSpaces = useCallback(() => listSpaces({ includeHidden: true, includeArchived: true }), []);
   const { data: fetchedSpaces } = usePolling(fetchSpaces, 5000);
   const spaces = useMemo(() => withAllSpacesAggregate(fetchedSpaces), [fetchedSpaces]);
+
+  useEffect(() => {
+    if (!operatorNotificationFeed || operatorNotificationFeed.error) return;
+
+    const currentItems = operatorNotificationFeed.items;
+    const newUnreadIds = detectNewUnreadNotificationIds(previousNotificationItemsRef.current, currentItems);
+    previousNotificationItemsRef.current = currentItems;
+    const unreadCount = countUnread(currentItems);
+
+    if (newUnreadIds.length === 0) {
+      // The operator bell mirrors a polled external Core feed; updating the cue here is the sync point.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setNotificationBell(prev => ({ ...prev, unreadCount }));
+      return;
+    }
+
+    const cue = summarizeNotificationBellCue(currentItems, newUnreadIds);
+    const focusResult = prefs.layout.notificationHistoryMode === 'window'
+      ? focusArmedNotificationPanelWindow()
+      : { blocked: false };
+
+    setNotificationBell({
+      unreadCount,
+      newCount: newUnreadIds.length,
+      cueLabel: notificationCueLabel(cue),
+      focusBlocked: focusResult.blocked,
+    });
+  }, [operatorNotificationFeed, prefs.layout.notificationHistoryMode]);
+
+  const acknowledgeNotificationCue = useCallback(() => {
+    setNotificationBell(prev => ({ ...prev, newCount: 0, cueLabel: null, focusBlocked: false }));
+  }, []);
 
   // Auto-select a normal project-kind space when possible to preserve existing project-centric startup.
   const effectiveSpaceId = selectedSpaceId ?? defaultSpaceId(spaces);
@@ -622,6 +669,11 @@ export default function App() {
           onSelect={handleProjectSelect}
           notificationHistoryMode={prefs.layout.notificationHistoryMode}
           onToggleNotificationPanel={() => setShowNotificationPanel(toggleNotificationSidePanel)}
+          notificationUnreadCount={notificationBell.unreadCount}
+          notificationNewCount={notificationBell.newCount}
+          notificationCue={notificationBell.cueLabel}
+          notificationFocusBlocked={notificationBell.focusBlocked}
+          onAcknowledgeNotificationCue={acknowledgeNotificationCue}
         />
 
         <div className="panel panel-main">

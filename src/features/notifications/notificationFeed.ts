@@ -26,6 +26,7 @@ import { getUserNotifications, markNotificationsRead } from '../../api/client';
 
 export type NotificationSourceKind =
   | 'agent_work_complete'   // Agent/orchestrator work-drain complete notification
+  | 'user_directed_message' // Direct operator/user-directed message surfaced through Core notifications
   | 'user_notification';    // General user notification from Core
 
 export type NotificationSeverity = 'info' | 'success' | 'warning' | 'error';
@@ -116,6 +117,11 @@ function severityFromUrgency(urgency: string | null): NotificationSeverity {
 
 function classifySourceType(metadata: Record<string, unknown> | null): NotificationSourceKind {
   if (metadata?.type === 'agent_work_complete') return 'agent_work_complete';
+  if (
+    metadata?.type === 'user_directed_message'
+    || metadata?.type === 'direct_operator_message'
+    || metadata?.type === 'operator_message'
+  ) return 'user_directed_message';
   return 'user_notification';
 }
 
@@ -145,7 +151,11 @@ function mapFeedItem(item: NotificationFeedItem): NotificationItem {
   const dispatchId = typeof metadata.dispatch_id === 'number' ? metadata.dispatch_id : null;
 
   // Derive a short label for sourceKind
-  let sourceKind = sourceType === 'agent_work_complete' ? 'Agent work complete' : 'Notification';
+  let sourceKind = sourceType === 'agent_work_complete'
+    ? 'Agent work complete'
+    : sourceType === 'user_directed_message'
+      ? 'User-directed message'
+      : 'Notification';
   const completionScope = metadata.completion_scope;
   if (typeof completionScope === 'string') {
     sourceKind = `Agent ${completionScope.replace(/_/g, ' ')}`;
