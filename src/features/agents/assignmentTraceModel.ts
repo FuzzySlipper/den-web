@@ -24,7 +24,7 @@ export function sourceLabel(availability: TraceSourceAvailability): string {
   switch (availability) {
     case 'available': return 'Available';
     case 'core_unavailable': return 'Core Unavailable';
-    case 'gateway_unavailable': return 'Gateway Unavailable';
+    case 'gateway_unavailable': return 'Delivery Evidence Unavailable';
     case 'no_assignment_messages': return 'No Channel Messages';
     case 'no_activity_events': return 'No Activity Events';
     case 'delivery_missing': return 'Delivery Record Missing';
@@ -91,7 +91,7 @@ export function phaseClass(phase: AssignmentPhase): string {
 }
 
 // =============================================================================
-// Gateway evidence status helpers
+// Delivery evidence status helpers
 // =============================================================================
 
 export type DeliveryStatusClass = 'pending' | 'delivered' | 'completed' | 'failed' | 'missing';
@@ -141,7 +141,7 @@ export function isCoreAvailable(trace: AssignmentTraceResponse): boolean {
   return trace.coreAvailability === 'available' && trace.coreState !== null;
 }
 
-export function isGatewayAvailable(trace: AssignmentTraceResponse): boolean {
+export function isDeliveryEvidenceAvailable(trace: AssignmentTraceResponse): boolean {
   return trace.gatewayAvailability === 'available' && trace.gatewayEvidence !== null;
 }
 

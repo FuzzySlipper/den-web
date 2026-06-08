@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent, KeyboardEvent, UIEvent } from 'react';
-import type { AgentWorkCurrentResponse, AgentWorkEventsResponse, Channel, ChannelActivityEvent, ChannelMessage, ChannelProjectLink, ChannelReactionSummary, DirectAgentEventsResponse, GatewayDirectAgentMessage, GatewayMember, GatewayMemberships, GatewayTestWake } from '../../api/types';
+import type { AgentWorkCurrentResponse, AgentWorkEventsResponse, Channel, ChannelActivityEvent, ChannelMessage, ChannelProjectLink, ChannelReactionSummary, DirectAgentEventsResponse, GatewayMember, GatewayMemberships } from '../../api/types';
 import {
   ensureAgentCommonsChannel,
   ensureProjectDefaultChannel,
@@ -17,7 +17,6 @@ import {
   postChannelMessage,
   addChannelReaction,
   postGatewayDirectAgentMessage,
-  postGatewayTestWake,
   upsertChannelMembership,
 } from '../../api/client';
 import { usePolling } from '../../hooks/usePolling';
@@ -168,18 +167,24 @@ function parseDirectMessageMetadata(message: ChannelMessage): Record<string, unk
   }
 }
 
-function directMessageEvidence(message: ChannelMessage): { status: string; target: string | null; url: string } | null {
+function directDeliveryStatus(message: ChannelMessage): string | null {
   const metadata = parseDirectMessageMetadata(message);
   if (!metadata) return null;
   const status = [metadata.deliveryStatus, metadata.claimStatus, metadata.completionStatus, metadata.suppressionStatus]
     .filter(value => typeof value === 'string' && value.length > 0)
     .join(' · ');
-  const target = typeof metadata.targetMemberIdentity === 'string' ? metadata.targetMemberIdentity : null;
-  return {
-    status: status || 'recorded_pending_claim',
-    target,
-    url: `/api/gateway/messages/${message.id}`,
-  };
+  return status || 'pending';
+}
+
+function directDeliveryDetail(status: string): string {
+  const normalized = status.toLowerCase();
+  if ((normalized.includes('recorded') && normalized.includes('pending')) || normalized.includes('pending')) {
+    return 'Delivery recorded; waiting for target claim/completion.';
+  }
+  if (normalized.includes('claimed') || normalized.includes('delivered') || normalized.includes('delivering')) {
+    return 'Delivery accepted by target runtime; waiting for reply.';
+  }
+  return status;
 }
 
 function findAgentReplyForMessage(message: ChannelMessage, messages: ChannelMessage[], agentIdentity?: string): ChannelMessage | null {
@@ -201,8 +206,8 @@ function findAgentReplyForMessage(message: ChannelMessage, messages: ChannelMess
 }
 
 function deriveWakeProgress(message: ChannelMessage, messages: ChannelMessage[]): WakeProgress | null {
-  const evidence = directMessageEvidence(message);
-  if (!evidence) return null;
+  const status = directDeliveryStatus(message);
+  if (!status) return null;
   const reply = findAgentReplyForMessage(message, messages);
   if (reply) {
     return {
@@ -212,20 +217,20 @@ function deriveWakeProgress(message: ChannelMessage, messages: ChannelMessage[])
     };
   }
 
-  const normalizedStatus = evidence.status.toLowerCase();
+  const normalizedStatus = status.toLowerCase();
   const statusParts = normalizedStatus.split(' · ').map(part => part.trim());
   const hasClaimOrDeliveryEvidence = statusParts.some(part => part === 'claimed' || part === 'delivered' || part === 'delivering');
   if (hasClaimOrDeliveryEvidence) {
     return {
       label: 'Agent is preparing a reply',
-      detail: evidence.status,
+      detail: directDeliveryDetail(status),
       state: 'preparing',
     };
   }
 
   return {
-    label: 'Agent wake recorded',
-    detail: evidence.status,
+    label: 'Direct delivery recorded',
+    detail: directDeliveryDetail(status),
     state: 'recorded',
   };
 }
@@ -402,10 +407,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   const [sending, setSending] = useState(false);
   const [inviteSending, setInviteSending] = useState(false);
   const [memberSaving, setMemberSaving] = useState(false);
-  const [wakeSending, setWakeSending] = useState(false);
   const [sendError, setSendError] = useState<Error | null>(null);
-  const [lastWakeResult, setLastWakeResult] = useState<GatewayTestWake | null>(null);
-  const [lastDirectResult, setLastDirectResult] = useState<GatewayDirectAgentMessage | null>(null);
   const normalizedSenderIdentity = senderIdentity.trim();
 
   const fetchChannels = useCallback(async () => {
@@ -818,13 +820,12 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     setSendError(null);
     try {
       if (sendMode === 'direct' && selectedTarget) {
-        const result = await postGatewayDirectAgentMessage({
+        await postGatewayDirectAgentMessage({
           channelId: activeChannel.id,
           memberIdentity: selectedTarget.memberIdentity,
           senderIdentity: normalizedSenderIdentity,
           body,
         });
-        setLastDirectResult(result);
       } else if (sendMode === 'channel') {
         await postChannelMessage(activeChannel.id, {
           senderType: 'user',
@@ -832,7 +833,6 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
           messageKind: 'human_text',
           body,
         });
-        setLastDirectResult(null);
       }
       setDraft('');
       // Record message in composer history
@@ -926,25 +926,6 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     }
   }, [activeChannel, editingMember, editingMembershipStatus, editingWakePolicy, refreshMemberships]);
 
-  const handleTestWake = useCallback(async () => {
-    if (!activeChannel || !selectedTarget || !normalizedSenderIdentity) return;
-    setWakeSending(true);
-    setSendError(null);
-    try {
-      const result = await postGatewayTestWake({
-        channelId: activeChannel.id,
-        memberIdentity: selectedTarget.memberIdentity,
-        requestedBy: normalizedSenderIdentity,
-        note: 'den-channels-ui-controlled-probe',
-      });
-      setLastWakeResult(result);
-      refreshMessages();
-    } catch (error) {
-      setSendError(error instanceof Error ? error : new Error(String(error)));
-    } finally {
-      setWakeSending(false);
-    }
-  }, [activeChannel, normalizedSenderIdentity, refreshMessages, selectedTarget]);
 
   const composerPlaceholder = identityRequired
     ? 'Set Posting as before sending'
@@ -1123,7 +1104,6 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
               {!isMessageSearchActive && <ActivityTimeline events={unanchoredActivityEvents} />}
               {!isMessageSearchActive && <DeliveryProgressCards blocks={deliveryProgressBlocks} />}
               {displayedMessages.map(message => {
-                const evidence = directMessageEvidence(message);
                 const wakeProgress = deriveWakeProgress(message, sortedMessages);
                 const messageReactions = reactionsByMessageId.get(message.id) ?? [];
                 const anchoredActivityEvents = activityEventsByMessageId.get(message.id) ?? [];
@@ -1149,13 +1129,6 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
                       <span className={`channel-chat-wake-progress channel-chat-wake-progress-${wakeProgress.state}`}>
                         <strong>{wakeProgress.label}</strong>
                         <span>{wakeProgress.detail}</span>
-                      </span>
-                    )}
-                    {evidence && (
-                      <span className="channel-chat-delivery-status">
-                        <strong>{evidence.target ? `Direct to ${evidence.target}` : 'Direct agent request'}</strong>
-                        <span>{evidence.status}</span>
-                        <a href={evidence.url} target="_blank" rel="noreferrer">Gateway evidence</a>
                       </span>
                     )}
                     {(() => {
@@ -1309,10 +1282,10 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
               </div>
             )}
           </section>
-          <section className="channel-chat-debug-panel" aria-label="Wake debug controls and evidence">
+          <section className="channel-chat-debug-panel" aria-label="Agent participant routing controls">
             <div className="channel-chat-debug-header">
-              <strong>Wake debug</strong>
-              <span>Manual test tools</span>
+              <strong>Agent routing</strong>
+              <span>Participant controls</span>
             </div>
             <div className="channel-chat-invite">
               <input
@@ -1337,32 +1310,6 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
               </button>
               <span className="channel-chat-routing-note">Wake policy changes apply to future deliveries only.</span>
             </div>
-            <button
-              type="button"
-              className="channel-chat-test-wake"
-              onClick={handleTestWake}
-              disabled={!activeChannel || !selectedTarget || wakeSending || identityRequired}
-            >
-              {wakeSending ? 'Recording wake…' : 'Test wake selected'}
-            </button>
-            {lastWakeResult && (
-              <div className="channel-chat-wake-result">
-                <strong>{lastWakeResult.status}</strong>
-                <span>{lastWakeResult.memberIdentity} · message {lastWakeResult.messageId}</span>
-                <span>{lastWakeResult.evidenceSummary}</span>
-              </div>
-            )}
-            {lastDirectResult && (
-              <div className="channel-chat-wake-result">
-                <strong>{lastDirectResult.deliveryStatus}</strong>
-                <span>
-                  {lastDirectResult.memberIdentity} · request {lastDirectResult.requestId} · claim {lastDirectResult.claimStatus} · completion {lastDirectResult.completionStatus} · suppression {lastDirectResult.suppressionStatus}
-                </span>
-                <a href={lastDirectResult.gatewayMessageUrl} target="_blank" rel="noreferrer">Gateway message evidence</a>
-                <a href={lastDirectResult.gatewayEventsUrl} target="_blank" rel="noreferrer">Gateway events evidence</a>
-                <span>{lastDirectResult.evidenceSummary}</span>
-              </div>
-            )}
           </section>
         </aside>
       </div>

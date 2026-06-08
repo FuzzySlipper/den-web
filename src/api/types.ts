@@ -108,8 +108,6 @@ export type {
 export type {
   GatewayMember,
   GatewayMemberships,
-  PostGatewayTestWakeRequest,
-  GatewayTestWake,
   PostGatewayDirectAgentMessageRequest,
   GatewayDirectAgentMessage,
   UpsertChannelMembershipRequest,

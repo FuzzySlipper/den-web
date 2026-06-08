@@ -11,7 +11,7 @@ import {
   deliveryStatusClass,
   checkpointStatusClass,
   isCoreAvailable,
-  isGatewayAvailable,
+  isDeliveryEvidenceAvailable,
   hasMessages,
   hasActivityEvents,
   formatTraceTimestamp,
@@ -23,7 +23,7 @@ describe('sourceLabel / sourceClass', () => {
   it('returns human-readable labels for each availability value', () => {
     expect(sourceLabel('available')).toBe('Available');
     expect(sourceLabel('core_unavailable')).toBe('Core Unavailable');
-    expect(sourceLabel('gateway_unavailable')).toBe('Gateway Unavailable');
+    expect(sourceLabel('gateway_unavailable')).toBe('Delivery Evidence Unavailable');
     expect(sourceLabel('no_assignment_messages')).toBe('No Channel Messages');
     expect(sourceLabel('no_activity_events')).toBe('No Activity Events');
     expect(sourceLabel('delivery_missing')).toBe('Delivery Record Missing');
@@ -107,8 +107,8 @@ describe('availability checks', () => {
     expect(isCoreAvailable(happyTrace)).toBe(true);
   });
 
-  it('detects available gateway evidence', () => {
-    expect(isGatewayAvailable(happyTrace)).toBe(true);
+  it('detects available delivery evidence', () => {
+    expect(isDeliveryEvidenceAvailable(happyTrace)).toBe(true);
   });
 
   it('detects channel messages', () => {
@@ -127,12 +127,12 @@ describe('availability checks', () => {
     expect(isCoreAvailable(trace)).toBe(false);
   });
 
-  it('returns false when gateway is unavailable', () => {
+  it('returns false when delivery evidence is unavailable', () => {
     const trace = fakeAssignmentTrace({
       gatewayAvailability: 'gateway_unavailable',
       gatewayEvidence: null,
     });
-    expect(isGatewayAvailable(trace)).toBe(false);
+    expect(isDeliveryEvidenceAvailable(trace)).toBe(false);
   });
 
   it('returns false when there are no messages', () => {

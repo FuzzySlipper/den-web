@@ -26,25 +26,6 @@ export interface GatewayMemberships {
   members: GatewayMember[];
 }
 
-export interface PostGatewayTestWakeRequest {
-  channelId?: number;
-  projectId?: string;
-  memberIdentity: string;
-  requestedBy?: string;
-  note?: string;
-}
-
-export interface GatewayTestWake {
-  status: string;
-  memberIdentity: string;
-  wakePolicy: string;
-  messageId: number;
-  channelId: number;
-  gatewayMessageUrl: string;
-  gatewayEventsUrl: string;
-  evidenceSummary: string;
-}
-
 export interface PostGatewayDirectAgentMessageRequest {
   channelId?: number;
   projectId?: string;

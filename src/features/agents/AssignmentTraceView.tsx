@@ -14,7 +14,7 @@ import {
   deliveryStatusClass,
   checkpointStatusClass,
   isCoreAvailable,
-  isGatewayAvailable,
+  isDeliveryEvidenceAvailable,
   hasMessages,
   hasActivityEvents,
   formatTraceTimestamp,
@@ -120,7 +120,7 @@ export function AssignmentTraceView({ assignmentId, projectId, channelId, closeP
               </div>
               <div className="trace-source-grid">
                 <SourceChip label="Core" availability={trace.coreAvailability} />
-                <SourceChip label="Gateway" availability={trace.gatewayAvailability} />
+                <SourceChip label="Delivery" availability={trace.gatewayAvailability} />
                 <SourceChip label="Channel Messages" availability={trace.messagesAvailability} />
                 <SourceChip label="Activity Events" availability={trace.activityAvailability} />
               </div>
@@ -207,13 +207,13 @@ export function AssignmentTraceView({ assignmentId, projectId, channelId, closeP
               )}
             </div>
 
-            {/* Gateway evidence section */}
+            {/* Delivery evidence section */}
             <div className="detail-section">
               <div className="detail-section-header">
-                <h3>Gateway Delivery Evidence</h3>
-                <span className="detail-subtle">Distinct from Core &mdash; shows delivery pipeline</span>
+                <h3>Delivery Evidence</h3>
+                <span className="detail-subtle">Channels delivery pipeline state</span>
               </div>
-              {!isGatewayAvailable(trace) ? (
+              {!isDeliveryEvidenceAvailable(trace) ? (
                 <div className="trace-unavailable">
                   {sourceLabel(trace.gatewayAvailability)}
                 </div>
@@ -241,16 +241,16 @@ export function AssignmentTraceView({ assignmentId, projectId, channelId, closeP
                     )}
                     <div className="trace-gateway-links">
                       {trace.gatewayEvidence.gatewayMessageUrl && (
-                        <a href={trace.gatewayEvidence.gatewayMessageUrl} target="_blank" rel="noreferrer">Gateway Message</a>
+                        <a href={trace.gatewayEvidence.gatewayMessageUrl} target="_blank" rel="noreferrer">Message Record</a>
                       )}
                       {trace.gatewayEvidence.gatewayEventsUrl && (
-                        <a href={trace.gatewayEvidence.gatewayEventsUrl} target="_blank" rel="noreferrer">Gateway Events</a>
+                        <a href={trace.gatewayEvidence.gatewayEventsUrl} target="_blank" rel="noreferrer">Event Records</a>
                       )}
                     </div>
                   </div>
                 </>
               ) : (
-                <div className="trace-unavailable">No gateway evidence</div>
+                <div className="trace-unavailable">No delivery evidence</div>
               )}
             </div>
 

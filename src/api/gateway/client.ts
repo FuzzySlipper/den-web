@@ -1,8 +1,6 @@
 import type {
   GatewayMemberships,
-  GatewayTestWake,
   GatewayDirectAgentMessage,
-  PostGatewayTestWakeRequest,
   PostGatewayDirectAgentMessageRequest,
   AgentsOverviewResponse,
   AgentDetailResponse,
@@ -117,10 +115,6 @@ export function listGatewayMemberships(opts: { channelId?: number; projectId?: s
     leftGraceMinutes: opts.leftGraceMinutes,
   });
   return getChannels(`/gateway/memberships${q}`);
-}
-
-export function postGatewayTestWake(request: PostGatewayTestWakeRequest): Promise<GatewayTestWake> {
-  return postChannels('/gateway/test-wakes', request);
 }
 
 export function postGatewayDirectAgentMessage(request: PostGatewayDirectAgentMessageRequest): Promise<GatewayDirectAgentMessage> {

@@ -65,7 +65,7 @@ export function directAgentMessageDisplay(
   );
   const summary = firstString(message.summary);
   const primaryBody = body ?? (isDirectAgentWake ? metadataBody : metadataBody ?? summary) ?? '';
-  const deliverySummary = isDirectAgentWake && summary && summary !== primaryBody ? summary : null;
+  const deliverySummary = isDirectAgentWake ? null : summary && summary !== primaryBody ? summary : null;
   return { primaryBody, deliverySummary, isDirectAgentWake };
 }
 

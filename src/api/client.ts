@@ -136,7 +136,6 @@ export type {
 export {
   upsertChannelMembership,
   listGatewayMemberships,
-  postGatewayTestWake,
   postGatewayDirectAgentMessage,
   listAgentsOverview,
   getAgentDetail,
