@@ -45,8 +45,8 @@ function makeEntry(overrides: Partial<DirectConversationEntry> = {}): DirectConv
     channelMessageId: null,
     direction: 'human_to_agent',
     senderIdentity: 'patch',
-    body: 'Hello',
-    summary: null,
+    recipientIdentity: 'agent',
+    bodyPreview: 'Hello',
     sourceChannelId: null,
     sourceProjectId: null,
     sourceTaskId: null,
@@ -62,10 +62,14 @@ function makeConv(overrides: Partial<DirectConversation> = {}): DirectConversati
     id: 1,
     humanIdentity: 'patch',
     agentIdentity: 'test-agent',
-    projectId: null,
+    scopeProjectId: null,
+    displayTitle: null,
+    isArchived: false,
+    isMuted: false,
+    settingsJson: null,
     lastEntryAt: null,
     lastEntryPreview: null,
-    entryCount: 0,
+    lastEntrySender: null,
     unreadCount: 0,
     createdAt: '2026-06-06T12:00:00Z',
     updatedAt: '2026-06-06T12:00:00Z',
@@ -86,18 +90,15 @@ describe('DmTranscriptView — entry rendering', () => {
     });
   });
 
-  describe('body-first / summary-secondary behavior', () => {
-    it('renders body as primary text', () => {
-      const entry = makeEntry({ body: 'What is the task status?', summary: null });
-      expect(entry.body).toBe('What is the task status?');
+  describe('body-preview primary behavior', () => {
+    it('renders bodyPreview as primary text from the live API contract', () => {
+      const entry = makeEntry({ bodyPreview: 'What is the task status?' });
+      expect(entry.bodyPreview).toBe('What is the task status?');
     });
 
-    it('keeps summary separate and secondary', () => {
-      const entry = makeEntry({ body: 'Check agent', summary: 'Delivery diagnostic' });
-      expect(entry.body).toBe('Check agent');
-      expect(entry.summary).toBe('Delivery diagnostic');
-      // Body must not be modified to include summary
-      expect(entry.body).not.toContain('Delivery diagnostic');
+    it('uses an empty string fallback when bodyPreview is absent', () => {
+      const entry = makeEntry({ bodyPreview: null });
+      expect(dmPreviewText(entry)).toBe('');
     });
   });
 
@@ -150,9 +151,8 @@ describe('DmTranscriptView — entry rendering', () => {
     });
 
     it('send status shows normal direct-agent wake path', () => {
-      const evidenceSummary = 'sent via direct-agent wake';
-      const status = `Sent → ch:600 msg:1 req:abc — ${evidenceSummary}.`;
-      expect(status).toContain('direct-agent wake');
+      const status = 'Sent → ch:600 event:1 entry:2 req:abc — recorded.';
+      expect(status).toContain('recorded');
       expect(status).not.toContain('Hermes session');
       expect(status).not.toContain('private lane');
     });
@@ -199,19 +199,19 @@ describe('DmConversationList — rendering logic', () => {
 
   describe('preview text', () => {
     it('returns full text when under maxLen', () => {
-      expect(dmPreviewText(makeEntry({ body: 'Hi' }))).toBe('Hi');
+      expect(dmPreviewText(makeEntry({ bodyPreview: 'Hi' }))).toBe('Hi');
     });
 
     it('truncates with ellipsis when over maxLen', () => {
       const long = 'a'.repeat(100);
-      const preview = dmPreviewText(makeEntry({ body: long }));
+      const preview = dmPreviewText(makeEntry({ bodyPreview: long }));
       expect(preview.length).toBe(81); // 80 + '…'
       expect(preview.endsWith('…')).toBe(true);
     });
 
-    it('falls back to summary when body is empty', () => {
-      const preview = dmPreviewText(makeEntry({ body: '', summary: 'Summary text' }));
-      expect(preview).toBe('Summary text');
+    it('returns empty string when bodyPreview is empty', () => {
+      const preview = dmPreviewText(makeEntry({ bodyPreview: '' }));
+      expect(preview).toBe('');
     });
   });
 
@@ -271,38 +271,32 @@ describe('DmTranscriptView — send/mark-read/unread behavior', () => {
   });
 
   describe('send response canonical handles', () => {
-    it('DirectConversationSendResponse exposes channelMessageId', () => {
-      // The send status must surface canonical channelMessageId from the response
-      const channelMessageId = 42;
-      const status = `Sent → ch:600 msg:${channelMessageId} req:abc — normal direct-agent wake.`;
-      expect(status).toContain('msg:42');
+    it('DirectConversationSendResponse exposes eventId', () => {
+      const eventId = 42;
+      const status = `Sent → ch:600 event:${eventId} entry:2 req:abc — recorded.`;
+      expect(status).toContain('event:42');
       expect(status).toContain('ch:600');
     });
 
-    it('DirectConversationSendResponse exposes channelId', () => {
-      const channelId = 600;
-      const status = `Sent → ch:${channelId} msg:99 req:xyz — normal direct-agent wake.`;
-      expect(status).toContain('ch:600');
+    it('DirectConversationSendResponse exposes entryId', () => {
+      const entryId = 99;
+      const status = `Sent → ch:600 event:42 entry:${entryId} req:xyz — recorded.`;
+      expect(status).toContain('entry:99');
     });
 
     it('DirectConversationSendResponse exposes requestId', () => {
       const requestId = 'req-abc123';
-      const status = `Sent → ch:600 msg:1 req:${requestId} — normal direct-agent wake.`;
+      const status = `Sent → ch:600 event:1 entry:2 req:${requestId} — recorded.`;
       expect(status).toContain('req:req-abc123');
     });
 
-    it('DirectConversationSendResponse exposes evidenceSummary', () => {
-      const evidenceSummary = 'sent via direct-agent wake';
-      const status = `Sent → ch:600 msg:1 req:abc — ${evidenceSummary}.`;
-      expect(status).toContain('sent via direct-agent wake');
-    });
-
-    it('send status format includes all canonical handles', () => {
-      const status = 'Sent → ch:604 msg:1024 req:xyz789 — sent via direct-agent wake.';
+    it('send status format includes all live direct-conversation handles', () => {
+      const status = 'Sent → ch:604 event:1024 entry:33 req:xyz789 — recorded.';
       expect(status).toMatch(/ch:\d+/);
-      expect(status).toMatch(/msg:\d+/);
+      expect(status).toMatch(/event:\d+/);
+      expect(status).toMatch(/entry:\d+/);
       expect(status).toMatch(/req:\S+/);
-      expect(status).toContain('direct-agent wake');
+      expect(status).toContain('recorded');
     });
   });
 });

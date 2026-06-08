@@ -15,9 +15,11 @@ interface Props {
   selectedId?: number | null;
   /** Optional agent identity to auto-create a conversation for on open. */
   initialAgentIdentity?: string | null;
+  /** Optional project scope used when auto-creating a conversation and sending messages. */
+  scopeProjectId?: string | null;
 }
 
-export function DmConversationList({ onSelectConversation, selectedId, initialAgentIdentity }: Props) {
+export function DmConversationList({ onSelectConversation, selectedId, initialAgentIdentity, scopeProjectId }: Props) {
   const fetchConversations = useCallback(
     () => listDirectConversations({ humanIdentity: DM_HUMAN_IDENTITY, limit: 50 }),
     [],
@@ -39,6 +41,7 @@ export function DmConversationList({ onSelectConversation, selectedId, initialAg
         const conv = await createDirectConversation({
           humanIdentity: DM_HUMAN_IDENTITY,
           agentIdentity: initialAgentIdentity!,
+          scopeProjectId: scopeProjectId ?? undefined,
         });
         if (!cancelled) {
           onSelectConversation(conv);
@@ -52,7 +55,7 @@ export function DmConversationList({ onSelectConversation, selectedId, initialAg
     }
     ensure();
     return () => { cancelled = true; };
-  }, [initialAgentIdentity]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initialAgentIdentity, scopeProjectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sorted = conversations ? sortConversationsByRecent(conversations) : [];
 
@@ -102,7 +105,9 @@ export function DmConversationList({ onSelectConversation, selectedId, initialAg
               {conv.lastEntryAt && (
                 <span className="dm-conversation-time">{formatTimeAgo(conv.lastEntryAt)}</span>
               )}
-              <span className="dm-conversation-count">{conv.entryCount} entries</span>
+              {conv.scopeProjectId && (
+                <span className="dm-conversation-project">project: {conv.scopeProjectId}</span>
+              )}
             </div>
           </button>
         ))}

@@ -1,4 +1,4 @@
-import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse, AgentWorkCurrentResponse, AgentWorkEventsResponse, DirectAgentEventsResponse, DirectConversation, DirectConversationEntriesResponse, DirectConversationSendResponse, ReadCursor } from './types';
+import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse, AgentWorkCurrentResponse, AgentWorkEventsResponse, DirectAgentEventsResponse, DirectConversation, DirectConversationListResponse, DirectConversationEntriesResponse, DirectConversationSendRequest, DirectConversationSendResponse, DirectConversationCreateRequest, ReadCursor } from './types';
 import { normalizeApiBase } from '../config';
 
 let denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
@@ -257,12 +257,13 @@ export interface ListDirectConversationsOpts {
   afterId?: number;
 }
 
-export function listDirectConversations(opts: ListDirectConversationsOpts = {}): Promise<DirectConversation[]> {
+export async function listDirectConversations(opts: ListDirectConversationsOpts = {}): Promise<DirectConversation[]> {
   const q = buildQuery({ humanIdentity: opts.humanIdentity, limit: opts.limit, afterId: opts.afterId });
-  return getChannels(`/direct-conversations${q}`);
+  const response = await getChannels<DirectConversationListResponse | DirectConversation[]>(`/direct-conversations${q}`);
+  return Array.isArray(response) ? response : response.conversations;
 }
 
-export function createDirectConversation(request: { humanIdentity: string; agentIdentity: string }): Promise<DirectConversation> {
+export function createDirectConversation(request: DirectConversationCreateRequest): Promise<DirectConversation> {
   return postChannels('/direct-conversations', request);
 }
 
@@ -280,15 +281,7 @@ export function listDirectConversationEntries(conversationId: number, opts: List
   return getChannels(`/direct-conversations/${conversationId}/entries${q}`);
 }
 
-export function sendDirectMessage(conversationId: number, request: {
-  senderIdentity: string;
-  body: string;
-  summary?: string | null;
-  sourceProjectId?: string | null;
-  sourceTaskId?: number | null;
-  assignmentId?: string | null;
-  workerRunId?: string | null;
-}): Promise<DirectConversationSendResponse> {
+export function sendDirectMessage(conversationId: number, request: DirectConversationSendRequest): Promise<DirectConversationSendResponse> {
   return postChannels(`/direct-conversations/${conversationId}/send`, request);
 }
 

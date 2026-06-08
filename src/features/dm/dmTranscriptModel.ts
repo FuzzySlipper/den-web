@@ -55,7 +55,7 @@ export function sortConversationsByRecent(convs: DirectConversation[]): DirectCo
  * Safe truncated preview text.
  */
 export function dmPreviewText(entry: DirectConversationEntry, maxLen = 80): string {
-  const text = entry.body || entry.summary || '';
+  const text = entry.bodyPreview ?? '';
   if (text.length <= maxLen) return text;
   return text.slice(0, maxLen) + '…';
 }

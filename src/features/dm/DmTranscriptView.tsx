@@ -29,10 +29,7 @@ function DmEntry({ entry }: { entry: DirectConversationEntry }) {
         <span className="dm-entry-direction">{direction}</span>
         <span className="dm-entry-time">{formatTimeAgo(entry.createdAt)}</span>
       </div>
-      <div className="dm-entry-body">{entry.body}</div>
-      {entry.summary && (
-        <div className="dm-entry-summary">{entry.summary}</div>
-      )}
+      <div className="dm-entry-body">{entry.bodyPreview ?? ''}</div>
       {sourceBadge && (
         <div className="dm-entry-source-badge">{sourceBadge}</div>
       )}
@@ -88,10 +85,11 @@ export function DmTranscriptView({ conversation, onBack, readIdentity }: Props) 
       const resp = await sendDirectMessage(conversation.id, {
         senderIdentity: DM_HUMAN_IDENTITY,
         body,
+        sourceProjectId: conversation.scopeProjectId ?? undefined,
       });
       setComposing('');
       setSendStatus(
-        `Sent → ch:${resp.channelId} msg:${resp.channelMessageId} req:${resp.requestId} — ${resp.evidenceSummary}.`,
+        `Sent → ch:${resp.channelId} event:${resp.eventId} entry:${resp.entryId} req:${resp.requestId} — ${resp.status}.`,
       );
       refresh();
     } catch (err: unknown) {
@@ -99,7 +97,7 @@ export function DmTranscriptView({ conversation, onBack, readIdentity }: Props) 
     } finally {
       setSending(false);
     }
-  }, [composing, conversation.id, refresh, sending]);
+  }, [composing, conversation.id, conversation.scopeProjectId, refresh, sending]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -116,7 +114,7 @@ export function DmTranscriptView({ conversation, onBack, readIdentity }: Props) 
         <div className="dm-transcript-title">
           <h3>{conversation.agentIdentity}</h3>
           <span className="dm-transcript-meta">
-            {conversation.entryCount} entries · {conversation.projectId ? `project: ${conversation.projectId}` : 'no linked project'}
+            {conversation.scopeProjectId ? `project: ${conversation.scopeProjectId}` : 'no linked project'}
           </span>
         </div>
         <button className="dm-refresh-button" onClick={refresh} disabled={loading}>↻</button>

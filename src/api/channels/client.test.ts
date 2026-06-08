@@ -32,11 +32,15 @@ describe('channels DM API client', () => {
     it('calls GET /direct-conversations with humanIdentity', async () => {
       const conversations: DirectConversation[] = [{
         id: 1, humanIdentity: 'patch', agentIdentity: 'pi',
-        projectId: null, lastEntryAt: null, lastEntryPreview: null,
-        entryCount: 0, unreadCount: 0,
+        scopeProjectId: null,
+    displayTitle: null,
+    isArchived: false,
+    isMuted: false,
+    settingsJson: null, lastEntryAt: null, lastEntryPreview: null,
+        lastEntrySender: null, unreadCount: 0,
         createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
       }];
-      mockFetch(true, conversations);
+      mockFetch(true, { conversations, nextCursor: null, hasMore: false });
       const result = await listDirectConversations({ humanIdentity: 'patch', limit: 50 });
       expect(result).toEqual(conversations);
       expect(fetch).toHaveBeenCalledWith(
@@ -50,8 +54,12 @@ describe('channels DM API client', () => {
     it('calls POST /direct-conversations', async () => {
       const conv: DirectConversation = {
         id: 2, humanIdentity: 'patch', agentIdentity: 'pi',
-        projectId: null, lastEntryAt: null, lastEntryPreview: null,
-        entryCount: 0, unreadCount: 0,
+        scopeProjectId: null,
+    displayTitle: null,
+    isArchived: false,
+    isMuted: false,
+    settingsJson: null, lastEntryAt: null, lastEntryPreview: null,
+        lastEntrySender: null, unreadCount: 0,
         createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
       };
       mockFetch(true, conv);
@@ -64,8 +72,12 @@ describe('channels DM API client', () => {
     it('calls GET /direct-conversations/:id', async () => {
       const conv: DirectConversation = {
         id: 3, humanIdentity: 'patch', agentIdentity: 'spawned-coder',
-        projectId: null, lastEntryAt: null, lastEntryPreview: null,
-        entryCount: 0, unreadCount: 0,
+        scopeProjectId: null,
+    displayTitle: null,
+    isArchived: false,
+    isMuted: false,
+    settingsJson: null, lastEntryAt: null, lastEntryPreview: null,
+        lastEntrySender: null, unreadCount: 0,
         createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
       };
       mockFetch(true, conv);
@@ -80,14 +92,13 @@ describe('channels DM API client', () => {
         entries: [{
           id: 1, conversationId: 1, channelMessageId: null,
           direction: 'human_to_agent', senderIdentity: 'patch',
-          body: 'Hello', summary: null,
+          recipientIdentity: 'agent', bodyPreview: 'Hello',
           sourceChannelId: null, sourceProjectId: null,
           sourceTaskId: null, sourceWorkerRunId: null,
           sourceSessionOwnerId: null,
           createdAt: '2026-01-01T00:00:00Z',
         }],
-        totalCount: 1,
-        nextAfterId: null,
+        nextCursor: null,
         hasMore: false,
       };
       mockFetch(true, resp);
@@ -99,19 +110,13 @@ describe('channels DM API client', () => {
   describe('sendDirectMessage', () => {
     it('calls POST /direct-conversations/:id/send', async () => {
       const resp: DirectConversationSendResponse = {
-        entry: {
-          id: 2, conversationId: 1, channelMessageId: 42,
-          direction: 'human_to_agent', senderIdentity: 'patch',
-          body: 'Hi', summary: null,
-          sourceChannelId: null, sourceProjectId: null,
-          sourceTaskId: null, sourceWorkerRunId: null,
-          sourceSessionOwnerId: null,
-          createdAt: '2026-01-01T00:00:00Z',
-        },
-        channelMessageId: 42,
+        status: 'recorded',
+        eventId: 42,
         channelId: 600,
+        conversationId: 1,
+        entryId: 2,
         requestId: 'abc',
-        evidenceSummary: 'sent via direct-agent wake',
+        memberIdentity: 'pi',
       };
       mockFetch(true, resp);
       const result = await sendDirectMessage(1, { senderIdentity: 'patch', body: 'Hi' });

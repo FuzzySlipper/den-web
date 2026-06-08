@@ -972,6 +972,7 @@ export default function App() {
                   <DmConversationList
                     onSelectConversation={setSelectedDmConversation}
                     initialAgentIdentity={selectedDmAgent}
+                    scopeProjectId={!isAggregateSpace && !isGlobal ? effectiveSpaceId : null}
                   />
                 )
               ) : (

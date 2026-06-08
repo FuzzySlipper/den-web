@@ -15,8 +15,8 @@ function makeEntry(overrides: Partial<DirectConversationEntry> = {}): DirectConv
     channelMessageId: null,
     direction: 'human_to_agent',
     senderIdentity: 'patch',
-    body: 'Hello',
-    summary: null,
+    recipientIdentity: 'agent',
+    bodyPreview: 'Hello',
     sourceChannelId: null,
     sourceProjectId: null,
     sourceTaskId: null,
@@ -32,10 +32,14 @@ function makeConv(overrides: Partial<DirectConversation> = {}): DirectConversati
     id: 1,
     humanIdentity: 'patch',
     agentIdentity: 'test-agent',
-    projectId: null,
+    scopeProjectId: null,
+    displayTitle: null,
+    isArchived: false,
+    isMuted: false,
+    settingsJson: null,
     lastEntryAt: null,
     lastEntryPreview: null,
-    entryCount: 0,
+    lastEntrySender: null,
     unreadCount: 0,
     createdAt: '2026-06-06T12:00:00Z',
     updatedAt: '2026-06-06T12:00:00Z',
@@ -132,17 +136,14 @@ describe('dmTranscriptModel', () => {
 
   describe('dmPreviewText', () => {
     it('returns body text under max length', () => {
-      expect(dmPreviewText(makeEntry({ body: 'Hi' }))).toBe('Hi');
+      expect(dmPreviewText(makeEntry({ bodyPreview: 'Hi' }))).toBe('Hi');
     });
     it('truncates long body', () => {
       const long = 'A'.repeat(100);
-      expect(dmPreviewText(makeEntry({ body: long }), 80)).toBe('A'.repeat(80) + '…');
+      expect(dmPreviewText(makeEntry({ bodyPreview: long }), 80)).toBe('A'.repeat(80) + '…');
     });
-    it('falls back to empty string for empty body and summary', () => {
-      expect(dmPreviewText(makeEntry({ body: '', summary: null }))).toBe('');
-    });
-    it('uses summary when body is empty', () => {
-      expect(dmPreviewText(makeEntry({ body: '', summary: 'Summary text' }))).toBe('Summary text');
+    it('falls back to empty string for empty bodyPreview', () => {
+      expect(dmPreviewText(makeEntry({ bodyPreview: '' }))).toBe('');
     });
   });
 });

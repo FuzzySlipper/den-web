@@ -265,10 +265,14 @@ export interface DirectConversation {
   id: number;
   humanIdentity: string;
   agentIdentity: string;
-  projectId: string | null;
+  scopeProjectId: string | null;
+  displayTitle: string | null;
+  isArchived: boolean;
+  isMuted: boolean;
+  settingsJson: string | null;
   lastEntryAt: string | null;
   lastEntryPreview: string | null;
-  entryCount: number;
+  lastEntrySender: string | null;
   unreadCount: number;
   createdAt: string;
   updatedAt: string;
@@ -280,60 +284,75 @@ export interface DirectConversationEntry {
   channelMessageId: number | null;
   direction: DmDirection;
   senderIdentity: string;
-  body: string;
-  summary: string | null;
+  recipientIdentity: string;
   sourceChannelId: number | null;
   sourceProjectId: string | null;
   sourceTaskId: number | null;
-  sourceWorkerRunId: string | null;
   sourceSessionOwnerId: string | null;
+  sourceWorkerRunId: string | null;
+  bodyPreview: string | null;
   createdAt: string;
 }
 
 export interface DirectConversationListResponse {
   conversations: DirectConversation[];
-  totalCount: number;
+  nextCursor: number | null;
+  hasMore: boolean;
 }
 
 export interface DirectConversationEntriesResponse {
   entries: DirectConversationEntry[];
-  totalCount: number;
-  nextAfterId: number | null;
+  nextCursor: number | null;
   hasMore: boolean;
 }
 
 export interface DirectConversationSendRequest {
   senderIdentity: string;
   body: string;
-  summary?: string | null;
   sourceProjectId?: string | null;
-  sourceTaskId?: number | null;
-  assignmentId?: string | null;
+  targetTaskId?: number | null;
   workerRunId?: string | null;
+  workerRole?: string | null;
+  profileIdentity?: string | null;
+  poolMemberId?: string | null;
+  agentInstanceId?: string | null;
+  sessionOwnerId?: string | null;
+  sessionId?: string | null;
 }
 
 export interface DirectConversationSendResponse {
-  entry: DirectConversationEntry;
-  channelMessageId: number;
+  status: string;
+  eventId: number;
   channelId: number;
+  conversationId: number;
+  entryId: number;
   requestId: string;
-  evidenceSummary: string;
+  memberIdentity: string;
 }
 
 export interface DirectConversationCreateRequest {
   humanIdentity: string;
   agentIdentity: string;
+  scopeProjectId?: string | null;
+  displayTitle?: string | null;
 }
 
 export interface LinkMessageRequest {
   channelMessageId: number;
   direction: DmDirection;
+  senderIdentity: string;
+  recipientIdentity: string;
+  bodyPreview?: string | null;
 }
 
 export interface ReadCursor {
+  id?: number;
   conversationId: number;
   readerIdentity: string;
   lastReadEntryId: number | null;
-  unreadCount: number;
-  updatedAt: string;
+  lastReadAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  unreadCount?: number;
+  hasUnread?: boolean;
 }
