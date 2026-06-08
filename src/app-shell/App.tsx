@@ -73,6 +73,7 @@ const WORKSPACE_VIEW_LABELS: Record<WorkspaceViewMode, string> = {
   'agent-stream': 'Agent Stream',
   sessions: 'Sessions',
   agents: 'Agents',
+  dm: 'DM',
   'fleet-ops': 'Fleet Ops',
   notifications: 'Notifications',
 };
