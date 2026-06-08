@@ -962,22 +962,19 @@ export default function App() {
                 )}
               </>
             ) : viewMode === 'dm' ? (
-              selectedDmAgent ? (
-                selectedDmConversation ? (
-                  <DmTranscriptView
-                    conversation={selectedDmConversation}
-                    onBack={() => setSelectedDmConversation(null)}
-                  />
-                ) : (
-                  <DmConversationList
-                    onSelectConversation={setSelectedDmConversation}
-                    initialAgentIdentity={selectedDmAgent}
-                    scopeProjectId={!isAggregateSpace && !isGlobal ? effectiveSpaceId : null}
-                  />
-                )
+              selectedDmConversation ? (
+                <DmTranscriptView
+                  conversation={selectedDmConversation}
+                  onBack={() => setSelectedDmConversation(null)}
+                />
               ) : (
                 <DmConversationList
-                  onSelectConversation={setSelectedDmConversation}
+                  onSelectConversation={conversation => {
+                    setSelectedDmConversation(conversation);
+                    setSelectedDmAgent(conversation.agentIdentity);
+                  }}
+                  initialAgentIdentity={selectedDmAgent}
+                  scopeProjectId={!isAggregateSpace && !isGlobal ? effectiveSpaceId : null}
                 />
               )
             ) : viewMode === 'fleet-ops' ? (
