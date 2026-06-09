@@ -1,4 +1,5 @@
 import { getConfig, normalizeApiBase, resetConfig } from '../config';
+import { dedupedFetch } from '../requestCache';
 
 /**
  * Shared Core API HTTP layer: base-URL state, lifecycle (init/reset), and the
@@ -53,11 +54,15 @@ export function coreApiUrl(url: string): string {
   return apiUrl(denCoreApiBase, url);
 }
 
-export async function get<T>(url: string): Promise<T> {
+export function get<T>(url: string): Promise<T> {
   const requestUrl = coreApiUrl(url);
-  const res = await fetch(requestUrl, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
-  return res.json();
+  // De-duplicate overlapping identical GETs: concurrent callers share one
+  // in-flight request keyed by the resolved URL. (#2145)
+  return dedupedFetch(`GET ${requestUrl}`, async () => {
+    const res = await fetch(requestUrl, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
+    return res.json();
+  });
 }
 
 export async function put<T>(url: string, body: unknown): Promise<T> {

@@ -1,5 +1,6 @@
 import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse, AgentWorkCurrentResponse, AgentWorkEventsResponse, DirectAgentEventsResponse, DirectConversation, DirectConversationListResponse, DirectConversationEntriesResponse, DirectConversationSendRequest, DirectConversationSendResponse, DirectConversationCreateRequest, ReadCursor } from './types';
 import { normalizeApiBase } from '../config';
+import { dedupedFetch } from '../requestCache';
 
 let denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
 
@@ -13,11 +14,14 @@ function channelsApiUrl(url: string): string {
   return `${denChannelsApiBase}${url.startsWith('/') ? url : `/${url}`}`;
 }
 
-async function getChannels<T>(url: string): Promise<T> {
+function getChannels<T>(url: string): Promise<T> {
   const requestUrl = channelsApiUrl(url);
-  const res = await fetch(requestUrl, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
-  return res.json();
+  // Share overlapping identical GETs across panels (#2145).
+  return dedupedFetch(`GET ${requestUrl}`, async () => {
+    const res = await fetch(requestUrl, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
+    return res.json();
+  });
 }
 
 async function putChannels<T>(url: string, body: unknown): Promise<T> {

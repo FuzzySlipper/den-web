@@ -16,6 +16,7 @@ import type {
   FleetOpsRunDetailResponse,
 } from './types';
 import { normalizeApiBase } from '../config';
+import { dedupedFetch } from '../requestCache';
 
 const denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
 let denHostApiBase = normalizeApiBase(import.meta.env.VITE_DEN_HOST_API_BASE, '/den-host-api');
@@ -57,18 +58,24 @@ async function postChannels<T>(url: string, body: unknown): Promise<T> {
   return res.json();
 }
 
-async function getChannels<T>(url: string): Promise<T> {
+function getChannels<T>(url: string): Promise<T> {
   const requestUrl = channelsApiUrl(url);
-  const res = await fetch(requestUrl, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
-  return res.json();
+  // Share overlapping identical GETs across panels (#2145).
+  return dedupedFetch(`GET ${requestUrl}`, async () => {
+    const res = await fetch(requestUrl, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
+    return res.json();
+  });
 }
 
-async function getHost<T>(url: string): Promise<T> {
+function getHost<T>(url: string): Promise<T> {
   const requestUrl = hostApiUrl(url);
-  const res = await fetch(requestUrl, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
-  return res.json();
+  // Share overlapping identical GETs across panels (#2145).
+  return dedupedFetch(`GET ${requestUrl}`, async () => {
+    const res = await fetch(requestUrl, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
+    return res.json();
+  });
 }
 
 async function postHost<T>(url: string, body: unknown): Promise<T> {
