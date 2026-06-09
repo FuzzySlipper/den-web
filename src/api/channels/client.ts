@@ -57,6 +57,25 @@ function buildQuery(params: Record<string, string | number | boolean | undefined
   return parts.length > 0 ? `?${parts.join('&')}` : '';
 }
 
+export interface ChannelEventStreamCursor {
+  afterMessageId?: number;
+  afterActivityId?: number;
+}
+
+/**
+ * Resolve the channel SSE stream URL (#2146), against the runtime channels base.
+ * The stream is consumed via EventSource, not the JSON `get` helpers, so this
+ * only builds the URL. Reconnect normally relies on EventSource's Last-Event-ID;
+ * the explicit cursor query is available for a fresh connect from a known point.
+ */
+export function channelEventStreamUrl(channelId: number, cursor: ChannelEventStreamCursor = {}): string {
+  const q = buildQuery({
+    afterMessageId: cursor.afterMessageId,
+    afterActivityId: cursor.afterActivityId,
+  });
+  return channelsApiUrl(`/channels/${channelId}/events/stream${q}`);
+}
+
 export interface ListChannelsOpts {
   projectId?: string;
   kind?: string;

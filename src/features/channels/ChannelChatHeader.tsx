@@ -1,6 +1,7 @@
 import type { ChangeEvent } from 'react';
 import type { Channel } from '../../api/types';
 import { channelLabel, channelOptionLabel } from './channelChatDisplay';
+import type { ChannelStreamStatus } from './channelEventStream';
 import type { ChannelChatPanelSize } from './ChannelChatPanel';
 
 const PANEL_SIZE_OPTIONS: Array<{ value: ChannelChatPanelSize; label: string }> = [
@@ -9,10 +10,19 @@ const PANEL_SIZE_OPTIONS: Array<{ value: ChannelChatPanelSize; label: string }> 
   { value: 'large', label: '80%' },
 ];
 
+/** Operator-visible live-stream status pill (#2147). `idle` shows nothing. */
+const STREAM_PILL: Record<ChannelStreamStatus, { label: string; title: string } | null> = {
+  idle: null,
+  connecting: { label: 'connecting…', title: 'Connecting to the live channel stream' },
+  open: { label: 'live', title: 'Live updates via the channel event stream' },
+  fallback: { label: 'polling', title: 'Live stream unavailable — falling back to polling' },
+};
+
 interface Props {
   activeChannel: Channel | null;
   projectId: string | null;
   channelStatus: string;
+  streamStatus: ChannelStreamStatus;
   panelSize: ChannelChatPanelSize;
   onPanelSizeChange: (size: ChannelChatPanelSize) => void;
   autoScroll: boolean;
@@ -35,6 +45,7 @@ export function ChannelChatHeader({
   activeChannel,
   projectId,
   channelStatus,
+  streamStatus,
   panelSize,
   onPanelSizeChange,
   autoScroll,
@@ -56,6 +67,14 @@ export function ChannelChatHeader({
       <div className="channel-chat-title">
         <span className="channel-chat-kicker">Channel</span>
         <strong>{channelLabel(activeChannel, projectId)}</strong>
+        {STREAM_PILL[streamStatus] && (
+          <span
+            className={`channel-chat-stream-pill channel-chat-stream-${streamStatus}`}
+            title={STREAM_PILL[streamStatus]!.title}
+          >
+            {STREAM_PILL[streamStatus]!.label}
+          </span>
+        )}
         <span>{channelStatus}</span>
       </div>
       <div className="channel-chat-quick-controls" aria-label="Channel display controls">

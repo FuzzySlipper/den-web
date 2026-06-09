@@ -26,6 +26,8 @@ import { filterLoadedChannelMessages } from './channelMessageSearch';
 import { useComposerHotkeys } from './useComposerHotkeys';
 import type { ChannelSendMode } from './useComposerHotkeys';
 import { useChannelComposer } from './useChannelComposer';
+import { useChannelEventStream } from './useChannelEventStream';
+import { isStreamDelivering } from './channelEventStream';
 import { AgentWorkOpsPanel } from './AgentWorkOpsPanel';
 import {
   isSharedProjectChannel,
@@ -48,6 +50,8 @@ import { ChannelParticipants } from './ChannelParticipants';
 import { ChannelComposer } from './ChannelComposer';
 
 const QUICK_REACTIONS = ['✅', '👀', '👍', '🫡', '❓'];
+/** Safety-net poll interval for messages/activity while the live stream is healthy. */
+const STREAM_SAFETY_POLL_MS = 20000;
 
 interface Props {
   projectId: string | null;
@@ -157,6 +161,22 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     [availableChannels, selectedChannelId],
   );
 
+  // Near-real-time channel updates (#2147): the SSE stream triggers refreshes of
+  // the polled message/activity lists. Stable callbacks read the latest refresh
+  // functions from refs so changing the poll interval never re-opens the stream.
+  const refreshMessagesRef = useRef(() => {});
+  const refreshActivityRef = useRef(() => {});
+  const triggerMessageRefresh = useCallback(() => refreshMessagesRef.current(), []);
+  const triggerActivityRefresh = useCallback(() => refreshActivityRef.current(), []);
+  const channelStream = useChannelEventStream({
+    channelId: activeChannel?.id ?? null,
+    onMessage: triggerMessageRefresh,
+    onActivity: triggerActivityRefresh,
+  });
+  // Stream healthy → lean on event-triggered refreshes plus a slow safety-net
+  // poll. Stream unavailable/errored → fall back to the original fast cadence.
+  const liveListInterval = isStreamDelivering(channelStream.status) ? STREAM_SAFETY_POLL_MS : 4000;
+
   const fetchMessages = useCallback(
     () => activeChannel ? listChannelMessages(activeChannel.id, { limit: 80 }) : Promise.resolve([]),
     [activeChannel],
@@ -166,7 +186,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     loading: messagesLoading,
     error: messagesError,
     refresh: refreshMessages,
-  } = useLiveData(fetchMessages, { interval: 4000 });
+  } = useLiveData(fetchMessages, { interval: liveListInterval });
 
   const fetchActivityEvents = useCallback(
     () => activeChannel ? listChannelActivityEvents(activeChannel.id, { limit: 120 }) : Promise.resolve([]),
@@ -177,7 +197,12 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     loading: activityLoading,
     error: activityError,
     refresh: refreshActivityEvents,
-  } = useLiveData<ChannelActivityEvent[]>(fetchActivityEvents, { interval: 4000 });
+  } = useLiveData<ChannelActivityEvent[]>(fetchActivityEvents, { interval: liveListInterval });
+
+  useEffect(() => {
+    refreshMessagesRef.current = refreshMessages;
+    refreshActivityRef.current = refreshActivityEvents;
+  });
 
   const fetchAgentWorkCurrent = useCallback(
     () => activeChannel ? listAgentWorkCurrent({ channelId: activeChannel.id, limit: 12 }) : Promise.resolve(null),
@@ -561,6 +586,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
         activeChannel={activeChannel}
         projectId={projectId}
         channelStatus={channelStatus}
+        streamStatus={channelStream.status}
         panelSize={panelSize}
         onPanelSizeChange={onPanelSizeChange}
         autoScroll={autoScroll}

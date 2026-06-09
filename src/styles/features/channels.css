@@ -481,6 +481,32 @@
   letter-spacing: 0.05em;
 }
 
+/* Live channel-stream status pill (#2147) */
+.channel-chat-stream-pill {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.channel-chat-stream-open {
+  color: var(--success, #2e7d32);
+  border-color: var(--success, #2e7d32);
+}
+
+.channel-chat-stream-connecting {
+  color: var(--text-muted);
+  border-color: var(--border, #888);
+}
+
+.channel-chat-stream-fallback {
+  color: var(--warning, #b26a00);
+  border-color: var(--warning, #b26a00);
+}
+
 .channel-chat-auto-scroll {
   display: inline-flex;
   align-items: center;
