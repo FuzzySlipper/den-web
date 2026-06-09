@@ -54,21 +54,22 @@ describe('Document Discussion panel (#1680)', () => {
 
   describe('API integration', () => {
     it('fetches discussion via Core GET document discussion route', () => {
-      const client = readClientSource('api', 'core', 'client.ts');
+      // The discussion endpoints moved into the api/core/discussions domain module (#2148).
+      const client = readClientSource('api', 'core', 'discussions.ts');
       expect(client).toContain('getDocumentDiscussion');
       expect(client).toContain('/api/projects/${esc(projectId)}/documents/${esc(slug)}/discussion');
       expect(client).toContain('DocumentDiscussion');
     });
 
     it('posts comments via Core POST document discussion comments route', () => {
-      const client = readClientSource('api', 'core', 'client.ts');
+      const client = readClientSource('api', 'core', 'discussions.ts');
       expect(client).toContain('postDocumentDiscussionComment');
       expect(client).toContain('/documents/${esc(slug)}/discussion/comments');
       expect(client).toContain('PostDiscussionCommentRequest');
     });
 
     it('handles 404 from discussion API returning null', () => {
-      const client = readClientSource('api', 'core', 'client.ts');
+      const client = readClientSource('api', 'core', 'discussions.ts');
       expect(client).toContain("res.status === 404");
       expect(client).toContain('return null');
     });
