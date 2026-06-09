@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Channel, ChannelMessage, GatewayMember } from '../../api/types';
 import { directTargetsForComposerBody } from './channelComposerDirectTargets';
+import { channelLabel } from './channelChatDisplay';
 import {
   type SlashCommand,
   applySlashSelection,
@@ -19,14 +20,9 @@ import {
 // ---------------------------------------------------------------------------
 // Helper: re-implement relevant pure functions from ChannelChatPanel.tsx
 // so they can be tested directly (these are module-private in the source).
+// `channelLabel` now lives in the shared channelChatDisplay module and is
+// imported above so this guardrail exercises the real implementation.
 // ---------------------------------------------------------------------------
-
-function channelLabel(channel: Channel | null, projectId: string | null): string {
-  if (channel?.slug === 'agent-commons') return '#agent-commons';
-  if (channel) return `#${channel.slug}`;
-  if (projectId) return `#project-${projectId}`;
-  return '#agent-commons';
-}
 
 function preferredDefaultChannel(channels: Channel[], projectId: string | null): Channel | undefined {
   if (!projectId) {
@@ -208,6 +204,8 @@ describe('participant wake-policy matching (stable logic)', () => {
 
 describe('participant DM shortcut source invariants', () => {
   const panelSource = readFileSync(resolve(process.cwd(), 'src/features/channels/ChannelChatPanel.tsx'), 'utf8');
+  // The participant roster/double-click UI moved into ChannelParticipants during the #2141 decomposition.
+  const participantsSource = readFileSync(resolve(process.cwd(), 'src/features/channels/ChannelParticipants.tsx'), 'utf8');
   const appSource = readFileSync(resolve(process.cwd(), 'src/app-shell/App.tsx'), 'utf8');
 
   it('threads the App DM opener into the chat panel', () => {
@@ -218,10 +216,15 @@ describe('participant DM shortcut source invariants', () => {
     expect(panelSource).toContain('onOpenDmTranscript?: (agentIdentity: string) => void;');
   });
 
+  it('threads the DM opener and single-click targeting into ChannelParticipants', () => {
+    expect(panelSource).toContain('onOpenDmTranscript={onOpenDmTranscript}');
+    expect(panelSource).toContain('onSelectTarget={setTargetMemberIdentity}');
+  });
+
   it('opens the member DM transcript on double-click without replacing single-click targeting', () => {
-    expect(panelSource).toContain('onClick={() => memberIsActiveAgent(member) && setTargetMemberIdentity(member.memberIdentity)}');
-    expect(panelSource).toContain('onDoubleClick={() => memberIsActiveAgent(member) && onOpenDmTranscript?.(member.memberIdentity)}');
-    expect(panelSource).toContain("title={memberIsActiveAgent(member) && onOpenDmTranscript ? `${visibleStatus} · double-click to open DM transcript` : visibleStatus}");
+    expect(participantsSource).toContain('onClick={() => memberIsActiveAgent(member) && onSelectTarget(member.memberIdentity)}');
+    expect(participantsSource).toContain('onDoubleClick={() => memberIsActiveAgent(member) && onOpenDmTranscript?.(member.memberIdentity)}');
+    expect(participantsSource).toContain("title={memberIsActiveAgent(member) && onOpenDmTranscript ? `${visibleStatus} · double-click to open DM transcript` : visibleStatus}");
   });
 });
 
