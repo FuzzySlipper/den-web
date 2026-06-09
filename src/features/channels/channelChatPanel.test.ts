@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Channel, ChannelMessage, GatewayMember } from '../../api/types';
 import { directTargetsForComposerBody } from './channelComposerDirectTargets';
+import { channelLabel } from './channelChatDisplay';
 import {
   type SlashCommand,
   applySlashSelection,
@@ -19,14 +20,9 @@ import {
 // ---------------------------------------------------------------------------
 // Helper: re-implement relevant pure functions from ChannelChatPanel.tsx
 // so they can be tested directly (these are module-private in the source).
+// `channelLabel` now lives in the shared channelChatDisplay module and is
+// imported above so this guardrail exercises the real implementation.
 // ---------------------------------------------------------------------------
-
-function channelLabel(channel: Channel | null, projectId: string | null): string {
-  if (channel?.slug === 'agent-commons') return '#agent-commons';
-  if (channel) return `#${channel.slug}`;
-  if (projectId) return `#project-${projectId}`;
-  return '#agent-commons';
-}
 
 function preferredDefaultChannel(channels: Channel[], projectId: string | null): Channel | undefined {
   if (!projectId) {

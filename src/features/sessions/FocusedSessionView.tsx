@@ -25,10 +25,13 @@ import {
   sourceContextLabel,
 } from './sessionPolicy';
 import { NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS, isVisibleNormalParticipant } from '../channels/participantVisibility';
+import { persistSenderIdentity, readStoredSenderIdentity } from '../channels/channelChatStorage';
+import { channelLabel, messageSender } from '../channels/channelChatDisplay';
+import { directMessageEvidence } from '../channels/channelDirectMessages';
+import { asRecord, firstString, parseJsonRecord } from '../channels/jsonRecord';
 import { usePolling } from '../../hooks/usePolling';
 import { formatTimeAgo, truncate } from '../../utils';
 
-const SENDER_IDENTITY_STORAGE_KEY = 'den-channel-sender-identity';
 const RECENT_STATUS_VALUES = new Set(['exited', 'exit', 'complete', 'completed', 'done', 'failed', 'crashed', 'terminated']);
 const NOISY_EVENT_TYPES = new Set(['snapshot_published', 'snapshot_publish_failed', 'discovered']);
 
@@ -51,70 +54,9 @@ interface FocusedSessionLane {
   threadId: number | null;
 }
 
-function readStoredSenderIdentity(): string {
-  if (typeof window === 'undefined') return '';
-  try {
-    return window.localStorage.getItem(SENDER_IDENTITY_STORAGE_KEY)?.trim() ?? '';
-  } catch {
-    return '';
-  }
-}
-
-function persistSenderIdentity(identity: string): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const normalized = identity.trim();
-    if (normalized) {
-      window.localStorage.setItem(SENDER_IDENTITY_STORAGE_KEY, normalized);
-    } else {
-      window.localStorage.removeItem(SENDER_IDENTITY_STORAGE_KEY);
-    }
-  } catch {
-    // Embedded/private windows can reject storage writes; keep the in-memory identity.
-  }
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
-}
-
-function stringFromUnknown(value: unknown): string | null {
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
-}
-
-function firstString(records: Array<Record<string, unknown> | null>, keys: string[]): string | null {
-  for (const record of records) {
-    if (!record) continue;
-    for (const key of keys) {
-      const value = stringFromUnknown(record[key]);
-      if (value) return value;
-    }
-  }
-  return null;
-}
-
-function parseJsonRecord(json: string | null): Record<string, unknown> | null {
-  if (!json) return null;
-  try {
-    return asRecord(JSON.parse(json));
-  } catch {
-    return null;
-  }
-}
-
-function channelLabel(channel: Channel | null, projectId: string | null): string {
-  if (channel) return `#${channel.slug}`;
-  return projectId ? `#project-${projectId}` : '#select-project';
-}
-
 function displayTime(value: string | null | undefined): string {
   return value ? formatTimeAgo(value) : 'no activity';
 }
-
-function messageSender(message: ChannelMessage): string {
-  return message.senderIdentity || message.senderType;
-}
-
 
 function sessionActivityAt(snapshot: DesktopSessionSnapshot): string {
   return snapshot.last_activity_at ?? snapshot.updated_at ?? snapshot.received_at ?? snapshot.observed_at ?? snapshot.started_at ?? '';
@@ -186,7 +128,7 @@ function buildLaneLabel(
   return [
     `${state}: ${sessionName}`,
     `Project ${project}`,
-    `Channel ${channelLabel(channel, projectId)}`,
+    `Channel ${channelLabel(channel, projectId, '#select-project')}`,
     task,
     thread,
     agent,
@@ -194,20 +136,6 @@ function buildLaneLabel(
     `last ${lastActivity}`,
     modelProfile ? `model/profile ${modelProfile}` : null,
   ].filter(Boolean).join(' · ');
-}
-
-function directMessageEvidence(message: ChannelMessage): { target: string | null; status: string } | null {
-  const metadata = parseJsonRecord(message.metadataJson);
-  if (!metadata) return null;
-  if (metadata.deliveryMode !== 'direct_agent_message') return null;
-  const target = stringFromUnknown(metadata.targetMemberIdentity);
-  const status = [
-    stringFromUnknown(metadata.deliveryStatus),
-    stringFromUnknown(metadata.claimStatus),
-    stringFromUnknown(metadata.completionStatus),
-    stringFromUnknown(metadata.suppressionStatus),
-  ].filter(Boolean).join(' · ');
-  return { target, status: status || 'claimed/delivered/reply-posted pending' };
 }
 
 function isCommandOrResultMessage(message: ChannelMessage): boolean {
@@ -612,7 +540,7 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
       <div className="focused-session-toolbar">
         <div className="focused-session-title">
           <span>Active work</span>
-          <strong>{selectedActiveRoute ? activeOwnerLabel(selectedActiveRoute) : selectedLane ? channelLabel(selectedLane.channel, projectId) : channelLabel(null, projectId)}</strong>
+          <strong>{selectedActiveRoute ? activeOwnerLabel(selectedActiveRoute) : selectedLane ? channelLabel(selectedLane.channel, projectId, '#select-project') : channelLabel(null, projectId, '#select-project')}</strong>
           <span className={`focused-session-state focused-session-state-${viewState}`}>{viewState}</span>
         </div>
         <label className="focused-session-selector-label" htmlFor="focused-session-selector">Active owner / source context</label>

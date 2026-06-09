@@ -38,9 +38,11 @@ import {
   projectChannelScopeLabel,
   selectProjectChannels,
 } from './channelRouting';
+import { persistSenderIdentity, readStoredSenderIdentity } from './channelChatStorage';
+import { channelLabel, channelOptionLabel, messageSender } from './channelChatDisplay';
+import { parseDirectMessageMetadata } from './channelDirectMessages';
 import type { ChannelSendMode } from './useComposerHotkeys';
 
-const SENDER_IDENTITY_STORAGE_KEY = 'den-channel-sender-identity';
 const DEFAULT_WAKE_POLICY = 'mentions_only';
 
 const WAKE_POLICY_OPTIONS = [
@@ -87,20 +89,6 @@ const PANEL_SIZE_OPTIONS: Array<{ value: ChannelChatPanelSize; label: string }> 
   { value: 'large', label: '80%' },
 ];
 
-function channelLabel(channel: Channel | null, projectId: string | null): string {
-  if (channel?.slug === 'agent-commons') return '#agent-commons';
-  if (channel) return `#${channel.slug}`;
-  if (projectId) return `#project-${projectId}`;
-  return '#agent-commons';
-}
-
-function channelOptionLabel(channel: Channel, projectId: string | null): string {
-  const base = channelLabel(channel, projectId);
-  const scope = projectChannelScopeLabel(channel);
-  if (scope) return `${base} — ${scope}`;
-  return base;
-}
-
 function isScrollElementPinnedToBottom(element: HTMLElement): boolean {
   return element.scrollHeight - element.scrollTop - element.clientHeight <= SCROLL_BOTTOM_PIN_THRESHOLD_PX;
 }
@@ -123,48 +111,10 @@ async function resolveWorkerPoolChannel(): Promise<Channel | null> {
   return systemChannels.find(channel => isWorkerPoolChannel(channel)) ?? null;
 }
 
-function messageSender(message: ChannelMessage): string {
-  return message.senderIdentity || message.senderType;
-}
-
-function readStoredSenderIdentity(): string {
-  if (typeof window === 'undefined') return '';
-  try {
-    return window.localStorage.getItem(SENDER_IDENTITY_STORAGE_KEY)?.trim() ?? '';
-  } catch {
-    return '';
-  }
-}
-
-function persistSenderIdentity(identity: string): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const normalized = identity.trim();
-    if (normalized) {
-      window.localStorage.setItem(SENDER_IDENTITY_STORAGE_KEY, normalized);
-    } else {
-      window.localStorage.removeItem(SENDER_IDENTITY_STORAGE_KEY);
-    }
-  } catch {
-    // localStorage can be unavailable in private/embedded contexts; the in-memory
-    // state still provides the identity seam for this session.
-  }
-}
-
 function memberStatus(member: GatewayMember): string {
   return [member.membershipStatus, member.wakePolicy, member.settingsLabel]
     .filter(Boolean)
     .join(' · ');
-}
-
-function parseDirectMessageMetadata(message: ChannelMessage): Record<string, unknown> | null {
-  if (message.sourceKind !== 'wake_event' || !message.metadataJson) return null;
-  try {
-    const parsed = JSON.parse(message.metadataJson) as Record<string, unknown>;
-    return parsed.deliveryMode === 'direct_agent_message' ? parsed : null;
-  } catch {
-    return null;
-  }
 }
 
 function directDeliveryStatus(message: ChannelMessage): string | null {
