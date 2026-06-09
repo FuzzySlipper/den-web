@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { controlSubagentRun, getSubagentRun, type SubagentRunControlAction } from '../../api/client';
 import type { AgentStreamEntry, SubagentRunSummary } from '../../api/types';
-import { usePolling } from '../../hooks/usePolling';
+import { useLiveData } from '../../hooks/useLiveData';
 import {
   formatInfrastructureFailureReason,
   formatSubagentDuration,
@@ -49,7 +49,7 @@ export function SubagentRunDetail({ run, onClose, onOpenTask, onOpenEntry }: Pro
     }),
     [run.project_id, run.run_id, run.task_id],
   );
-  const { data: detail, error, refresh } = usePolling(fetchRun, run.state === 'running' || run.state === 'retrying' || run.state === 'aborting' ? 2000 : 10_000);
+  const { data: detail, error, refresh } = useLiveData(fetchRun, { interval: run.state === 'running' || run.state === 'retrying' || run.state === 'aborting' ? 2000 : 10_000 });
   const summary = detail?.summary ?? run;
   const events = detail?.events ?? [run.latest];
   const workEvents = detail?.work_events;

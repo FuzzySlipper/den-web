@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import type { AssignmentTraceResponse, ChannelActivityEvent, ChannelMessage } from '../../api/types';
 import { getAssignmentTrace } from '../../api/client';
-import { usePolling } from '../../hooks/usePolling';
+import { useLiveData } from '../../hooks/useLiveData';
 import { formatTimeAgo } from '../../utils';
 import {
   sourceLabel,
@@ -37,7 +37,7 @@ export function AssignmentTraceView({ assignmentId, projectId, channelId, closeP
     }),
     [assignmentId, projectId, channelId],
   );
-  const { data: trace, loading, error, refresh } = usePolling<AssignmentTraceResponse>(fetchTrace, 10000);
+  const { data: trace, loading, error, refresh } = useLiveData<AssignmentTraceResponse>(fetchTrace, { interval: 10000 });
 
   // Handle close on Escape
   useEffect(() => {

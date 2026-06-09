@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { Message, Space } from '../../api/types';
 import { getMessages } from '../../api/client';
-import { usePolling } from '../../hooks/usePolling';
+import { useLiveData } from '../../hooks/useLiveData';
 import { formatTimeAgo } from '../../utils';
 import { messageIntentLabel } from './messageIntents';
 
@@ -94,7 +94,7 @@ export function MessagesInbox({ spaces, currentSpaceId, isAggregate, onSelect, o
     return pages.flat().map(toRow).sort((a, b) => b.created_at.localeCompare(a.created_at));
   }, [parsedTaskId, projectIds]);
 
-  const { data, loading, error, refresh } = usePolling<MessageRow[]>(fetchMessages, 5000);
+  const { data, loading, error, refresh } = useLiveData<MessageRow[]>(fetchMessages, { interval: 5000 });
   const senderOptions = useMemo(() => Array.from(new Set((data ?? []).map(message => message.sender))).sort(), [data]);
   const filteredMessages = useMemo(() => {
     const sender = senderFilter.trim().toLowerCase();

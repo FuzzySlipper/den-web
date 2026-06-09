@@ -16,7 +16,7 @@
  */
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { usePolling } from '../../hooks/usePolling';
+import { useLiveData } from '../../hooks/useLiveData';
 import { formatTimeAgo, truncate } from '../../utils';
 import {
   type NotificationItem,
@@ -109,7 +109,7 @@ export function NotificationHistoryPanel({
     () => fetchNotificationFeed(projectIds),
     [projectIds],
   );
-  const { data: feed, loading, error, refresh } = usePolling(fetchFeed, POLL_INTERVAL_MS);
+  const { data: feed, loading, error, refresh } = useLiveData(fetchFeed, { interval: POLL_INTERVAL_MS });
   const previousFeedItemsRef = useRef<NotificationItem[] | null>(null);
   const [newSinceLastViewedIds, setNewSinceLastViewedIds] = useState<Set<string>>(
     () => new Set(loadPendingNotificationCueIds()),
@@ -126,7 +126,7 @@ export function NotificationHistoryPanel({
   }, [feed]);
 
   // Derive error display from feed.result.error (API-caught errors as string)
-  // falling back to usePolling's thrown-error state as a safety net.
+  // falling back to useLiveData's thrown-error state as a safety net.
   // Runner correction #3: distinguish true empty feed from API error state.
   const errorMessage = useMemo<string | null>(() => {
     if (feed?.error) return feed.error;

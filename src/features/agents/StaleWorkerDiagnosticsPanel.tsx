@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import type { StaleWorkerSweepResponse } from '../../api/types';
 import { listStaleWorkerConditions } from '../../api/client';
-import { usePolling } from '../../hooks/usePolling';
+import { useLiveData } from '../../hooks/useLiveData';
 import { formatTimeAgo } from '../../utils';
 import { buildStaleWorkerDiagnosticsModel, type StaleWorkerDiagnosticRow } from './staleWorkerDiagnosticsModel';
 
@@ -13,7 +13,7 @@ interface Props {
 
 export function StaleWorkerDiagnosticsPanel({ projectId, compact = false, onOpenAssignmentTrace }: Props) {
   const fetchStaleWorkers = useCallback(() => listStaleWorkerConditions({ projectId: projectId ?? undefined, limit: compact ? 5 : 20 }), [projectId, compact]);
-  const { data, loading, error, refresh } = usePolling<StaleWorkerSweepResponse>(fetchStaleWorkers, 10000);
+  const { data, loading, error, refresh } = useLiveData<StaleWorkerSweepResponse>(fetchStaleWorkers, { interval: 10000 });
   const model = buildStaleWorkerDiagnosticsModel(data ?? null, error);
 
   return (

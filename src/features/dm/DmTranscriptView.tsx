@@ -6,7 +6,7 @@ import {
   updateReadCursor,
 } from '../../api/channels/client';
 import { DM_HUMAN_IDENTITY, dmConversationHeaderMeta, dmDirectionLabel, dmSourceBadge, latestEntryId, sortEntriesChronological } from './dmTranscriptModel';
-import { usePolling } from '../../hooks/usePolling';
+import { useLiveData } from '../../hooks/useLiveData';
 import { formatTimeAgo } from '../../utils';
 
 interface Props {
@@ -51,9 +51,9 @@ export function DmTranscriptView({ conversation, onBack, readIdentity }: Props) 
     () => listDirectConversationEntries(conversation.id, { limit: 100 }),
     [conversation.id],
   );
-  const { data: entriesResp, loading, error, refresh } = usePolling(
+  const { data: entriesResp, loading, error, refresh } = useLiveData(
     fetchEntries,
-    5000,
+    { interval: 5000 },
   );
 
   const entries = sortEntriesChronological(entriesResp?.entries ?? []);

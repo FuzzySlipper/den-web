@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import type { WorkerPoolLobbyPresence, WorkerPoolMemberPresence } from '../../api/types';
 import { getWorkerPoolLobbyPresence } from '../../api/client';
-import { usePolling } from '../../hooks/usePolling';
+import { useLiveData } from '../../hooks/useLiveData';
 import { formatTimeAgo } from '../../utils';
 import {
   availabilityLabel,
@@ -19,7 +19,7 @@ interface Props {
 
 export function WorkerPoolLobbyView({ onOpenAssignmentTrace }: Props) {
   const fetchLobby = useCallback(() => getWorkerPoolLobbyPresence(), []);
-  const { data: presence, loading, error, refresh } = usePolling<WorkerPoolLobbyPresence>(fetchLobby, 10000);
+  const { data: presence, loading, error, refresh } = useLiveData<WorkerPoolLobbyPresence>(fetchLobby, { interval: 10000 });
 
   const roleGroups = useMemo(() => presence ? groupByRole(presence.members) : [], [presence]);
   const archivedMembers = useMemo(() => presence ? filterArchivedMembers(presence.members) : [], [presence]);

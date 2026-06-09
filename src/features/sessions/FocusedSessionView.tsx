@@ -22,7 +22,7 @@ import {
 } from './sessionPolicy';
 import { NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS, isVisibleNormalParticipant } from '../channels/participantVisibility';
 import { persistSenderIdentity, readStoredSenderIdentity } from '../channels/channelChatStorage';
-import { usePolling } from '../../hooks/usePolling';
+import { useLiveData } from '../../hooks/useLiveData';
 import {
   buildLaneLabel,
   deriveSessionState,
@@ -66,7 +66,7 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
     });
     return [ensured];
   }, [normalizedSenderIdentity, projectId, spaceName]);
-  const { data: channels, loading: channelsLoading, error: channelsError, refresh: refreshChannels } = usePolling<Channel[]>(fetchChannels, 15000);
+  const { data: channels, loading: channelsLoading, error: channelsError, refresh: refreshChannels } = useLiveData<Channel[]>(fetchChannels, { interval: 15000 });
 
   const availableChannels = useMemo(
     () => (channels ?? []).filter(channel => channel.visibility !== 'archived'),
@@ -88,20 +88,20 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
     () => projectId ? listDesktopSessionSnapshots(projectId, { limit: 60 }) : Promise.resolve([]),
     [projectId],
   );
-  const { data: snapshots, loading: snapshotsLoading, error: snapshotsError, refresh: refreshSnapshots } = usePolling<DesktopSessionSnapshot[]>(fetchSnapshots, 5000);
+  const { data: snapshots, loading: snapshotsLoading, error: snapshotsError, refresh: refreshSnapshots } = useLiveData<DesktopSessionSnapshot[]>(fetchSnapshots, { interval: 5000 });
 
   const fetchActiveRoutes = useCallback(
     () => projectId ? listActiveWorkRoutes({ targetProjectId: projectId, includeStale: true, limit: 50 }) : Promise.resolve(null),
     [projectId],
   );
-  const { data: activeRoutesResponse, loading: activeRoutesLoading, error: activeRoutesError, refresh: refreshActiveRoutes } = usePolling<ActiveWorkRoutesResponse | null>(fetchActiveRoutes, 5000);
+  const { data: activeRoutesResponse, loading: activeRoutesLoading, error: activeRoutesError, refresh: refreshActiveRoutes } = useLiveData<ActiveWorkRoutesResponse | null>(fetchActiveRoutes, { interval: 5000 });
   const activeRoutes = useMemo(() => activeRoutesResponse?.routes ?? [], [activeRoutesResponse]);
 
   const fetchMessages = useCallback(
     () => activeChannel ? listChannelMessages(activeChannel.id, { limit: 150 }) : Promise.resolve([]),
     [activeChannel],
   );
-  const { data: messages, loading: messagesLoading, error: messagesError, refresh: refreshMessages } = usePolling<ChannelMessage[]>(fetchMessages, 3000);
+  const { data: messages, loading: messagesLoading, error: messagesError, refresh: refreshMessages } = useLiveData<ChannelMessage[]>(fetchMessages, { interval: 3000 });
 
   const sortedMessages = useMemo(() => {
     const visibleMessages = activeChannel
@@ -116,7 +116,7 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
     () => activeChannel ? listGatewayMemberships({ channelId: activeChannel.id, ...NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS }) : Promise.resolve(null),
     [activeChannel],
   );
-  const { data: memberships, loading: membershipsLoading, error: membershipsError, refresh: refreshMemberships } = usePolling<GatewayMemberships | null>(fetchMemberships, 5000);
+  const { data: memberships, loading: membershipsLoading, error: membershipsError, refresh: refreshMemberships } = useLiveData<GatewayMemberships | null>(fetchMemberships, { interval: 5000 });
 
   const members = useMemo(() => (memberships?.members ?? []).filter(member => isVisibleNormalParticipant(member)), [memberships]);
   const activeAgentMembers = useMemo(
@@ -231,7 +231,7 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
       : Promise.resolve([]),
     [projectId, selectedSnapshot],
   );
-  const { data: sessionEvents, loading: eventsLoading, error: eventsError, refresh: refreshEvents } = usePolling<DesktopSessionEvent[]>(fetchEvents, 4000);
+  const { data: sessionEvents, loading: eventsLoading, error: eventsError, refresh: refreshEvents } = useLiveData<DesktopSessionEvent[]>(fetchEvents, { interval: 4000 });
 
   const orderedEvents = useMemo(
     () => [...(sessionEvents ?? [])].sort((left, right) => right.created_at.localeCompare(left.created_at)),

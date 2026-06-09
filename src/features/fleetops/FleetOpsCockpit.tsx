@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import type { FleetOpsResponse, FleetOpsAction, FleetOpsActionRun } from '../../api/types';
 import { getFleetOps, postFleetOpsActionRun, getFleetOpsRun } from '../../api/client';
-import { usePolling } from '../../hooks/usePolling';
+import { useLiveData } from '../../hooks/useLiveData';
 import { formatTimeAgo } from '../../utils';
 import {
   unitStatusLabel,
@@ -25,7 +25,7 @@ import {
 
 export function FleetOpsCockpit() {
   const fetchFleetOps = useCallback(() => getFleetOps(), []);
-  const { data: fleetData, loading, error, refresh } = usePolling<FleetOpsResponse>(fetchFleetOps, 10000);
+  const { data: fleetData, loading, error, refresh } = useLiveData<FleetOpsResponse>(fetchFleetOps, { interval: 10000 });
 
   // Track action runs in progress
   const [runningActionRunIds, setRunningActionRunIds] = useState<Set<string>>(new Set());

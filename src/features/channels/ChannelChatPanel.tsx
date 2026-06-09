@@ -18,7 +18,7 @@ import {
   postGatewayDirectAgentMessage,
   upsertChannelMembership,
 } from '../../api/client';
-import { usePolling } from '../../hooks/usePolling';
+import { useLiveData } from '../../hooks/useLiveData';
 import { groupActivityEventsForChannelMessages } from './channelChatRenderModel';
 import { directTargetsForComposerBody } from './channelComposerDirectTargets';
 import { NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS, isVisibleNormalParticipant } from './participantVisibility';
@@ -122,7 +122,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     loading: channelLoading,
     error: channelError,
     refresh: refreshChannels,
-  } = usePolling<Channel[]>(fetchChannels, 15000);
+  } = useLiveData<Channel[]>(fetchChannels, { interval: 15000 });
 
   const availableChannels = useMemo(
     () => channels ?? [],
@@ -166,7 +166,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     loading: messagesLoading,
     error: messagesError,
     refresh: refreshMessages,
-  } = usePolling(fetchMessages, 4000);
+  } = useLiveData(fetchMessages, { interval: 4000 });
 
   const fetchActivityEvents = useCallback(
     () => activeChannel ? listChannelActivityEvents(activeChannel.id, { limit: 120 }) : Promise.resolve([]),
@@ -177,7 +177,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     loading: activityLoading,
     error: activityError,
     refresh: refreshActivityEvents,
-  } = usePolling<ChannelActivityEvent[]>(fetchActivityEvents, 4000);
+  } = useLiveData<ChannelActivityEvent[]>(fetchActivityEvents, { interval: 4000 });
 
   const fetchAgentWorkCurrent = useCallback(
     () => activeChannel ? listAgentWorkCurrent({ channelId: activeChannel.id, limit: 12 }) : Promise.resolve(null),
@@ -188,7 +188,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     loading: agentWorkCurrentLoading,
     error: agentWorkCurrentError,
     refresh: refreshAgentWorkCurrent,
-  } = usePolling<AgentWorkCurrentResponse | null>(fetchAgentWorkCurrent, 4000);
+  } = useLiveData<AgentWorkCurrentResponse | null>(fetchAgentWorkCurrent, { interval: 4000 });
 
   const fetchAgentWorkEvents = useCallback(
     () => activeChannel ? listAgentWorkEvents({ channelId: activeChannel.id, limit: 24 }) : Promise.resolve(null),
@@ -199,7 +199,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     loading: agentWorkEventsLoading,
     error: agentWorkEventsError,
     refresh: refreshAgentWorkEvents,
-  } = usePolling<AgentWorkEventsResponse | null>(fetchAgentWorkEvents, 4000);
+  } = useLiveData<AgentWorkEventsResponse | null>(fetchAgentWorkEvents, { interval: 4000 });
 
   const fetchDirectAgentEvents = useCallback(
     () => activeChannel ? listDirectAgentEvents({ channelId: activeChannel.id, limit: 24 }) : Promise.resolve(null),
@@ -210,7 +210,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     loading: directAgentEventsLoading,
     error: directAgentEventsError,
     refresh: refreshDirectAgentEvents,
-  } = usePolling<DirectAgentEventsResponse | null>(fetchDirectAgentEvents, 4000);
+  } = useLiveData<DirectAgentEventsResponse | null>(fetchDirectAgentEvents, { interval: 4000 });
 
   const refreshAgentWorkEvidence = useCallback(() => {
     refreshAgentWorkCurrent();
@@ -226,7 +226,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   const {
     data: reactions,
     refresh: refreshReactions,
-  } = usePolling<ChannelReactionSummary[]>(fetchReactions, 5000);
+  } = useLiveData<ChannelReactionSummary[]>(fetchReactions, { interval: 5000 });
 
   const fetchMemberships = useCallback(
     () => activeChannel ? listGatewayMemberships({ channelId: activeChannel.id, ...NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS }) : Promise.resolve(null),
@@ -237,7 +237,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     loading: membershipsLoading,
     error: membershipsError,
     refresh: refreshMemberships,
-  } = usePolling<GatewayMemberships | null>(fetchMemberships, 5000);
+  } = useLiveData<GatewayMemberships | null>(fetchMemberships, { interval: 5000 });
 
   const fetchLinkedProjects = useCallback(
     () => activeChannel && isSharedProjectChannel(activeChannel)
@@ -247,7 +247,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   );
   const {
     data: activeChannelLinkedProjects,
-  } = usePolling<ChannelProjectLink[]>(fetchLinkedProjects, 15000);
+  } = useLiveData<ChannelProjectLink[]>(fetchLinkedProjects, { interval: 15000 });
 
   const activeChannelScopeLabel = projectChannelScopeLabel(activeChannel);
   const workerPoolProjectFilter = projectId && isWorkerPoolChannel(activeChannel) ? projectId : '';

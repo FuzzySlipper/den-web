@@ -7,7 +7,7 @@ import type {
   DeliveryOverviewDto,
 } from '../../api/types';
 import { listAgentsOverview, getAgentDetail } from '../../api/client';
-import { usePolling } from '../../hooks/usePolling';
+import { useLiveData } from '../../hooks/useLiveData';
 import { formatTimeAgo } from '../../utils';
 import {
   agentProjectAttributions,
@@ -127,7 +127,7 @@ export function AgentsOverviewView({ projectId, isAggregate, closePanelKey = 'Es
     }),
     [projectId, isAggregate],
   );
-  const { data: overview, loading, error } = usePolling<AgentsOverviewResponse>(fetchOverview, 10000);
+  const { data: overview, loading, error } = useLiveData<AgentsOverviewResponse>(fetchOverview, { interval: 10000 });
 
   const agents = useMemo(() => overview?.agents ?? [], [overview]);
   const sourceHealth = overview?.sourceHealth ?? null;
@@ -415,7 +415,7 @@ function AgentDetailOverlay({
     }),
     [agentIdentity, projectId, isAggregate],
   );
-  const { data: agent, loading, error, refresh } = usePolling<AgentDetailResponse>(fetchDetail, 10000);
+  const { data: agent, loading, error, refresh } = useLiveData<AgentDetailResponse>(fetchDetail, { interval: 10000 });
 
   const [showDiagnostic, setShowDiagnostic] = useState(false);
   const [fullDetailItem, setFullDetailItem] = useState<FullDetailItem | null>(null);

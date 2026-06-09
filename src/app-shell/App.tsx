@@ -7,7 +7,7 @@ import {
   listAgentStream,
   listDocuments,
 } from '../api/client';
-import { usePolling } from '../hooks/usePolling';
+import { useLiveData } from '../hooks/useLiveData';
 import { ProjectSidebar } from './ProjectSidebar';
 import {
   coreStatusForTaskFilter,
@@ -79,11 +79,11 @@ export default function App() {
 
   // --- Data (polling lives here; #2140 introduces the useLiveData boundary) ---
   const fetchProjects = useCallback(() => listProjects(), []);
-  const { data: projects } = usePolling(fetchProjects, 5000);
+  const { data: projects } = useLiveData(fetchProjects, { interval: 5000 });
   const fetchOperatorNotifications = useCallback(() => fetchNotificationFeed([]), []);
-  const { data: operatorNotificationFeed } = usePolling(fetchOperatorNotifications, 10000);
+  const { data: operatorNotificationFeed } = useLiveData(fetchOperatorNotifications, { interval: 10000 });
   const fetchSpaces = useCallback(() => listSpaces({ includeHidden: true, includeArchived: true }), []);
-  const { data: fetchedSpaces } = usePolling(fetchSpaces, 5000);
+  const { data: fetchedSpaces } = useLiveData(fetchSpaces, { interval: 5000 });
   const spaces = useMemo(() => withAllSpacesAggregate(fetchedSpaces), [fetchedSpaces]);
 
   const bell = useNotificationBell(operatorNotificationFeed, prefs.layout.notificationHistoryMode);
@@ -131,7 +131,7 @@ export default function App() {
     }
     return aggregateTasks;
   }, [effectiveSpaceId, isAllSpaces, workspace.statusFilter, taskSpaces]);
-  const { data: tasks } = usePolling(fetchTasks, 5000);
+  const { data: tasks } = useLiveData(fetchTasks, { interval: 5000 });
 
   const fetchAgentStream = useCallback(
     () => effectiveSpaceId
@@ -154,7 +154,7 @@ export default function App() {
       streamFilters.streamSenderFilter,
     ],
   );
-  const { data: agentStream } = usePolling(fetchAgentStream, 5000);
+  const { data: agentStream } = useLiveData(fetchAgentStream, { interval: 5000 });
 
   const fetchDocs = useCallback(
     () => effectiveSpaceId
@@ -162,7 +162,7 @@ export default function App() {
       : Promise.resolve([]),
     [effectiveSpaceId, isAllSpaces],
   );
-  const { data: documents, refresh: refreshDocs } = usePolling(fetchDocs, 5000);
+  const { data: documents, refresh: refreshDocs } = useLiveData(fetchDocs, { interval: 5000 });
 
   const sortedDocs = useMemo(
     () => documents ? [...documents].sort((a, b) => b.updated_at.localeCompare(a.updated_at)) : [],

@@ -9,7 +9,7 @@ import {
   dmConversationSourceLabel,
   sortConversationsByRecent,
 } from './dmTranscriptModel';
-import { usePolling } from '../../hooks/usePolling';
+import { useLiveData } from '../../hooks/useLiveData';
 import { formatTimeAgo } from '../../utils';
 
 interface Props {
@@ -28,9 +28,9 @@ export function DmConversationList({ onSelectConversation, selectedId, initialAg
     () => listDirectConversations({ humanIdentity: DM_HUMAN_IDENTITY, limit: 50 }),
     [],
   );
-  const { data: conversations, loading, error, refresh } = usePolling<DirectConversation[]>(
+  const { data: conversations, loading, error, refresh } = useLiveData<DirectConversation[]>(
     fetchConversations,
-    10000,
+    { interval: 10000 },
   );
 
   const [creating, setCreating] = useState(false);
