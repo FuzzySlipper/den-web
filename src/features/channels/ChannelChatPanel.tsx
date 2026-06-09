@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { ChangeEvent, FormEvent, KeyboardEvent, UIEvent } from 'react';
+import type { ChangeEvent, FormEvent, UIEvent } from 'react';
 import type { AgentWorkCurrentResponse, AgentWorkEventsResponse, Channel, ChannelActivityEvent, ChannelMessage, ChannelProjectLink, ChannelReactionSummary, DirectAgentEventsResponse, GatewayMember, GatewayMemberships } from '../../api/types';
 import {
   ensureProjectDefaultChannel,
@@ -19,14 +19,13 @@ import {
   upsertChannelMembership,
 } from '../../api/client';
 import { usePolling } from '../../hooks/usePolling';
-import { findActiveMentionQuery, getMentionSuggestions, groupActivityEventsForChannelMessages, insertMentionToken } from './channelChatRenderModel';
+import { groupActivityEventsForChannelMessages } from './channelChatRenderModel';
 import { directTargetsForComposerBody } from './channelComposerDirectTargets';
 import { NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS, isVisibleNormalParticipant } from './participantVisibility';
-import { findSlashCommandSuggestions, getSlashCommandHelpLines } from './channelSlashCommands';
-import { appendHistory, persistHistory, readHistory, subscribeToHistoryChanges } from './channelComposerHistory';
 import { filterLoadedChannelMessages } from './channelMessageSearch';
 import { useComposerHotkeys } from './useComposerHotkeys';
 import type { ChannelSendMode } from './useComposerHotkeys';
+import { useChannelComposer } from './useChannelComposer';
 import { AgentWorkOpsPanel } from './AgentWorkOpsPanel';
 import {
   isSharedProjectChannel,
@@ -64,22 +63,11 @@ interface Props {
 export type ChannelChatPanelSize = 'small' | 'medium' | 'large';
 
 export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetKey, onPanelSizeChange, onOpenPreferences, onOpenAssignmentTrace, onOpenDmTranscript }: Props) {
-  const [draft, setDraft] = useState('');
-  const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
   const [senderIdentity, setSenderIdentity] = useState(readStoredSenderIdentity);
   const [selectedChannelId, setSelectedChannelId] = useState<number | null>(null);
   const [sendMode, setSendMode] = useState<ChannelSendMode>('channel');
   const [autoScroll, setAutoScroll] = useState(true);
-  const [composerHistoryEntries, setComposerHistoryEntries] = useState<ReturnType<typeof readHistory>>([]);
-  const [historyNavigateIndex, setHistoryNavigateIndex] = useState<number | null>(null);
-  const [slashActiveIndex, setSlashActiveIndex] = useState(0);
   const [messageSearchQuery, setMessageSearchQuery] = useState('');
-  const slashCommandSuggestions = useMemo(
-    () => findSlashCommandSuggestions(draft),
-    [draft],
-  );
-  const slashHelpLines = useMemo(() => getSlashCommandHelpLines(), []);
-  const showSlashHelp = draft.trim() === '/help';
   const scrollbackRef = useRef<HTMLDivElement | null>(null);
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
   const isScrollPinnedToBottomRef = useRef(true);
@@ -88,7 +76,6 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   const pendingAutoScrollObservedLoadingRef = useRef(false);
   const previousProjectIdRef = useRef<string | null>(projectId);
   const pendingProjectDefaultSelectionRef = useRef<string | null>(null);
-  const historyUnsentDraftRef = useRef('');
   const [projectAttributionFilter, setProjectAttributionFilter] = useState('');
   const [targetMemberIdentity, setTargetMemberIdentity] = useState('');
   const [inviteIdentity, setInviteIdentity] = useState('');
@@ -345,33 +332,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   const selectedTarget = activeAgentMembers.find(member => member.memberIdentity === targetMemberIdentity) ?? null;
   const editingMember = members.find(member => member.memberIdentity === editingMemberIdentity && member.memberType === 'agent') ?? null;
   const inviteExistingMember = members.find(member => member.memberType === 'agent' && member.memberIdentity === inviteIdentity.trim()) ?? null;
-  const mentionQuery = useMemo(() => findActiveMentionQuery(draft), [draft]);
-  const mentionSuggestions = useMemo(
-    () => mentionQuery ? getMentionSuggestions(members, mentionQuery.query) : [],
-    [members, mentionQuery],
-  );
-
-  useEffect(() => {
-    setMentionActiveIndex(0);
-  }, [mentionQuery?.query, mentionSuggestions.length]);
-
-  // Load composer history when sender identity changes
-  useEffect(() => {
-    setComposerHistoryEntries(readHistory(normalizedSenderIdentity));
-    setHistoryNavigateIndex(null);
-  }, [normalizedSenderIdentity]);
-
-  // Cross-tab composer history synchronization
-  useEffect(() => {
-    return subscribeToHistoryChanges(normalizedSenderIdentity, (entries) => {
-      setComposerHistoryEntries(entries);
-    });
-  }, [normalizedSenderIdentity]);
-
-  // Reset slash-command active index when suggestions change
-  useEffect(() => {
-    setSlashActiveIndex(0);
-  }, [slashCommandSuggestions.length]);
+  const composer = useChannelComposer({ members, normalizedSenderIdentity });
 
   useEffect(() => {
     if (activeAgentMembers.length === 0) {
@@ -422,121 +383,9 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     isScrollPinnedToBottomRef.current = isScrollElementPinnedToBottom(event.currentTarget);
   }, []);
 
-  const handleDraftChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
-    const value = event.target.value;
-    setDraft(value);
-    setHistoryNavigateIndex(null);
-    historyUnsentDraftRef.current = value;
-  }, []);
-
-  const insertMention = useCallback((identity: string) => {
-    if (!mentionQuery) return;
-    setDraft(current => insertMentionToken(current, mentionQuery, identity));
-    setMentionActiveIndex(0);
-  }, [mentionQuery]);
-
-  const handleComposerKeyDown = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
-    // If slash-command menu is active, handle slash-command navigation/selection
-    if (slashCommandSuggestions.length > 0) {
-      if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        setSlashActiveIndex(index => (index + 1) % slashCommandSuggestions.length);
-        return;
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        setSlashActiveIndex(index => (index - 1 + slashCommandSuggestions.length) % slashCommandSuggestions.length);
-        return;
-      } else if (event.key === 'Enter' || event.key === 'Tab') {
-        event.preventDefault();
-        const cmd = slashCommandSuggestions[slashActiveIndex] ?? slashCommandSuggestions[0];
-        if (cmd) {
-          if (cmd.command === '/clear') {
-            setDraft('');
-          } else {
-            setDraft(cmd.command);
-          }
-        }
-        setHistoryNavigateIndex(null);
-        return;
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        setSlashActiveIndex(0);
-        return;
-      }
-    }
-
-    // If mention menu is active, handle mention navigation/selection
-    if (mentionQuery && mentionSuggestions.length > 0) {
-      if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        setMentionActiveIndex(index => (index + 1) % mentionSuggestions.length);
-        return;
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        setMentionActiveIndex(index => (index - 1 + mentionSuggestions.length) % mentionSuggestions.length);
-        return;
-      } else if (event.key === 'Enter' || event.key === 'Tab') {
-        event.preventDefault();
-        insertMention(mentionSuggestions[mentionActiveIndex]?.identity ?? mentionSuggestions[0].identity);
-        return;
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        setMentionActiveIndex(0);
-        setDraft(current => current);
-        return;
-      }
-    }
-
-    // ArrowUp — navigate history (only when at the start of the draft and not in a menu)
-    if (event.key === 'ArrowUp' && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
-      const textarea = event.currentTarget;
-      const canStartHistoryRecall = textarea.selectionStart === 0 && textarea.selectionEnd === 0;
-      const isNavigatingHistory = historyNavigateIndex !== null;
-      if ((isNavigatingHistory || canStartHistoryRecall) && composerHistoryEntries.length > 0) {
-        event.preventDefault();
-        const currentNavIndex = historyNavigateIndex;
-        if (currentNavIndex === null) {
-          // Start navigating from the most recent entry
-          historyUnsentDraftRef.current = draft;
-          setHistoryNavigateIndex(composerHistoryEntries.length - 1);
-          setDraft(composerHistoryEntries[composerHistoryEntries.length - 1].body);
-        } else if (currentNavIndex > 0) {
-          // Go to previous entry
-          setHistoryNavigateIndex(currentNavIndex - 1);
-          setDraft(composerHistoryEntries[currentNavIndex - 1].body);
-        }
-        return;
-      }
-    }
-
-    // ArrowDown — navigate forward through history
-    if (event.key === 'ArrowDown' && !event.shiftKey && !event.ctrlKey && !event.metaKey && historyNavigateIndex !== null) {
-      event.preventDefault();
-      if (historyNavigateIndex < composerHistoryEntries.length - 1) {
-        const nextIndex = historyNavigateIndex + 1;
-        setHistoryNavigateIndex(nextIndex);
-        setDraft(composerHistoryEntries[nextIndex].body);
-      } else {
-        // At the end of history, restore the current draft
-        setHistoryNavigateIndex(null);
-        setDraft(historyUnsentDraftRef.current);
-      }
-      return;
-    }
-
-    // Submit on Enter (without Shift). Shift+Enter inserts a newline.
-    if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
-      event.preventDefault();
-      const form = (event.currentTarget as HTMLTextAreaElement).form;
-      if (form) {
-        form.requestSubmit();
-      }
-    }
-  }, [draft, insertMention, mentionActiveIndex, mentionQuery, mentionSuggestions, slashCommandSuggestions, slashActiveIndex, composerHistoryEntries, historyNavigateIndex]);
-
   const handleSubmit = useCallback(async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const body = draft.trim();
+    const body = composer.draft.trim();
     if (!activeChannel || !body || isComposerDisabled || !normalizedSenderIdentity) return;
 
     setSending(true);
@@ -568,12 +417,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
           })));
         }
       }
-      setDraft('');
-      // Record message in composer history
-      const updated = appendHistory(composerHistoryEntries, body);
-      setComposerHistoryEntries(updated);
-      persistHistory(normalizedSenderIdentity, updated);
-      setHistoryNavigateIndex(null);
+      composer.recordSentMessage(body);
       refreshMessages();
       refreshActivityEvents();
       refreshReactions();
@@ -582,7 +426,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     } finally {
       setSending(false);
     }
-  }, [activeAgentMembers, activeChannel, composerHistoryEntries, draft, isComposerDisabled, normalizedSenderIdentity, projectId, refreshActivityEvents, refreshMessages, refreshReactions, selectedTarget, sendMode]);
+  }, [activeAgentMembers, activeChannel, composer, isComposerDisabled, normalizedSenderIdentity, projectId, refreshActivityEvents, refreshMessages, refreshReactions, selectedTarget, sendMode]);
 
   const handleReactToMessage = useCallback(async (message: ChannelMessage, reactionKey: string) => {
     const reactorIdentity = normalizedSenderIdentity || targetMemberIdentity;
@@ -660,15 +504,6 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     }
   }, [activeChannel, editingMember, editingMembershipStatus, editingWakePolicy, refreshMemberships]);
 
-
-  const handleSelectSlashCommand = useCallback((command: string) => {
-    if (command === '/clear') {
-      setDraft('');
-    } else {
-      setDraft(command);
-    }
-    setHistoryNavigateIndex(null);
-  }, []);
 
   const handleRefreshAll = useCallback(() => {
     refreshChannels();
@@ -827,21 +662,21 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
         disabledReason={disabledReason}
         identityRequired={identityRequired}
         isComposerDisabled={isComposerDisabled}
-        draft={draft}
+        draft={composer.draft}
         composerPlaceholder={composerPlaceholder}
-        onDraftChange={handleDraftChange}
+        onDraftChange={composer.handleDraftChange}
         onComposerHotkey={onComposerHotkey}
-        onComposerKeyDown={handleComposerKeyDown}
+        onComposerKeyDown={composer.handleComposerKeyDown}
         onSubmit={handleSubmit}
-        slashCommandSuggestions={slashCommandSuggestions}
-        slashActiveIndex={slashActiveIndex}
-        onSelectSlashCommand={handleSelectSlashCommand}
-        showSlashHelp={showSlashHelp}
-        slashHelpLines={slashHelpLines}
-        mentionQuery={mentionQuery}
-        mentionSuggestions={mentionSuggestions}
-        mentionActiveIndex={mentionActiveIndex}
-        onInsertMention={insertMention}
+        slashCommandSuggestions={composer.slashCommandSuggestions}
+        slashActiveIndex={composer.slashActiveIndex}
+        onSelectSlashCommand={composer.handleSelectSlashCommand}
+        showSlashHelp={composer.showSlashHelp}
+        slashHelpLines={composer.slashHelpLines}
+        mentionQuery={composer.mentionQuery}
+        mentionSuggestions={composer.mentionSuggestions}
+        mentionActiveIndex={composer.mentionActiveIndex}
+        onInsertMention={composer.insertMention}
       />
     </section>
   );
