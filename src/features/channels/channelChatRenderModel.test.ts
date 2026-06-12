@@ -581,6 +581,15 @@ describe('pi-crew delegation channel-message activity', () => {
       terminal: true,
     });
     expect(model.preview).toContain('tools used get_task, list_review_rounds');
+    const nonSessionReply = message({
+      id: 4983,
+      channelId: 642,
+      senderIdentity: 'pi-orchestrator',
+      body: 'Final result:\n- Delegated child wrapper only\n- Child `evidenceChecked`: `false`',
+      metadataJson: null,
+    });
+
+    expect(piCrewDelegationActivityEventsFromMessages([nonSessionReply])).toEqual([]);
   });
 
   it('keeps parent final toolsUsed searchable and displayable from metadata', () => {

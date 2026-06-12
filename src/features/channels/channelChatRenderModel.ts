@@ -302,8 +302,7 @@ export function piCrewDelegationSummaryActivityEventFromMessage(message: Channel
     matchFirst(body, /childSessionId:\s*`([^`]+)`/i),
     matchFirst(body, /Delegated child session:\*\*\s*`([^`]+)`/i),
     matchFirst(body, /Delegated child used:\s*`([^`]+)`/i),
-    matchFirst(body, /Delegated child:\s*`([^`]+)`/i),
-    matchFirst(body, /Delegated child[^`\n]*`([^`]+)`/i),
+    matchFirst(body, /Delegated child:\s*`(delegated-session-[^`]+)`/i),
   );
   if (!childSessionId) return null;
   const outcome = firstString(
