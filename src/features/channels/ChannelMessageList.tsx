@@ -80,8 +80,32 @@ export function ChannelMessageList({
             </div>
           )}
           {!isMessageSearchActive && <ActivityTimeline events={unanchoredActivityEvents} />}
-          {!isMessageSearchActive && <DeliveryProgressCards blocks={deliveryProgressBlocks} />}
+          {(() => {
+            const chronologicalBlocks = isMessageSearchActive ? [] : sortDeliveryBlocksChronologically(deliveryProgressBlocks);
+            let nextBlockIndex = 0;
+            const takeBlocksBeforeMessage = (message: ChannelMessage) => {
+              const messageTime = Date.parse(message.createdAt);
+              const blocks = [] as typeof chronologicalBlocks;
+              while (nextBlockIndex < chronologicalBlocks.length && blockTimestamp(chronologicalBlocks[nextBlockIndex]) <= messageTime) {
+                blocks.push(chronologicalBlocks[nextBlockIndex]);
+                nextBlockIndex += 1;
+              }
+              return blocks;
+            };
+            const takeRemainingBlocks = () => {
+              const blocks = chronologicalBlocks.slice(nextBlockIndex);
+              nextBlockIndex = chronologicalBlocks.length;
+              return blocks;
+            };
+            const renderRemainingBlocks = () => {
+              const remainingBlocks = takeRemainingBlocks();
+              return remainingBlocks.length > 0 ? <DeliveryProgressCards blocks={remainingBlocks} /> : null;
+            };
+
+            return (
+              <>
           {displayedMessages.map(message => {
+            const blocksBeforeMessage = takeBlocksBeforeMessage(message);
             const wakeProgress = deriveWakeProgress(message, sortedMessages);
             const messageReactions = reactionsByMessageId.get(message.id) ?? [];
             const anchoredActivityEvents = activityEventsByMessageId.get(message.id) ?? [];
@@ -89,6 +113,8 @@ export function ChannelMessageList({
             const messageDisplay = directAgentMessageDisplay(message);
             const primaryBody = channelMessagePrimaryBody(message);
             return (
+            <div key={`message-row-${message.id}`}>
+            {blocksBeforeMessage.length > 0 && <DeliveryProgressCards blocks={blocksBeforeMessage} />}
             <div key={message.id} className={`channel-chat-message ${isSharedProjectChannel(activeChannel) ? 'channel-chat-message-shared' : ''}`}>
               <span className="message-time">{formatTimeAgo(message.createdAt)}</span>
               <span className={`channel-chat-sender channel-chat-sender-${message.senderType}`}>{messageSender(message)}</span>
@@ -141,11 +167,28 @@ export function ChannelMessageList({
                 />
               </span>
             </div>
+            </div>
           );
           })}
+          {renderRemainingBlocks()}
+              </>
+            );
+          })()}
         </>
       )}
       <div className="channel-chat-scroll-anchor" ref={scrollAnchorRef} aria-hidden="true" />
     </div>
   );
+}
+
+type DeliveryProgressBlock = { displayBlockId: string; events: ChannelActivityEvent[] };
+
+function sortDeliveryBlocksChronologically(blocks: DeliveryProgressBlock[]): DeliveryProgressBlock[] {
+  return [...blocks].sort((left, right) => blockTimestamp(left) - blockTimestamp(right) || left.displayBlockId.localeCompare(right.displayBlockId));
+}
+
+function blockTimestamp(block: DeliveryProgressBlock): number {
+  const firstEvent = block.events[0];
+  const timestamp = firstEvent ? Date.parse(firstEvent.createdAt) : Number.POSITIVE_INFINITY;
+  return Number.isFinite(timestamp) ? timestamp : Number.POSITIVE_INFINITY;
 }
