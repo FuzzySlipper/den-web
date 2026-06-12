@@ -178,7 +178,8 @@ export function piCrewDelegationActivityEventsFromMessages(messages: ChannelMess
 }
 
 export function piCrewDelegationActivityEventFromMessage(message: ChannelMessage): ChannelActivityEvent | null {
-  const metadata = parseJsonObject(message.metadataJson);
+  if (!isPiCrewProjectionMessage(message)) return null;
+  const metadata = { ...parsePiCrewDelegationBody(message.body), ...parseJsonObject(message.metadataJson) };
   const eventName = firstString(metadata.eventName, metadata.event_name, metadata.type, metadata.eventType, metadata.event_type);
   if (!eventName?.startsWith('delegation.')) return null;
 
@@ -218,7 +219,7 @@ export function piCrewDelegationActivityEventFromMessage(message: ChannelMessage
     channelId: message.channelId,
     projectId: messageProjectId(message),
     agentIdentity: profileId ?? message.senderIdentity,
-    deliveryRequestId: message.deliveryRequestId,
+    deliveryRequestId: null,
     hermesSessionKey: childSessionId ?? rootSessionId,
     displayBlockId,
     parentHermesSessionKey: parentSessionId ?? rootSessionId,
@@ -242,7 +243,7 @@ export function piCrewDelegationActivityEventFromMessage(message: ChannelMessage
     previewJson: JSON.stringify({ preview: piCrewDelegationPreview({ childSessionId, parentSessionId, rootSessionId, toolName, toolCallId, phase, outcome, durationMs, toolsUsed }) }),
     metadataJson: JSON.stringify(metadataWithSource),
     dedupeKey: message.dedupeKey,
-    finalChannelMessageId: eventName === 'delegation.completed' ? message.id : null,
+    finalChannelMessageId: null,
     createdAt: message.createdAt,
     updatedAt: message.editedAt ?? message.createdAt,
   };
@@ -279,6 +280,14 @@ export function groupActivityEventsForChannelMessages(
   const unanchoredEvents: ChannelActivityEvent[] = [];
 
   for (const event of events) {
+    const forcedDisplayBlockId = standalonePiCrewActivityDisplayBlockId(event);
+    if (forcedDisplayBlockId) {
+      const current = interimBlocksById.get(forcedDisplayBlockId) ?? [];
+      current.push(event);
+      interimBlocksById.set(forcedDisplayBlockId, current);
+      continue;
+    }
+
     const message = messages.find(candidate => activityMatchesChannelMessage(event, candidate));
     if (message) {
       const current = byMessageId.get(message.id) ?? [];
@@ -412,6 +421,49 @@ function parseJsonValue(value: string | null): unknown {
   } catch {
     return value;
   }
+}
+
+
+function parsePiCrewDelegationBody(body: string | null | undefined): Record<string, unknown> {
+  const text = firstString(body);
+  if (!text) return {};
+  const eventMatch = /^\*\*(delegation\.[^*]+)\*\*/.exec(text.trim());
+  if (!eventMatch?.[1]) return {};
+  const parsed: Record<string, unknown> = { eventName: eventMatch[1] };
+  for (const line of text.split(/\r?\n/)) {
+    const match = /^-\s*([A-Za-z0-9_]+):\s*(.+?)\s*$/.exec(line.trim());
+    if (!match?.[1] || match[2] === undefined) continue;
+    parsed[match[1]] = parsePiCrewBodyValue(match[2]);
+  }
+  return parsed;
+}
+
+function parsePiCrewBodyValue(raw: string): unknown {
+  const unwrapped = raw.trim().replace(/^`|`$/g, '').trim();
+  if (/^-?\d+(?:\.\d+)?$/.test(unwrapped)) return Number(unwrapped);
+  if (unwrapped === 'true') return true;
+  if (unwrapped === 'false') return false;
+  return unwrapped;
+}
+
+function isPiCrewProjectionMessage(message: Pick<ChannelMessage, 'senderIdentity' | 'sourceProjectId'>): boolean {
+  const senderIdentity = message.senderIdentity.toLowerCase();
+  return senderIdentity.startsWith('pi-') || message.sourceProjectId === 'pi-crew';
+}
+
+function standalonePiCrewActivityDisplayBlockId(event: ChannelActivityEvent): string | null {
+  if (event.displayBlockId?.startsWith('pi-crew-')) return event.displayBlockId;
+  const agentIdentity = event.agentIdentity.toLowerCase();
+  if (!(agentIdentity.startsWith('pi-') || agentIdentity === 'pi')) return null;
+  const metadata = parseJsonObject(event.metadataJson);
+  const session = firstString(
+    metadata.childSessionId,
+    metadata.child_session_id,
+    event.workerRunId,
+    event.hermesSessionKey,
+    event.deliveryRequestId,
+  );
+  return session ? `pi-crew-agent:${event.agentIdentity}:${session}` : `pi-crew-agent:${event.agentIdentity}`;
 }
 
 function firstString(...values: unknown[]): string | null {

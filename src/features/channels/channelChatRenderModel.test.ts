@@ -436,11 +436,83 @@ describe('pi-crew delegation channel-message activity', () => {
       sourceMessageId: 4792,
       status: 'tool_completed',
     });
-    expect(toActivityDisplayModel(events[3])).toMatchObject({ terminal: true, finalChannelMessageId: 4793 });
+    expect(toActivityDisplayModel(events[3])).toMatchObject({ terminal: true, finalChannelMessageId: null, sourceMessageId: 4793 });
 
     const grouped = groupActivityEventsForChannelMessages([], events);
     expect(grouped.displayBlocks).toHaveLength(1);
     expect(grouped.displayBlocks[0].events.map(event => event.id)).toEqual([-4789, -4791, -4792, -4793]);
+  });
+
+  it('parses live pi-crew delegation bodies without metadata and keeps them in their own activity bubble', () => {
+    const liveMessage = message({
+      id: 4928,
+      channelId: 642,
+      senderIdentity: 'pi-crew-service',
+      body: '**delegation.tool_visible**\nSubagent tool called: query_librarian\n- childSessionId: `delegated-session-2`\n- phase: `called`\n- toolName: `query_librarian`\n- toolCallId: `call_00_FslvhwHwyXzYnMZhK5SJ9029`\n- coalescedToolCallCount: `157`\n- coalescedCompletedCount: `76`',
+      messageKind: 'agent_text',
+      sourceKind: 'gateway_delivery',
+      sourceId: 'http-delivery-1781264296219',
+      deliveryRequestId: 'http-delivery-1781264296219',
+      metadataJson: null,
+    });
+
+    const events = piCrewDelegationActivityEventsFromMessages([liveMessage]);
+    expect(events).toHaveLength(1);
+    expect(events[0].deliveryRequestId).toBeNull();
+    expect(events[0].finalChannelMessageId).toBeNull();
+
+    const model = toActivityDisplayModel(events[0]);
+    expect(model).toMatchObject({
+      title: 'Tool called · query_librarian',
+      childSessionId: 'delegated-session-2',
+      toolName: 'query_librarian',
+      toolCallId: 'call_00_FslvhwHwyXzYnMZhK5SJ9029',
+      status: 'tool_called',
+      sourceMessageId: 4928,
+    });
+
+    const grouped = groupActivityEventsForChannelMessages([liveMessage], events);
+    expect(grouped.byMessageId.size).toBe(0);
+    expect(grouped.displayBlocks).toHaveLength(1);
+    expect(grouped.displayBlocks[0].displayBlockId).toBe('pi-crew-delegation:delegated-session-2');
+  });
+
+  it('keeps native pi-crew agent activity as a standalone activity bubble instead of appending to the final Hermes message', () => {
+    const finalMessage = message({ id: 4801, deliveryRequestId: '4757' });
+    const piActivity = activity({
+      id: 149115,
+      agentIdentity: 'pi-crew-runner',
+      deliveryRequestId: '4757',
+      eventType: 'tool_call_completed',
+      title: 'patch',
+      createdAt: '2026-06-12T09:00:12Z',
+    });
+
+    expect(activityMatchesChannelMessage(piActivity, finalMessage)).toBe(true);
+    const grouped = groupActivityEventsForChannelMessages([finalMessage], [piActivity]);
+    expect(grouped.byMessageId.size).toBe(0);
+    expect(grouped.displayBlocks).toHaveLength(1);
+    expect(grouped.displayBlocks[0].displayBlockId).toBe('pi-crew-agent:pi-crew-runner:4757');
+  });
+
+  it('does not promote arbitrary non-pi delegation-looking messages or non-pi native activity into standalone pi bubbles', () => {
+    const finalMessage = message({ id: 5001, deliveryRequestId: 'delivery-1' });
+    const ordinaryMessage = message({
+      id: 5002,
+      senderIdentity: 'den-mcp-runner',
+      sourceProjectId: 'den-web',
+      body: '**delegation.tool_visible**\n- childSessionId: `not-pi`',
+    });
+    const ordinaryActivity = activity({
+      id: 5003,
+      agentIdentity: 'den-mcp-runner',
+      deliveryRequestId: 'delivery-1',
+    });
+
+    expect(piCrewDelegationActivityEventsFromMessages([ordinaryMessage])).toEqual([]);
+    const grouped = groupActivityEventsForChannelMessages([finalMessage], [ordinaryActivity]);
+    expect(grouped.byMessageId.get(5001)?.map(event => event.id)).toEqual([5003]);
+    expect(grouped.displayBlocks).toEqual([]);
   });
 
   it('keeps parent final toolsUsed searchable and displayable from metadata', () => {
