@@ -1,4 +1,4 @@
-import type { ChannelActivityEvent, ChannelMessage, GatewayMember } from '../../api/types';
+import type { AgentWorkLifecycleEvent, ChannelActivityEvent, ChannelMessage, GatewayMember } from '../../api/types';
 
 export type MessageBodySegment =
   | { type: 'text'; text: string }
@@ -170,9 +170,52 @@ export function toActivityDisplayModel(event: ChannelActivityEvent): ActivityDis
   };
 }
 
+
+export function piCrewAgentWorkActivityEventsFromLifecycleEvents(events: AgentWorkLifecycleEvent[]): ChannelActivityEvent[] {
+  return events.flatMap(event => {
+    if (!isPiAgentIdentity(event.agentIdentity)) return [];
+    const sourceMessageId = firstPositiveInteger(sourceMessageIdFromEvidence(event.evidenceLink));
+    return [{
+      id: -1_000_000 - event.id,
+      channelId: event.channelId,
+      projectId: event.projectId,
+      agentIdentity: event.agentIdentity,
+      deliveryRequestId: null,
+      hermesSessionKey: event.sessionId,
+      displayBlockId: piCrewAgentDisplayBlockId(event),
+      parentHermesSessionKey: null,
+      parentAgentIdentity: null,
+      workerRunId: event.workerRunId,
+      workerRole: null,
+      assignmentId: event.assignmentId,
+      taskId: event.taskId,
+      threadId: null,
+      anchorMessageId: sourceMessageId,
+      eventType: event.eventType,
+      status: event.state ?? event.eventType,
+      deliveryStage: lifecycleDeliveryStage(event),
+      terminal: lifecycleEventIsTerminal(event),
+      sequence: event.id,
+      updateVersion: 1,
+      title: lifecycleTitle(event.eventType),
+      summary: event.summary,
+      previewJson: null,
+      metadataJson: JSON.stringify({
+        eventType: event.eventType,
+        sourceMessageId,
+        evidenceLink: event.evidenceLink,
+      }),
+      dedupeKey: null,
+      finalChannelMessageId: null,
+      createdAt: event.createdAt,
+      updatedAt: event.createdAt,
+    } satisfies ChannelActivityEvent];
+  });
+}
+
 export function piCrewDelegationActivityEventsFromMessages(messages: ChannelMessage[]): ChannelActivityEvent[] {
   return messages.flatMap(message => {
-    const event = piCrewDelegationActivityEventFromMessage(message);
+    const event = piCrewDelegationActivityEventFromMessage(message) ?? piCrewDelegationSummaryActivityEventFromMessage(message);
     return event ? [event] : [];
   });
 }
@@ -241,6 +284,68 @@ export function piCrewDelegationActivityEventFromMessage(message: ChannelMessage
     title: piCrewDelegationTitle(eventName, { childSessionId, toolName, phase, outcome, toolsUsed }),
     summary: message.summary,
     previewJson: JSON.stringify({ preview: piCrewDelegationPreview({ childSessionId, parentSessionId, rootSessionId, toolName, toolCallId, phase, outcome, durationMs, toolsUsed }) }),
+    metadataJson: JSON.stringify(metadataWithSource),
+    dedupeKey: message.dedupeKey,
+    finalChannelMessageId: null,
+    createdAt: message.createdAt,
+    updatedAt: message.editedAt ?? message.createdAt,
+  };
+}
+
+
+export function piCrewDelegationSummaryActivityEventFromMessage(message: ChannelMessage): ChannelActivityEvent | null {
+  if (!isPiCrewProjectionMessage(message)) return null;
+  const body = firstString(message.body);
+  if (!body || body.startsWith('**delegation.')) return null;
+  const childSessionId = firstString(
+    matchFirst(body, /childSessionId:\*\*\s*`([^`]+)`/i),
+    matchFirst(body, /childSessionId:\s*`([^`]+)`/i),
+    matchFirst(body, /Delegated child session:\*\*\s*`([^`]+)`/i),
+    matchFirst(body, /Delegated child used:\s*`([^`]+)`/i),
+    matchFirst(body, /Delegated child:\s*`([^`]+)`/i),
+    matchFirst(body, /Delegated child[^`\n]*`([^`]+)`/i),
+  );
+  if (!childSessionId) return null;
+  const outcome = firstString(
+    matchFirst(body, /outcome:\*\*\s*`?([A-Za-z0-9_.-]+)`?/i),
+    matchFirst(body, /Child outcome[^\n:]*:\s*`?([A-Za-z0-9_.-]+)`?/i),
+  );
+  const toolsUsed = parseToolsUsedFromPiCrewSummary(body);
+  const metadataWithSource = {
+    eventName: 'delegation.completed',
+    sourceMessageId: message.id,
+    childSessionId,
+    profileId: message.senderIdentity,
+    outcome,
+    toolsUsed,
+  };
+  return {
+    id: -message.id,
+    channelId: message.channelId,
+    projectId: messageProjectId(message),
+    agentIdentity: message.senderIdentity,
+    deliveryRequestId: null,
+    hermesSessionKey: childSessionId,
+    displayBlockId: `pi-crew-delegation:${childSessionId}`,
+    parentHermesSessionKey: null,
+    parentAgentIdentity: message.senderIdentity,
+    workerRunId: childSessionId,
+    workerRole: 'subagent',
+    assignmentId: message.assignmentId,
+    agentInstanceId: message.agentInstanceId,
+    poolMemberId: message.poolMemberId,
+    taskId: message.targetTaskId ?? null,
+    threadId: message.threadRootMessageId,
+    anchorMessageId: null,
+    eventType: 'delegation.completed',
+    status: outcome === 'failed' ? 'failed' : 'completed',
+    deliveryStage: 'final',
+    terminal: true,
+    sequence: message.id,
+    updateVersion: 1,
+    title: `Subagent result · ${childSessionId}`,
+    summary: message.summary,
+    previewJson: JSON.stringify({ preview: piCrewDelegationPreview({ childSessionId, parentSessionId: null, rootSessionId: null, toolName: null, toolCallId: null, phase: null, outcome, durationMs: null, toolsUsed }) }),
     metadataJson: JSON.stringify(metadataWithSource),
     dedupeKey: message.dedupeKey,
     finalChannelMessageId: null,
@@ -449,6 +554,58 @@ function parsePiCrewBodyValue(raw: string): unknown {
 function isPiCrewProjectionMessage(message: Pick<ChannelMessage, 'senderIdentity' | 'sourceProjectId'>): boolean {
   const senderIdentity = message.senderIdentity.toLowerCase();
   return senderIdentity.startsWith('pi-') || message.sourceProjectId === 'pi-crew';
+}
+
+function isPiAgentIdentity(agentIdentity: string): boolean {
+  const normalized = agentIdentity.toLowerCase();
+  return normalized.startsWith('pi-') || normalized === 'pi';
+}
+
+function piCrewAgentDisplayBlockId(event: AgentWorkLifecycleEvent): string {
+  const sourceMessageId = firstString(sourceMessageIdFromEvidence(event.evidenceLink));
+  const session = firstString(event.sessionId, event.workerRunId, event.deliveryRequestId, sourceMessageId);
+  return session ? `pi-crew-agent:${event.agentIdentity}:${session}` : `pi-crew-agent:${event.agentIdentity}`;
+}
+
+function sourceMessageIdFromEvidence(evidenceLink: string | null): string | null {
+  return matchFirst(evidenceLink ?? '', /messages\/(\d+)/) ?? matchFirst(evidenceLink ?? '', /messageId=(\d+)/);
+}
+
+function lifecycleDeliveryStage(event: AgentWorkLifecycleEvent): string {
+  return lifecycleEventIsTerminal(event) ? 'final' : 'progress';
+}
+
+function lifecycleEventIsTerminal(event: AgentWorkLifecycleEvent): boolean {
+  const state = event.state?.toLowerCase();
+  const type = event.eventType.toLowerCase();
+  return state === 'completed' || state === 'failed' || type === 'completed' || type === 'failed';
+}
+
+function lifecycleTitle(eventType: string): string {
+  return eventType.replace(/_/g, ' ');
+}
+
+function matchFirst(value: string, pattern: RegExp): string | null {
+  return pattern.exec(value)?.[1]?.trim() ?? null;
+}
+
+function parseToolsUsedFromPiCrewSummary(body: string): string | null {
+  const inline = matchFirst(body, /toolsUsed:\*\*\s*`([^`]+)`/i) ?? matchFirst(body, /toolsUsed:\s*`([^`]+)`/i);
+  if (inline) return inline;
+  const tools: string[] = [];
+  const lines = body.split(/\r?\n/);
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!/tools\s*used|toolsUsed/i.test(lines[index])) continue;
+    for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
+      const line = lines[cursor];
+      if (/^\s*$/.test(line)) break;
+      const tool = matchFirst(line, /^\s*-\s*`([^`]+)`/) ?? matchFirst(line, /^\s*-\s*([A-Za-z0-9_.:-]+)/);
+      if (tool) tools.push(tool);
+      else if (!/^\s*-/.test(line)) break;
+    }
+    if (tools.length > 0) break;
+  }
+  return tools.length > 0 ? tools.join(', ') : null;
 }
 
 function standalonePiCrewActivityDisplayBlockId(event: ChannelActivityEvent): string | null {

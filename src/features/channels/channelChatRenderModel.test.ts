@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { ChannelActivityEvent, ChannelMessage } from '../../api/types';
+import type { AgentWorkLifecycleEvent, ChannelActivityEvent, ChannelMessage } from '../../api/types';
 import {
   activityMatchesChannelMessage,
   channelMessageDeliveryRequestId,
@@ -15,6 +15,7 @@ import {
   insertMentionToken,
   messageHasCheckpointMetadata,
   parseMessageBodySegments,
+  piCrewAgentWorkActivityEventsFromLifecycleEvents,
   piCrewDelegationActivityEventsFromMessages,
   sortActivityEvents,
   toActivityDisplayModel,
@@ -371,6 +372,26 @@ describe('activity/message grouping', () => {
 });
 
 
+function lifecycleEvent(overrides: Partial<AgentWorkLifecycleEvent>): AgentWorkLifecycleEvent {
+  return {
+    id: 149725,
+    channelId: 642,
+    projectId: 'pi-crew',
+    taskId: null,
+    agentIdentity: 'pi-orchestrator',
+    eventType: 'runtime_received',
+    state: 'started',
+    workerRunId: null,
+    assignmentId: null,
+    deliveryRequestId: null,
+    sessionId: null,
+    evidenceLink: '/channels/642/messages/4977',
+    summary: 'pi-crew runtime_received direct-agent event 4977',
+    createdAt: '2026-06-12T12:04:26Z',
+    ...overrides,
+  };
+}
+
 describe('pi-crew delegation channel-message activity', () => {
   const projectionMessage = (id: number, eventName: string, details: Record<string, unknown>) => message({
     id,
@@ -513,6 +534,53 @@ describe('pi-crew delegation channel-message activity', () => {
     const grouped = groupActivityEventsForChannelMessages([finalMessage], [ordinaryActivity]);
     expect(grouped.byMessageId.get(5001)?.map(event => event.id)).toEqual([5003]);
     expect(grouped.displayBlocks).toEqual([]);
+  });
+
+  it('creates pi-crew parent lifecycle bubbles from agent-work lifecycle events', () => {
+    const events = piCrewAgentWorkActivityEventsFromLifecycleEvents([
+      lifecycleEvent({ id: 149725, eventType: 'runtime_received', state: 'started', evidenceLink: '/channels/642/messages/4965' }),
+      lifecycleEvent({ id: 149729, eventType: 'completed', state: 'completed', evidenceLink: '/channels/642/messages/4965' }),
+      lifecycleEvent({ id: 999, agentIdentity: 'den-mcp-runner', eventType: 'runtime_received', state: 'started' }),
+    ]);
+
+    expect(events).toHaveLength(2);
+    expect(events.map(event => event.displayBlockId)).toEqual([
+      'pi-crew-agent:pi-orchestrator:4965',
+      'pi-crew-agent:pi-orchestrator:4965',
+    ]);
+    expect(events[0]).toMatchObject({
+      anchorMessageId: 4965,
+      title: 'runtime received',
+      terminal: false,
+      deliveryRequestId: null,
+    });
+    expect(events[1]).toMatchObject({
+      anchorMessageId: 4965,
+      title: 'completed',
+      terminal: true,
+      deliveryStage: 'final',
+    });
+  });
+
+  it('summarizes child delegation from pi-crew final replies when service debug projection messages are suppressed', () => {
+    const finalReply = message({
+      id: 4979,
+      channelId: 642,
+      senderIdentity: 'pi-orchestrator',
+      body: 'Retry completed, but **review is still not approval-quality**.\n\n- Parent session: `sess-pi-orchestrator`\n- Delegated child: `delegated-session-1`\n- Child outcome: `success` wrapper only\n- Child `toolsUsed`:\n  - `get_task`\n  - `list_review_rounds`',
+      metadataJson: null,
+    });
+
+    const events = piCrewDelegationActivityEventsFromMessages([finalReply]);
+    expect(events).toHaveLength(1);
+    const model = toActivityDisplayModel(events[0]);
+    expect(model).toMatchObject({
+      displayBlockId: 'pi-crew-delegation:delegated-session-1',
+      childSessionId: 'delegated-session-1',
+      sourceMessageId: 4979,
+      terminal: true,
+    });
+    expect(model.preview).toContain('tools used get_task, list_review_rounds');
   });
 
   it('keeps parent final toolsUsed searchable and displayable from metadata', () => {
