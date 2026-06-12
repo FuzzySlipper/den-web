@@ -15,6 +15,7 @@ import {
   insertMentionToken,
   messageHasCheckpointMetadata,
   parseMessageBodySegments,
+  piCrewDelegationActivityEventsFromMessages,
   sortActivityEvents,
   toActivityDisplayModel,
 } from './channelChatRenderModel';
@@ -366,6 +367,94 @@ describe('activity/message grouping', () => {
     ]);
 
     expect(sorted.map(event => event.id)).toEqual([2, 1, 3]);
+  });
+});
+
+
+describe('pi-crew delegation channel-message activity', () => {
+  const projectionMessage = (id: number, eventName: string, details: Record<string, unknown>) => message({
+    id,
+    channelId: 642,
+    senderIdentity: 'pi-crew-runner',
+    body: `**${eventName}**`,
+    messageKind: 'agent_text',
+    sourceKind: 'pi_crew_projection',
+    sourceId: `projection-${id}`,
+    sourceProjectId: 'pi-crew',
+    metadataJson: JSON.stringify({ eventName, ...details }),
+    createdAt: `2026-06-12T09:00:0${id - 4788}Z`,
+  });
+
+  it('turns pi-crew delegation projection messages into grouped activity breadcrumbs', () => {
+    const events = piCrewDelegationActivityEventsFromMessages([
+      projectionMessage(4789, 'delegation.spawned', {
+        childSessionId: 'delegated-session-1',
+        parentSessionId: 'parent-session-1',
+        rootSessionId: 'root-session-1',
+        profileId: 'pi-crew-coder',
+      }),
+      projectionMessage(4791, 'delegation.tool_visible', {
+        childSessionId: 'delegated-session-1',
+        parentSessionId: 'parent-session-1',
+        phase: 'called',
+        toolName: 'get_task_workflow_summary',
+        toolCallId: 'yz9iPxkh1op9uMYQ70EZ3EGY9yiS4Ncr',
+      }),
+      projectionMessage(4792, 'delegation.tool_visible', {
+        childSessionId: 'delegated-session-1',
+        parentSessionId: 'parent-session-1',
+        phase: 'completed',
+        toolName: 'get_task_workflow_summary',
+        toolCallId: 'yz9iPxkh1op9uMYQ70EZ3EGY9yiS4Ncr',
+        durationMs: 20,
+      }),
+      projectionMessage(4793, 'delegation.completed', {
+        childSessionId: 'delegated-session-1',
+        outcome: 'success',
+        turnsUsed: 2,
+        tokensConsumed: 1234,
+      }),
+    ]);
+
+    expect(events).toHaveLength(4);
+    expect(events.map(event => event.displayBlockId)).toEqual([
+      'pi-crew-delegation:delegated-session-1',
+      'pi-crew-delegation:delegated-session-1',
+      'pi-crew-delegation:delegated-session-1',
+      'pi-crew-delegation:delegated-session-1',
+    ]);
+    expect(events.map(event => toActivityDisplayModel(event).title)).toEqual([
+      'Subagent spawned · delegated-session-1',
+      'Tool called · get_task_workflow_summary',
+      'Tool completed · get_task_workflow_summary',
+      'Subagent completed · success',
+    ]);
+    expect(toActivityDisplayModel(events[2])).toMatchObject({
+      toolName: 'get_task_workflow_summary',
+      toolCallId: 'yz9iPxkh1op9uMYQ70EZ3EGY9yiS4Ncr',
+      durationMs: 20,
+      sourceMessageId: 4792,
+      status: 'tool_completed',
+    });
+    expect(toActivityDisplayModel(events[3])).toMatchObject({ terminal: true, finalChannelMessageId: 4793 });
+
+    const grouped = groupActivityEventsForChannelMessages([], events);
+    expect(grouped.displayBlocks).toHaveLength(1);
+    expect(grouped.displayBlocks[0].events.map(event => event.id)).toEqual([-4789, -4791, -4792, -4793]);
+  });
+
+  it('keeps parent final toolsUsed searchable and displayable from metadata', () => {
+    const events = piCrewDelegationActivityEventsFromMessages([
+      projectionMessage(4794, 'delegation.completed', {
+        childSessionId: 'delegated-session-1',
+        outcome: 'success',
+        toolsUsed: ['get_task_workflow_summary'],
+      }),
+    ]);
+
+    const model = toActivityDisplayModel(events[0]);
+    expect(model.preview).toContain('tools used get_task_workflow_summary');
+    expect(model.sourceMessageId).toBe(4794);
   });
 });
 

@@ -22,4 +22,5 @@
 @import './features/preferences.css';
 @import './features/notifications.css';
 @import './features/fleetops.css';
+@import './features/pi-crew-diagnostics.css';
 @import './features/dm.css';

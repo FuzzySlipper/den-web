@@ -22,6 +22,7 @@ import { WorkerPoolLobbyView } from '../features/agents/WorkerPoolLobbyView';
 import { DmConversationList } from '../features/dm/DmConversationList';
 import { DmTranscriptView } from '../features/dm/DmTranscriptView';
 import { FleetOpsCockpit } from '../features/fleetops/FleetOpsCockpit';
+import { PiCrewDiagnosticsPanel } from '../features/piCrewDiagnostics/PiCrewDiagnosticsPanel';
 import { NotificationHistoryPanel } from '../features/notifications/NotificationHistoryPanel';
 import { LibrarianView } from '../features/librarian/LibrarianView';
 
@@ -212,6 +213,8 @@ export function MainPanel({
           )
         ) : viewMode === 'fleet-ops' ? (
           <FleetOpsCockpit />
+        ) : viewMode === 'pi-crew-diagnostics' ? (
+          <PiCrewDiagnosticsPanel />
         ) : viewMode === 'notifications' ? (
           <NotificationHistoryPanel
             projectIds={notificationScopeProjectIds(effectiveSpaceId, spaces)}

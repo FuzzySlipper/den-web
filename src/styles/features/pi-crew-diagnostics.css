@@ -1,0 +1,129 @@
+.pi-crew-diagnostics-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  color: var(--text-primary);
+}
+
+.pi-crew-diagnostics-header,
+.pi-crew-config-card,
+.pi-crew-overview-card,
+.pi-crew-control-card,
+.pi-crew-session-card,
+.pi-crew-events-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-panel);
+  padding: 1rem;
+}
+
+.pi-crew-diagnostics-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.pi-crew-diagnostics-header h2,
+.pi-crew-overview-card h3,
+.pi-crew-control-card h3,
+.pi-crew-session-card h3,
+.pi-crew-events-card h3 {
+  margin: 0 0 0.35rem;
+}
+
+.pi-crew-config-card,
+.pi-crew-control-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.pi-crew-config-card label,
+.pi-crew-control-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+}
+
+.pi-crew-config-card input,
+.pi-crew-control-form input,
+.pi-crew-control-form textarea {
+  width: 100%;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-input);
+  color: var(--text-primary);
+  padding: 0.45rem 0.6rem;
+}
+
+.pi-crew-checkbox {
+  flex-direction: row !important;
+  align-items: center;
+}
+
+.pi-crew-status,
+.pi-crew-control-result {
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border-subtle);
+}
+
+.pi-crew-status-ok { border-color: rgba(87, 197, 137, 0.45); background: rgba(87, 197, 137, 0.10); }
+.pi-crew-status-warn { border-color: rgba(250, 204, 21, 0.45); background: rgba(250, 204, 21, 0.10); }
+.pi-crew-status-error { border-color: rgba(248, 113, 113, 0.55); background: rgba(248, 113, 113, 0.12); }
+.pi-crew-status-unknown { border-color: rgba(148, 163, 184, 0.45); background: rgba(148, 163, 184, 0.10); }
+
+.pi-crew-status-grid,
+.pi-crew-control-buttons,
+.pi-crew-session-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.pi-crew-status-grid > span,
+.pi-crew-control-buttons button,
+.pi-crew-session-controls button {
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  background: var(--surface-muted);
+}
+
+.pi-crew-status-grid > span {
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.pi-crew-session-table-wrap {
+  overflow-x: auto;
+  margin-top: 0.75rem;
+}
+
+.pi-crew-session-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.pi-crew-session-table th,
+.pi-crew-session-table td {
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0.5rem;
+}
+
+.pi-crew-events-card pre,
+.pi-crew-control-result pre {
+  max-height: 260px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--surface-code);
+  padding: 0.75rem;
+}

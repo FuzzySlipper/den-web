@@ -29,6 +29,7 @@ export function channelMessageSearchHaystack(message: ChannelMessage): string {
     message.deliveryRequestId,
     message.dedupeKey,
     message.deepLink,
+    message.metadataJson,
   ]
     .map(normalizeSearchText)
     .filter(Boolean)

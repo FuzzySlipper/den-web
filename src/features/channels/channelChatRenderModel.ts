@@ -111,6 +111,15 @@ export interface ActivityDisplayModel {
   taskId: number | null;
   anchorMessageId: number | null;
   finalChannelMessageId: number | null;
+  childSessionId: string | null;
+  parentSessionId: string | null;
+  rootSessionId: string | null;
+  profileId: string | null;
+  toolName: string | null;
+  toolCallId: string | null;
+  durationMs: number | null;
+  outcome: string | null;
+  sourceMessageId: number | null;
   createdAt: string;
 }
 
@@ -125,6 +134,12 @@ export function toActivityDisplayModel(event: ChannelActivityEvent): ActivityDis
     humanizeEventType(event.eventType),
   ) ?? humanizeEventType(event.eventType);
   const count = firstNumber(metadata.count, metadata.coalescedCount, metadata.coalesced_count);
+  const childSessionId = firstString(metadata.childSessionId, metadata.child_session_id);
+  const parentSessionId = firstString(metadata.parentSessionId, metadata.parent_session_id);
+  const rootSessionId = firstString(metadata.rootSessionId, metadata.root_session_id);
+  const profileId = firstString(metadata.profileId, metadata.profile_id);
+  const toolCallId = firstString(metadata.toolCallId, metadata.tool_call_id);
+  const durationMs = firstAnyNumber(metadata.durationMs, metadata.duration_ms);
   return {
     id: event.id,
     agentIdentity: event.agentIdentity,
@@ -142,7 +157,94 @@ export function toActivityDisplayModel(event: ChannelActivityEvent): ActivityDis
     taskId: event.taskId,
     anchorMessageId: event.anchorMessageId,
     finalChannelMessageId: event.finalChannelMessageId,
+    childSessionId,
+    parentSessionId,
+    rootSessionId,
+    profileId,
+    toolName: firstString(metadata.toolName, metadata.tool_name),
+    toolCallId,
+    durationMs,
+    outcome: firstString(metadata.outcome, metadata.result, metadata.status),
+    sourceMessageId: firstPositiveInteger(metadata.sourceMessageId, metadata.source_message_id),
     createdAt: event.createdAt,
+  };
+}
+
+export function piCrewDelegationActivityEventsFromMessages(messages: ChannelMessage[]): ChannelActivityEvent[] {
+  return messages.flatMap(message => {
+    const event = piCrewDelegationActivityEventFromMessage(message);
+    return event ? [event] : [];
+  });
+}
+
+export function piCrewDelegationActivityEventFromMessage(message: ChannelMessage): ChannelActivityEvent | null {
+  const metadata = parseJsonObject(message.metadataJson);
+  const eventName = firstString(metadata.eventName, metadata.event_name, metadata.type, metadata.eventType, metadata.event_type);
+  if (!eventName?.startsWith('delegation.')) return null;
+
+  const childSessionId = firstString(metadata.childSessionId, metadata.child_session_id);
+  const parentSessionId = firstString(metadata.parentSessionId, metadata.parent_session_id);
+  const rootSessionId = firstString(metadata.rootSessionId, metadata.root_session_id);
+  const toolName = firstString(metadata.toolName, metadata.tool_name);
+  const toolCallId = firstString(metadata.toolCallId, metadata.tool_call_id);
+  const phase = firstString(metadata.phase);
+  const outcome = firstString(metadata.outcome, metadata.result, metadata.status);
+  const profileId = firstString(metadata.profileId, metadata.profile_id);
+  const durationMs = firstAnyNumber(metadata.durationMs, metadata.duration_ms);
+  const toolsUsed = firstString(
+    Array.isArray(metadata.toolsUsed) ? metadata.toolsUsed.join(', ') : metadata.toolsUsed,
+    Array.isArray(metadata.tools_used) ? metadata.tools_used.join(', ') : metadata.tools_used,
+  );
+  const displayBlockId = childSessionId ? `pi-crew-delegation:${childSessionId}` : (rootSessionId ? `pi-crew-delegation:${rootSessionId}` : `pi-crew-delegation-message:${message.id}`);
+  const status = piCrewDelegationStatus(eventName, phase, outcome);
+  const terminal = eventName === 'delegation.completed' || status === 'failed';
+  const metadataWithSource = {
+    ...metadata,
+    sourceMessageId: message.id,
+    childSessionId,
+    parentSessionId,
+    rootSessionId,
+    profileId,
+    toolName,
+    toolCallId,
+    phase,
+    outcome,
+    durationMs,
+    toolsUsed,
+  };
+
+  return {
+    id: -message.id,
+    channelId: message.channelId,
+    projectId: messageProjectId(message),
+    agentIdentity: profileId ?? message.senderIdentity,
+    deliveryRequestId: message.deliveryRequestId,
+    hermesSessionKey: childSessionId ?? rootSessionId,
+    displayBlockId,
+    parentHermesSessionKey: parentSessionId ?? rootSessionId,
+    parentAgentIdentity: message.senderIdentity,
+    workerRunId: childSessionId,
+    workerRole: childSessionId ? 'subagent' : null,
+    assignmentId: message.assignmentId,
+    agentInstanceId: message.agentInstanceId,
+    poolMemberId: message.poolMemberId,
+    taskId: message.targetTaskId ?? null,
+    threadId: message.threadRootMessageId,
+    anchorMessageId: null,
+    eventType: eventName,
+    status,
+    deliveryStage: terminal ? 'final' : 'progress',
+    terminal,
+    sequence: message.id,
+    updateVersion: 1,
+    title: piCrewDelegationTitle(eventName, { childSessionId, toolName, phase, outcome, toolsUsed }),
+    summary: message.summary,
+    previewJson: JSON.stringify({ preview: piCrewDelegationPreview({ childSessionId, parentSessionId, rootSessionId, toolName, toolCallId, phase, outcome, durationMs, toolsUsed }) }),
+    metadataJson: JSON.stringify(metadataWithSource),
+    dedupeKey: message.dedupeKey,
+    finalChannelMessageId: eventName === 'delegation.completed' ? message.id : null,
+    createdAt: message.createdAt,
+    updatedAt: message.editedAt ?? message.createdAt,
   };
 }
 
@@ -338,6 +440,17 @@ function firstNumber(...values: unknown[]): number | null {
   return null;
 }
 
+function firstAnyNumber(...values: unknown[]): number | null {
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return null;
+}
+
 function firstPositiveInteger(...values: unknown[]): number | null {
   for (const value of values) {
     if (typeof value === 'number' && Number.isInteger(value) && value > 0) return value;
@@ -374,6 +487,41 @@ function humanizeEventType(value: string): string {
 function activityFinalChannelMessageId(event: ChannelActivityEvent): number | null {
   const metadata = parseJsonObject(event.metadataJson);
   return firstPositiveInteger(event.finalChannelMessageId, metadata.finalChannelMessageId, metadata.final_channel_message_id);
+}
+
+function messageProjectId(message: ChannelMessage): string | null {
+  return message.targetProjectId ?? message.sourceProjectId ?? null;
+}
+
+function piCrewDelegationStatus(eventName: string, phase: string | null, outcome: string | null): string {
+  if (eventName === 'delegation.spawned') return 'spawned';
+  if (eventName === 'delegation.completed') return outcome === 'failure' || outcome === 'failed' ? 'failed' : 'completed';
+  if (eventName === 'delegation.tool_visible') return phase === 'completed' ? 'tool_completed' : 'tool_called';
+  if (eventName === 'delegation.turn_visible') return phase === 'completed' ? 'turn_completed' : 'turn_started';
+  return eventName.replace(/^delegation\./, '').replace(/[^a-z0-9_-]+/gi, '_').toLowerCase();
+}
+
+function piCrewDelegationTitle(eventName: string, details: { childSessionId: string | null; toolName: string | null; phase: string | null; outcome: string | null; toolsUsed: string | null }): string {
+  if (eventName === 'delegation.spawned') return `Subagent spawned${details.childSessionId ? ` · ${details.childSessionId}` : ''}`;
+  if (eventName === 'delegation.completed') return `Subagent completed${details.outcome ? ` · ${details.outcome}` : ''}`;
+  if (eventName === 'delegation.tool_visible') return `Tool ${details.phase === 'completed' ? 'completed' : 'called'}${details.toolName ? ` · ${details.toolName}` : ''}`;
+  if (eventName === 'delegation.turn_visible') return `Subagent turn ${details.phase === 'completed' ? 'completed' : 'started'}`;
+  if (details.toolsUsed) return `Parent result · ${details.toolsUsed}`;
+  return humanizeEventType(eventName);
+}
+
+function piCrewDelegationPreview(details: { childSessionId: string | null; parentSessionId: string | null; rootSessionId: string | null; toolName: string | null; toolCallId: string | null; phase: string | null; outcome: string | null; durationMs: number | null; toolsUsed: string | null }): string {
+  return [
+    details.childSessionId ? `child ${details.childSessionId}` : null,
+    details.parentSessionId ? `parent ${details.parentSessionId}` : null,
+    details.rootSessionId ? `root ${details.rootSessionId}` : null,
+    details.toolName ? `tool ${details.toolName}` : null,
+    details.toolCallId ? `call ${details.toolCallId}` : null,
+    details.phase ? `phase ${details.phase}` : null,
+    details.durationMs !== null ? `${details.durationMs}ms` : null,
+    details.outcome ? `outcome ${details.outcome}` : null,
+    details.toolsUsed ? `tools used ${details.toolsUsed}` : null,
+  ].filter(Boolean).join(' · ');
 }
 
 function legacyDeliveryRequestIdFromDedupeKey(dedupeKey: string): string | null {

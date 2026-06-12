@@ -19,7 +19,7 @@ import {
   upsertChannelMembership,
 } from '../../api/client';
 import { useLiveData } from '../../hooks/useLiveData';
-import { groupActivityEventsForChannelMessages } from './channelChatRenderModel';
+import { groupActivityEventsForChannelMessages, piCrewDelegationActivityEventsFromMessages } from './channelChatRenderModel';
 import { directTargetsForComposerBody } from './channelComposerDirectTargets';
 import { NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS, isVisibleNormalParticipant } from './participantVisibility';
 import { filterLoadedChannelMessages } from './channelMessageSearch';
@@ -340,9 +340,14 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     [agentWorkEvents, effectiveProjectAttributionFilter],
   );
 
+  const piCrewDelegationActivityEvents = useMemo(
+    () => isMessageSearchActive ? [] : piCrewDelegationActivityEventsFromMessages(displayedMessages),
+    [displayedMessages, isMessageSearchActive],
+  );
+
   const groupedActivityEvents = useMemo(
-    () => groupActivityEventsForChannelMessages(displayedMessages, isMessageSearchActive ? [] : scopedActivityEvents),
-    [displayedMessages, isMessageSearchActive, scopedActivityEvents],
+    () => groupActivityEventsForChannelMessages(displayedMessages, isMessageSearchActive ? [] : [...scopedActivityEvents, ...piCrewDelegationActivityEvents]),
+    [displayedMessages, isMessageSearchActive, scopedActivityEvents, piCrewDelegationActivityEvents],
   );
   const activityEventsByMessageId = groupedActivityEvents.byMessageId;
   const deliveryProgressBlocks = groupedActivityEvents.displayBlocks;

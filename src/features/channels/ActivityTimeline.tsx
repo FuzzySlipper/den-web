@@ -13,13 +13,15 @@ function activityStatusClass(status: string): string {
 }
 
 function activityWorkerChip(event: ReturnType<typeof toActivityDisplayModel>) {
-  if (!event.workerRunId && !event.workerRole && !event.parentAgentIdentity && !event.parentHermesSessionKey) return null;
+  if (!event.workerRunId && !event.workerRole && !event.parentAgentIdentity && !event.parentHermesSessionKey && !event.childSessionId && !event.toolCallId) return null;
   const role = event.workerRole?.trim() || 'worker';
-  const run = event.workerRunId ? shortWorkerRunId(event.workerRunId) : 'pending';
+  const run = event.workerRunId ? shortWorkerRunId(event.workerRunId) : (event.childSessionId ? shortWorkerRunId(event.childSessionId) : 'pending');
   const title = [
     event.displayBlockId ? `display block ${event.displayBlockId}` : null,
     event.parentAgentIdentity ? `parent agent ${event.parentAgentIdentity}` : null,
     event.parentHermesSessionKey ? `parent session ${event.parentHermesSessionKey}` : null,
+    event.rootSessionId ? `root session ${event.rootSessionId}` : null,
+    event.toolCallId ? `tool call ${event.toolCallId}` : null,
   ].filter(Boolean).join(' · ');
   return (
     <span className="channel-chat-activity-worker-chip" title={title || undefined}>
@@ -49,8 +51,13 @@ export function ActivityTimeline({ events, compact = false }: { events: ChannelA
             <strong>{event.title}{event.count ? ` ×${event.count}` : ''}</strong>
             <span className="channel-chat-activity-status">{event.status}</span>
             <span className="channel-chat-activity-stage">{event.terminal ? 'terminal' : event.deliveryStage}</span>
+            {event.toolName && <span className="channel-chat-activity-task">tool {event.toolName}</span>}
+            {event.toolCallId && <span className="channel-chat-activity-task" title={event.toolCallId}>call {shortWorkerRunId(event.toolCallId)}</span>}
+            {event.durationMs !== null && <span className="channel-chat-activity-task">{event.durationMs}ms</span>}
+            {event.outcome && <span className="channel-chat-activity-task">outcome {event.outcome}</span>}
             {event.taskId && <span className="channel-chat-activity-task">task #{event.taskId}</span>}
             {event.finalChannelMessageId && <span className="channel-chat-activity-task">final message #{event.finalChannelMessageId}</span>}
+            {event.sourceMessageId && <span className="channel-chat-activity-task">source message #{event.sourceMessageId}</span>}
             {event.preview && <span className="channel-chat-activity-preview">{event.preview}</span>}
           </span>
         </div>
