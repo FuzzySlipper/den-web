@@ -7,7 +7,8 @@
  *
  * Serves the production build of Den Web (React/Vite SPA) from STATIC_ROOT,
  * proxies /den-core-api/* to Den Core (stripping the prefix), proxies
- * /den-host-api/* to Den Host (rewriting to /api/host/*), and proxies
+ * /den-host-api/* to Den Host (rewriting to /api/host/*), proxies
+ * /pi-crew-admin-api/* to local Pi Crew admin diagnostics, and proxies
  * /api/* to Den Channels (preserving the prefix). Falls back to
  * index.html for unknown paths (SPA routing). Serves /den-web-config.json
  * from a configurable path or from sensible defaults.
@@ -19,6 +20,7 @@
  *   DEN_CORE_TARGET       - Den Core backend URL (default: http://127.0.0.1:5299)
  *   DEN_CHANNELS_TARGET   - Den Channels backend URL (default: http://127.0.0.1:18081)
  *   DEN_HOST_TARGET       - Den Host backend URL (default: http://127.0.0.1:5400)
+ *   PI_CREW_ADMIN_TARGET  - Pi Crew admin diagnostics URL (default: http://127.0.0.1:9237)
  *   DEN_WEB_CONFIG_PATH   - path to den-web-config.json (default: ${STATIC_ROOT}/den-web-config.json)
  *   DEN_WEB_BUILD_SENTINEL - path to den-web-build.json (default: ${STATIC_ROOT}/den-web-build.json)
  *   CACHE_MAX_AGE_SECONDS - max-age for immutable assets (default: 31536000)
@@ -26,6 +28,7 @@
  *   DEN_CORE_API_BASE     - runtime config Core API base (default: /den-core-api)
  *   DEN_CHANNELS_API_BASE - runtime config Channels API base (default: /api)
  *   DEN_HOST_API_BASE     - runtime config Den Host API base (default: /den-host-api)
+ *   PI_CREW_ADMIN_API_BASE - runtime config Pi Crew admin API base (default: /pi-crew-admin-api)
  *   APP_BASE_PATH         - runtime config app base path (default: /)
  *   ENVIRONMENT_NAME      - runtime config environment label (default: den-srv)
  */
@@ -43,6 +46,7 @@ const STATIC_ROOT      = process.env.STATIC_ROOT ?? '/data/services/den-web/wwwr
 const DEN_CORE_TARGET  = process.env.DEN_CORE_TARGET ?? 'http://127.0.0.1:5299';
 const DEN_CHANNELS_TARGET = process.env.DEN_CHANNELS_TARGET ?? 'http://127.0.0.1:18081';
 const DEN_HOST_TARGET = process.env.DEN_HOST_TARGET ?? 'http://127.0.0.1:5400';
+const PI_CREW_ADMIN_TARGET = process.env.PI_CREW_ADMIN_TARGET ?? 'http://127.0.0.1:9237';
 const CONFIG_PATH      = process.env.DEN_WEB_CONFIG_PATH ?? path.join(STATIC_ROOT, 'den-web-config.json');
 const BUILD_SENTINEL_PATH = process.env.DEN_WEB_BUILD_SENTINEL ?? path.join(STATIC_ROOT, 'den-web-build.json');
 const CACHE_MAX_AGE    = parseInt(process.env.CACHE_MAX_AGE_SECONDS ?? '31536000', 10);
@@ -137,6 +141,7 @@ function loadConfig() {
     denCoreApiBase: process.env.DEN_CORE_API_BASE ?? '/den-core-api',
     denChannelsApiBase: process.env.DEN_CHANNELS_API_BASE ?? '/api',
     denHostApiBase: process.env.DEN_HOST_API_BASE ?? '/den-host-api',
+    piCrewAdminApiBase: process.env.PI_CREW_ADMIN_API_BASE ?? '/pi-crew-admin-api',
     appBasePath: process.env.APP_BASE_PATH ?? '/',
     environmentName: process.env.ENVIRONMENT_NAME ?? 'den-srv',
   };
@@ -160,6 +165,7 @@ function loadConfig() {
       denCoreApiBase: typeof fileConfig.denCoreApiBase === 'string' ? fileConfig.denCoreApiBase : defaults.denCoreApiBase,
       denChannelsApiBase: typeof fileConfig.denChannelsApiBase === 'string' ? fileConfig.denChannelsApiBase : defaults.denChannelsApiBase,
       denHostApiBase: typeof fileConfig.denHostApiBase === 'string' ? fileConfig.denHostApiBase : defaults.denHostApiBase,
+      piCrewAdminApiBase: typeof fileConfig.piCrewAdminApiBase === 'string' ? fileConfig.piCrewAdminApiBase : defaults.piCrewAdminApiBase,
       appBasePath: typeof fileConfig.appBasePath === 'string' ? fileConfig.appBasePath : defaults.appBasePath,
       environmentName: typeof fileConfig.environmentName === 'string' ? fileConfig.environmentName : defaults.environmentName,
     });
@@ -321,6 +327,12 @@ function handleRequest(req, res) {
     return proxyRequest(DEN_HOST_TARGET, req, res, () => rewritten + requestSearch);
   }
 
+  // ── Pi Crew admin diagnostics proxy ──
+  if (requestPath.startsWith('/pi-crew-admin-api/') || requestPath === '/pi-crew-admin-api') {
+    const stripped = requestPath.replace(/^\/pi-crew-admin-api/, '') || '/';
+    return proxyRequest(PI_CREW_ADMIN_TARGET, req, res, () => stripped + requestSearch);
+  }
+
   // ── Retired Gateway API proxy ──
   if (requestPath.startsWith('/den-gateway-api/') || requestPath === '/den-gateway-api') {
     res.writeHead(410, {
@@ -378,6 +390,7 @@ function startServer() {
     console.log(`[den-web-static-server] Den Core target: ${DEN_CORE_TARGET}`);
     console.log(`[den-web-static-server] Den Channels target: ${DEN_CHANNELS_TARGET}`);
     console.log(`[den-web-static-server] Den Host target: ${DEN_HOST_TARGET}`);
+    console.log(`[den-web-static-server] Pi Crew admin target: ${PI_CREW_ADMIN_TARGET}`);
     if (configData) {
       console.log(`[den-web-static-server] config: ${CONFIG_PATH}`);
     } else {

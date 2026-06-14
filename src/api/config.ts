@@ -3,8 +3,8 @@
  *
  * Precedence (highest to lowest):
  * 1. Runtime config fetched from `/den-web-config.json` (deploy-time JSON file)
- * 2. Vite build-time env variables (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, `VITE_DEN_HOST_API_BASE`)
- * 3. Safe local defaults (`/den-core-api`, `/api`, `/den-host-api`)
+ * 2. Vite build-time env variables (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, `VITE_DEN_HOST_API_BASE`, `VITE_PI_CREW_ADMIN_API_BASE`)
+ * 3. Safe local defaults (`/den-core-api`, `/api`, `/den-host-api`, `/pi-crew-admin-api`)
  *
  * Malformed or inaccessible config triggers a console diagnostic and falls back
  * gracefully — it never silently points at wrong API endpoints.
@@ -14,6 +14,7 @@ export interface DenWebRuntimeConfig {
   denCoreApiBase: string;
   denChannelsApiBase: string;
   denHostApiBase: string;
+  piCrewAdminApiBase: string;
   appBasePath: string;
   environmentName: string;
 }
@@ -22,6 +23,7 @@ const DEFAULTS: DenWebRuntimeConfig = {
   denCoreApiBase: '/den-core-api',
   denChannelsApiBase: '/api',
   denHostApiBase: '/den-host-api',
+  piCrewAdminApiBase: '/pi-crew-admin-api',
   appBasePath: '/',
   environmentName: 'development',
 };
@@ -63,7 +65,7 @@ async function loadRuntimeConfigFile(): Promise<DenWebRuntimeConfig | null> {
     const obj = raw as Record<string, unknown>;
 
     // Validate required string fields
-    const required = ['denCoreApiBase', 'denChannelsApiBase', 'denHostApiBase'] as const;
+    const required = ['denCoreApiBase', 'denChannelsApiBase', 'denHostApiBase', 'piCrewAdminApiBase'] as const;
     for (const key of required) {
       if (obj[key] !== undefined && typeof obj[key] !== 'string') {
         console.error(`[den-web-config] key "${key}" must be a string (got ${typeof obj[key]}); falling back to env/defaults`);
@@ -75,6 +77,7 @@ async function loadRuntimeConfigFile(): Promise<DenWebRuntimeConfig | null> {
       denCoreApiBase: normalizeApiBase(obj.denCoreApiBase as string | undefined, DEFAULTS.denCoreApiBase),
       denChannelsApiBase: normalizeApiBase(obj.denChannelsApiBase as string | undefined, DEFAULTS.denChannelsApiBase),
       denHostApiBase: normalizeApiBase(obj.denHostApiBase as string | undefined, DEFAULTS.denHostApiBase),
+      piCrewAdminApiBase: normalizeApiBase(obj.piCrewAdminApiBase as string | undefined, DEFAULTS.piCrewAdminApiBase),
       appBasePath: normalizeApiBase(obj.appBasePath as string | undefined, DEFAULTS.appBasePath),
       environmentName: typeof obj.environmentName === 'string' ? obj.environmentName : DEFAULTS.environmentName,
     };
@@ -112,10 +115,12 @@ export async function getConfig(reload = false): Promise<DenWebRuntimeConfig> {
   let viteEnvViteCoreBase: string | undefined;
   let viteEnvChannelsBase: string | undefined;
   let viteEnvHostBase: string | undefined;
+  let viteEnvPiCrewAdminBase: string | undefined;
   try {
     viteEnvViteCoreBase = import.meta.env?.VITE_DEN_CORE_API_BASE;
     viteEnvChannelsBase = import.meta.env?.VITE_DEN_CHANNELS_API_BASE;
     viteEnvHostBase = import.meta.env?.VITE_DEN_HOST_API_BASE;
+    viteEnvPiCrewAdminBase = import.meta.env?.VITE_PI_CREW_ADMIN_API_BASE;
   } catch {
     // Not running in Vite (e.g., jsdom tests without env configured)
   }
@@ -124,6 +129,7 @@ export async function getConfig(reload = false): Promise<DenWebRuntimeConfig> {
     denCoreApiBase: normalizeApiBase(viteEnvViteCoreBase, DEFAULTS.denCoreApiBase),
     denChannelsApiBase: normalizeApiBase(viteEnvChannelsBase, DEFAULTS.denChannelsApiBase),
     denHostApiBase: normalizeApiBase(viteEnvHostBase, DEFAULTS.denHostApiBase),
+    piCrewAdminApiBase: normalizeApiBase(viteEnvPiCrewAdminBase, DEFAULTS.piCrewAdminApiBase),
     appBasePath: DEFAULTS.appBasePath,
     environmentName: DEFAULTS.environmentName,
   };

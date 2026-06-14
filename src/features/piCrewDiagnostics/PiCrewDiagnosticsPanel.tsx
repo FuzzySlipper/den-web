@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { getCachedConfig } from '../../api/config';
 import { getPiCrewDiagnosticsOverview, postPiCrewControl, type PiCrewControlResponse, type PiCrewDiagnosticsConfig, type PiCrewDiagnosticsOverview, type PiCrewSessionProjection } from '../../api/piCrewDiagnostics';
 import { useLiveData } from '../../hooks/useLiveData';
 import { formatTimeAgo } from '../../utils';
@@ -39,7 +40,7 @@ function readStoredConfig(): StoredConfig {
     // Ignore storage failures; the panel remains manually configurable.
   }
   return {
-    baseUrl: import.meta.env?.VITE_PI_CREW_ADMIN_API_BASE ?? 'http://127.0.0.1:9237',
+    baseUrl: getCachedConfig()?.piCrewAdminApiBase ?? import.meta.env?.VITE_PI_CREW_ADMIN_API_BASE ?? '/pi-crew-admin-api',
     operator: 'patch',
     authMode: 'bearer',
   };
