@@ -19,28 +19,41 @@ import {
 } from './piCrewDiagnosticsModel';
 
 const STORAGE_KEY = 'den-web.piCrewDiagnostics.config';
+const LEGACY_LOCAL_ADMIN_BASES = new Set(['http://127.0.0.1:9237', 'http://localhost:9237']);
 
 interface StoredConfig { baseUrl: string; operator: string; authMode: PiCrewAdminAuthMode }
 
+function defaultPiCrewAdminBaseUrl(): string {
+  return getCachedConfig()?.piCrewAdminApiBase ?? import.meta.env?.VITE_PI_CREW_ADMIN_API_BASE ?? '/pi-crew-admin-api';
+}
+
+export function normalizeStoredPiCrewAdminBaseUrl(value: unknown, fallback = '/pi-crew-admin-api'): string {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim().replace(/\/+$/, '');
+  if (!trimmed) return fallback;
+  return LEGACY_LOCAL_ADMIN_BASES.has(trimmed) ? fallback : trimmed;
+}
+
 function readStoredConfig(): StoredConfig {
+  const defaultBaseUrl = defaultPiCrewAdminBaseUrl();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<StoredConfig> & { bearerToken?: unknown };
       const authMode: PiCrewAdminAuthMode = parsed.authMode === 'none' ? 'none' : 'bearer';
       const sanitized: StoredConfig = {
-        baseUrl: typeof parsed.baseUrl === 'string' ? parsed.baseUrl : '',
+        baseUrl: normalizeStoredPiCrewAdminBaseUrl(parsed.baseUrl, defaultBaseUrl),
         operator: typeof parsed.operator === 'string' ? parsed.operator : 'patch',
         authMode,
       };
-      if (parsed.bearerToken !== undefined) persistConfig(sanitized);
+      if (parsed.bearerToken !== undefined || sanitized.baseUrl !== parsed.baseUrl) persistConfig(sanitized);
       return sanitized;
     }
   } catch {
     // Ignore storage failures; the panel remains manually configurable.
   }
   return {
-    baseUrl: getCachedConfig()?.piCrewAdminApiBase ?? import.meta.env?.VITE_PI_CREW_ADMIN_API_BASE ?? '/pi-crew-admin-api',
+    baseUrl: defaultBaseUrl,
     operator: 'patch',
     authMode: 'bearer',
   };
