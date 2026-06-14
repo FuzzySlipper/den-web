@@ -19,7 +19,14 @@ import {
 } from './piCrewDiagnosticsModel';
 
 const STORAGE_KEY = 'den-web.piCrewDiagnostics.config';
-const LEGACY_LOCAL_ADMIN_BASES = new Set(['http://127.0.0.1:9237', 'http://localhost:9237']);
+const LEGACY_LOCAL_ADMIN_BASES = new Set([
+  'http://127.0.0.1:9237',
+  'http://localhost:9237',
+  // Current Pi Crew admin target behind Den Web. The service does not answer
+  // browser CORS preflights directly, so the browser must use the same-origin
+  // Den Web proxy instead of this LAN URL.
+  'http://192.168.1.22:9237',
+]);
 
 interface StoredConfig { baseUrl: string; operator: string; authMode: PiCrewAdminAuthMode }
 
