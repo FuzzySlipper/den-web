@@ -14,20 +14,23 @@ import {
   validateControlRequest,
   workerSessions,
   type PiCrewGlobalControl,
+  type PiCrewAdminAuthMode,
 } from './piCrewDiagnosticsModel';
 
 const STORAGE_KEY = 'den-web.piCrewDiagnostics.config';
 
-interface StoredConfig { baseUrl: string; operator: string }
+interface StoredConfig { baseUrl: string; operator: string; authMode: PiCrewAdminAuthMode }
 
 function readStoredConfig(): StoredConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<StoredConfig> & { bearerToken?: unknown };
-      const sanitized = {
+      const authMode: PiCrewAdminAuthMode = parsed.authMode === 'none' ? 'none' : 'bearer';
+      const sanitized: StoredConfig = {
         baseUrl: typeof parsed.baseUrl === 'string' ? parsed.baseUrl : '',
         operator: typeof parsed.operator === 'string' ? parsed.operator : 'patch',
+        authMode,
       };
       if (parsed.bearerToken !== undefined) persistConfig(sanitized);
       return sanitized;
@@ -38,6 +41,7 @@ function readStoredConfig(): StoredConfig {
   return {
     baseUrl: import.meta.env?.VITE_PI_CREW_ADMIN_API_BASE ?? 'http://127.0.0.1:9237',
     operator: 'patch',
+    authMode: 'bearer',
   };
 }
 
@@ -63,8 +67,9 @@ export function PiCrewDiagnosticsPanel() {
   const config: PiCrewDiagnosticsConfig = useMemo(() => ({
     baseUrl: storedConfig.baseUrl,
     bearerToken,
-  }), [bearerToken, storedConfig.baseUrl]);
-  const missingConfig = piCrewConfigMissing(config.baseUrl, config.bearerToken);
+    authMode: storedConfig.authMode,
+  }), [bearerToken, storedConfig.authMode, storedConfig.baseUrl]);
+  const missingConfig = piCrewConfigMissing(config.baseUrl, config.bearerToken, config.authMode);
 
   const fetchOverview = useCallback(
     () => missingConfig ? Promise.resolve(null) : getPiCrewDiagnosticsOverview(config),
@@ -127,12 +132,24 @@ export function PiCrewDiagnosticsPanel() {
         </label>
         <label>
           Bearer token
-          <input value={bearerToken} onChange={event => setBearerToken(event.target.value)} type="password" placeholder="Required for /admin/* (not persisted)" />
+          <input value={bearerToken} onChange={event => setBearerToken(event.target.value)} type="password" placeholder={storedConfig.authMode === 'none' ? 'Disabled by explicit no-auth mode' : 'Required for bearer-token mode (not persisted)'} disabled={storedConfig.authMode === 'none'} />
+        </label>
+        <label>
+          Admin auth mode
+          <select value={storedConfig.authMode} onChange={event => updateConfig({ authMode: event.target.value === 'none' ? 'none' : 'bearer' })}>
+            <option value="bearer">Bearer token</option>
+            <option value="none">No auth / disabled token</option>
+          </select>
         </label>
         <label>
           Operator
           <input value={storedConfig.operator} onChange={event => updateConfig({ operator: event.target.value })} placeholder="patch" />
         </label>
+        {storedConfig.authMode === 'none' && (
+          <div className="pi-crew-status pi-crew-status-warn">
+            No-auth mode selected. Den Web will call the Pi Crew admin endpoint without an Authorization header; use only when the installed service intentionally has admin auth disabled.
+          </div>
+        )}
         {missingConfig && <div className="pi-crew-status pi-crew-status-unknown">{missingConfig}</div>}
       </section>
 

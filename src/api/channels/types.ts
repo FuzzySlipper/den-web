@@ -191,17 +191,44 @@ export interface AgentWorkCurrentResponse {
 }
 
 export interface AgentWorkLifecycleEvent {
-  id: number;
-  channelId: number;
+  id: number | string;
+  channelId: number | string;
   projectId: string | null;
   taskId: number | null;
-  agentIdentity: string;
+  agentIdentity?: string | null;
+  parentAgentIdentity?: string | null;
+  profileId?: string | null;
+  eventFamily?: 'parent' | 'delegation' | 'tool' | string | null;
   eventType: string;
   state: string | null;
+  severity?: string | null;
   workerRunId: string | null;
   assignmentId: string | null;
   deliveryRequestId: string | null;
   sessionId: string | null;
+  parentSessionId?: string | null;
+  rootSessionId?: string | null;
+  childSessionId?: string | null;
+  provider?: string | null;
+  model?: string | null;
+  policyId?: string | null;
+  depth?: number | null;
+  turnId?: number | string | null;
+  toolName?: string | null;
+  toolCallId?: string | null;
+  phase?: string | null;
+  durationMs?: number | null;
+  isError?: boolean | null;
+  resultClass?: string | null;
+  ownerSessionId?: string | null;
+  outcome?: string | null;
+  turnsUsed?: number | null;
+  tokensConsumed?: number | string | null;
+  evidenceChecked?: boolean | null;
+  artifactCount?: number | null;
+  evidence?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
+  source?: string | null;
   evidenceLink: string | null;
   summary: string | null;
   createdAt: string;

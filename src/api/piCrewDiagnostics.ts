@@ -1,6 +1,7 @@
 export interface PiCrewDiagnosticsConfig {
   baseUrl: string;
   bearerToken: string;
+  authMode: 'bearer' | 'none';
 }
 
 export interface PiCrewStatusReader {
@@ -96,11 +97,12 @@ function normalizedBase(baseUrl: string): string {
 async function piCrewFetch<T>(config: PiCrewDiagnosticsConfig, path: string, init?: RequestInit): Promise<T> {
   const base = normalizedBase(config.baseUrl);
   if (!base) throw new Error('Pi Crew admin base URL is required.');
-  if (!config.bearerToken.trim()) throw new Error('Pi Crew admin bearer token is required.');
+  const bearerToken = config.bearerToken.trim();
+  if (config.authMode !== 'none' && !bearerToken) throw new Error('Pi Crew admin bearer token is required.');
   const response = await fetch(`${base}${path}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${config.bearerToken.trim()}`,
+      ...(config.authMode === 'none' ? {} : { Authorization: `Bearer ${bearerToken}` }),
       ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
       ...init?.headers,
     },

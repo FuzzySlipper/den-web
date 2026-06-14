@@ -9,10 +9,12 @@ export const PI_CREW_SAFE_CONTROL_PATHS = {
 
 export type PiCrewGlobalControl = keyof typeof PI_CREW_SAFE_CONTROL_PATHS;
 
-export function piCrewConfigMissing(baseUrl: string, bearerToken: string): string | null {
-  if (!baseUrl.trim() && !bearerToken.trim()) return 'Configure the Pi Crew admin endpoint and bearer token to load diagnostics.';
+export type PiCrewAdminAuthMode = 'bearer' | 'none';
+
+export function piCrewConfigMissing(baseUrl: string, bearerToken: string, authMode: PiCrewAdminAuthMode = 'bearer'): string | null {
+  if (!baseUrl.trim() && authMode !== 'none' && !bearerToken.trim()) return 'Configure the Pi Crew admin endpoint and bearer token, or explicitly select no-auth mode, to load diagnostics.';
   if (!baseUrl.trim()) return 'Configure the Pi Crew admin endpoint URL.';
-  if (!bearerToken.trim()) return 'Configure the Pi Crew admin bearer token.';
+  if (authMode !== 'none' && !bearerToken.trim()) return 'Configure the Pi Crew admin bearer token or explicitly select no-auth mode.';
   return null;
 }
 

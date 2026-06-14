@@ -64,6 +64,7 @@ describe('Pi Crew diagnostics model', () => {
   it('detects missing auth/config state before calling the admin API', () => {
     expect(piCrewConfigMissing('', '')).toContain('Configure');
     expect(piCrewConfigMissing('http://127.0.0.1:9237', '')).toContain('bearer token');
+    expect(piCrewConfigMissing('http://127.0.0.1:9237', '', 'none')).toBeNull();
     expect(piCrewConfigMissing('', 'token')).toContain('endpoint');
     expect(piCrewConfigMissing('http://127.0.0.1:9237', 'token')).toBeNull();
   });

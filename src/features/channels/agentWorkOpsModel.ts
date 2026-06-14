@@ -145,7 +145,7 @@ function lifecycleEventToTimelineItem(event: AgentWorkLifecycleEvent): AgentWork
   return {
     key: `lifecycle:${event.id}`,
     source: 'lifecycle',
-    agentIdentity: event.agentIdentity,
+    agentIdentity: event.agentIdentity ?? event.parentAgentIdentity ?? event.profileId ?? 'unknown-agent',
     title: event.eventType,
     status: event.state ?? event.eventType,
     createdAt: event.createdAt,

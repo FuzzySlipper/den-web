@@ -211,7 +211,15 @@ export function listAgentWorkEvents(opts: ListAgentWorkOpts = {}): Promise<Agent
     sessionId: opts.sessionId,
     limit: opts.limit,
   });
-  return getChannels(`/agent-work/events${q}`);
+  return getChannels<AgentWorkEventsResponse | { events?: AgentWorkEventsResponse['items']; count?: number; channelId?: number | null; filters?: Record<string, string | number | boolean | null> }>(`/agent-work/events${q}`)
+    .then(response => 'items' in response
+      ? response
+      : {
+        items: response.events ?? [],
+        count: response.count ?? response.events?.length ?? 0,
+        channelId: response.channelId ?? opts.channelId ?? null,
+        filters: response.filters ?? {},
+      });
 }
 
 export interface ListDirectAgentEventsOpts {

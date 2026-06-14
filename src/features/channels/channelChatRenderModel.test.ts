@@ -540,7 +540,7 @@ describe('pi-crew delegation channel-message activity', () => {
     const events = piCrewAgentWorkActivityEventsFromLifecycleEvents([
       lifecycleEvent({ id: 149725, eventType: 'runtime_received', state: 'started', evidenceLink: '/channels/642/messages/4965' }),
       lifecycleEvent({ id: 149729, eventType: 'completed', state: 'completed', evidenceLink: '/channels/642/messages/4965' }),
-      lifecycleEvent({ id: 999, agentIdentity: 'den-mcp-runner', eventType: 'runtime_received', state: 'started' }),
+      lifecycleEvent({ id: 999, projectId: 'den-web', agentIdentity: 'den-mcp-runner', eventType: 'runtime_received', state: 'started' }),
     ]);
 
     expect(events).toHaveLength(2);
@@ -559,6 +559,68 @@ describe('pi-crew delegation channel-message activity', () => {
       title: 'completed',
       terminal: true,
       deliveryStage: 'final',
+    });
+  });
+
+  it('renders structured pi-crew parent/delegation/tool agent-work rows without debug channel messages', () => {
+    const events = piCrewAgentWorkActivityEventsFromLifecycleEvents([
+      lifecycleEvent({
+        id: 'parent-1',
+        agentIdentity: 'prime-coder',
+        source: 'pi-crew',
+        eventFamily: 'parent',
+        eventType: 'pi_crew.parent.turn_started',
+        state: 'started',
+        sessionId: 'sess-prime-coder',
+        profileId: 'prime-coder',
+        evidenceLink: null,
+      }),
+      lifecycleEvent({
+        id: 'child-1',
+        agentIdentity: null,
+        source: 'pi-crew',
+        eventFamily: 'delegation',
+        eventType: 'pi_crew.delegation.spawned',
+        state: 'started',
+        parentAgentIdentity: 'pi-orchestrator',
+        parentSessionId: 'sess-pi-orchestrator',
+        rootSessionId: 'sess-pi-orchestrator',
+        childSessionId: 'delegated-session-7',
+        profileId: 'coder-worker',
+        provider: 'den-router',
+        model: 'minimax',
+      }),
+      lifecycleEvent({
+        id: 'tool-1',
+        agentIdentity: null,
+        source: 'pi-crew',
+        eventFamily: 'tool',
+        eventType: 'pi_crew.delegation.tool_called',
+        state: 'completed',
+        toolName: 'get_task',
+        toolCallId: 'call-1',
+        ownerSessionId: 'delegated-session-7',
+        durationMs: 17,
+      }),
+    ]);
+
+    expect(events.map(event => event.displayBlockId)).toEqual([
+      'pi-crew-agent:prime-coder:sess-prime-coder',
+      'pi-crew-delegation:delegated-session-7',
+      'pi-crew-delegation:delegated-session-7',
+    ]);
+    expect(toActivityDisplayModel(events[1])).toMatchObject({
+      childSessionId: 'delegated-session-7',
+      parentSessionId: 'sess-pi-orchestrator',
+      profileId: 'coder-worker',
+      status: 'spawned',
+    });
+    expect(toActivityDisplayModel(events[2])).toMatchObject({
+      childSessionId: 'delegated-session-7',
+      toolName: 'get_task',
+      toolCallId: 'call-1',
+      durationMs: 17,
+      status: 'tool_completed',
     });
   });
 
