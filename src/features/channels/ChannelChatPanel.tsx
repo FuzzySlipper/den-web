@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent, UIEvent } from 'react';
-import type { AgentWorkCurrentResponse, AgentWorkEventsResponse, Channel, ChannelActivityEvent, ChannelMessage, ChannelProjectLink, ChannelReactionSummary, DirectAgentEventsResponse, GatewayMember, GatewayMemberships } from '../../api/types';
+import type { AgentWorkCurrentResponse, AgentWorkEventsResponse, AgentWorkLifecycleEvent, Channel, ChannelActivityEvent, ChannelMessage, ChannelProjectLink, ChannelReactionSummary, DirectAgentEventsResponse, GatewayMember, GatewayMemberships } from '../../api/types';
+import { getCachedConfig } from '../../api/config';
+import { getPiCrewAgentWorkEvents } from '../../api/piCrewDiagnostics';
 import {
   ensureProjectDefaultChannel,
   listAgentWorkCurrent,
@@ -52,6 +54,25 @@ import { ChannelComposer } from './ChannelComposer';
 const QUICK_REACTIONS = ['✅', '👀', '👍', '🫡', '❓'];
 /** Safety-net poll interval for messages/activity while the live stream is healthy. */
 const STREAM_SAFETY_POLL_MS = 20000;
+
+function dedupeAgentWorkLifecycleEvents(events: AgentWorkLifecycleEvent[]): AgentWorkLifecycleEvent[] {
+  const seen = new Set<string>();
+  const deduped: AgentWorkLifecycleEvent[] = [];
+  for (const event of events) {
+    const key = [
+      event.eventFamily ?? '',
+      event.eventType,
+      event.createdAt,
+      event.childSessionId ?? event.ownerSessionId ?? event.sessionId ?? '',
+      event.toolCallId ?? '',
+      event.summary ?? '',
+    ].join('|');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(event);
+  }
+  return deduped;
+}
 
 interface Props {
   projectId: string | null;
@@ -226,6 +247,21 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     refresh: refreshAgentWorkEvents,
   } = useLiveData<AgentWorkEventsResponse | null>(fetchAgentWorkEvents, { interval: 4000 });
 
+  const fetchPiCrewAdminAgentWorkEvents = useCallback(
+    () => activeChannel && projectId === 'pi-crew'
+      ? getPiCrewAgentWorkEvents({ baseUrl: getCachedConfig()?.piCrewAdminApiBase ?? '/pi-crew-admin-api' }, { channelId: activeChannel.id, projectId, limit: 80 })
+        .catch(error => {
+          console.warn('Pi Crew structured agent-work breadcrumbs unavailable; falling back to Den Channels/debug-message sources', error);
+          return [];
+        })
+      : Promise.resolve([]),
+    [activeChannel, projectId],
+  );
+  const {
+    data: piCrewAdminAgentWorkEvents,
+    refresh: refreshPiCrewAdminAgentWorkEvents,
+  } = useLiveData(fetchPiCrewAdminAgentWorkEvents, { interval: 4000 });
+
   const fetchDirectAgentEvents = useCallback(
     () => activeChannel ? listDirectAgentEvents({ channelId: activeChannel.id, limit: 24 }) : Promise.resolve(null),
     [activeChannel],
@@ -240,9 +276,10 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   const refreshAgentWorkEvidence = useCallback(() => {
     refreshAgentWorkCurrent();
     refreshAgentWorkEvents();
+    refreshPiCrewAdminAgentWorkEvents();
     refreshActivityEvents();
     refreshDirectAgentEvents();
-  }, [refreshActivityEvents, refreshAgentWorkCurrent, refreshAgentWorkEvents, refreshDirectAgentEvents]);
+  }, [refreshActivityEvents, refreshAgentWorkCurrent, refreshAgentWorkEvents, refreshDirectAgentEvents, refreshPiCrewAdminAgentWorkEvents]);
 
   const fetchReactions = useCallback(
     () => activeChannel ? listChannelReactions(activeChannel.id) : Promise.resolve([]),
@@ -345,8 +382,8 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     [displayedMessages, isMessageSearchActive],
   );
   const piCrewAgentWorkActivityEvents = useMemo(
-    () => isMessageSearchActive ? [] : piCrewAgentWorkActivityEventsFromLifecycleEvents(scopedAgentWorkEvents?.items ?? []),
-    [isMessageSearchActive, scopedAgentWorkEvents],
+    () => isMessageSearchActive ? [] : piCrewAgentWorkActivityEventsFromLifecycleEvents(dedupeAgentWorkLifecycleEvents([...(scopedAgentWorkEvents?.items ?? []), ...(piCrewAdminAgentWorkEvents ?? [])])),
+    [isMessageSearchActive, piCrewAdminAgentWorkEvents, scopedAgentWorkEvents],
   );
 
   const groupedActivityEvents = useMemo(

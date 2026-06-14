@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getPiCrewDiagnosticsOverview, postPiCrewControl } from './piCrewDiagnostics';
+import { getPiCrewAgentWorkEvents, getPiCrewDiagnosticsOverview, postPiCrewControl } from './piCrewDiagnostics';
 
 function okResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -38,5 +38,18 @@ describe('Pi Crew diagnostics API auth modes', () => {
       '/admin/control/config/validate',
       { operator: 'patch', reason: 'test', idempotencyKey: 'key', dryRun: true },
     )).rejects.toThrow('bearer token is required');
+  });
+
+  it('reads structured agent-work events through the no-auth admin read path', async () => {
+    const row = { id: 'event-1', channelId: '642', projectId: 'pi-crew', eventFamily: 'delegation', eventType: 'pi_crew.delegation.spawned', state: 'started', workerRunId: null, assignmentId: null, deliveryRequestId: null, sessionId: null, evidenceLink: null, summary: 'spawned', createdAt: '2026-06-14T12:00:00Z' };
+    const fetchMock = vi.fn().mockResolvedValue(okResponse({ events: [row] }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const events = await getPiCrewAgentWorkEvents({ baseUrl: '/pi-crew-admin-api' }, { channelId: 642, projectId: 'pi-crew', limit: 80 });
+
+    expect(events).toEqual([row]);
+    expect(fetchMock).toHaveBeenCalledWith('/pi-crew-admin-api/admin/agent-work/events?channelId=642&projectId=pi-crew&limit=80', expect.objectContaining({
+      headers: expect.not.objectContaining({ Authorization: expect.any(String) }),
+    }));
   });
 });

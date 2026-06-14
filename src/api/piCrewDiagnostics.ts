@@ -1,3 +1,5 @@
+import type { AgentWorkLifecycleEvent } from './types';
+
 export interface PiCrewDiagnosticsConfig {
   baseUrl: string;
   bearerToken: string;
@@ -90,6 +92,12 @@ export interface PiCrewControlResponse {
   error?: string;
 }
 
+export interface PiCrewAgentWorkEventsResponse {
+  events?: AgentWorkLifecycleEvent[];
+  items?: AgentWorkLifecycleEvent[];
+  count?: number;
+}
+
 function normalizedBase(baseUrl: string): string {
   return baseUrl.trim().replace(/\/+$/, '');
 }
@@ -132,4 +140,16 @@ export function getPiCrewDiagnosticsOverview(config: PiCrewDiagnosticsConfig): P
 
 export function postPiCrewControl(config: PiCrewDiagnosticsConfig, path: string, request: PiCrewControlRequest): Promise<PiCrewControlResponse> {
   return piCrewFetch(config, path, { method: 'POST', body: JSON.stringify(request) });
+}
+
+export async function getPiCrewAgentWorkEvents(config: Pick<PiCrewDiagnosticsConfig, 'baseUrl'>, opts: { channelId?: number; projectId?: string | null; limit?: number } = {}): Promise<AgentWorkLifecycleEvent[]> {
+  const params = new URLSearchParams();
+  if (opts.channelId !== undefined) params.set('channelId', String(opts.channelId));
+  if (opts.projectId) params.set('projectId', opts.projectId);
+  if (opts.limit !== undefined) params.set('limit', String(opts.limit));
+  const response = await piCrewFetch<PiCrewAgentWorkEventsResponse>(
+    { baseUrl: config.baseUrl, bearerToken: '', authMode: 'none' },
+    `/admin/agent-work/events${params.size ? `?${params.toString()}` : ''}`,
+  );
+  return response.events ?? response.items ?? [];
 }
