@@ -174,7 +174,7 @@ export function toActivityDisplayModel(event: ChannelActivityEvent): ActivityDis
 export function piCrewAgentWorkActivityEventsFromLifecycleEvents(events: AgentWorkLifecycleEvent[]): ChannelActivityEvent[] {
   return events.flatMap(event => {
     if (!isPiCrewStructuredAgentWorkEvent(event)) return [];
-    const eventFamily = firstString(event.eventFamily) ?? inferPiCrewEventFamily(event);
+    const eventFamily = firstString(event.eventFamily, event.metadata?.eventFamily, event.metadata?.event_family) ?? inferPiCrewEventFamily(event);
     if (eventFamily === 'delegation') return [piCrewStructuredDelegationActivityEvent(event)];
     if (eventFamily === 'tool') return [piCrewStructuredToolActivityEvent(event)];
     return [piCrewStructuredParentActivityEvent(event)];
@@ -214,7 +214,7 @@ function piCrewStructuredParentActivityEvent(event: AgentWorkLifecycleEvent): Ch
     threadId: null,
     anchorMessageId: sourceMessageId,
     eventType: event.eventType,
-    status: event.state ?? event.eventType,
+    status: lifecycleEventState(event) ?? event.eventType,
     deliveryStage: lifecycleDeliveryStage(event),
     terminal: lifecycleEventIsTerminal(event),
     sequence: piCrewLifecycleSequence(event),
@@ -256,8 +256,9 @@ function piCrewStructuredDelegationActivityEvent(event: AgentWorkLifecycleEvent)
     evidenceChecked: event.evidenceChecked,
     artifactCount: event.artifactCount,
   };
-  const eventName = event.eventType.replace(/^pi_crew\./, '').replace(/_/g, '.');
-  const terminal = lifecycleEventIsTerminal(event) || event.eventType.includes('completed') || event.eventType.includes('failed');
+  const eventName = firstString(event.piCrewEventType, event.metadata?.piCrewEventType, event.metadata?.pi_crew_event_type)
+    ?? event.eventType.replace(/^pi_crew\./, '').replace(/_/g, '.');
+  const terminal = lifecycleEventIsTerminal(event) || eventName.includes('completed') || eventName.includes('failed');
   return {
     id: piCrewSyntheticLifecycleId(event),
     channelId: piCrewLifecycleChannelId(event),
@@ -298,7 +299,7 @@ function piCrewStructuredToolActivityEvent(event: AgentWorkLifecycleEvent): Chan
   const rootSessionId = firstString(event.rootSessionId, event.metadata?.rootSessionId, event.metadata?.root_session_id);
   const toolName = firstString(event.toolName, event.evidence?.toolName, event.metadata?.toolName, event.metadata?.tool_name);
   const toolCallId = firstString(event.toolCallId, event.evidence?.toolCallId, event.metadata?.toolCallId, event.metadata?.tool_call_id);
-  const phase = firstString(event.phase, event.metadata?.phase, event.state);
+  const phase = firstString(event.phase, event.metadata?.phase, lifecycleEventState(event));
   const durationMs = firstAnyNumber(event.durationMs, event.metadata?.durationMs, event.metadata?.duration_ms);
   const isChildTool = Boolean(childSessionId);
   const displayBlockId = isChildTool
@@ -336,7 +337,7 @@ function piCrewStructuredToolActivityEvent(event: AgentWorkLifecycleEvent): Chan
     threadId: null,
     anchorMessageId: firstPositiveInteger(sourceMessageIdFromEvidence(event.evidenceLink)),
     eventType: event.eventType,
-    status: event.isError || phase === 'denied' || event.state === 'denied' ? 'tool_denied' : (phase === 'completed' || event.state === 'completed' ? 'tool_completed' : 'tool_called'),
+    status: event.isError || phase === 'denied' || lifecycleEventState(event) === 'denied' ? 'tool_denied' : (phase === 'completed' || lifecycleEventState(event) === 'completed' ? 'tool_completed' : 'tool_called'),
     deliveryStage: 'progress',
     terminal: false,
     sequence: piCrewLifecycleSequence(event),
@@ -700,10 +701,10 @@ function isPiAgentIdentity(agentIdentity: string): boolean {
 }
 
 function isPiCrewStructuredAgentWorkEvent(event: AgentWorkLifecycleEvent): boolean {
-  const source = firstString(event.source)?.toLowerCase();
+  const source = firstString(event.source, event.metadata?.source)?.toLowerCase();
   const projectId = firstString(event.projectId)?.toLowerCase();
   const eventType = event.eventType.toLowerCase();
-  const family = firstString(event.eventFamily);
+  const family = firstString(event.eventFamily, event.metadata?.eventFamily, event.metadata?.event_family);
   return source === 'pi-crew'
     || projectId === 'pi-crew'
     || eventType.startsWith('pi_crew.')
@@ -711,8 +712,9 @@ function isPiCrewStructuredAgentWorkEvent(event: AgentWorkLifecycleEvent): boole
 }
 
 function inferPiCrewEventFamily(event: AgentWorkLifecycleEvent): 'parent' | 'delegation' | 'tool' {
-  if (event.eventType.includes('.tool_') || firstString(event.toolName, event.toolCallId)) return 'tool';
-  if (event.eventType.includes('.delegation.') || firstString(event.childSessionId, event.evidence?.childSessionId)) return 'delegation';
+  const piCrewEventType = firstString(event.piCrewEventType, event.metadata?.piCrewEventType, event.metadata?.pi_crew_event_type) ?? event.eventType;
+  if (piCrewEventType.includes('.tool') || firstString(event.toolName, event.toolCallId, event.metadata?.toolName, event.metadata?.toolCallId)) return 'tool';
+  if (piCrewEventType.includes('.delegation.') || firstString(event.childSessionId, event.evidence?.childSessionId, event.metadata?.childSessionId)) return 'delegation';
   return 'parent';
 }
 
@@ -757,11 +759,12 @@ function piCrewAgentDisplayBlockId(event: AgentWorkLifecycleEvent): string {
 }
 
 function piCrewStructuredStatus(event: AgentWorkLifecycleEvent, eventName: string, outcome: string | null): string {
+  const state = lifecycleEventState(event);
   if (eventName.includes('spawned')) return 'spawned';
-  if (eventName.includes('tool')) return event.state === 'completed' ? 'tool_completed' : 'tool_called';
-  if (eventName.includes('turn')) return event.state === 'completed' ? 'turn_completed' : 'turn_started';
+  if (eventName.includes('tool')) return state === 'completed' ? 'tool_completed' : 'tool_called';
+  if (eventName.includes('turn')) return state === 'completed' ? 'turn_completed' : 'turn_started';
   if (eventName.includes('completed')) return outcome === 'failure' || outcome === 'failed' ? 'failed' : 'completed';
-  return event.state ?? eventName.replace(/^pi_crew\./, '').replace(/[^a-z0-9_-]+/gi, '_').toLowerCase();
+  return state ?? eventName.replace(/^pi_crew\./, '').replace(/[^a-z0-9_-]+/gi, '_').toLowerCase();
 }
 
 function evidenceString(event: AgentWorkLifecycleEvent, key: string): string | null {
@@ -777,9 +780,13 @@ function lifecycleDeliveryStage(event: AgentWorkLifecycleEvent): string {
 }
 
 function lifecycleEventIsTerminal(event: AgentWorkLifecycleEvent): boolean {
-  const state = event.state?.toLowerCase();
+  const state = lifecycleEventState(event)?.toLowerCase();
   const type = event.eventType.toLowerCase();
   return state === 'completed' || state === 'failed' || type === 'completed' || type === 'failed';
+}
+
+function lifecycleEventState(event: AgentWorkLifecycleEvent): string | null {
+  return firstString(event.state, event.status);
 }
 
 function lifecycleTitle(eventType: string): string {

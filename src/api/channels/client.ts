@@ -1,4 +1,4 @@
-import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse, AgentWorkCurrentResponse, AgentWorkEventsResponse, DirectAgentEventsResponse, DirectConversation, DirectConversationListResponse, DirectConversationEntriesResponse, DirectConversationSendRequest, DirectConversationSendResponse, DirectConversationCreateRequest, ReadCursor } from './types';
+import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse, AgentWorkCurrentResponse, AgentWorkEventsResponse, AgentWorkLifecycleEvent, DirectAgentEventsResponse, DirectConversation, DirectConversationListResponse, DirectConversationEntriesResponse, DirectConversationSendRequest, DirectConversationSendResponse, DirectConversationCreateRequest, ReadCursor } from './types';
 import { normalizeApiBase } from '../config';
 import { dedupedFetch } from '../requestCache';
 
@@ -213,13 +213,67 @@ export function listAgentWorkEvents(opts: ListAgentWorkOpts = {}): Promise<Agent
   });
   return getChannels<AgentWorkEventsResponse | { events?: AgentWorkEventsResponse['items']; count?: number; channelId?: number | null; filters?: Record<string, string | number | boolean | null> }>(`/agent-work/events${q}`)
     .then(response => 'items' in response
-      ? response
+      ? { ...response, items: response.items.map(normalizeAgentWorkLifecycleEvent) }
       : {
-        items: response.events ?? [],
+        items: (response.events ?? []).map(normalizeAgentWorkLifecycleEvent),
         count: response.count ?? response.events?.length ?? 0,
         channelId: response.channelId ?? opts.channelId ?? null,
         filters: response.filters ?? {},
       });
+}
+
+function normalizeAgentWorkLifecycleEvent(event: AgentWorkLifecycleEvent): AgentWorkLifecycleEvent {
+  const metadata = event.metadata ?? {};
+  return {
+    ...event,
+    state: event.state ?? event.status ?? null,
+    source: firstMetadataString(event.source, metadata.source),
+    eventFamily: firstMetadataString(event.eventFamily, metadata.eventFamily, metadata.event_family),
+    piCrewEventType: firstMetadataString(event.piCrewEventType, metadata.piCrewEventType, metadata.pi_crew_event_type),
+    childSessionId: firstMetadataString(event.childSessionId, metadata.childSessionId, metadata.child_session_id),
+    rootSessionId: firstMetadataString(event.rootSessionId, metadata.rootSessionId, metadata.root_session_id),
+    ownerSessionId: firstMetadataString(event.ownerSessionId, metadata.ownerSessionId, metadata.owner_session_id),
+    toolName: firstMetadataString(event.toolName, metadata.toolName, metadata.tool_name),
+    toolCallId: firstMetadataString(event.toolCallId, metadata.toolCallId, metadata.tool_call_id),
+    phase: firstMetadataString(event.phase, metadata.phase),
+    provider: firstMetadataString(event.provider, metadata.provider),
+    model: firstMetadataString(event.model, metadata.model),
+    policyId: firstMetadataString(event.policyId, metadata.policyId, metadata.policy_id),
+    outcome: firstMetadataString(event.outcome, metadata.outcome),
+    durationMs: firstMetadataNumber(event.durationMs, metadata.durationMs, metadata.duration_ms),
+    depth: firstMetadataNumber(event.depth, metadata.depth),
+    turnsUsed: firstMetadataNumber(event.turnsUsed, metadata.turnsUsed, metadata.turns_used),
+    tokensConsumed: event.tokensConsumed ?? firstMetadataNumber(null, metadata.tokensConsumed, metadata.tokens_consumed),
+    artifactCount: firstMetadataNumber(event.artifactCount, metadata.artifactCount, metadata.artifact_count),
+    isError: firstMetadataBoolean(event.isError, metadata.isError, metadata.is_error),
+    evidenceChecked: firstMetadataBoolean(event.evidenceChecked, metadata.evidenceChecked, metadata.evidence_checked),
+  };
+}
+
+function firstMetadataString(...values: unknown[]): string | null | undefined {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+function firstMetadataNumber(...values: unknown[]): number | null | undefined {
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return undefined;
+}
+
+function firstMetadataBoolean(...values: unknown[]): boolean | null | undefined {
+  for (const value of values) {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string' && /^(true|false)$/i.test(value.trim())) return value.trim().toLowerCase() === 'true';
+  }
+  return undefined;
 }
 
 export interface ListDirectAgentEventsOpts {

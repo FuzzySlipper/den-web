@@ -7,6 +7,7 @@ import {
   sendDirectMessage,
   updateReadCursor,
   getReadCursor,
+  listAgentWorkEvents,
 } from './client';
 import type {
   DirectConversation,
@@ -136,6 +137,54 @@ describe('channels DM API client', () => {
       mockFetch(true, cursor);
       const result = await updateReadCursor(1, { readerIdentity: 'patch', lastReadEntryId: 5 });
       expect(result).toEqual(cursor);
+    });
+  });
+
+  describe('listAgentWorkEvents', () => {
+    it('normalizes canonical metadata fields for pi-crew lifecycle rows', async () => {
+      mockFetch(true, {
+        items: [{
+          id: 1,
+          channelId: 642,
+          projectId: 'pi-crew',
+          taskId: null,
+          agentIdentity: 'pi-crew-service',
+          eventType: 'heartbeat',
+          status: 'completed',
+          state: null,
+          workerRunId: null,
+          assignmentId: null,
+          deliveryRequestId: null,
+          sessionId: 'sess-parent',
+          evidenceLink: null,
+          summary: 'Tool completed',
+          createdAt: '2026-06-15T00:00:00Z',
+          metadata: {
+            source: 'pi-crew',
+            eventFamily: 'tool',
+            piCrewEventType: 'tool.completed',
+            toolName: 'list_assignments',
+            durationMs: 77,
+            isError: false,
+            tokensConsumed: 123,
+          },
+        }],
+        count: 1,
+        channelId: 642,
+        filters: {},
+      });
+
+      const result = await listAgentWorkEvents({ channelId: 642, limit: 10 });
+      expect(result.items[0]).toMatchObject({
+        state: 'completed',
+        source: 'pi-crew',
+        eventFamily: 'tool',
+        piCrewEventType: 'tool.completed',
+        toolName: 'list_assignments',
+        durationMs: 77,
+        isError: false,
+        tokensConsumed: 123,
+      });
     });
   });
 

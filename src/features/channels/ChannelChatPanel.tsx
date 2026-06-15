@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent, UIEvent } from 'react';
 import type { AgentWorkCurrentResponse, AgentWorkEventsResponse, AgentWorkLifecycleEvent, Channel, ChannelActivityEvent, ChannelMessage, ChannelProjectLink, ChannelReactionSummary, DirectAgentEventsResponse, GatewayMember, GatewayMemberships } from '../../api/types';
-import { getCachedConfig } from '../../api/config';
-import { getPiCrewAgentWorkEvents } from '../../api/piCrewDiagnostics';
 import {
   ensureProjectDefaultChannel,
   listAgentWorkCurrent,
@@ -247,21 +245,6 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     refresh: refreshAgentWorkEvents,
   } = useLiveData<AgentWorkEventsResponse | null>(fetchAgentWorkEvents, { interval: 4000 });
 
-  const fetchPiCrewAdminAgentWorkEvents = useCallback(
-    () => activeChannel && projectId === 'pi-crew'
-      ? getPiCrewAgentWorkEvents({ baseUrl: getCachedConfig()?.piCrewAdminApiBase ?? '/pi-crew-admin-api' }, { channelId: activeChannel.id, projectId, limit: 80 })
-        .catch(error => {
-          console.warn('Pi Crew structured agent-work breadcrumbs unavailable; falling back to Den Channels/debug-message sources', error);
-          return [];
-        })
-      : Promise.resolve([]),
-    [activeChannel, projectId],
-  );
-  const {
-    data: piCrewAdminAgentWorkEvents,
-    refresh: refreshPiCrewAdminAgentWorkEvents,
-  } = useLiveData(fetchPiCrewAdminAgentWorkEvents, { interval: 4000 });
-
   const fetchDirectAgentEvents = useCallback(
     () => activeChannel ? listDirectAgentEvents({ channelId: activeChannel.id, limit: 24 }) : Promise.resolve(null),
     [activeChannel],
@@ -276,10 +259,9 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   const refreshAgentWorkEvidence = useCallback(() => {
     refreshAgentWorkCurrent();
     refreshAgentWorkEvents();
-    refreshPiCrewAdminAgentWorkEvents();
     refreshActivityEvents();
     refreshDirectAgentEvents();
-  }, [refreshActivityEvents, refreshAgentWorkCurrent, refreshAgentWorkEvents, refreshDirectAgentEvents, refreshPiCrewAdminAgentWorkEvents]);
+  }, [refreshActivityEvents, refreshAgentWorkCurrent, refreshAgentWorkEvents, refreshDirectAgentEvents]);
 
   const fetchReactions = useCallback(
     () => activeChannel ? listChannelReactions(activeChannel.id) : Promise.resolve([]),
@@ -382,8 +364,8 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     [displayedMessages, isMessageSearchActive],
   );
   const piCrewAgentWorkActivityEvents = useMemo(
-    () => isMessageSearchActive ? [] : piCrewAgentWorkActivityEventsFromLifecycleEvents(dedupeAgentWorkLifecycleEvents([...(scopedAgentWorkEvents?.items ?? []), ...(piCrewAdminAgentWorkEvents ?? [])])),
-    [isMessageSearchActive, piCrewAdminAgentWorkEvents, scopedAgentWorkEvents],
+    () => isMessageSearchActive ? [] : piCrewAgentWorkActivityEventsFromLifecycleEvents(dedupeAgentWorkLifecycleEvents(scopedAgentWorkEvents?.items ?? [])),
+    [isMessageSearchActive, scopedAgentWorkEvents],
   );
 
   const groupedActivityEvents = useMemo(

@@ -570,7 +570,8 @@ describe('pi-crew delegation channel-message activity', () => {
         source: 'pi-crew',
         eventFamily: 'parent',
         eventType: 'pi_crew.parent.turn_started',
-        state: 'started',
+        state: null,
+        status: 'completed',
         sessionId: 'sess-prime-coder',
         profileId: 'prime-coder',
         evidenceLink: null,
@@ -609,6 +610,7 @@ describe('pi-crew delegation channel-message activity', () => {
       'pi-crew-delegation:delegated-session-7',
       'pi-crew-delegation:delegated-session-7',
     ]);
+    expect(events[0]).toMatchObject({ status: 'completed', terminal: true, deliveryStage: 'final' });
     expect(toActivityDisplayModel(events[1])).toMatchObject({
       childSessionId: 'delegated-session-7',
       parentSessionId: 'sess-pi-orchestrator',
@@ -620,6 +622,68 @@ describe('pi-crew delegation channel-message activity', () => {
       toolName: 'get_task',
       toolCallId: 'call-1',
       durationMs: 17,
+      status: 'tool_completed',
+    });
+  });
+
+  it('renders canonical Den Channels metadata-only lifecycle rows without pi-crew admin fallback fields', () => {
+    const events = piCrewAgentWorkActivityEventsFromLifecycleEvents([
+      lifecycleEvent({
+        id: 156509,
+        eventType: 'heartbeat',
+        state: null,
+        status: 'started',
+        source: null,
+        eventFamily: null,
+        metadata: {
+          source: 'pi-crew',
+          eventFamily: 'delegation',
+          piCrewEventType: 'delegation.spawned',
+          childSessionId: 'delegated-session-canonical',
+          parentSessionId: 'sess-parent',
+          rootSessionId: 'sess-root',
+          profileId: 'prime-coder',
+          depth: 1,
+          tokensConsumed: 123,
+          artifactCount: 1,
+        },
+      }),
+      lifecycleEvent({
+        id: 156510,
+        eventType: 'heartbeat',
+        state: null,
+        status: 'completed',
+        source: null,
+        eventFamily: null,
+        metadata: {
+          source: 'pi-crew',
+          eventFamily: 'tool',
+          piCrewEventType: 'tool.completed',
+          childSessionId: 'delegated-session-canonical',
+          toolName: 'list_assignments',
+          toolCallId: 'tool-canonical',
+          durationMs: 77,
+          isError: false,
+          resultClass: 'success',
+        },
+      }),
+    ]);
+
+    expect(events).toHaveLength(2);
+    expect(events.map(event => event.displayBlockId)).toEqual([
+      'pi-crew-delegation:delegated-session-canonical',
+      'pi-crew-delegation:delegated-session-canonical',
+    ]);
+    expect(toActivityDisplayModel(events[0])).toMatchObject({
+      childSessionId: 'delegated-session-canonical',
+      parentSessionId: 'sess-parent',
+      profileId: 'prime-coder',
+      status: 'spawned',
+    });
+    expect(toActivityDisplayModel(events[1])).toMatchObject({
+      toolName: 'list_assignments',
+      toolCallId: 'tool-canonical',
+      durationMs: 77,
       status: 'tool_completed',
     });
   });

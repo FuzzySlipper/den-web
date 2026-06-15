@@ -199,8 +199,10 @@ export interface AgentWorkLifecycleEvent {
   parentAgentIdentity?: string | null;
   profileId?: string | null;
   eventFamily?: 'parent' | 'delegation' | 'tool' | string | null;
+  piCrewEventType?: string | null;
   eventType: string;
   state: string | null;
+  status?: string | null;
   severity?: string | null;
   workerRunId: string | null;
   assignmentId: string | null;
