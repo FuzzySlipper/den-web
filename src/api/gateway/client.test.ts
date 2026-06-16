@@ -53,6 +53,22 @@ describe('postGatewayDirectAgentMessage', () => {
       gatewayEventsUrl: '/api/direct-agent-events?channelId=584&afterId=4043&limit=10',
     });
   });
+  it('includes Channels error body when direct-agent creation is rejected', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      text: () => Promise.resolve('{"code":"member_not_active_agent","detail":"Active agent member not joined."}'),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(postGatewayDirectAgentMessage({
+      channelId: 642,
+      projectId: 'pi-crew',
+      memberIdentity: 'pool-reviewer-03',
+      senderIdentity: 'patch',
+      body: '@pool-reviewer-03 please review this',
+    })).rejects.toThrow(/member_not_active_agent/);
+  });
 });
 
 describe('getWorkerPoolLobbyPresence', () => {

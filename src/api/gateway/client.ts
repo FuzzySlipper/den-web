@@ -54,7 +54,16 @@ async function postChannels<T>(url: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`POST ${requestUrl}: ${res.status}`);
+  if (!res.ok) {
+    let detail = '';
+    try {
+      detail = await res.text();
+    } catch {
+      detail = '';
+    }
+    const suffix = detail ? ` — ${detail}` : '';
+    throw new Error(`POST ${requestUrl}: ${res.status}${suffix}`);
+  }
   return res.json();
 }
 
