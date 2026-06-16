@@ -7,7 +7,7 @@ import {
   PI_CREW_SAFE_CONTROL_PATHS,
   buildControlRequest,
   classificationTone,
-  conversationalSessions,
+  fullSessions,
   piCrewConfigMissing,
   safeSessionControlPath,
   safeWorkerStalePath,
@@ -185,10 +185,6 @@ export function PiCrewDiagnosticsPanel() {
             Reason
             <input value={reason} onChange={event => setReason(event.target.value)} />
           </label>
-          <label>
-            Idempotency key
-            <input value={idempotencyKey} onChange={event => setIdempotencyKey(event.target.value)} />
-          </label>
           <label className="pi-crew-checkbox">
             <input type="checkbox" checked={dryRun} onChange={event => setDryRun(event.target.checked)} />
             Dry-run preview
@@ -216,7 +212,7 @@ export function PiCrewDiagnosticsPanel() {
 function Overview({ overview }: { overview: PiCrewDiagnosticsOverview }) {
   const tone = classificationTone(overview.classification.kind);
   const workers = workerSessions(overview);
-  const conversations = conversationalSessions(overview);
+  const conversations = fullSessions(overview);
   return (
     <>
       <section className={`pi-crew-overview-card pi-crew-status-${tone}`}>
@@ -233,7 +229,7 @@ function Overview({ overview }: { overview: PiCrewDiagnosticsOverview }) {
       <section className="pi-crew-session-card">
         <h3>Session ↔ assignment inventory</h3>
         <SessionTable title="Workers" sessions={workers} empty="No local worker sessions." />
-        <SessionTable title="Conversational sessions" sessions={conversations} empty="No conversational sessions." />
+        <SessionTable title="Sessions" sessions={conversations} empty="No sessions." />
       </section>
       <section className="pi-crew-events-card">
         <h3>Recent audit/lifecycle evidence</h3>

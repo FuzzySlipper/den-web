@@ -3,7 +3,7 @@ import type { PiCrewDiagnosticsOverview, PiCrewSessionProjection } from '../../a
 import {
   buildControlRequest,
   classificationTone,
-  conversationalSessions,
+  fullSessions,
   piCrewConfigMissing,
   safeSessionControlPath,
   safeWorkerStalePath,
@@ -46,7 +46,7 @@ function overview(overrides: Partial<PiCrewDiagnosticsOverview> = {}): PiCrewDia
     mcp: { status: 'ok', lastOkAt: '2026-06-12T09:00:00Z' },
     runtimeDb: { status: 'ok' },
     counts: { activeSessions: 2, workerSessions: 1, conversationalSessions: 1, activeAssignmentsLocal: 1, stuckWorkers: 1, checkpointWaiting: 0 },
-    sessions: [session({}), session({ sessionId: 'conversation-1', kind: 'conversational', workerBinding: null, classification: 'healthy' })],
+    sessions: [session({}), session({ sessionId: 'full-1', kind: 'full', workerBinding: null, classification: 'healthy' })],
     recentEvents: [{ event: 'worker.stuck', payload: { assignmentId: 'assignment-1' } }],
     ...overrides,
   };
@@ -72,10 +72,10 @@ describe('Pi Crew diagnostics model', () => {
   it('derives only ADR-approved safe control paths', () => {
     const data = overview();
     expect(workerSessions(data).map(item => item.sessionId)).toEqual(['session-1']);
-    expect(conversationalSessions(data).map(item => item.sessionId)).toEqual(['conversation-1']);
+    expect(fullSessions(data).map(item => item.sessionId)).toEqual(['full-1']);
     expect(safeWorkerStalePath(workerSessions(data)[0])).toBe('/admin/control/workers/assignment-1/mark-local-stale');
     expect(safeWorkerStalePath(session({ localLifecycleState: 'turn.completed', lastGatewayEvent: 'turn.completed', classification: 'healthy', evidenceRefs: [] }))).toBeNull();
-    expect(safeSessionControlPath(conversationalSessions(data)[0])).toBe('/admin/control/sessions/conversation-1/recreate-instance');
+    expect(safeSessionControlPath(fullSessions(data)[0])).toBe('/admin/control/sessions/full-1/recreate-instance');
     expect(safeSessionControlPath(workerSessions(data)[0])).toBeNull();
   });
 

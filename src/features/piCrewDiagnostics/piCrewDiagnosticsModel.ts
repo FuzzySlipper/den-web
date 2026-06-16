@@ -41,12 +41,12 @@ export function workerSessions(overview: PiCrewDiagnosticsOverview): PiCrewSessi
   return overview.sessions.filter(session => session.workerBinding !== null);
 }
 
-export function conversationalSessions(overview: PiCrewDiagnosticsOverview): PiCrewSessionProjection[] {
-  return overview.sessions.filter(session => session.kind === 'conversational');
+export function fullSessions(overview: PiCrewDiagnosticsOverview): PiCrewSessionProjection[] {
+  return overview.sessions.filter(session => session.kind === 'full');
 }
 
 export function safeSessionControlPath(session: PiCrewSessionProjection): string | null {
-  if (session.kind !== 'conversational') return null;
+  if (session.kind !== 'full') return null;
   return `/admin/control/sessions/${encodeURIComponent(session.sessionId)}/recreate-instance`;
 }
 

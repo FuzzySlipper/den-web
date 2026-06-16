@@ -67,6 +67,11 @@ export function ChannelChatHeader({
       <div className="channel-chat-title">
         <span className="channel-chat-kicker">Channel</span>
         <strong>{channelLabel(activeChannel, projectId)}</strong>
+        {activeChannel?.id != null && (
+          <span className="channel-chat-id" title="Channel ID">
+            ID: <code>{activeChannel.id}</code>
+          </span>
+        )}
         {STREAM_PILL[streamStatus] && (
           <span
             className={`channel-chat-stream-pill channel-chat-stream-${streamStatus}`}
