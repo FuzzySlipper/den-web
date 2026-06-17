@@ -124,6 +124,41 @@ export function upsertChannelMembership(channelId: number, request: UpsertChanne
   return putChannels(`/channels/${channelId}/memberships`, request);
 }
 
+// Channel Subscriptions API (task #2554)
+
+export interface ChannelSubscription {
+  id: number;
+  channelId: number;
+  membershipId: number | null;
+  memberType: string;
+  memberIdentity: string;
+  subscriptionIdentity: string;
+  subscriptionPurpose: string;
+  subscriptionStatus: string;
+  profileIdentity: string | null;
+  agentInstanceId: string | null;
+  poolMemberId: string | null;
+  lastSeenAt: string | null;
+  lastClaimedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubscriptionDiscoveryResponse {
+  memberIdentity: string | null;
+  profileIdentity: string | null;
+  subscriptions: ChannelSubscription[];
+}
+
+export function getChannelSubscriptions(memberIdentity: string, profileIdentity?: string, channelId?: number): Promise<SubscriptionDiscoveryResponse> {
+  const q = buildQuery({ memberIdentity, profileIdentity, channelId });
+  return getChannels(`/channel-subscriptions${q}`);
+}
+
+export function releaseChannelSubscription(subscriptionId: number): Promise<void> {
+  return putChannels(`/channel-subscriptions/${subscriptionId}`, {});
+}
+
 export function listGatewayMemberships(opts: { channelId?: number; projectId?: string; includeLeft?: boolean; leftGraceMinutes?: number }): Promise<GatewayMemberships> {
   const q = buildQuery({
     channelId: opts.channelId,
