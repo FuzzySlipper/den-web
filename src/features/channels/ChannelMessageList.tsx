@@ -32,6 +32,8 @@ interface Props {
   onScrollbackScroll: (event: UIEvent<HTMLDivElement>) => void;
   onReactToMessage: (message: ChannelMessage, reactionKey: string) => void;
   onOpenAssignmentTrace?: (assignmentId: string) => void;
+  /** Clarify support: when the user picks a choice, send it as a reply. */
+  onSendChoice?: (channelId: number, messageId: number, replyBody: string) => void;
 }
 
 /** Scrollback region: loading/error/empty states, activity timelines, and the message stream. */
@@ -57,7 +59,10 @@ export function ChannelMessageList({
   onScrollbackScroll,
   onReactToMessage,
   onOpenAssignmentTrace,
+  onSendChoice,
 }: Props) {
+  const channelId = activeChannel?.id;
+
   return (
     <div className="channel-chat-scrollback" aria-live="polite" ref={scrollbackRef} onScroll={onScrollbackScroll}>
       {disabledReason ? (
@@ -122,7 +127,14 @@ export function ChannelMessageList({
                 <span className="channel-chat-project-badge" title="Message project attribution">{attributedProjectId ?? 'unattributed'}</span>
               )}
               <span className="channel-chat-body">
-                <MessageBody body={primaryBody} />
+                <MessageBody
+                  body={primaryBody}
+                  clarifyQuestion={message.senderType === 'agent' ? guessClarifyQuestion(primaryBody) : null}
+                  clarifyChoices={message.senderType === 'agent' ? guessClarifyChoices(primaryBody) : null}
+                  messageId={message.id}
+                  channelId={channelId}
+                  onSendChoice={onSendChoice}
+                />
                 {messageDisplay.deliverySummary && (
                   <span className="channel-chat-delivery-summary" title="Generated delivery summary">
                     {messageDisplay.deliverySummary}
@@ -191,4 +203,39 @@ function blockTimestamp(block: DeliveryProgressBlock): number {
   const firstEvent = block.events[0];
   const timestamp = firstEvent ? Date.parse(firstEvent.createdAt) : Number.POSITIVE_INFINITY;
   return Number.isFinite(timestamp) ? timestamp : Number.POSITIVE_INFINITY;
+}
+
+// ─── Clarify detection helpers ───────────────────────────────────────────────
+
+function guessClarifyQuestion(body: string): string | null {
+  // Only return a question if choices are also present (multi-choice).
+  const choices = guessClarifyChoices(body);
+  if (!choices || choices.length < 2) return null;
+  // Question is the text before the first choice line
+  const lines = body.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const choicePattern = /^\d+\.\s+/;
+  const firstChoiceIdx = lines.findIndex(l => choicePattern.test(l));
+  if (firstChoiceIdx < 0) return null;
+  return lines.slice(0, firstChoiceIdx).join('\n') || body;
+}
+
+function guessClarifyChoices(body: string): string[] | null {
+  const lines = body.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const choicePattern = /^(\d+)\.\s+(.+)/;
+  const choiceIndices: number[] = [];
+
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const match = lines[i].match(choicePattern);
+    if (match) {
+      choiceIndices.unshift(i);
+    } else {
+      break;
+    }
+  }
+
+  if (choiceIndices.length < 2) return null;
+  return choiceIndices.map(i => {
+    const match = lines[i].match(choicePattern);
+    return match ? match[2].trim() : lines[i];
+  });
 }

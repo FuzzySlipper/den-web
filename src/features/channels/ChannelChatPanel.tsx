@@ -500,6 +500,31 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     }
   }, [normalizedSenderIdentity, refreshReactions, targetMemberIdentity]);
 
+  const handleClarifyChoice = useCallback(async (channelId: number, messageId: number, replyBody: string) => {
+    if (!normalizedSenderIdentity) {
+      setSendError(new Error('Set Posting as before answering a clarify question.'));
+      return;
+    }
+    setSending(true);
+    setSendError(null);
+    try {
+      // Send the chosen answer as a channel message replying to the clarify prompt
+      await postChannelMessage(channelId, {
+        senderType: 'user',
+        senderIdentity: normalizedSenderIdentity,
+        messageKind: 'human_text',
+        body: replyBody,
+        replyToMessageId: messageId,
+      });
+      refreshMessages();
+      refreshActivityEvents();
+    } catch (error) {
+      setSendError(error instanceof Error ? error : new Error(String(error)));
+    } finally {
+      setSending(false);
+    }
+  }, [normalizedSenderIdentity, refreshMessages, refreshActivityEvents]);
+
   const handleInviteAgent = useCallback(async () => {
     const identity = inviteIdentity.trim();
     if (!activeChannel || !identity) return;
@@ -655,6 +680,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
           onScrollbackScroll={handleScrollbackScroll}
           onReactToMessage={handleReactToMessage}
           onOpenAssignmentTrace={onOpenAssignmentTrace}
+          onSendChoice={handleClarifyChoice}
         />
 
         <aside className="channel-chat-members" aria-label="Channel participants, current agent work, and active Hermes profile bindings">

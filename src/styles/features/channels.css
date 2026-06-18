@@ -1163,3 +1163,111 @@
   background: var(--bg-hover);
   color: var(--text-bright);
 }
+
+/* ===================================================================
+   Clarify card — interactive prompt for agent clarify questions
+   =================================================================== */
+
+.channel-chat-clarify-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  margin: 4px 0;
+  background: var(--bg-card, var(--bg-secondary));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.channel-chat-clarify-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.channel-chat-clarify-icon {
+  font-size: 14px;
+}
+
+.channel-chat-clarify-label {
+  font-weight: 600;
+}
+
+.channel-chat-clarify-question {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-bright);
+  white-space: pre-wrap;
+}
+
+.channel-chat-clarify-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.channel-chat-clarify-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-bright);
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.channel-chat-clarify-choice:hover:not(:disabled) {
+  background: var(--bg-hover, var(--bg-secondary));
+  border-color: var(--accent, #4a9eff);
+}
+
+.channel-chat-clarify-choice:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.channel-chat-clarify-choice-selected {
+  border-color: var(--accent, #4a9eff);
+  background: color-mix(in srgb, var(--accent, #4a9eff) 10%, var(--bg-primary));
+}
+
+.channel-chat-clarify-choice-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.channel-chat-clarify-choice-label {
+  flex: 1;
+}
+
+.channel-chat-clarify-choice-sent {
+  color: var(--accent, #4a9eff);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.channel-chat-clarify-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  padding-top: 2px;
+}
