@@ -18,9 +18,10 @@
  *   HOST                  - listen host (default: 0.0.0.0)
  *   STATIC_ROOT           - directory with built static assets (default: /data/services/den-web/wwwroot)
  *   DEN_CORE_TARGET       - Den Core backend URL (default: http://127.0.0.1:5299)
- *   DEN_CHANNELS_TARGET   - Den Channels backend URL (default: http://127.0.0.1:18081)
+ *   DEN_CHANNELS_TARGET   - Den Channels/gateway backend URL (default: http://127.0.0.1:8079)
  *   DEN_HOST_TARGET       - Den Host backend URL (default: http://127.0.0.1:5400)
  *   PI_CREW_ADMIN_TARGET  - Pi Crew admin diagnostics URL (default: http://127.0.0.1:9237)
+ *   DEN_GATEWAY_SERVICE_TOKEN - Gateway service token for /api/* outbound proxy (default: empty, no auth)
  *   DEN_WEB_CONFIG_PATH   - path to den-web-config.json (default: ${STATIC_ROOT}/den-web-config.json)
  *   DEN_WEB_BUILD_SENTINEL - path to den-web-build.json (default: ${STATIC_ROOT}/den-web-build.json)
  *   CACHE_MAX_AGE_SECONDS - max-age for immutable assets (default: 31536000)
@@ -38,15 +39,40 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as url from 'node:url';
 
+// ── Load gateway env from local file (agent-writable, no systemd edit needed) ──
+const GATEWAY_ENV_PATH = path.join(path.dirname(url.fileURLToPath(import.meta.url)), 'gateway.env');
+function loadGatewayEnv() {
+  const env = {};
+  try {
+    if (fs.existsSync(GATEWAY_ENV_PATH)) {
+      const raw = fs.readFileSync(GATEWAY_ENV_PATH, 'utf-8');
+      for (const line of raw.split('\n')) {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith('#')) {
+          const eqIdx = trimmed.indexOf('=');
+          if (eqIdx > 0) {
+            env[trimmed.slice(0, eqIdx).trim()] = trimmed.slice(eqIdx + 1).trim();
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn(`[den-web-static-server] failed to read ${GATEWAY_ENV_PATH}: ${e.message}`);
+  }
+  return env;
+}
+const GATEWAY_ENV = loadGatewayEnv();
+
 // ── Configuration ──────────────────────────────────────────────────────────────
 
 const PORT             = parseInt(process.env.PORT ?? '18080', 10);
 const HOST             = process.env.HOST ?? '0.0.0.0';
 const STATIC_ROOT      = process.env.STATIC_ROOT ?? '/data/services/den-web/wwwroot';
 const DEN_CORE_TARGET  = process.env.DEN_CORE_TARGET ?? 'http://127.0.0.1:5299';
-const DEN_CHANNELS_TARGET = process.env.DEN_CHANNELS_TARGET ?? 'http://127.0.0.1:18081';
+const DEN_CHANNELS_TARGET = GATEWAY_ENV.DEN_CHANNELS_TARGET ?? process.env.DEN_CHANNELS_TARGET ?? 'http://127.0.0.1:8079';
 const DEN_HOST_TARGET = process.env.DEN_HOST_TARGET ?? 'http://127.0.0.1:5400';
 const PI_CREW_ADMIN_TARGET = process.env.PI_CREW_ADMIN_TARGET ?? 'http://127.0.0.1:9237';
+const DEN_GATEWAY_SERVICE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_SERVICE_TOKEN ?? process.env.DEN_GATEWAY_SERVICE_TOKEN ?? '';
 const CONFIG_PATH      = process.env.DEN_WEB_CONFIG_PATH ?? path.join(STATIC_ROOT, 'den-web-config.json');
 const BUILD_SENTINEL_PATH = process.env.DEN_WEB_BUILD_SENTINEL ?? path.join(STATIC_ROOT, 'den-web-build.json');
 const CACHE_MAX_AGE    = parseInt(process.env.CACHE_MAX_AGE_SECONDS ?? '31536000', 10);
@@ -347,8 +373,13 @@ function handleRequest(req, res) {
     return;
   }
 
-  // ── Channels/Gateway/Agents API proxy ──
+  // ── Channels/Gateway/Agents API proxy (through gateway with service token) ──
   if (requestPath.startsWith('/api/')) {
+    // Inject gateway service token for outbound proxy requests.
+    // Browsers must not receive the token, so it's added server-side only.
+    if (DEN_GATEWAY_SERVICE_TOKEN) {
+      req.headers['authorization'] = `Bearer ${DEN_GATEWAY_SERVICE_TOKEN}`;
+    }
     return proxyRequest(DEN_CHANNELS_TARGET, req, res, () => requestPath + requestSearch);
   }
 
