@@ -432,6 +432,10 @@ describe('channels DM API client', () => {
         })
         .mockResolvedValueOnce({
           ok: true,
+          json: () => Promise.resolve({ runtime_instances: [{ instance_id: 'pi@live' }], activity_events: [] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
           json: () => Promise.resolve({
             id: 42,
             state: 'pending',
@@ -453,12 +457,17 @@ describe('channels DM API client', () => {
       expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/v1/conversation/channels/31/messages', expect.objectContaining({
         method: 'POST',
       }));
-      expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/v1/delivery/intents', expect.objectContaining({
+      expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/v1/observation/agents/pi/overview', {
+        cache: 'no-store',
+        headers: { 'X-Den-Migrated-Functions': 'true' },
+      });
+      expect(fetchMock).toHaveBeenNthCalledWith(5, '/api/v1/delivery/intents', expect.objectContaining({
         method: 'POST',
       }));
-      expect(JSON.parse(String(fetchMock.mock.calls[3][1]?.body))).toMatchObject({
+      expect(JSON.parse(String(fetchMock.mock.calls[4][1]?.body))).toMatchObject({
         member_identity: 'pi',
         profile_identity: 'pi',
+        agent_instance_id: 'pi@live',
         idempotency_key: 'direct-agent-message:den-web:pi:req',
         channel_message_id: 41,
       });

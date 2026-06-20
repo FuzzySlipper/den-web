@@ -43,6 +43,14 @@ interface ConversationChannelResponse {
   kind?: string | null;
 }
 
+interface ObservationAgentOverviewResponse {
+  runtime_instances?: Array<{ instance_id?: string | null; runtime_instance_id?: string | null }> | null;
+  activity_events?: Array<{
+    runtime_instance_id?: string | null;
+    agent_identity?: { instance_id?: string | null } | null;
+  }> | null;
+}
+
 function cleanIdempotencyPart(value: string | number | null | undefined, fallback: string): string {
   const normalized = String(value ?? fallback).trim().replace(/:/g, '-');
   return normalized || fallback;
@@ -142,14 +150,15 @@ async function createDeliveryIntent(
   idempotencyKey: string,
   message: ConversationMessageResponse | null,
 ): Promise<DeliveryIntentResponse> {
+  const agentInstanceId = request.agentInstanceId ?? await resolveAgentInstanceId(request.memberIdentity);
   return postJson<DeliveryIntentResponse>(
     deliveryApiBase,
     '/intents',
     {
       member_identity: request.memberIdentity,
       profile_identity: request.profileIdentity ?? request.memberIdentity,
-      agent_instance_id: request.agentInstanceId ?? undefined,
-      concrete_identity: request.agentInstanceId ?? undefined,
+      agent_instance_id: agentInstanceId ?? undefined,
+      concrete_identity: agentInstanceId ?? undefined,
       hermes_session_key: request.sessionId ?? undefined,
       idempotency_key: idempotencyKey,
       source_ref: deliverySourceRef(request, message),
@@ -157,6 +166,19 @@ async function createDeliveryIntent(
     },
     { 'X-Den-Migrated-Functions': 'true' },
   );
+}
+
+async function resolveAgentInstanceId(memberIdentity: string): Promise<string | null> {
+  try {
+    const overview = await getJson<ObservationAgentOverviewResponse>('/api/v1/observation', `/agents/${encodeURIComponent(memberIdentity)}/overview`);
+    return overview.runtime_instances?.find(item => item.instance_id || item.runtime_instance_id)?.instance_id
+      ?? overview.runtime_instances?.find(item => item.instance_id || item.runtime_instance_id)?.runtime_instance_id
+      ?? overview.activity_events?.find(item => item.agent_identity?.instance_id || item.runtime_instance_id)?.agent_identity?.instance_id
+      ?? overview.activity_events?.find(item => item.agent_identity?.instance_id || item.runtime_instance_id)?.runtime_instance_id
+      ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function postGatewayDirectAgentMessage(request: PostGatewayDirectAgentMessageRequest): Promise<GatewayDirectAgentMessage> {
