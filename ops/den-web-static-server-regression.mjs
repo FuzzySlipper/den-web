@@ -17,9 +17,9 @@ function listen(server) {
   });
 }
 
-function request(url) {
+function request(url, options = {}) {
   return new Promise((resolve, reject) => {
-    const req = http.get(url, (res) => {
+    const req = http.get(url, options, (res) => {
       let body = '';
       res.setEncoding('utf8');
       res.on('data', chunk => {
@@ -216,6 +216,54 @@ test('Observation reads use the Gateway observation read token, not the default 
 
   assert.deepEqual(gatewayObserved, [
     { url: '/v1/observation/lane?limit=1', authorization: 'Bearer observation-read-token' },
+  ]);
+  assert.deepEqual(channelsObserved, [
+    { url: '/api/channels?limit=1', authorization: 'Bearer default-service-token' },
+  ]);
+});
+
+test('Conversation successor reads use the Gateway conversation read token and canary header', async (t) => {
+  const gatewayObserved = [];
+  const gateway = http.createServer((req, res) => {
+    gatewayObserved.push({
+      url: req.url,
+      authorization: req.headers.authorization ?? null,
+      migrated: req.headers['x-den-migrated-functions'] ?? null,
+    });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ channels: [] }));
+  });
+  const gatewayPort = await listen(gateway);
+  t.after(() => new Promise(resolve => gateway.close(resolve)));
+
+  const channelsObserved = [];
+  const channels = http.createServer((req, res) => {
+    channelsObserved.push({ url: req.url, authorization: req.headers.authorization ?? null });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify([]));
+  });
+  const channelsPort = await listen(channels);
+  t.after(() => new Promise(resolve => channels.close(resolve)));
+
+  const { baseUrl } = await startStaticServer(`http://127.0.0.1:${channelsPort}`, t, {
+    DEN_GATEWAY_TARGET: `http://127.0.0.1:${gatewayPort}`,
+    DEN_GATEWAY_SERVICE_TOKEN: 'default-service-token',
+    DEN_GATEWAY_CONVERSATION_READ_TOKEN: 'conversation-read-token',
+  });
+
+  const conversationResponse = await request(`${baseUrl}/api/v1/conversation/channels?project_id=den-web&limit=1`, {
+    headers: { 'X-Den-Migrated-Functions': 'true' },
+  });
+  assert.equal(conversationResponse.statusCode, 200);
+  const channelsResponse = await request(`${baseUrl}/api/channels?limit=1`);
+  assert.equal(channelsResponse.statusCode, 200);
+
+  assert.deepEqual(gatewayObserved, [
+    {
+      url: '/v1/conversation/channels?project_id=den-web&limit=1',
+      authorization: 'Bearer conversation-read-token',
+      migrated: 'true',
+    },
   ]);
   assert.deepEqual(channelsObserved, [
     { url: '/api/channels?limit=1', authorization: 'Bearer default-service-token' },

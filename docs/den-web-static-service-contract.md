@@ -69,8 +69,8 @@ The standalone static site should support deploy-time runtime configuration inst
 Required precedence for the extracted app:
 
 1. Runtime config loaded from `/den-web-config.json` when present.
-2. Vite build-time env values (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, and `VITE_DEN_HOST_API_BASE`) as fallback.
-3. Safe local defaults: `/den-core-api`, `/api`, and `/den-host-api`.
+2. Vite build-time env values (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, `VITE_DEN_HOST_API_BASE`, and disabled conversation successor pilot flags) as fallback.
+3. Safe local defaults: `/den-core-api`, `/api`, `/den-host-api`, and conversation successor reads disabled.
 
 Recommended runtime config keys:
 
@@ -79,6 +79,9 @@ Recommended runtime config keys:
 | `denCoreApiBase` | `/den-core-api` | Core REST facade base path. |
 | `denChannelsApiBase` | `/api` | Channels API base path. |
 | `denHostApiBase` | `/den-host-api` | Den Host FleetOps API base; rewritten by the static service to Den Host's internal `/api/host` route. |
+| `conversationSuccessorReadsEnabled` | `false` | Feature flag for read-only conversation successor pilot routes. |
+| `conversationSuccessorApiBase` | `/api/v1/conversation` | Same-origin Den Web proxy base for Gateway conversation canary reads. |
+| `conversationSuccessorReadProjectIds` | `[]` | Project allowlist for the pilot. Empty means no channel/message reads use successor. |
 | `appBasePath` | `/` | Static app base path. |
 | `environmentName` | `den-srv` | Human-readable deployment/environment label. |
 

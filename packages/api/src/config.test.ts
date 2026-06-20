@@ -45,6 +45,9 @@ describe('getConfig - no runtime config (404)', () => {
     expect(config.denCoreApiBase).toBe('/den-core-api');
     expect(config.denChannelsApiBase).toBe('/api');
     expect(config.denHostApiBase).toBe('/den-host-api');
+    expect(config.conversationSuccessorReadsEnabled).toBe(false);
+    expect(config.conversationSuccessorApiBase).toBe('/api/v1/conversation');
+    expect(config.conversationSuccessorReadProjectIds).toEqual([]);
     expect(config.appBasePath).toBe('/');
     expect(config.environmentName).toBe('development');
   });
@@ -53,12 +56,18 @@ describe('getConfig - no runtime config (404)', () => {
     vi.stubEnv('VITE_DEN_CORE_API_BASE', '/env-core-api/');
     vi.stubEnv('VITE_DEN_CHANNELS_API_BASE', '/env-channels-api/');
     vi.stubEnv('VITE_DEN_HOST_API_BASE', '/env-host-api/');
+    vi.stubEnv('VITE_CONVERSATION_SUCCESSOR_READS_ENABLED', 'true');
+    vi.stubEnv('VITE_CONVERSATION_SUCCESSOR_API_BASE', '/env-conversation/');
+    vi.stubEnv('VITE_CONVERSATION_SUCCESSOR_READ_PROJECT_IDS', 'den-web, pi-crew');
 
     const config = await getConfig();
 
     expect(config.denCoreApiBase).toBe('/env-core-api');
     expect(config.denChannelsApiBase).toBe('/env-channels-api');
     expect(config.denHostApiBase).toBe('/env-host-api');
+    expect(config.conversationSuccessorReadsEnabled).toBe(true);
+    expect(config.conversationSuccessorApiBase).toBe('/env-conversation');
+    expect(config.conversationSuccessorReadProjectIds).toEqual(['den-web', 'pi-crew']);
     expect(config.appBasePath).toBe('/');
     expect(config.environmentName).toBe('development');
   });
@@ -85,6 +94,9 @@ describe('getConfig - with runtime config loaded', () => {
         denCoreApiBase: '/custom-core-api/',
         denChannelsApiBase: '/custom-channels-api',
         denHostApiBase: '/custom-host-api',
+        conversationSuccessorReadsEnabled: true,
+        conversationSuccessorApiBase: '/custom-conversation/',
+        conversationSuccessorReadProjectIds: ['den-web', 'pilot-canary-2917'],
         appBasePath: '/den-web/',
         environmentName: 'test-env',
       }),
@@ -96,6 +108,9 @@ describe('getConfig - with runtime config loaded', () => {
     expect(config.denCoreApiBase).toBe('/custom-core-api');
     expect(config.denChannelsApiBase).toBe('/custom-channels-api');
     expect(config.denHostApiBase).toBe('/custom-host-api');
+    expect(config.conversationSuccessorReadsEnabled).toBe(true);
+    expect(config.conversationSuccessorApiBase).toBe('/custom-conversation');
+    expect(config.conversationSuccessorReadProjectIds).toEqual(['den-web', 'pilot-canary-2917']);
     expect(config.appBasePath).toBe('/den-web');
     expect(config.environmentName).toBe('test-env');
   });

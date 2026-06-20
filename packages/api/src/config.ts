@@ -3,8 +3,8 @@
  *
  * Precedence (highest to lowest):
  * 1. Runtime config fetched from `/den-web-config.json` (deploy-time JSON file)
- * 2. Vite build-time env variables (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, `VITE_DEN_HOST_API_BASE`, `VITE_PI_CREW_ADMIN_API_BASE`)
- * 3. Safe local defaults (`/den-core-api`, `/api`, `/den-host-api`, `/pi-crew-admin-api`)
+ * 2. Vite build-time env variables (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, `VITE_DEN_HOST_API_BASE`, `VITE_PI_CREW_ADMIN_API_BASE`, conversation successor pilot flags)
+ * 3. Safe local defaults (`/den-core-api`, `/api`, `/den-host-api`, `/pi-crew-admin-api`, successor reads disabled)
  *
  * Malformed or inaccessible config triggers a console diagnostic and falls back
  * gracefully — it never silently points at wrong API endpoints.
@@ -15,6 +15,9 @@ export interface DenWebRuntimeConfig {
   denChannelsApiBase: string;
   denHostApiBase: string;
   piCrewAdminApiBase: string;
+  conversationSuccessorReadsEnabled: boolean;
+  conversationSuccessorApiBase: string;
+  conversationSuccessorReadProjectIds: string[];
   appBasePath: string;
   environmentName: string;
 }
@@ -24,6 +27,9 @@ const DEFAULTS: DenWebRuntimeConfig = {
   denChannelsApiBase: '/api',
   denHostApiBase: '/den-host-api',
   piCrewAdminApiBase: '/pi-crew-admin-api',
+  conversationSuccessorReadsEnabled: false,
+  conversationSuccessorApiBase: '/api/v1/conversation',
+  conversationSuccessorReadProjectIds: [],
   appBasePath: '/',
   environmentName: 'development',
 };
@@ -38,6 +44,71 @@ let configLoadError: string | null = null;
 export function normalizeApiBase(value: string | undefined, fallback: string): string {
   const trimmed = (value ?? fallback).trim().replace(/\/+$/, '');
   return trimmed.length > 0 ? trimmed : fallback;
+}
+
+function parseBooleanFlag(value: unknown, fallback: boolean): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'off', ''].includes(normalized)) return false;
+  }
+  return fallback;
+}
+
+function parseProjectIdList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === 'string')
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    return value.split(',').map(item => item.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function runtimeStringFieldsAreValid(obj: Record<string, unknown>): boolean {
+  const fields = ['denCoreApiBase', 'denChannelsApiBase', 'denHostApiBase', 'piCrewAdminApiBase', 'conversationSuccessorApiBase'] as const;
+  for (const key of fields) {
+    if (obj[key] !== undefined && typeof obj[key] !== 'string') {
+      console.error(`[den-web-config] key "${key}" must be a string (got ${typeof obj[key]}); falling back to env/defaults`);
+      return false;
+    }
+  }
+  return true;
+}
+
+function runtimeConversationPilotFieldsAreValid(obj: Record<string, unknown>): boolean {
+  if (obj.conversationSuccessorReadsEnabled !== undefined && !['boolean', 'string'].includes(typeof obj.conversationSuccessorReadsEnabled)) {
+    console.error(`[den-web-config] key "conversationSuccessorReadsEnabled" must be a boolean/string flag (got ${typeof obj.conversationSuccessorReadsEnabled}); falling back to env/defaults`);
+    return false;
+  }
+  if (
+    obj.conversationSuccessorReadProjectIds !== undefined
+    && typeof obj.conversationSuccessorReadProjectIds !== 'string'
+    && !Array.isArray(obj.conversationSuccessorReadProjectIds)
+  ) {
+    console.error(`[den-web-config] key "conversationSuccessorReadProjectIds" must be a string or string array (got ${typeof obj.conversationSuccessorReadProjectIds}); falling back to env/defaults`);
+    return false;
+  }
+  return true;
+}
+
+function runtimeConfigFromRecord(obj: Record<string, unknown>): DenWebRuntimeConfig | null {
+  if (!runtimeStringFieldsAreValid(obj) || !runtimeConversationPilotFieldsAreValid(obj)) return null;
+  return {
+    denCoreApiBase: normalizeApiBase(obj.denCoreApiBase as string | undefined, DEFAULTS.denCoreApiBase),
+    denChannelsApiBase: normalizeApiBase(obj.denChannelsApiBase as string | undefined, DEFAULTS.denChannelsApiBase),
+    denHostApiBase: normalizeApiBase(obj.denHostApiBase as string | undefined, DEFAULTS.denHostApiBase),
+    piCrewAdminApiBase: normalizeApiBase(obj.piCrewAdminApiBase as string | undefined, DEFAULTS.piCrewAdminApiBase),
+    conversationSuccessorReadsEnabled: parseBooleanFlag(obj.conversationSuccessorReadsEnabled, DEFAULTS.conversationSuccessorReadsEnabled),
+    conversationSuccessorApiBase: normalizeApiBase(obj.conversationSuccessorApiBase as string | undefined, DEFAULTS.conversationSuccessorApiBase),
+    conversationSuccessorReadProjectIds: parseProjectIdList(obj.conversationSuccessorReadProjectIds),
+    appBasePath: normalizeApiBase(obj.appBasePath as string | undefined, DEFAULTS.appBasePath),
+    environmentName: typeof obj.environmentName === 'string' ? obj.environmentName : DEFAULTS.environmentName,
+  };
 }
 
 /**
@@ -63,24 +134,7 @@ async function loadRuntimeConfigFile(): Promise<DenWebRuntimeConfig | null> {
     }
 
     const obj = raw as Record<string, unknown>;
-
-    // Validate required string fields
-    const required = ['denCoreApiBase', 'denChannelsApiBase', 'denHostApiBase', 'piCrewAdminApiBase'] as const;
-    for (const key of required) {
-      if (obj[key] !== undefined && typeof obj[key] !== 'string') {
-        console.error(`[den-web-config] key "${key}" must be a string (got ${typeof obj[key]}); falling back to env/defaults`);
-        return null;
-      }
-    }
-
-    return {
-      denCoreApiBase: normalizeApiBase(obj.denCoreApiBase as string | undefined, DEFAULTS.denCoreApiBase),
-      denChannelsApiBase: normalizeApiBase(obj.denChannelsApiBase as string | undefined, DEFAULTS.denChannelsApiBase),
-      denHostApiBase: normalizeApiBase(obj.denHostApiBase as string | undefined, DEFAULTS.denHostApiBase),
-      piCrewAdminApiBase: normalizeApiBase(obj.piCrewAdminApiBase as string | undefined, DEFAULTS.piCrewAdminApiBase),
-      appBasePath: normalizeApiBase(obj.appBasePath as string | undefined, DEFAULTS.appBasePath),
-      environmentName: typeof obj.environmentName === 'string' ? obj.environmentName : DEFAULTS.environmentName,
-    };
+    return runtimeConfigFromRecord(obj);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     configLoadError = message;
@@ -116,11 +170,17 @@ export async function getConfig(reload = false): Promise<DenWebRuntimeConfig> {
   let viteEnvChannelsBase: string | undefined;
   let viteEnvHostBase: string | undefined;
   let viteEnvPiCrewAdminBase: string | undefined;
+  let viteEnvConversationSuccessorReadsEnabled: string | undefined;
+  let viteEnvConversationSuccessorApiBase: string | undefined;
+  let viteEnvConversationSuccessorReadProjectIds: string | undefined;
   try {
     viteEnvViteCoreBase = import.meta.env?.VITE_DEN_CORE_API_BASE;
     viteEnvChannelsBase = import.meta.env?.VITE_DEN_CHANNELS_API_BASE;
     viteEnvHostBase = import.meta.env?.VITE_DEN_HOST_API_BASE;
     viteEnvPiCrewAdminBase = import.meta.env?.VITE_PI_CREW_ADMIN_API_BASE;
+    viteEnvConversationSuccessorReadsEnabled = import.meta.env?.VITE_CONVERSATION_SUCCESSOR_READS_ENABLED;
+    viteEnvConversationSuccessorApiBase = import.meta.env?.VITE_CONVERSATION_SUCCESSOR_API_BASE;
+    viteEnvConversationSuccessorReadProjectIds = import.meta.env?.VITE_CONVERSATION_SUCCESSOR_READ_PROJECT_IDS;
   } catch {
     // Not running in Vite (e.g., jsdom tests without env configured)
   }
@@ -130,6 +190,9 @@ export async function getConfig(reload = false): Promise<DenWebRuntimeConfig> {
     denChannelsApiBase: normalizeApiBase(viteEnvChannelsBase, DEFAULTS.denChannelsApiBase),
     denHostApiBase: normalizeApiBase(viteEnvHostBase, DEFAULTS.denHostApiBase),
     piCrewAdminApiBase: normalizeApiBase(viteEnvPiCrewAdminBase, DEFAULTS.piCrewAdminApiBase),
+    conversationSuccessorReadsEnabled: parseBooleanFlag(viteEnvConversationSuccessorReadsEnabled, DEFAULTS.conversationSuccessorReadsEnabled),
+    conversationSuccessorApiBase: normalizeApiBase(viteEnvConversationSuccessorApiBase, DEFAULTS.conversationSuccessorApiBase),
+    conversationSuccessorReadProjectIds: parseProjectIdList(viteEnvConversationSuccessorReadProjectIds),
     appBasePath: DEFAULTS.appBasePath,
     environmentName: DEFAULTS.environmentName,
   };

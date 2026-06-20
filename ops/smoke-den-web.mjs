@@ -16,6 +16,8 @@
  *   DEN_WEB_URL           - Base URL of the deployed Den Web (default: http://192.168.1.10:18080)
  *   EXPECTED_BUILD_COMMIT - If set, verify den-web-build.json contains this commit hash
  *   EXPECTED_ENV_NAME     - Expected environmentName value (default: den-srv)
+ *   EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED - Expected read pilot flag (default: false)
+ *   EXPECTED_CONVERSATION_SUCCESSOR_API_BASE - Expected read pilot API base (default: /api/v1/conversation)
  *   REQUIRE_AGENT_WORK_COMPLETE_NOTIFICATION - If set to 1, require at least one
  *                         agent_work_complete row in the Core notification feed
  */
@@ -28,6 +30,8 @@ import * as url from 'node:url';
 const DEN_WEB_URL       = process.env.DEN_WEB_URL ?? 'http://192.168.1.10:18080';
 const EXPECTED_BUILD_COMMIT = process.env.EXPECTED_BUILD_COMMIT ?? '';
 const EXPECTED_ENV_NAME = process.env.EXPECTED_ENV_NAME ?? 'den-srv';
+const EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED = (process.env.EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED ?? 'false').toLowerCase() === 'true';
+const EXPECTED_CONVERSATION_SUCCESSOR_API_BASE = process.env.EXPECTED_CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation';
 const REQUIRE_AGENT_WORK_COMPLETE_NOTIFICATION = process.env.REQUIRE_AGENT_WORK_COMPLETE_NOTIFICATION === '1';
 
 // Parse base URL
@@ -186,6 +190,18 @@ async function checkConfig() {
     pass('config.denHostApiBase == "/den-host-api"');
   } else {
     fail('config.denHostApiBase', `expected "/den-host-api", got "${config.denHostApiBase}"`);
+  }
+
+  if (config.conversationSuccessorReadsEnabled === EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED) {
+    pass(`config.conversationSuccessorReadsEnabled == ${EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED}`);
+  } else {
+    fail('config.conversationSuccessorReadsEnabled', `expected ${EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED}, got ${JSON.stringify(config.conversationSuccessorReadsEnabled)}`);
+  }
+
+  if (config.conversationSuccessorApiBase === EXPECTED_CONVERSATION_SUCCESSOR_API_BASE) {
+    pass(`config.conversationSuccessorApiBase == "${EXPECTED_CONVERSATION_SUCCESSOR_API_BASE}"`);
+  } else {
+    fail('config.conversationSuccessorApiBase', `expected "${EXPECTED_CONVERSATION_SUCCESSOR_API_BASE}", got "${config.conversationSuccessorApiBase}"`);
   }
 
   if (config.environmentName === EXPECTED_ENV_NAME) {

@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { clearRequestCache } from '../requestCache';
 import {
+  listChannelMessages,
+  listChannels,
   listDirectConversations,
   createDirectConversation,
   getDirectConversation,
@@ -8,6 +11,8 @@ import {
   updateReadCursor,
   getReadCursor,
   listAgentWorkEvents,
+  listProjectLinkedChannels,
+  reinitChannelsRuntime,
 } from './client';
 import type {
   DirectConversation,
@@ -26,7 +31,168 @@ function mockFetch(ok: boolean, data: unknown) {
 
 describe('channels DM API client', () => {
   afterEach(() => {
+    clearRequestCache();
+    reinitChannelsRuntime({
+      denChannelsApiBase: '/api',
+      conversationSuccessorReads: {
+        enabled: false,
+        apiBase: '/api/v1/conversation',
+        projectIds: [],
+      },
+    });
     vi.unstubAllGlobals();
+  });
+
+  describe('conversation successor read pilot', () => {
+    it('uses legacy channel reads when the successor flag is disabled', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      reinitChannelsRuntime({
+        denChannelsApiBase: '/legacy-api',
+        conversationSuccessorReads: {
+          enabled: false,
+          apiBase: '/api/v1/conversation',
+          projectIds: ['den-web'],
+        },
+      });
+
+      await listChannels({ projectId: 'den-web', kind: 'project_default', limit: 2 });
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/legacy-api/channels?projectId=den-web&kind=project_default&limit=2',
+        { cache: 'no-store' },
+      );
+    });
+
+    it('routes allowlisted channel reads through the successor canary path and normalizes snake_case DTOs', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          channels: [{
+            id: 701,
+            slug: 'den-web-default',
+            display_name: 'Den Web',
+            kind: 'project_default',
+            project_id: 'den-web',
+            space_id: 'den-web',
+            created_by: 'successor-canary',
+            visibility: 'normal',
+            settings: { color: 'blue' },
+            created_at: '2026-06-20T00:00:00Z',
+            updated_at: '2026-06-20T00:01:00Z',
+            archived_at: null,
+          }],
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      reinitChannelsRuntime({
+        denChannelsApiBase: '/api',
+        conversationSuccessorReads: {
+          enabled: true,
+          apiBase: '/api/v1/conversation',
+          projectIds: ['den-web'],
+        },
+      });
+
+      const channels = await listChannels({ projectId: 'den-web', kind: 'project_default', limit: 2 });
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/v1/conversation/channels?project_id=den-web&kind=project_default&limit=2',
+        {
+          cache: 'no-store',
+          headers: { 'X-Den-Migrated-Functions': 'true' },
+        },
+      );
+      expect(channels[0]).toMatchObject({
+        id: 701,
+        displayName: 'Den Web',
+        projectId: 'den-web',
+        settingsJson: '{"color":"blue"}',
+        createdAt: '2026-06-20T00:00:00Z',
+      });
+    });
+
+    it('routes messages for successor-discovered channels and translates afterId to after_id', async () => {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([{ id: 702, slug: 'pilot', display_name: 'Pilot', project_id: 'pilot-project', created_at: 't0', updated_at: 't0' }]),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({
+            messages: [{
+              id: 9001,
+              channel_id: 702,
+              sender_type: 'agent',
+              sender_identity: 'den-mcp-runner',
+              body: 'hello',
+              message_kind: 'system_event',
+              source_kind: 'synthetic_canary',
+              metadata: { proof: true },
+              created_at: '2026-06-20T00:02:00Z',
+            }],
+          }),
+        });
+      vi.stubGlobal('fetch', fetchMock);
+      reinitChannelsRuntime({
+        denChannelsApiBase: '/api',
+        conversationSuccessorReads: {
+          enabled: true,
+          apiBase: '/api/v1/conversation',
+          projectIds: ['pilot-project'],
+        },
+      });
+
+      await listChannels({ projectId: 'pilot-project', limit: 1 });
+      const messages = await listChannelMessages(702, { afterId: 12, limit: 20 });
+
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        2,
+        '/api/v1/conversation/channels/702/messages?after_id=12&limit=20',
+        {
+          cache: 'no-store',
+          headers: { 'X-Den-Migrated-Functions': 'true' },
+        },
+      );
+      expect(messages[0]).toMatchObject({
+        id: 9001,
+        channelId: 702,
+        senderIdentity: 'den-mcp-runner',
+        messageKind: 'system_event',
+        sourceKind: 'synthetic_canary',
+        metadataJson: '{"proof":true}',
+        deliveryRequestId: null,
+      });
+    });
+
+    it('leaves unallowlisted projects, undiscovered message channels, and unsupported linked routes on legacy', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      reinitChannelsRuntime({
+        denChannelsApiBase: '/legacy-api',
+        conversationSuccessorReads: {
+          enabled: true,
+          apiBase: '/api/v1/conversation',
+          projectIds: ['pilot-project'],
+        },
+      });
+
+      await listChannels({ projectId: 'other-project', limit: 1 });
+      await listChannelMessages(999, { limit: 5 });
+      await listProjectLinkedChannels('pilot-project');
+
+      expect(fetchMock).toHaveBeenNthCalledWith(1, '/legacy-api/channels?projectId=other-project&limit=1', { cache: 'no-store' });
+      expect(fetchMock).toHaveBeenNthCalledWith(2, '/legacy-api/channels/999/messages?limit=5', { cache: 'no-store' });
+      expect(fetchMock).toHaveBeenNthCalledWith(3, '/legacy-api/projects/pilot-project/linked-channels', { cache: 'no-store' });
+      expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/api/v1/conversation/projects'), expect.anything());
+    });
   });
 
   describe('listDirectConversations', () => {

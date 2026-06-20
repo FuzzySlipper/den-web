@@ -130,6 +130,9 @@ function buildRuntimeConfig() {
     denChannelsApiBase: env.DEN_CHANNELS_API_BASE ?? '/api',
     denHostApiBase: env.DEN_HOST_API_BASE ?? '/den-host-api',
     piCrewAdminApiBase: env.PI_CREW_ADMIN_API_BASE ?? '/pi-crew-admin-api',
+    conversationSuccessorReadsEnabled: env.CONVERSATION_SUCCESSOR_READS_ENABLED === '1' || env.CONVERSATION_SUCCESSOR_READS_ENABLED === 'true',
+    conversationSuccessorApiBase: env.CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation',
+    conversationSuccessorReadProjectIds: (env.CONVERSATION_SUCCESSOR_READ_PROJECT_IDS ?? '').split(',').map(item => item.trim()).filter(Boolean),
     appBasePath: env.APP_BASE_PATH ?? '/',
     environmentName: env.ENVIRONMENT_NAME ?? 'den-srv',
   };
@@ -267,6 +270,8 @@ function smoke(commit) {
       DEN_WEB_URL: PUBLIC_URL,
       EXPECTED_BUILD_COMMIT: commit,
       EXPECTED_ENV_NAME: env.ENVIRONMENT_NAME ?? 'den-srv',
+      EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED: env.CONVERSATION_SUCCESSOR_READS_ENABLED ?? 'false',
+      EXPECTED_CONVERSATION_SUCCESSOR_API_BASE: env.CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation',
     },
   });
 }

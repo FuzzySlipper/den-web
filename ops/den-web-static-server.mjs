@@ -23,6 +23,8 @@
  *   DEN_HOST_TARGET       - Den Host backend URL (default: http://127.0.0.1:5400)
  *   PI_CREW_ADMIN_TARGET  - Pi Crew admin diagnostics URL (default: http://127.0.0.1:9237)
  *   DEN_GATEWAY_SERVICE_TOKEN - Gateway service token for /api/* outbound proxy (default: empty, no auth)
+ *   DEN_GATEWAY_OBSERVATION_READ_TOKEN - Gateway caller token for /api/v1/observation/* reads (default: empty, no auth)
+ *   DEN_GATEWAY_CONVERSATION_READ_TOKEN - Gateway caller token for /api/v1/conversation/* read pilot (default: empty, no auth)
  *   DEN_WEB_CONFIG_PATH   - path to den-web-config.json (default: ${STATIC_ROOT}/den-web-config.json)
  *   DEN_WEB_BUILD_SENTINEL - path to den-web-build.json (default: ${STATIC_ROOT}/den-web-build.json)
  *   CACHE_MAX_AGE_SECONDS - max-age for immutable assets (default: 31536000)
@@ -31,6 +33,9 @@
  *   DEN_CHANNELS_API_BASE - runtime config Channels API base (default: /api)
  *   DEN_HOST_API_BASE     - runtime config Den Host API base (default: /den-host-api)
  *   PI_CREW_ADMIN_API_BASE - runtime config Pi Crew admin API base (default: /pi-crew-admin-api)
+ *   CONVERSATION_SUCCESSOR_READS_ENABLED - runtime config conversation successor read pilot flag (default: false)
+ *   CONVERSATION_SUCCESSOR_API_BASE - runtime config conversation successor browser proxy base (default: /api/v1/conversation)
+ *   CONVERSATION_SUCCESSOR_READ_PROJECT_IDS - comma-separated pilot project IDs for successor reads (default: empty)
  *   APP_BASE_PATH         - runtime config app base path (default: /)
  *   ENVIRONMENT_NAME      - runtime config environment label (default: den-srv)
  */
@@ -76,6 +81,7 @@ const DEN_HOST_TARGET = process.env.DEN_HOST_TARGET ?? 'http://127.0.0.1:5400';
 const PI_CREW_ADMIN_TARGET = process.env.PI_CREW_ADMIN_TARGET ?? 'http://127.0.0.1:9237';
 const DEN_GATEWAY_SERVICE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_SERVICE_TOKEN ?? process.env.DEN_GATEWAY_SERVICE_TOKEN ?? '';
 const DEN_GATEWAY_OBSERVATION_READ_TOKEN = GATEWAY_ENV.DEN_GATEWAY_OBSERVATION_READ_TOKEN ?? process.env.DEN_GATEWAY_OBSERVATION_READ_TOKEN ?? '';
+const DEN_GATEWAY_CONVERSATION_READ_TOKEN = GATEWAY_ENV.DEN_GATEWAY_CONVERSATION_READ_TOKEN ?? process.env.DEN_GATEWAY_CONVERSATION_READ_TOKEN ?? '';
 const CONFIG_PATH      = process.env.DEN_WEB_CONFIG_PATH ?? path.join(STATIC_ROOT, 'den-web-config.json');
 const BUILD_SENTINEL_PATH = process.env.DEN_WEB_BUILD_SENTINEL ?? path.join(STATIC_ROOT, 'den-web-build.json');
 const CACHE_MAX_AGE    = parseInt(process.env.CACHE_MAX_AGE_SECONDS ?? '31536000', 10);
@@ -171,6 +177,9 @@ function loadConfig() {
     denChannelsApiBase: process.env.DEN_CHANNELS_API_BASE ?? '/api',
     denHostApiBase: process.env.DEN_HOST_API_BASE ?? '/den-host-api',
     piCrewAdminApiBase: process.env.PI_CREW_ADMIN_API_BASE ?? '/pi-crew-admin-api',
+    conversationSuccessorReadsEnabled: process.env.CONVERSATION_SUCCESSOR_READS_ENABLED === '1' || process.env.CONVERSATION_SUCCESSOR_READS_ENABLED === 'true',
+    conversationSuccessorApiBase: process.env.CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation',
+    conversationSuccessorReadProjectIds: (process.env.CONVERSATION_SUCCESSOR_READ_PROJECT_IDS ?? '').split(',').map(item => item.trim()).filter(Boolean),
     appBasePath: process.env.APP_BASE_PATH ?? '/',
     environmentName: process.env.ENVIRONMENT_NAME ?? 'den-srv',
   };
@@ -195,6 +204,9 @@ function loadConfig() {
       denChannelsApiBase: typeof fileConfig.denChannelsApiBase === 'string' ? fileConfig.denChannelsApiBase : defaults.denChannelsApiBase,
       denHostApiBase: typeof fileConfig.denHostApiBase === 'string' ? fileConfig.denHostApiBase : defaults.denHostApiBase,
       piCrewAdminApiBase: typeof fileConfig.piCrewAdminApiBase === 'string' ? fileConfig.piCrewAdminApiBase : defaults.piCrewAdminApiBase,
+      conversationSuccessorReadsEnabled: typeof fileConfig.conversationSuccessorReadsEnabled === 'boolean' ? fileConfig.conversationSuccessorReadsEnabled : defaults.conversationSuccessorReadsEnabled,
+      conversationSuccessorApiBase: typeof fileConfig.conversationSuccessorApiBase === 'string' ? fileConfig.conversationSuccessorApiBase : defaults.conversationSuccessorApiBase,
+      conversationSuccessorReadProjectIds: Array.isArray(fileConfig.conversationSuccessorReadProjectIds) ? fileConfig.conversationSuccessorReadProjectIds.filter(item => typeof item === 'string') : defaults.conversationSuccessorReadProjectIds,
       appBasePath: typeof fileConfig.appBasePath === 'string' ? fileConfig.appBasePath : defaults.appBasePath,
       environmentName: typeof fileConfig.environmentName === 'string' ? fileConfig.environmentName : defaults.environmentName,
     });
@@ -240,6 +252,9 @@ function proxyRequest(targetBase, req, res, pathRewrite) {
   }
   if (req.headers['user-agent']) {
     proxyHeaders['User-Agent'] = req.headers['user-agent'];
+  }
+  if (req.headers['x-den-migrated-functions']) {
+    proxyHeaders['X-Den-Migrated-Functions'] = req.headers['x-den-migrated-functions'];
   }
   if (req.headers['x-forwarded-for']) {
     proxyHeaders['X-Forwarded-For'] = req.headers['x-forwarded-for'];
@@ -383,6 +398,17 @@ function handleRequest(req, res) {
     if (requestPath === '/api/v1/observation' || requestPath.startsWith('/api/v1/observation/')) {
       if (DEN_GATEWAY_OBSERVATION_READ_TOKEN) {
         req.headers['authorization'] = `Bearer ${DEN_GATEWAY_OBSERVATION_READ_TOKEN}`;
+      }
+      const stripped = requestPath.replace(/^\/api/, '') || '/';
+      return proxyRequest(DEN_GATEWAY_TARGET, req, res, () => stripped + requestSearch);
+    }
+
+    // Conversation successor read pilot. The browser adapter supplies the
+    // X-Den-Migrated-Functions canary header only when its feature flag is on;
+    // the read caller token stays server-side here.
+    if (requestPath === '/api/v1/conversation' || requestPath.startsWith('/api/v1/conversation/')) {
+      if (DEN_GATEWAY_CONVERSATION_READ_TOKEN) {
+        req.headers['authorization'] = `Bearer ${DEN_GATEWAY_CONVERSATION_READ_TOKEN}`;
       }
       const stripped = requestPath.replace(/^\/api/, '') || '/';
       return proxyRequest(DEN_GATEWAY_TARGET, req, res, () => stripped + requestSearch);

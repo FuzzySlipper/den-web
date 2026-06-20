@@ -1,12 +1,21 @@
 import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse, AgentWorkCurrentResponse, AgentWorkEventsResponse, AgentWorkLifecycleEvent, DirectAgentEventsResponse, DirectConversation, DirectConversationListResponse, DirectConversationEntriesResponse, DirectConversationSendRequest, DirectConversationSendResponse, DirectConversationCreateRequest, ReadCursor } from './types';
 import { normalizeApiBase } from '../config';
 import { dedupedFetch } from '../requestCache';
+import { conversationSuccessorReadsEnabledForChannel, conversationSuccessorReadsEnabledForProject, listConversationSuccessorChannels, listConversationSuccessorMessages, reinitConversationSuccessorReads, type ConversationSuccessorReadConfig } from './conversationSuccessor';
 
 let denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
 
 /** Reinitialize base URL from runtime config */
 export function reinitChannelsBase(base: string): void {
   denChannelsApiBase = normalizeApiBase(base, '/api');
+}
+
+export function reinitChannelsRuntime(config: {
+  denChannelsApiBase: string;
+  conversationSuccessorReads: Partial<ConversationSuccessorReadConfig>;
+}): void {
+  reinitChannelsBase(config.denChannelsApiBase);
+  reinitConversationSuccessorReads(config.conversationSuccessorReads);
 }
 
 function channelsApiUrl(url: string): string {
@@ -83,6 +92,9 @@ export interface ListChannelsOpts {
 }
 
 export function listChannels(opts: ListChannelsOpts = {}): Promise<Channel[]> {
+  if (conversationSuccessorReadsEnabledForProject(opts.projectId)) {
+    return listConversationSuccessorChannels(opts);
+  }
   const q = buildQuery({ projectId: opts.projectId, kind: opts.kind, limit: opts.limit });
   return getChannels(`/channels${q}`);
 }
@@ -157,6 +169,9 @@ export interface ListChannelMessagesOpts {
 }
 
 export function listChannelMessages(channelId: number, opts: ListChannelMessagesOpts = {}): Promise<ChannelMessage[]> {
+  if (conversationSuccessorReadsEnabledForChannel(channelId)) {
+    return listConversationSuccessorMessages(channelId, opts);
+  }
   const q = buildQuery({ afterId: opts.afterId, limit: opts.limit });
   return getChannels(`/channels/${channelId}/messages${q}`);
 }

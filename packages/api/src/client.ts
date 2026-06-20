@@ -10,7 +10,7 @@
 
 import { getConfig } from './config';
 import { initClient as initCoreClient, resetClient as resetCoreClient } from './core/client';
-import { reinitChannelsBase } from './channels/client';
+import { reinitChannelsRuntime } from './channels/client';
 import { reinitHostBase } from './gateway/client';
 
 // Core API
@@ -19,13 +19,27 @@ export { getApiBases } from './core/client';
 export async function initClient(): Promise<void> {
   await initCoreClient();
   const config = await getConfig();
-  reinitChannelsBase(config.denChannelsApiBase);
+  reinitChannelsRuntime({
+    denChannelsApiBase: config.denChannelsApiBase,
+    conversationSuccessorReads: {
+      enabled: config.conversationSuccessorReadsEnabled,
+      apiBase: config.conversationSuccessorApiBase,
+      projectIds: config.conversationSuccessorReadProjectIds,
+    },
+  });
   reinitHostBase(config.denHostApiBase);
 }
 
 export function resetClient(): void {
   resetCoreClient();
-  reinitChannelsBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE ?? '/api');
+  reinitChannelsRuntime({
+    denChannelsApiBase: import.meta.env.VITE_DEN_CHANNELS_API_BASE ?? '/api',
+    conversationSuccessorReads: {
+      enabled: false,
+      apiBase: '/api/v1/conversation',
+      projectIds: [],
+    },
+  });
   reinitHostBase(import.meta.env.VITE_DEN_HOST_API_BASE ?? '/den-host-api');
 }
 export type {
