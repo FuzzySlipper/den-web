@@ -16,25 +16,29 @@ describe('postGatewayDirectAgentMessage', () => {
     vi.unstubAllGlobals();
   });
 
-  it('uses the canonical Channels direct-agent-events route instead of the retired Gateway compatibility route', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        status: 'recorded',
-        eventId: 4044,
-        channelId: 584,
-        requestId: 'direct-agent-message:584:den-mcp-planner:req-1',
-        memberIdentity: 'den-mcp-planner',
-        wakePolicy: 'subscription',
-        eventUrl: '/api/direct-agent-events/4044',
-        eventsUrl: '/api/direct-agent-events?channelId=584&afterId=4043&limit=10',
-        evidenceSummary: 'Direct agent wake_event recorded as event 4044.',
-        deliveryStatus: 'recorded_pending_claim',
-        claimStatus: 'unclaimed',
-        completionStatus: 'pending',
-      }),
-    });
+  it('creates conversation evidence then delivery successor intent instead of legacy direct-agent-events', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 4044,
+          channel_id: 584,
+          dedupe_key: 'conversation-direct-agent-message:584:den-mcp-planner:req1',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 812,
+          state: 'pending',
+          idempotency_key: 'direct-agent-message:584:den-mcp-planner:req1',
+          created_at: '2026-06-20T00:00:00Z',
+          expires_at: '2026-06-20T00:05:00Z',
+          channel_message_id: 4044,
+        }),
+      });
     vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'req-1' });
 
     const result = await postGatewayDirectAgentMessage({
       channelId: 584,
@@ -44,31 +48,93 @@ describe('postGatewayDirectAgentMessage', () => {
       body: '@den-mcp-planner please check this',
     });
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/direct-agent-events', expect.objectContaining({
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/conversation/channels/584/messages', expect.objectContaining({
       method: 'POST',
-      body: JSON.stringify({
-        channelId: 584,
-        projectId: 'den-web',
-        memberIdentity: 'den-mcp-planner',
-        senderIdentity: 'patch',
-        body: '@den-mcp-planner please check this',
+      headers: expect.objectContaining({
+        'X-Den-Migrated-Functions': 'true',
+        'Idempotency-Key': 'conversation-direct-agent-message:584:den-mcp-planner:req1',
       }),
     }));
-    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/api/gateway/direct-agent-messages'), expect.anything());
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({
+      sender_identity: 'patch',
+      body: '@den-mcp-planner please check this',
+      message_kind: 'direct_agent_wake',
+      source_kind: 'den_web_direct_agent',
+      profile_identity: 'den-mcp-planner',
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/delivery/intents', expect.objectContaining({
+      method: 'POST',
+      headers: expect.objectContaining({ 'X-Den-Migrated-Functions': 'true' }),
+    }));
+    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toMatchObject({
+      member_identity: 'den-mcp-planner',
+      profile_identity: 'den-mcp-planner',
+      idempotency_key: 'direct-agent-message:584:den-mcp-planner:req1',
+      source_ref: '/api/v1/conversation/channels/584/messages/4044',
+      channel_message_id: 4044,
+    });
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/api/direct-agent-events'), expect.anything());
     expect(result).toMatchObject({
-      status: 'recorded',
-      deliveryStatus: 'recorded_pending_claim',
+      status: 'pending',
+      deliveryStatus: 'pending',
       messageId: 4044,
-      gatewayMessageUrl: '/api/direct-agent-events/4044',
-      gatewayEventsUrl: '/api/direct-agent-events?channelId=584&afterId=4043&limit=10',
+      requestId: 'direct-agent-message:584:den-mcp-planner:req1',
+      gatewayMessageUrl: '/api/v1/conversation/channels/584/messages?after_id=4043&limit=10',
+      gatewayEventsUrl: '/api/v1/delivery/intents/812',
     });
   });
-  it('includes Channels error body when direct-agent creation is rejected', async () => {
+
+  it('can create a delivery intent without channel evidence for DM sends', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-      text: () => Promise.resolve('{"code":"member_not_active_agent","detail":"Active agent member not joined."}'),
+      ok: true,
+      json: () => Promise.resolve({
+        id: 900,
+        state: 'pending',
+        idempotency_key: 'direct-agent-message:den-web:den-mcp-planner:req2',
+        created_at: '2026-06-20T00:00:00Z',
+        expires_at: '2026-06-20T00:05:00Z',
+      }),
     });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'req-2' });
+
+    const result = await postGatewayDirectAgentMessage({
+      projectId: 'den-web',
+      memberIdentity: 'den-mcp-planner',
+      senderIdentity: 'patch',
+      body: 'hello DM',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/delivery/intents', expect.objectContaining({
+      method: 'POST',
+    }));
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({
+      member_identity: 'den-mcp-planner',
+      idempotency_key: 'direct-agent-message:den-web:den-mcp-planner:req2',
+    });
+    expect(result).toMatchObject({
+      status: 'pending',
+      messageId: 900,
+      channelId: 0,
+      gatewayEventsUrl: '/api/v1/delivery/intents/900',
+    });
+  });
+
+  it('includes successor error body when delivery creation is rejected', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 4044,
+          channel_id: 584,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        text: () => Promise.resolve('{"code":"runtime_not_alive","detail":"Target runtime is stale."}'),
+      });
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(postGatewayDirectAgentMessage({
@@ -77,7 +143,7 @@ describe('postGatewayDirectAgentMessage', () => {
       memberIdentity: 'pool-reviewer-03',
       senderIdentity: 'patch',
       body: '@pool-reviewer-03 please review this',
-    })).rejects.toThrow(/member_not_active_agent/);
+    })).rejects.toThrow(/runtime_not_alive/);
   });
 });
 

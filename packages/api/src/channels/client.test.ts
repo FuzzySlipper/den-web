@@ -398,19 +398,61 @@ describe('channels DM API client', () => {
   });
 
   describe('sendDirectMessage', () => {
-    it('calls POST /direct-conversations/:id/send', async () => {
-      const resp: DirectConversationSendResponse = {
-        status: 'recorded',
-        eventId: 42,
-        channelId: 600,
-        conversationId: 1,
-        entryId: 2,
-        requestId: 'abc',
-        memberIdentity: 'pi',
-      };
-      mockFetch(true, resp);
+    it('uses direct-conversation readback plus delivery successor for new wakes', async () => {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 1,
+            humanIdentity: 'patch',
+            agentIdentity: 'pi',
+            scopeProjectId: 'den-web',
+            displayTitle: null,
+            isArchived: false,
+            isMuted: false,
+            settingsJson: null,
+            lastEntryAt: null,
+            lastEntryPreview: null,
+            lastEntrySender: null,
+            unreadCount: 0,
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 42,
+            state: 'pending',
+            idempotency_key: 'direct-agent-message:den-web:pi:req',
+            created_at: '2026-01-01T00:00:00Z',
+            expires_at: '2026-01-01T00:05:00Z',
+          }),
+        });
+      vi.stubGlobal('fetch', fetchMock);
+      vi.stubGlobal('crypto', { randomUUID: () => 'req' });
+
       const result = await sendDirectMessage(1, { senderIdentity: 'patch', body: 'Hi' });
-      expect(result).toEqual(resp);
+
+      expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/direct-conversations/1', { cache: 'no-store' });
+      expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/delivery/intents', expect.objectContaining({
+        method: 'POST',
+      }));
+      expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toMatchObject({
+        member_identity: 'pi',
+        profile_identity: 'pi',
+        idempotency_key: 'direct-agent-message:den-web:pi:req',
+      });
+      expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/direct-conversations/1/send'), expect.anything());
+      expect(result).toEqual({
+        status: 'pending',
+        eventId: 42,
+        channelId: 0,
+        conversationId: 1,
+        entryId: 0,
+        requestId: 'direct-agent-message:den-web:pi:req',
+        memberIdentity: 'pi',
+      } satisfies DirectConversationSendResponse);
     });
   });
 

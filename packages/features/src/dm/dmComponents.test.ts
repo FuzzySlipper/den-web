@@ -179,6 +179,19 @@ describe('DmTranscriptView — entry rendering', () => {
   });
 });
 
+describe('DmTranscriptView — wake migration guardrails', () => {
+  it('routes composer sends through the migrated sendDirectMessage helper only', () => {
+    const source = readFileSync(resolve(
+      dirname(fileURLToPath(import.meta.url)),
+      'DmTranscriptView.tsx',
+    ), 'utf8');
+
+    expect(source).toContain('sendDirectMessage(conversation.id');
+    expect(source).not.toContain('/direct-conversations/');
+    expect(source).not.toContain('/direct-agent-events');
+  });
+});
+
 describe('DmConversationList — rendering logic', () => {
   describe('conversation sorting', () => {
     it('sorts by lastEntryAt descending', () => {

@@ -1,0 +1,156 @@
+import type { DeliveryIntentResponse, GatewayDirectAgentMessage, PostGatewayDirectAgentMessageRequest } from './types';
+
+const deliveryApiBase = '/api/v1/delivery';
+const conversationApiBase = '/api/v1/conversation';
+
+async function postJson<T>(base: string, url: string, body: unknown, headers: Record<string, string> = {}): Promise<T> {
+  const requestUrl = `${base}${url.startsWith('/') ? url : `/${url}`}`;
+  const res = await fetch(requestUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let detail = '';
+    try {
+      detail = await res.text();
+    } catch {
+      detail = '';
+    }
+    const suffix = detail ? ` — ${detail}` : '';
+    throw new Error(`POST ${requestUrl}: ${res.status}${suffix}`);
+  }
+  return res.json();
+}
+
+interface ConversationMessageResponse {
+  id: number;
+  channel_id: number;
+  dedupe_key?: string | null;
+}
+
+function cleanIdempotencyPart(value: string | number | null | undefined, fallback: string): string {
+  const normalized = String(value ?? fallback).trim().replace(/:/g, '-');
+  return normalized || fallback;
+}
+
+function randomNonce(): string {
+  return globalThis.crypto?.randomUUID?.().replace(/-/g, '') ?? `${Date.now()}${Math.random().toString(36).slice(2)}`;
+}
+
+function directAgentIdempotencyKey(request: PostGatewayDirectAgentMessageRequest, operation = 'direct-agent-message'): string {
+  return [
+    cleanIdempotencyPart(operation, 'direct-agent-message'),
+    cleanIdempotencyPart(request.channelId ?? request.projectId ?? 'direct', 'direct'),
+    cleanIdempotencyPart(request.profileIdentity ?? request.memberIdentity, 'agent'),
+    cleanIdempotencyPart(randomNonce(), 'nonce'),
+  ].join(':');
+}
+
+function directAgentMetadata(request: PostGatewayDirectAgentMessageRequest, deliveryDedupeKey: string): Record<string, unknown> {
+  return {
+    source: 'den-web',
+    deliveryIntentIdempotencyKey: deliveryDedupeKey,
+    targetMemberIdentity: request.memberIdentity,
+    sourceProjectId: request.sourceProjectId ?? request.projectId ?? null,
+    targetProjectId: request.targetProjectId ?? request.projectId ?? null,
+    targetTaskId: request.targetTaskId ?? null,
+    assignmentId: request.assignmentId ?? null,
+    workerRunId: request.workerRunId ?? null,
+    workerRole: request.workerRole ?? null,
+    profileIdentity: request.profileIdentity ?? request.memberIdentity,
+    poolMemberId: request.poolMemberId ?? null,
+    agentInstanceId: request.agentInstanceId ?? null,
+    sessionOwnerId: request.sessionOwnerId ?? null,
+    sessionId: request.sessionId ?? null,
+  };
+}
+
+async function appendDirectAgentConversationMessage(
+  request: PostGatewayDirectAgentMessageRequest,
+  deliveryDedupeKey: string,
+): Promise<ConversationMessageResponse | null> {
+  if (!request.channelId) return null;
+  const messageDedupeKey = `conversation-${deliveryDedupeKey}`;
+  return postJson<ConversationMessageResponse>(
+    conversationApiBase,
+    `/channels/${encodeURIComponent(String(request.channelId))}/messages`,
+    {
+      sender_type: 'user',
+      sender_identity: request.senderIdentity,
+      body: request.body,
+      message_kind: 'direct_agent_wake',
+      source_kind: 'den_web_direct_agent',
+      source_project_id: request.sourceProjectId ?? request.projectId ?? null,
+      target_project_id: request.targetProjectId ?? request.projectId ?? null,
+      target_task_id: request.targetTaskId ?? null,
+      assignment_id: request.assignmentId ?? null,
+      worker_run_id: request.workerRunId ?? null,
+      worker_role: request.workerRole ?? null,
+      profile_identity: request.profileIdentity ?? request.memberIdentity,
+      agent_instance_id: request.agentInstanceId ?? null,
+      pool_member_id: request.poolMemberId ?? null,
+      session_owner_id: request.sessionOwnerId ?? null,
+      session_id: request.sessionId ?? null,
+      metadata: directAgentMetadata(request, deliveryDedupeKey),
+      dedupe_key: messageDedupeKey,
+    },
+    {
+      'X-Den-Migrated-Functions': 'true',
+      'Idempotency-Key': messageDedupeKey,
+    },
+  );
+}
+
+function deliverySourceRef(request: PostGatewayDirectAgentMessageRequest, message: ConversationMessageResponse | null): string {
+  if (message) return `/api/v1/conversation/channels/${message.channel_id}/messages/${message.id}`;
+  return JSON.stringify({
+    source: 'den-web',
+    channelId: request.channelId ?? null,
+    projectId: request.projectId ?? request.sourceProjectId ?? null,
+    senderIdentity: request.senderIdentity,
+  });
+}
+
+async function createDeliveryIntent(
+  request: PostGatewayDirectAgentMessageRequest,
+  idempotencyKey: string,
+  message: ConversationMessageResponse | null,
+): Promise<DeliveryIntentResponse> {
+  return postJson<DeliveryIntentResponse>(
+    deliveryApiBase,
+    '/intents',
+    {
+      member_identity: request.memberIdentity,
+      profile_identity: request.profileIdentity ?? request.memberIdentity,
+      agent_instance_id: request.agentInstanceId ?? undefined,
+      concrete_identity: request.agentInstanceId ?? undefined,
+      hermes_session_key: request.sessionId ?? undefined,
+      idempotency_key: idempotencyKey,
+      source_ref: deliverySourceRef(request, message),
+      channel_message_id: message?.id ?? undefined,
+    },
+    { 'X-Den-Migrated-Functions': 'true' },
+  );
+}
+
+export async function postGatewayDirectAgentMessage(request: PostGatewayDirectAgentMessageRequest): Promise<GatewayDirectAgentMessage> {
+  const idempotencyKey = directAgentIdempotencyKey(request);
+  const message = await appendDirectAgentConversationMessage(request, idempotencyKey);
+  const intent = await createDeliveryIntent(request, idempotencyKey, message);
+  return {
+    status: intent.state,
+    deliveryStatus: intent.state,
+    claimStatus: intent.claimed_at ? 'claimed' : 'unclaimed',
+    completionStatus: intent.completed_at ? 'completed' : 'pending',
+    suppressionStatus: 'not_applicable',
+    memberIdentity: request.memberIdentity,
+    wakePolicy: '',
+    messageId: message?.id ?? intent.id,
+    channelId: message?.channel_id ?? request.channelId ?? 0,
+    requestId: intent.idempotency_key,
+    gatewayMessageUrl: message ? `/api/v1/conversation/channels/${message.channel_id}/messages?after_id=${Math.max(0, message.id - 1)}&limit=10` : `/api/v1/delivery/intents/${intent.id}`,
+    gatewayEventsUrl: `/api/v1/delivery/intents/${intent.id}`,
+    evidenceSummary: `Delivery successor intent ${intent.id} created for ${request.memberIdentity}.`,
+  };
+}

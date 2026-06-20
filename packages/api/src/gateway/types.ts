@@ -61,6 +61,23 @@ export interface GatewayDirectAgentMessage {
   evidenceSummary: string;
 }
 
+export interface DeliveryIntentResponse {
+  id: number;
+  target_identity?: {
+    profile?: string;
+    instance_id?: string;
+    session_key?: string;
+  };
+  state: string;
+  idempotency_key: string;
+  created_at: string;
+  expires_at: string;
+  claimed_at?: string | null;
+  completed_at?: string | null;
+  source_ref?: string | null;
+  channel_message_id?: number | null;
+}
+
 export interface DirectAgentEventResponse {
   status: string;
   eventId: number;

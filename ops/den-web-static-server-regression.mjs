@@ -314,6 +314,48 @@ test('Conversation successor writes use the Gateway conversation write token', a
   assert.equal(gatewayObserved[0].method, 'POST');
 });
 
+test('Delivery successor writes use the Gateway delivery token and migrated route header', async (t) => {
+  const gatewayObserved = [];
+  const gateway = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      gatewayObserved.push({
+        url: req.url,
+        method: req.method,
+        authorization: req.headers.authorization ?? null,
+        migrated: req.headers['x-den-migrated-functions'] ?? null,
+        body,
+      });
+      res.writeHead(201, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ id: 44, state: 'pending', idempotency_key: 'wake:channel:agent:nonce', created_at: 't0', expires_at: 't1' }));
+    });
+  });
+  const gatewayPort = await listen(gateway);
+  t.after(() => new Promise(resolve => gateway.close(resolve)));
+
+  const { baseUrl } = await startStaticServer(`http://127.0.0.1:9`, t, {
+    DEN_GATEWAY_TARGET: `http://127.0.0.1:${gatewayPort}`,
+    DEN_GATEWAY_SERVICE_TOKEN: 'default-service-token',
+    DEN_GATEWAY_DELIVERY_WRITE_TOKEN: 'delivery-write-token',
+  });
+
+  const response = await request(`${baseUrl}/api/v1/delivery/intents`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ member_identity: 'agent', idempotency_key: 'wake:channel:agent:nonce' }),
+  });
+
+  assert.equal(response.statusCode, 201);
+  assert.deepEqual(gatewayObserved, [{
+    url: '/v1/delivery/intents',
+    method: 'POST',
+    authorization: 'Bearer delivery-write-token',
+    migrated: 'true',
+    body: JSON.stringify({ member_identity: 'agent', idempotency_key: 'wake:channel:agent:nonce' }),
+  }]);
+});
+
 test('Timeline reads and streams use the Gateway timeline read token', async (t) => {
   const gatewayObserved = [];
   const gateway = http.createServer((req, res) => {

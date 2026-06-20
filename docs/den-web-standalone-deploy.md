@@ -140,6 +140,7 @@ Example `gateway.env`:
 DEN_CHANNELS_TARGET=http://127.0.0.1:18081
 DEN_GATEWAY_TARGET=http://127.0.0.1:8079
 DEN_GATEWAY_SERVICE_TOKEN=<service-token>
+DEN_GATEWAY_DELIVERY_WRITE_TOKEN=<delivery-write-token-or-service-token>
 DEN_GATEWAY_OBSERVATION_READ_TOKEN=<observation-read-token>
 DEN_GATEWAY_CONVERSATION_READ_TOKEN=<conversation-read-token>
 DEN_GATEWAY_CONVERSATION_WRITE_TOKEN=<conversation-write-token>
@@ -243,6 +244,7 @@ with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 | `DEN_GATEWAY_TARGET` | `http://127.0.0.1:8079` | Den Gateway backend URL for Gateway-owned read APIs such as Observation |
 | `DEN_HOST_TARGET` | `http://127.0.0.1:5400` | Den Host backend URL; live den-srv points this to `http://192.168.1.22:5400` |
 | `GATEWAY_ENV_PATH` | sibling `gateway.env` next to the server script | Optional service-token/target override file |
+| `DEN_GATEWAY_DELIVERY_WRITE_TOKEN` | `DEN_GATEWAY_SERVICE_TOKEN` | Gateway caller token for `/v1/delivery/*`; injected server-side for `/api/v1/delivery/*` wake intent writes/reads. |
 | `DEN_GATEWAY_OBSERVATION_READ_TOKEN` | empty | Gateway caller token for `GET /v1/observation/*`; injected server-side for `/api/v1/observation/*` reads. |
 | `DEN_GATEWAY_CONVERSATION_READ_TOKEN` | empty | Gateway caller token for the feature-flagged conversation successor read pilot; injected server-side for `/api/v1/conversation/*` reads. |
 | `DEN_GATEWAY_CONVERSATION_WRITE_TOKEN` | empty | Gateway caller token for feature-flagged conversation successor writes; injected server-side for non-GET `/api/v1/conversation/*` calls. |

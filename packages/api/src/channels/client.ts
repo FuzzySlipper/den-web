@@ -1,8 +1,10 @@
-import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse, AgentWorkCurrentResponse, AgentWorkEventsResponse, AgentWorkLifecycleEvent, DirectAgentEventsResponse, DirectConversation, DirectConversationListResponse, DirectConversationEntriesResponse, DirectConversationSendRequest, DirectConversationSendResponse, DirectConversationCreateRequest, ReadCursor } from './types';
+import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse, AgentWorkCurrentResponse, AgentWorkEventsResponse, AgentWorkLifecycleEvent, DirectAgentEventsResponse, DirectConversation, DirectConversationListResponse, DirectConversationEntriesResponse, DirectConversationCreateRequest, ReadCursor } from './types';
 import { normalizeApiBase } from '../config';
 import { dedupedFetch } from '../requestCache';
 import { addConversationSuccessorReaction, conversationSuccessorReactionsEnabledForMessage, conversationSuccessorReadsEnabledForChannel, conversationSuccessorReadsEnabledForProject, conversationSuccessorWritesEnabledForChannel, listConversationSuccessorChannels, listConversationSuccessorMessages, postConversationSuccessorMessage, reinitConversationSuccessorReads, type ConversationSuccessorReadConfig } from './conversationSuccessor';
 import { timelineChannelStreamUrl, timelineSuccessorEnabledForChannelId } from '../timeline/client';
+import { reinitDirectMessagesRuntime } from './directMessages';
+export { sendDirectMessage } from './directMessages';
 
 let denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
 
@@ -16,6 +18,7 @@ export function reinitChannelsRuntime(config: {
   conversationSuccessorReads: Partial<ConversationSuccessorReadConfig>;
 }): void {
   reinitChannelsBase(config.denChannelsApiBase);
+  reinitDirectMessagesRuntime(config.denChannelsApiBase);
   reinitConversationSuccessorReads(config.conversationSuccessorReads);
 }
 
@@ -384,10 +387,6 @@ export interface ListDirectConversationEntriesOpts {
 export function listDirectConversationEntries(conversationId: number, opts: ListDirectConversationEntriesOpts = {}): Promise<DirectConversationEntriesResponse> {
   const q = buildQuery({ limit: opts.limit, afterId: opts.afterId });
   return getChannels(`/direct-conversations/${conversationId}/entries${q}`);
-}
-
-export function sendDirectMessage(conversationId: number, request: DirectConversationSendRequest): Promise<DirectConversationSendResponse> {
-  return postChannels(`/direct-conversations/${conversationId}/send`, request);
 }
 
 export function updateReadCursor(conversationId: number, request: { readerIdentity: string; lastReadEntryId?: number | null }): Promise<ReadCursor> {

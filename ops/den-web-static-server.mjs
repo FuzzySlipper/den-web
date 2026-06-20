@@ -23,6 +23,7 @@
  *   DEN_HOST_TARGET       - Den Host backend URL (default: http://127.0.0.1:5400)
  *   PI_CREW_ADMIN_TARGET  - Pi Crew admin diagnostics URL (default: http://127.0.0.1:9237)
  *   DEN_GATEWAY_SERVICE_TOKEN - Gateway service token for /api/* outbound proxy (default: empty, no auth)
+ *   DEN_GATEWAY_DELIVERY_WRITE_TOKEN - Gateway caller token for /api/v1/delivery/* writes/reads (default: DEN_GATEWAY_SERVICE_TOKEN)
  *   DEN_GATEWAY_OBSERVATION_READ_TOKEN - Gateway caller token for /api/v1/observation/* reads (default: empty, no auth)
  *   DEN_GATEWAY_CONVERSATION_READ_TOKEN - Gateway caller token for /api/v1/conversation/* read pilot (default: empty, no auth)
  *   DEN_GATEWAY_CONVERSATION_WRITE_TOKEN - Gateway caller token for /api/v1/conversation/* write pilot (default: empty, no auth)
@@ -83,6 +84,7 @@ const DEN_GATEWAY_TARGET = GATEWAY_ENV.DEN_GATEWAY_TARGET ?? process.env.DEN_GAT
 const DEN_HOST_TARGET = process.env.DEN_HOST_TARGET ?? 'http://127.0.0.1:5400';
 const PI_CREW_ADMIN_TARGET = process.env.PI_CREW_ADMIN_TARGET ?? 'http://127.0.0.1:9237';
 const DEN_GATEWAY_SERVICE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_SERVICE_TOKEN ?? process.env.DEN_GATEWAY_SERVICE_TOKEN ?? '';
+const DEN_GATEWAY_DELIVERY_WRITE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_DELIVERY_WRITE_TOKEN ?? process.env.DEN_GATEWAY_DELIVERY_WRITE_TOKEN ?? DEN_GATEWAY_SERVICE_TOKEN;
 const DEN_GATEWAY_OBSERVATION_READ_TOKEN = GATEWAY_ENV.DEN_GATEWAY_OBSERVATION_READ_TOKEN ?? process.env.DEN_GATEWAY_OBSERVATION_READ_TOKEN ?? '';
 const DEN_GATEWAY_CONVERSATION_READ_TOKEN = GATEWAY_ENV.DEN_GATEWAY_CONVERSATION_READ_TOKEN ?? process.env.DEN_GATEWAY_CONVERSATION_READ_TOKEN ?? '';
 const DEN_GATEWAY_CONVERSATION_WRITE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_CONVERSATION_WRITE_TOKEN ?? process.env.DEN_GATEWAY_CONVERSATION_WRITE_TOKEN ?? '';
@@ -417,6 +419,17 @@ function handleRequest(req, res) {
       if (DEN_GATEWAY_OBSERVATION_READ_TOKEN) {
         req.headers['authorization'] = `Bearer ${DEN_GATEWAY_OBSERVATION_READ_TOKEN}`;
       }
+      const stripped = requestPath.replace(/^\/api/, '') || '/';
+      return proxyRequest(DEN_GATEWAY_TARGET, req, res, () => stripped + requestSearch);
+    }
+
+    // Delivery successor owns executable wake intent creation. Keep Gateway
+    // caller auth server-side and force the migrated route selector header.
+    if (requestPath === '/api/v1/delivery' || requestPath.startsWith('/api/v1/delivery/')) {
+      if (DEN_GATEWAY_DELIVERY_WRITE_TOKEN) {
+        req.headers['authorization'] = `Bearer ${DEN_GATEWAY_DELIVERY_WRITE_TOKEN}`;
+      }
+      req.headers['x-den-migrated-functions'] = 'true';
       const stripped = requestPath.replace(/^\/api/, '') || '/';
       return proxyRequest(DEN_GATEWAY_TARGET, req, res, () => stripped + requestSearch);
     }

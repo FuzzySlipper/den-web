@@ -471,3 +471,15 @@ describe('navigateHistoryDown (from channelComposerHistory)', () => {
     expect(result.navIndex).toBeNull();
   });
 });
+
+describe('direct-agent wake producer guardrails', () => {
+  it('channel composer direct mode and mention fanout use the successor wake helper', () => {
+    const source = readFileSync(resolve('packages/features/src/channels/useChannelMessageActions.ts'), 'utf8');
+
+    expect(source).toContain('postGatewayDirectAgentMessage({');
+    expect(source).toContain("sendMode === 'direct'");
+    expect(source).toContain('mentionedDirectTargets.map(target => postGatewayDirectAgentMessage({');
+    expect(source).not.toContain('/direct-agent-events');
+    expect(source).not.toContain('/direct-conversations/');
+  });
+});

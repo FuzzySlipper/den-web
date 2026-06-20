@@ -1,8 +1,5 @@
 import type {
   GatewayMemberships,
-  GatewayDirectAgentMessage,
-  DirectAgentEventResponse,
-  PostGatewayDirectAgentMessageRequest,
   AgentsOverviewResponse,
   AgentDetailResponse,
   AssignmentTraceResponse,
@@ -22,6 +19,7 @@ import type {
 } from './observationTypes';
 import { normalizeApiBase } from '../config';
 import { dedupedFetch } from '../requestCache';
+export { postGatewayDirectAgentMessage } from './directAgentWake';
 
 const denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
 let denHostApiBase = normalizeApiBase(import.meta.env.VITE_DEN_HOST_API_BASE, '/den-host-api');
@@ -49,26 +47,6 @@ async function putChannels<T>(url: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`PUT ${requestUrl}: ${res.status}`);
-  return res.json();
-}
-
-async function postChannels<T>(url: string, body: unknown): Promise<T> {
-  const requestUrl = channelsApiUrl(url);
-  const res = await fetch(requestUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    let detail = '';
-    try {
-      detail = await res.text();
-    } catch {
-      detail = '';
-    }
-    const suffix = detail ? ` — ${detail}` : '';
-    throw new Error(`POST ${requestUrl}: ${res.status}${suffix}`);
-  }
   return res.json();
 }
 
@@ -137,24 +115,6 @@ export function listGatewayMemberships(opts: { channelId?: number; projectId?: s
     leftGraceMinutes: opts.leftGraceMinutes,
   });
   return getChannels(`/gateway/memberships${q}`);
-}
-
-export function postGatewayDirectAgentMessage(request: PostGatewayDirectAgentMessageRequest): Promise<GatewayDirectAgentMessage> {
-  return postChannels<DirectAgentEventResponse>('/direct-agent-events', request).then(response => ({
-    status: response.status,
-    deliveryStatus: response.deliveryStatus ?? response.status,
-    claimStatus: response.claimStatus ?? 'unclaimed',
-    completionStatus: response.completionStatus ?? 'pending',
-    suppressionStatus: response.suppressionStatus ?? 'not_applicable',
-    memberIdentity: response.memberIdentity,
-    wakePolicy: response.wakePolicy ?? '',
-    messageId: response.eventId,
-    channelId: response.channelId,
-    requestId: response.requestId,
-    gatewayMessageUrl: response.eventUrl ?? `/api/direct-agent-events/${response.eventId}`,
-    gatewayEventsUrl: response.eventsUrl ?? `/api/direct-agent-events?channelId=${response.channelId}&afterId=${Math.max(0, response.eventId - 1)}&limit=10`,
-    evidenceSummary: response.evidenceSummary ?? `Direct agent wake_event recorded as event ${response.eventId}.`,
-  }));
 }
 
 // Agents Overview API (#1694 / #1695)
