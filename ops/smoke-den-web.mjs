@@ -292,6 +292,21 @@ async function checkChannelsApi() {
   assertJson('/api/agents/overview returns JSON', overview);
 }
 
+async function checkObservationApi() {
+  console.log('\n── Observation API (via Gateway /api/v1/observation/) ──');
+
+  const lane = await fetchUrl(fullUrl('/api/v1/observation/lane?limit=1'));
+  assertStatus('GET /api/v1/observation/lane?limit=1', lane);
+  assertJson('/api/v1/observation/lane returns JSON', lane);
+
+  const body = parseJsonBody('/api/v1/observation/lane shape', lane);
+  if (body && Array.isArray(body.events)) {
+    pass('/api/v1/observation/lane returns an events array');
+  } else if (body !== null) {
+    fail('/api/v1/observation/lane shape', 'expected an object with events array');
+  }
+}
+
 async function checkDenHostApi() {
   console.log('\n── Den Host API (via /den-host-api/) ──');
 
@@ -353,6 +368,7 @@ async function main() {
     await checkCoreApi();
     await checkNotificationFeed();
     await checkChannelsApi();
+    await checkObservationApi();
     await checkDenHostApi();
     await checkDocumentDiscussion();
   } catch (err) {
