@@ -47,16 +47,24 @@ management.
 On first deploy, clone the repo under the deploy user:
 
 ```bash
-sudo install -d -o agent -g agent -m 0755 /home/agent/den-web
-sudo -u agent git clone git@github.com:FuzzySlipper/den-web.git /home/agent/den-web
+sudo install -d -o agent -g agents -m 0755 /data/dev
+sudo -u agent git clone git@github.com:FuzzySlipper/den-web.git /data/dev/den-web
 ```
 
 Then run the durable deploy script from the repo root on `den-srv`:
 
 ```bash
-cd /home/agent/den-web
+cd /data/dev/den-web
 git pull --ff-only origin main
-npm run deploy:den-srv
+SYSTEMCTL="sudo /usr/bin/systemctl" npm run deploy:den-srv
+```
+
+If invoking the deploy from a root shell rather than an `agent` shell, pass the
+environment through `sudo` explicitly:
+
+```bash
+cd /data/dev/den-web
+sudo -H -u agent env SYSTEMCTL="sudo /usr/bin/systemctl" npm run deploy:den-srv
 ```
 
 What the script does:
@@ -105,15 +113,15 @@ with mode `0640`, not in release directories or git.
 One-time deploy-root ownership:
 
 ```bash
-sudo install -d -o agent -g agent -m 0755 /data/services/den-web
-sudo install -d -o agent -g agent -m 0755 /data/services/den-web/releases
-sudo install -d -o agent -g agent -m 0750 /data/services/den-web/shared
+sudo install -d -o agent -g agents -m 0755 /data/services/den-web
+sudo install -d -o agent -g agents -m 0755 /data/services/den-web/releases
+sudo install -d -o agent -g agents -m 0750 /data/services/den-web/shared
 ```
 
 If gateway proxy credentials are needed:
 
 ```bash
-sudo install -o agent -g agent -m 0640 /dev/null /data/services/den-web/shared/gateway.env
+sudo install -o agent -g agents -m 0640 /dev/null /data/services/den-web/shared/gateway.env
 sudoedit /data/services/den-web/shared/gateway.env
 ```
 
@@ -127,13 +135,13 @@ DEN_GATEWAY_SERVICE_TOKEN=<service-token>
 To let the `agent` user deploy without full root, add a narrow sudoers drop-in:
 
 ```sudoers
-agent ALL=NOPASSWD: /bin/systemctl restart den-web.service, /bin/systemctl status den-web.service
+agent ALL=(root) NOPASSWD: /usr/bin/systemctl restart den-web.service, /usr/bin/systemctl status den-web.service
 ```
 
 Then run deploys with:
 
 ```bash
-SYSTEMCTL="sudo systemctl" npm run deploy:den-srv
+SYSTEMCTL="sudo /usr/bin/systemctl" npm run deploy:den-srv
 ```
 
 The service itself should run as `agent` and read only the stable symlinks under
@@ -152,7 +160,7 @@ Wants=den-core.service den-channels.service
 [Service]
 Type=simple
 User=agent
-Group=agent
+Group=agents
 WorkingDirectory=/data/services/den-web
 ExecStart=/usr/bin/node /data/services/den-web/den-web-static-server.mjs
 Restart=always
@@ -193,7 +201,7 @@ deployment process because it lacks atomic release switching and automatic
 rollback.
 
 ```bash
-cd /home/agent/den-web
+cd /data/dev/den-web
 npm ci
 npm run check:all
 npm test
@@ -205,7 +213,7 @@ cp ops/den-web-static-server.mjs /data/services/den-web/den-web-static-server.mj
 sudo systemctl restart den-web.service
 ```
 
-After any manual copy, run `node /home/agent/den-web/ops/smoke-den-web.mjs`
+After any manual copy, run `node /data/dev/den-web/ops/smoke-den-web.mjs`
 with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 
 ## Environment reference
