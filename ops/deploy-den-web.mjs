@@ -11,6 +11,7 @@
 
 import * as fs from 'node:fs/promises';
 import * as fssync from 'node:fs';
+import * as http from 'node:http';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -36,6 +37,7 @@ const SKIP_CHECKS = env.SKIP_CHECKS === '1';
 const ALLOW_DIRTY = env.ALLOW_DIRTY === '1';
 const DRY_RUN = env.DRY_RUN === '1';
 const SYSTEMCTL = (env.SYSTEMCTL ?? 'systemctl').split(/\s+/).filter(Boolean);
+const SERVICE_READY_TIMEOUT_MS = Number.parseInt(env.SERVICE_READY_TIMEOUT_MS ?? '15000', 10);
 
 function log(message) {
   console.log(`[deploy-den-web] ${message}`);
@@ -52,6 +54,15 @@ function run(command, args, options = {}) {
   if (result.status !== 0) {
     throw new Error(`${command} ${args.join(' ')} failed with exit ${result.status}`);
   }
+}
+
+function runStatus(command, args, options = {}) {
+  const result = spawnSync(command, args, {
+    cwd: options.cwd ?? REPO_ROOT,
+    env: { ...process.env, ...options.env },
+    stdio: options.stdio ?? 'inherit',
+  });
+  return result.status ?? 1;
 }
 
 function read(command, args) {
@@ -197,6 +208,56 @@ function systemctl(...args) {
   run(SYSTEMCTL[0], [...SYSTEMCTL.slice(1), ...args], { cwd: '/' });
 }
 
+function systemctlStatus(...args) {
+  if (!SHOULD_RESTART) return 0;
+  return runStatus(SYSTEMCTL[0], [...SYSTEMCTL.slice(1), ...args], { cwd: '/' });
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function readinessUrl() {
+  const base = PUBLIC_URL.endsWith('/') ? PUBLIC_URL : `${PUBLIC_URL}/`;
+  return new URL('den-web-build.json', base);
+}
+
+function probeHttp(urlToProbe) {
+  return new Promise((resolve) => {
+    const req = http.request(urlToProbe, { method: 'GET', timeout: 1_000 }, (res) => {
+      res.resume();
+      res.on('end', () => resolve(res.statusCode ?? 0));
+    });
+    req.on('error', () => resolve(0));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(0);
+    });
+    req.end();
+  });
+}
+
+async function waitForServiceReady() {
+  if (!SHOULD_RESTART) return;
+  const deadline = Date.now() + SERVICE_READY_TIMEOUT_MS;
+  const target = readinessUrl();
+  log(`waiting for ${SERVICE_NAME} to serve ${target.href}`);
+
+  while (Date.now() < deadline) {
+    const active = systemctlStatus('is-active', '--quiet', SERVICE_NAME) === 0;
+    const status = await probeHttp(target);
+    if (active && status === 200) {
+      log(`${SERVICE_NAME} is active and serving build sentinel`);
+      return;
+    }
+    await sleep(250);
+  }
+
+  log(`${SERVICE_NAME} did not become ready within ${SERVICE_READY_TIMEOUT_MS}ms`);
+  systemctlStatus('status', SERVICE_NAME, '--no-pager', '-l');
+  throw new Error(`${SERVICE_NAME} did not become ready at ${target.href}`);
+}
+
 function smoke(commit) {
   if (!SHOULD_SMOKE) {
     log('skipping smoke because DEPLOY_SMOKE=0');
@@ -282,6 +343,7 @@ async function main() {
   await activateRelease(releaseDir, previousTarget);
   try {
     systemctl('restart', SERVICE_NAME);
+    await waitForServiceReady();
     smoke(commit);
   } catch (error) {
     await rollback(previousTarget);
