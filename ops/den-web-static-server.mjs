@@ -18,7 +18,8 @@
  *   HOST                  - listen host (default: 0.0.0.0)
  *   STATIC_ROOT           - directory with built static assets (default: /data/services/den-web/wwwroot)
  *   DEN_CORE_TARGET       - Den Core backend URL (default: http://127.0.0.1:5299)
- *   DEN_CHANNELS_TARGET   - Den Channels/gateway backend URL (default: http://127.0.0.1:8079)
+ *   DEN_CHANNELS_TARGET   - Den Channels backend URL (default: http://127.0.0.1:18081)
+ *   DEN_GATEWAY_TARGET    - Den Gateway backend URL for Gateway-owned read APIs (default: http://127.0.0.1:8079)
  *   DEN_HOST_TARGET       - Den Host backend URL (default: http://127.0.0.1:5400)
  *   PI_CREW_ADMIN_TARGET  - Pi Crew admin diagnostics URL (default: http://127.0.0.1:9237)
  *   DEN_GATEWAY_SERVICE_TOKEN - Gateway service token for /api/* outbound proxy (default: empty, no auth)
@@ -70,6 +71,7 @@ const HOST             = process.env.HOST ?? '0.0.0.0';
 const STATIC_ROOT      = process.env.STATIC_ROOT ?? '/data/services/den-web/wwwroot';
 const DEN_CORE_TARGET  = process.env.DEN_CORE_TARGET ?? 'http://127.0.0.1:5299';
 const DEN_CHANNELS_TARGET = GATEWAY_ENV.DEN_CHANNELS_TARGET ?? process.env.DEN_CHANNELS_TARGET ?? 'http://127.0.0.1:18081';
+const DEN_GATEWAY_TARGET = GATEWAY_ENV.DEN_GATEWAY_TARGET ?? process.env.DEN_GATEWAY_TARGET ?? 'http://127.0.0.1:8079';
 const DEN_HOST_TARGET = process.env.DEN_HOST_TARGET ?? 'http://127.0.0.1:5400';
 const PI_CREW_ADMIN_TARGET = process.env.PI_CREW_ADMIN_TARGET ?? 'http://127.0.0.1:9237';
 const DEN_GATEWAY_SERVICE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_SERVICE_TOKEN ?? process.env.DEN_GATEWAY_SERVICE_TOKEN ?? '';
@@ -374,15 +376,22 @@ function handleRequest(req, res) {
     return;
   }
 
-  // ── Channels/Gateway/Agents API proxy (through gateway with service token) ──
+  // ── Channels/Gateway/Agents API proxy ──
   if (requestPath.startsWith('/api/')) {
-    // Inject gateway tokens for outbound proxy requests.
-    // Browsers must not receive the token, so it's added server-side only.
-    const gatewayToken = requestPath.startsWith('/api/v1/observation/')
-      ? DEN_GATEWAY_OBSERVATION_READ_TOKEN
-      : DEN_GATEWAY_SERVICE_TOKEN;
-    if (gatewayToken) {
-      req.headers['authorization'] = `Bearer ${gatewayToken}`;
+    // Observation reads are owned by den-services Gateway. Keep the browser base
+    // under /api for compatibility, but forward Gateway's internal /v1 path.
+    if (requestPath === '/api/v1/observation' || requestPath.startsWith('/api/v1/observation/')) {
+      if (DEN_GATEWAY_OBSERVATION_READ_TOKEN) {
+        req.headers['authorization'] = `Bearer ${DEN_GATEWAY_OBSERVATION_READ_TOKEN}`;
+      }
+      const stripped = requestPath.replace(/^\/api/, '') || '/';
+      return proxyRequest(DEN_GATEWAY_TARGET, req, res, () => stripped + requestSearch);
+    }
+
+    // Inject the Channels/Gateway compatibility token for the remaining /api/*
+    // traffic. Browsers must not receive the token, so it's added server-side.
+    if (DEN_GATEWAY_SERVICE_TOKEN) {
+      req.headers['authorization'] = `Bearer ${DEN_GATEWAY_SERVICE_TOKEN}`;
     }
     return proxyRequest(DEN_CHANNELS_TARGET, req, res, () => requestPath + requestSearch);
   }
@@ -424,6 +433,7 @@ function startServer() {
     console.log(`[den-web-static-server] static root: ${STATIC_ROOT}`);
     console.log(`[den-web-static-server] Den Core target: ${DEN_CORE_TARGET}`);
     console.log(`[den-web-static-server] Den Channels target: ${DEN_CHANNELS_TARGET}`);
+    console.log(`[den-web-static-server] Den Gateway target: ${DEN_GATEWAY_TARGET}`);
     console.log(`[den-web-static-server] Den Host target: ${DEN_HOST_TARGET}`);
     console.log(`[den-web-static-server] Pi Crew admin target: ${PI_CREW_ADMIN_TARGET}`);
     if (configData) {

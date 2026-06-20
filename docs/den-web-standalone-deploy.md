@@ -13,6 +13,7 @@ services.
 | Den Web static service | `den-srv:18080` | `/` | SPA frontend, static assets, runtime config |
 | Den Core (backend) | `den-srv:5299` (127.0.0.1) | `/den-core-api/*` | Core REST facade (tasks, docs, messages) |
 | Den Channels (backend) | `den-srv:18081` | `/api/*` | Channels/Gateway/Agents API |
+| Den Gateway (backend) | `den-srv:8079` | `/api/v1/observation/*` → `/v1/observation/*` | Gateway-owned observation reads |
 | Den Host FleetOps (backend) | `den-k8plus:5400` (`192.168.1.22`) | `/den-host-api/*` → `/api/host/*` | Bounded Hermes fleet status/actions |
 | Public operator URL | `http://192.168.1.10:18080/` | — | Entry point for browser users |
 
@@ -129,6 +130,7 @@ Example `gateway.env`:
 
 ```bash
 DEN_CHANNELS_TARGET=http://127.0.0.1:18081
+DEN_GATEWAY_TARGET=http://127.0.0.1:8079
 DEN_GATEWAY_SERVICE_TOKEN=<service-token>
 DEN_GATEWAY_OBSERVATION_READ_TOKEN=<observation-read-token>
 ```
@@ -171,6 +173,7 @@ Environment=HOST=0.0.0.0
 Environment=STATIC_ROOT=/data/services/den-web/wwwroot
 Environment=DEN_CORE_TARGET=http://127.0.0.1:5299
 Environment=DEN_CHANNELS_TARGET=http://127.0.0.1:18081
+Environment=DEN_GATEWAY_TARGET=http://127.0.0.1:8079
 Environment=DEN_HOST_TARGET=http://192.168.1.22:5400
 Environment=GATEWAY_ENV_PATH=/data/services/den-web/shared/gateway.env
 
@@ -226,6 +229,7 @@ with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 | `STATIC_ROOT` | `/data/services/den-web/wwwroot` | Static asset directory |
 | `DEN_CORE_TARGET` | `http://127.0.0.1:5299` | Den Core backend URL |
 | `DEN_CHANNELS_TARGET` | `http://127.0.0.1:18081` | Den Channels backend URL |
+| `DEN_GATEWAY_TARGET` | `http://127.0.0.1:8079` | Den Gateway backend URL for Gateway-owned read APIs such as Observation |
 | `DEN_HOST_TARGET` | `http://127.0.0.1:5400` | Den Host backend URL; live den-srv points this to `http://192.168.1.22:5400` |
 | `GATEWAY_ENV_PATH` | sibling `gateway.env` next to the server script | Optional service-token/target override file |
 | `DEN_GATEWAY_OBSERVATION_READ_TOKEN` | empty | Gateway caller token for `GET /v1/observation/*`; injected server-side for `/api/v1/observation/*` reads. |

@@ -185,16 +185,26 @@ test('Den Host FleetOps proxy rewrites /den-host-api and retires stale Gateway r
 });
 
 test('Observation reads use the Gateway observation read token, not the default service token', async (t) => {
-  const observed = [];
-  const upstream = http.createServer((req, res) => {
-    observed.push({ url: req.url, authorization: req.headers.authorization ?? null });
+  const gatewayObserved = [];
+  const gateway = http.createServer((req, res) => {
+    gatewayObserved.push({ url: req.url, authorization: req.headers.authorization ?? null });
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ events: [] }));
   });
-  const upstreamPort = await listen(upstream);
-  t.after(() => new Promise(resolve => upstream.close(resolve)));
+  const gatewayPort = await listen(gateway);
+  t.after(() => new Promise(resolve => gateway.close(resolve)));
 
-  const { baseUrl } = await startStaticServer(`http://127.0.0.1:${upstreamPort}`, t, {
+  const channelsObserved = [];
+  const channels = http.createServer((req, res) => {
+    channelsObserved.push({ url: req.url, authorization: req.headers.authorization ?? null });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify([]));
+  });
+  const channelsPort = await listen(channels);
+  t.after(() => new Promise(resolve => channels.close(resolve)));
+
+  const { baseUrl } = await startStaticServer(`http://127.0.0.1:${channelsPort}`, t, {
+    DEN_GATEWAY_TARGET: `http://127.0.0.1:${gatewayPort}`,
     DEN_GATEWAY_SERVICE_TOKEN: 'default-service-token',
     DEN_GATEWAY_OBSERVATION_READ_TOKEN: 'observation-read-token',
   });
@@ -204,8 +214,10 @@ test('Observation reads use the Gateway observation read token, not the default 
   const channelsResponse = await request(`${baseUrl}/api/channels?limit=1`);
   assert.equal(channelsResponse.statusCode, 200);
 
-  assert.deepEqual(observed, [
-    { url: '/api/v1/observation/lane?limit=1', authorization: 'Bearer observation-read-token' },
+  assert.deepEqual(gatewayObserved, [
+    { url: '/v1/observation/lane?limit=1', authorization: 'Bearer observation-read-token' },
+  ]);
+  assert.deepEqual(channelsObserved, [
     { url: '/api/channels?limit=1', authorization: 'Bearer default-service-token' },
   ]);
 });
