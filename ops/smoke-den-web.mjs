@@ -18,6 +18,8 @@
  *   EXPECTED_ENV_NAME     - Expected environmentName value (default: den-srv)
  *   EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED - Expected read pilot flag (default: false)
  *   EXPECTED_CONVERSATION_SUCCESSOR_API_BASE - Expected read pilot API base (default: /api/v1/conversation)
+ *   EXPECTED_TIMELINE_SUCCESSOR_ENABLED - Expected timeline pilot flag (default: false)
+ *   EXPECTED_TIMELINE_SUCCESSOR_API_BASE - Expected timeline API base (default: /api/v1/timeline)
  *   REQUIRE_AGENT_WORK_COMPLETE_NOTIFICATION - If set to 1, require at least one
  *                         agent_work_complete row in the Core notification feed
  */
@@ -32,6 +34,8 @@ const EXPECTED_BUILD_COMMIT = process.env.EXPECTED_BUILD_COMMIT ?? '';
 const EXPECTED_ENV_NAME = process.env.EXPECTED_ENV_NAME ?? 'den-srv';
 const EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED = (process.env.EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED ?? 'false').toLowerCase() === 'true';
 const EXPECTED_CONVERSATION_SUCCESSOR_API_BASE = process.env.EXPECTED_CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation';
+const EXPECTED_TIMELINE_SUCCESSOR_ENABLED = (process.env.EXPECTED_TIMELINE_SUCCESSOR_ENABLED ?? 'false').toLowerCase() === 'true';
+const EXPECTED_TIMELINE_SUCCESSOR_API_BASE = process.env.EXPECTED_TIMELINE_SUCCESSOR_API_BASE ?? '/api/v1/timeline';
 const REQUIRE_AGENT_WORK_COMPLETE_NOTIFICATION = process.env.REQUIRE_AGENT_WORK_COMPLETE_NOTIFICATION === '1';
 
 // Parse base URL
@@ -204,6 +208,18 @@ async function checkConfig() {
     fail('config.conversationSuccessorApiBase', `expected "${EXPECTED_CONVERSATION_SUCCESSOR_API_BASE}", got "${config.conversationSuccessorApiBase}"`);
   }
 
+  if (config.timelineSuccessorEnabled === EXPECTED_TIMELINE_SUCCESSOR_ENABLED) {
+    pass(`config.timelineSuccessorEnabled == ${EXPECTED_TIMELINE_SUCCESSOR_ENABLED}`);
+  } else {
+    fail('config.timelineSuccessorEnabled', `expected ${EXPECTED_TIMELINE_SUCCESSOR_ENABLED}, got ${JSON.stringify(config.timelineSuccessorEnabled)}`);
+  }
+
+  if (config.timelineSuccessorApiBase === EXPECTED_TIMELINE_SUCCESSOR_API_BASE) {
+    pass(`config.timelineSuccessorApiBase == "${EXPECTED_TIMELINE_SUCCESSOR_API_BASE}"`);
+  } else {
+    fail('config.timelineSuccessorApiBase', `expected "${EXPECTED_TIMELINE_SUCCESSOR_API_BASE}", got "${config.timelineSuccessorApiBase}"`);
+  }
+
   if (config.environmentName === EXPECTED_ENV_NAME) {
     pass(`config.environmentName == "${EXPECTED_ENV_NAME}"`);
   } else {
@@ -323,6 +339,21 @@ async function checkObservationApi() {
   }
 }
 
+async function checkTimelineApi() {
+  console.log('\n── Timeline API (via Gateway /api/v1/timeline/) ──');
+
+  const timeline = await fetchUrl(fullUrl('/api/v1/timeline/channels/1/items?limit=1'));
+  assertStatus('GET /api/v1/timeline/channels/1/items?limit=1', timeline);
+  assertJson('/api/v1/timeline/channels/1/items returns JSON', timeline);
+
+  const body = parseJsonBody('/api/v1/timeline/channels/1/items shape', timeline);
+  if (body && body.scope && Array.isArray(body.items)) {
+    pass('/api/v1/timeline/channels/1/items returns scope and items array');
+  } else if (body !== null) {
+    fail('/api/v1/timeline/channels/1/items shape', 'expected an object with scope and items array');
+  }
+}
+
 async function checkDenHostApi() {
   console.log('\n── Den Host API (via /den-host-api/) ──');
 
@@ -385,6 +416,7 @@ async function main() {
     await checkNotificationFeed();
     await checkChannelsApi();
     await checkObservationApi();
+    await checkTimelineApi();
     await checkDenHostApi();
     await checkDocumentDiscussion();
   } catch (err) {

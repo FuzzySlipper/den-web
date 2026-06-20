@@ -1,7 +1,8 @@
 import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse, AgentWorkCurrentResponse, AgentWorkEventsResponse, AgentWorkLifecycleEvent, DirectAgentEventsResponse, DirectConversation, DirectConversationListResponse, DirectConversationEntriesResponse, DirectConversationSendRequest, DirectConversationSendResponse, DirectConversationCreateRequest, ReadCursor } from './types';
 import { normalizeApiBase } from '../config';
 import { dedupedFetch } from '../requestCache';
-import { conversationSuccessorReadsEnabledForChannel, conversationSuccessorReadsEnabledForProject, listConversationSuccessorChannels, listConversationSuccessorMessages, reinitConversationSuccessorReads, type ConversationSuccessorReadConfig } from './conversationSuccessor';
+import { addConversationSuccessorReaction, conversationSuccessorReactionsEnabledForMessage, conversationSuccessorReadsEnabledForChannel, conversationSuccessorReadsEnabledForProject, conversationSuccessorWritesEnabledForChannel, listConversationSuccessorChannels, listConversationSuccessorMessages, postConversationSuccessorMessage, reinitConversationSuccessorReads, type ConversationSuccessorReadConfig } from './conversationSuccessor';
+import { timelineChannelStreamUrl, timelineSuccessorEnabledForChannelId } from '../timeline/client';
 
 let denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
 
@@ -69,6 +70,7 @@ function buildQuery(params: Record<string, string | number | boolean | undefined
 export interface ChannelEventStreamCursor {
   afterMessageId?: number;
   afterActivityId?: number;
+  afterTimelineCursor?: string | null;
 }
 
 /**
@@ -78,6 +80,9 @@ export interface ChannelEventStreamCursor {
  * the explicit cursor query is available for a fresh connect from a known point.
  */
 export function channelEventStreamUrl(channelId: number, cursor: ChannelEventStreamCursor = {}): string {
+  if (timelineSuccessorEnabledForChannelId(channelId)) {
+    return timelineChannelStreamUrl(channelId, { after: cursor.afterTimelineCursor ?? null });
+  }
   const q = buildQuery({
     afterMessageId: cursor.afterMessageId,
     afterActivityId: cursor.afterActivityId,
@@ -330,6 +335,9 @@ export interface PostChannelMessageRequest {
 }
 
 export function postChannelMessage(channelId: number, request: PostChannelMessageRequest): Promise<ChannelMessage> {
+  if (conversationSuccessorWritesEnabledForChannel(channelId)) {
+    return postConversationSuccessorMessage(channelId, request);
+  }
   return postChannels(`/channels/${channelId}/messages`, request);
 }
 
@@ -344,19 +352,17 @@ export interface AddChannelReactionRequest {
 }
 
 export function addChannelReaction(messageId: number, request: AddChannelReactionRequest): Promise<unknown> {
+  if (conversationSuccessorReactionsEnabledForMessage(messageId)) {
+    return addConversationSuccessorReaction(messageId, request);
+  }
   return postChannels(`/channel-messages/${messageId}/reactions`, request);
 }
-
-// =========================================================================
-// Direct Conversation / DM Transcript API (task #2003 / den-web #2004)
-// =========================================================================
 
 export interface ListDirectConversationsOpts {
   humanIdentity?: string;
   limit?: number;
   afterId?: number;
 }
-
 export async function listDirectConversations(opts: ListDirectConversationsOpts = {}): Promise<DirectConversation[]> {
   const q = buildQuery({ humanIdentity: opts.humanIdentity, limit: opts.limit, afterId: opts.afterId });
   const response = await getChannels<DirectConversationListResponse | DirectConversation[]>(`/direct-conversations${q}`);
@@ -366,7 +372,6 @@ export async function listDirectConversations(opts: ListDirectConversationsOpts 
 export function createDirectConversation(request: DirectConversationCreateRequest): Promise<DirectConversation> {
   return postChannels('/direct-conversations', request);
 }
-
 export function getDirectConversation(conversationId: number): Promise<DirectConversation> {
   return getChannels(`/direct-conversations/${conversationId}`);
 }

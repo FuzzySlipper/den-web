@@ -102,8 +102,13 @@ DEN_CHANNELS_API_BASE=/api
 DEN_HOST_API_BASE=/den-host-api
 PI_CREW_ADMIN_API_BASE=/pi-crew-admin-api
 CONVERSATION_SUCCESSOR_READS_ENABLED=false
+CONVERSATION_SUCCESSOR_WRITES_ENABLED=false
 CONVERSATION_SUCCESSOR_API_BASE=/api/v1/conversation
 CONVERSATION_SUCCESSOR_READ_PROJECT_IDS=
+CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS=
+TIMELINE_SUCCESSOR_ENABLED=false
+TIMELINE_SUCCESSOR_API_BASE=/api/v1/timeline
+TIMELINE_SUCCESSOR_PROJECT_IDS=
 APP_BASE_PATH=/
 ENVIRONMENT_NAME=den-srv
 ```
@@ -137,6 +142,8 @@ DEN_GATEWAY_TARGET=http://127.0.0.1:8079
 DEN_GATEWAY_SERVICE_TOKEN=<service-token>
 DEN_GATEWAY_OBSERVATION_READ_TOKEN=<observation-read-token>
 DEN_GATEWAY_CONVERSATION_READ_TOKEN=<conversation-read-token>
+DEN_GATEWAY_CONVERSATION_WRITE_TOKEN=<conversation-write-token>
+DEN_GATEWAY_TIMELINE_READ_TOKEN=<timeline-read-token>
 ```
 
 To let the `agent` user deploy without full root, add a narrow sudoers drop-in:
@@ -238,6 +245,8 @@ with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 | `GATEWAY_ENV_PATH` | sibling `gateway.env` next to the server script | Optional service-token/target override file |
 | `DEN_GATEWAY_OBSERVATION_READ_TOKEN` | empty | Gateway caller token for `GET /v1/observation/*`; injected server-side for `/api/v1/observation/*` reads. |
 | `DEN_GATEWAY_CONVERSATION_READ_TOKEN` | empty | Gateway caller token for the feature-flagged conversation successor read pilot; injected server-side for `/api/v1/conversation/*` reads. |
+| `DEN_GATEWAY_CONVERSATION_WRITE_TOKEN` | empty | Gateway caller token for feature-flagged conversation successor writes; injected server-side for non-GET `/api/v1/conversation/*` calls. |
+| `DEN_GATEWAY_TIMELINE_READ_TOKEN` | empty | Gateway caller token for `GET /v1/timeline/*`; injected server-side for `/api/v1/timeline/*` reads and streams. |
 | `DEN_WEB_CONFIG_PATH` | `${STATIC_ROOT}/den-web-config.json` | Path to runtime config |
 | `DEN_WEB_BUILD_SENTINEL` | `${STATIC_ROOT}/den-web-build.json` | Path to build sentinel |
 | `CACHE_MAX_AGE_SECONDS` | `31536000` | max-age for hashed assets |
@@ -248,8 +257,13 @@ with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 | `DEN_CHANNELS_API_BASE` | `/api` | Channels API base for config defaults |
 | `DEN_HOST_API_BASE` | `/den-host-api` | Den Host API base for config defaults |
 | `CONVERSATION_SUCCESSOR_READS_ENABLED` | `false` | Enables the read-only conversation successor pilot in browser config. |
+| `CONVERSATION_SUCCESSOR_WRITES_ENABLED` | `false` | Enables conversation successor message/reaction writes in browser config. |
 | `CONVERSATION_SUCCESSOR_API_BASE` | `/api/v1/conversation` | Same-origin Den Web proxy base for Gateway conversation canary reads. |
 | `CONVERSATION_SUCCESSOR_READ_PROJECT_IDS` | empty | Comma-separated project IDs allowed to use successor channel/message reads. Empty means route no projects. |
+| `CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS` | empty | Comma-separated project IDs allowed to use successor message/reaction writes. Empty means route no projects. |
+| `TIMELINE_SUCCESSOR_ENABLED` | `false` | Enables den-services Timeline read/SSE display composition in browser config. |
+| `TIMELINE_SUCCESSOR_API_BASE` | `/api/v1/timeline` | Same-origin Den Web proxy base for Gateway Timeline reads/streams. |
+| `TIMELINE_SUCCESSOR_PROJECT_IDS` | empty | Comma-separated project IDs allowed to use Timeline display composition. Empty means route no projects. |
 
 ## Cutover from den-channels
 

@@ -42,6 +42,8 @@ export interface ChannelEventStreamState {
 export function useChannelEventStream(params: UseChannelEventStreamParams): ChannelEventStreamState {
   const { channelId, onMessage, onActivity, onEvent, enabled = true } = params;
   const [state, dispatch] = useReducer(streamConnectionReducer, INITIAL_STREAM_STATE);
+  const timelineCursorRef = useRef<string | null>(null);
+  const timelineCursorChannelRef = useRef<number | null>(null);
 
   // Keep the latest handlers in a ref so changing identities (e.g. when the poll
   // interval changes the refresh closures) never re-open the EventSource.
@@ -61,9 +63,13 @@ export function useChannelEventStream(params: UseChannelEventStreamParams): Chan
       dispatch({ type: 'unsupported' });
       return;
     }
+    if (timelineCursorChannelRef.current !== channelId) {
+      timelineCursorChannelRef.current = channelId;
+      timelineCursorRef.current = null;
+    }
 
     dispatch({ type: 'start' });
-    const source = new EventSource(channelEventStreamUrl(channelId));
+    const source = new EventSource(channelEventStreamUrl(channelId, { afterTimelineCursor: timelineCursorRef.current }));
 
     let flushTimer: number | undefined;
     const pending = { message: false, activity: false };
@@ -90,12 +96,33 @@ export function useChannelEventStream(params: UseChannelEventStreamParams): Chan
     const handleOpen = () => dispatch({ type: 'open' });
     const handleMessage = handleData('message', 'channel_message');
     const handleActivity = handleData('activity', 'channel_activity_event');
+    const handleTimelineItem = (event: MessageEvent) => {
+      const cursor = readTimelineCursor(event.data);
+      if (cursor) timelineCursorRef.current = cursor;
+      pending.message = true;
+      pending.activity = true;
+      scheduleFlush();
+    };
+    const handleTimelineRefresh = (event: MessageEvent) => {
+      const cursor = readTimelineRefreshCursor(event.data);
+      if (cursor) timelineCursorRef.current = cursor;
+      pending.message = true;
+      pending.activity = true;
+      scheduleFlush();
+    };
+    const handleTimelineHeartbeat = (event: MessageEvent) => {
+      const cursor = readTimelineRefreshCursor(event.data);
+      if (cursor) timelineCursorRef.current = cursor;
+    };
     const handleError = () => dispatch({ type: 'error' });
 
     source.addEventListener('open', handleOpen);
     source.addEventListener('stream_open', handleOpen as EventListener);
     source.addEventListener('channel_message', handleMessage as EventListener);
     source.addEventListener('channel_activity_event', handleActivity as EventListener);
+    source.addEventListener('timeline_item', handleTimelineItem as EventListener);
+    source.addEventListener('timeline_refresh', handleTimelineRefresh as EventListener);
+    source.addEventListener('heartbeat', handleTimelineHeartbeat as EventListener);
     source.addEventListener('error', handleError);
 
     return () => {
@@ -104,10 +131,34 @@ export function useChannelEventStream(params: UseChannelEventStreamParams): Chan
       source.removeEventListener('stream_open', handleOpen as EventListener);
       source.removeEventListener('channel_message', handleMessage as EventListener);
       source.removeEventListener('channel_activity_event', handleActivity as EventListener);
+      source.removeEventListener('timeline_item', handleTimelineItem as EventListener);
+      source.removeEventListener('timeline_refresh', handleTimelineRefresh as EventListener);
+      source.removeEventListener('heartbeat', handleTimelineHeartbeat as EventListener);
       source.removeEventListener('error', handleError);
       source.close();
     };
   }, [channelId, streamingDisabled]);
 
   return { status: state.status };
+}
+
+function readTimelineCursor(data: string): string | null {
+  const record = parseJsonRecord(data);
+  return typeof record?.cursor === 'string' ? record.cursor : null;
+}
+
+function readTimelineRefreshCursor(data: string): string | null {
+  const record = parseJsonRecord(data);
+  const direct = typeof record?.cursor === 'string' ? record.cursor : null;
+  const after = typeof record?.after === 'string' ? record.after : null;
+  return direct ?? after;
+}
+
+function parseJsonRecord(data: string): Record<string, unknown> | null {
+  try {
+    const value: unknown = JSON.parse(data);
+    return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
 }

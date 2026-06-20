@@ -50,6 +50,7 @@ The browser app must use explicit configured API bases and must not infer backen
 | Den Core | `den-core` | `/den-core-api` | `/den-core-api/health`, `/den-core-api/api/projects` | Canonical tasks/docs/messages/workflow REST facade. Current live health returns commit/version metadata. |
 | Den Channels | `den-channels` | `/api` | `/api/channels?limit=1` | Channel/chat/membership/reaction/activity APIs. The current extracted app may temporarily keep this base for compatibility. |
 | Observation | `den-services` Gateway route | `/api/v1/observation` | `/api/v1/observation/lane?limit=1` | Canonical display-only agent activity breadcrumbs. The static server injects `DEN_GATEWAY_OBSERVATION_READ_TOKEN` for read routes; browser code must not call Observation loopback directly. |
+| Timeline | `den-services` Gateway route | `/api/v1/timeline` | `/api/v1/timeline/channels/1/items?limit=1` | Composed human-facing conversation + observation timeline. The static server injects `DEN_GATEWAY_TIMELINE_READ_TOKEN`; browser code must not call Timeline loopback directly. |
 | Gateway-visible Channels helpers | `den-channels` | `/api/gateway` | `/api/gateway/memberships?projectId=den-web` | Direct-agent message, membership, test-wake, and delivery-observability helpers exposed through Channels. |
 | Den Host FleetOps APIs | `den-host` | `/den-host-api` | `/den-host-api/fleet-ops` | Bounded Hermes fleet status/actions. The static service rewrites `/den-host-api/*` to Den Host's internal `/api/host/*` namespace and does not consume Channels' `/api/gateway/*` helpers. |
 | Agents overview | `den-channels` aggregate over Gateway/Core | `/api/agents` | `/api/agents/overview` | Read-only operator overview; must degrade gracefully if Gateway data is unavailable. |
@@ -80,8 +81,13 @@ Recommended runtime config keys:
 | `denChannelsApiBase` | `/api` | Channels API base path. |
 | `denHostApiBase` | `/den-host-api` | Den Host FleetOps API base; rewritten by the static service to Den Host's internal `/api/host` route. |
 | `conversationSuccessorReadsEnabled` | `false` | Feature flag for read-only conversation successor pilot routes. |
+| `conversationSuccessorWritesEnabled` | `false` | Feature flag for conversation successor message/reaction writes. |
 | `conversationSuccessorApiBase` | `/api/v1/conversation` | Same-origin Den Web proxy base for Gateway conversation canary reads. |
 | `conversationSuccessorReadProjectIds` | `[]` | Project allowlist for the pilot. Empty means no channel/message reads use successor. |
+| `conversationSuccessorWriteProjectIds` | `[]` | Project allowlist for successor conversation writes. Empty means all channel-message writes stay legacy. |
+| `timelineSuccessorEnabled` | `false` | Feature flag for the den-services composed timeline read/SSE surface. |
+| `timelineSuccessorApiBase` | `/api/v1/timeline` | Same-origin Den Web proxy base for Gateway timeline reads/streams. |
+| `timelineSuccessorProjectIds` | `[]` | Project allowlist for timeline display composition. Empty means legacy message/activity reads and legacy SSE stay active. |
 | `appBasePath` | `/` | Static app base path. |
 | `environmentName` | `den-srv` | Human-readable deployment/environment label. |
 
@@ -123,6 +129,8 @@ After standalone deployment (#1707), smoke the public URL and API-backed UI path
 3. Channels API reachability:
    - `curl -fsS 'http://192.168.1.10:18080/api/channels?limit=1'`.
    - For the Den Web project channel, `curl -fsS 'http://192.168.1.10:18080/api/gateway/memberships?projectId=den-web'` should return the project default channel and membership list, even if the member list is empty.
+   - `curl -fsS 'http://192.168.1.10:18080/api/v1/observation/lane?limit=1'` should return an Observation lane JSON object through Gateway.
+   - `curl -fsS 'http://192.168.1.10:18080/api/v1/timeline/channels/1/items?limit=1'` should return a Timeline JSON object through Gateway.
 4. Agents overview and Den Host FleetOps reachability:
    - `curl -fsS http://192.168.1.10:18080/api/agents/overview` returns JSON or a UI-degradable health warning, not a hard app crash.
    - `curl -fsS http://192.168.1.10:18080/den-host-api/fleet-ops` returns the Den Host FleetOps overview JSON shape without consuming `/api/gateway/*`.

@@ -19,7 +19,11 @@ function listen(server) {
 
 function request(url, options = {}) {
   return new Promise((resolve, reject) => {
-    const req = http.get(url, options, (res) => {
+    const parsed = new URL(url);
+    const req = http.request(parsed, {
+      method: options.method ?? 'GET',
+      headers: options.headers,
+    }, (res) => {
       let body = '';
       res.setEncoding('utf8');
       res.on('data', chunk => {
@@ -30,6 +34,8 @@ function request(url, options = {}) {
     });
     req.on('error', reject);
     req.setTimeout(2_000, () => req.destroy(new Error(`timeout fetching ${url}`)));
+    if (options.body) req.write(options.body);
+    req.end();
   });
 }
 
@@ -267,6 +273,67 @@ test('Conversation successor reads use the Gateway conversation read token and c
   ]);
   assert.deepEqual(channelsObserved, [
     { url: '/api/channels?limit=1', authorization: 'Bearer default-service-token' },
+  ]);
+});
+
+test('Conversation successor writes use the Gateway conversation write token', async (t) => {
+  const gatewayObserved = [];
+  const gateway = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      gatewayObserved.push({
+        url: req.url,
+        method: req.method,
+        authorization: req.headers.authorization ?? null,
+        idempotencyKey: req.headers['idempotency-key'] ?? null,
+        body,
+      });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ id: 1, channel_id: 2, sender_type: 'user', sender_identity: 'patch', body: 'hello', created_at: 't0' }));
+    });
+  });
+  const gatewayPort = await listen(gateway);
+  t.after(() => new Promise(resolve => gateway.close(resolve)));
+
+  const { baseUrl } = await startStaticServer(`http://127.0.0.1:9`, t, {
+    DEN_GATEWAY_TARGET: `http://127.0.0.1:${gatewayPort}`,
+    DEN_GATEWAY_CONVERSATION_READ_TOKEN: 'conversation-read-token',
+    DEN_GATEWAY_CONVERSATION_WRITE_TOKEN: 'conversation-write-token',
+  });
+
+  const response = await request(`${baseUrl}/api/v1/conversation/channels/2/messages`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': 'idem-1', 'Content-Type': 'application/json', 'X-Den-Migrated-Functions': 'true' },
+    body: JSON.stringify({ body: 'hello' }),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(gatewayObserved[0].authorization, 'Bearer conversation-write-token');
+  assert.equal(gatewayObserved[0].idempotencyKey, 'idem-1');
+  assert.equal(gatewayObserved[0].method, 'POST');
+});
+
+test('Timeline reads and streams use the Gateway timeline read token', async (t) => {
+  const gatewayObserved = [];
+  const gateway = http.createServer((req, res) => {
+    gatewayObserved.push({ url: req.url, authorization: req.headers.authorization ?? null });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ scope: { kind: 'channel', channel_id: 1 }, items: [], next_cursor: null, snapshot_at: '2026-06-20T00:00:00Z' }));
+  });
+  const gatewayPort = await listen(gateway);
+  t.after(() => new Promise(resolve => gateway.close(resolve)));
+
+  const { baseUrl } = await startStaticServer(`http://127.0.0.1:9`, t, {
+    DEN_GATEWAY_TARGET: `http://127.0.0.1:${gatewayPort}`,
+    DEN_GATEWAY_TIMELINE_READ_TOKEN: 'timeline-read-token',
+  });
+
+  const response = await request(`${baseUrl}/api/v1/timeline/channels/1/items?limit=1`);
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(gatewayObserved, [
+    { url: '/v1/timeline/channels/1/items?limit=1', authorization: 'Bearer timeline-read-token' },
   ]);
 });
 

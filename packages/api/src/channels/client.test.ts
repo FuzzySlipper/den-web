@@ -12,6 +12,8 @@ import {
   getReadCursor,
   listAgentWorkEvents,
   listProjectLinkedChannels,
+  addChannelReaction,
+  postChannelMessage,
   reinitChannelsRuntime,
 } from './client';
 import type {
@@ -192,6 +194,127 @@ describe('channels DM API client', () => {
       expect(fetchMock).toHaveBeenNthCalledWith(2, '/legacy-api/channels/999/messages?limit=5', { cache: 'no-store' });
       expect(fetchMock).toHaveBeenNthCalledWith(3, '/legacy-api/projects/pilot-project/linked-channels', { cache: 'no-store' });
       expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/api/v1/conversation/projects'), expect.anything());
+    });
+
+    it('routes allowlisted successor channel writes through conversation with an idempotency key', async () => {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([{ id: 702, slug: 'pilot', display_name: 'Pilot', project_id: 'pilot-project', created_at: 't0', updated_at: 't0' }]),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 9100,
+            channel_id: 702,
+            sender_type: 'user',
+            sender_identity: 'patch',
+            body: 'hello successor',
+            message_kind: 'human_text',
+            dedupe_key: 'manual-key',
+            created_at: '2026-06-20T00:03:00Z',
+          }),
+        });
+      vi.stubGlobal('fetch', fetchMock);
+      reinitChannelsRuntime({
+        denChannelsApiBase: '/api',
+        conversationSuccessorReads: {
+          enabled: true,
+          writeEnabled: true,
+          apiBase: '/api/v1/conversation',
+          projectIds: ['pilot-project'],
+          writeProjectIds: ['pilot-project'],
+        },
+      });
+
+      await listChannels({ projectId: 'pilot-project', limit: 1 });
+      const message = await postChannelMessage(702, {
+        senderType: 'user',
+        senderIdentity: 'patch',
+        messageKind: 'human_text',
+        body: 'hello successor',
+        dedupeKey: 'manual-key',
+        metadataJson: '{"from":"test"}',
+      });
+
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        2,
+        '/api/v1/conversation/channels/702/messages',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'X-Den-Migrated-Functions': 'true',
+            'Idempotency-Key': 'manual-key',
+          }),
+        }),
+      );
+      expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toMatchObject({
+        sender_type: 'user',
+        sender_identity: 'patch',
+        message_kind: 'human_text',
+        dedupe_key: 'manual-key',
+        metadata: { from: 'test' },
+      });
+      expect(message).toMatchObject({ id: 9100, channelId: 702, dedupeKey: 'manual-key' });
+    });
+
+    it('routes reactions through conversation only for write-allowlisted successor messages', async () => {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([{ id: 702, slug: 'pilot', display_name: 'Pilot', project_id: 'pilot-project', created_at: 't0', updated_at: 't0' }]),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({
+            messages: [{
+              id: 9001,
+              channel_id: 702,
+              sender_type: 'agent',
+              sender_identity: 'den-mcp-runner',
+              body: 'hello',
+              message_kind: 'system_event',
+              created_at: '2026-06-20T00:02:00Z',
+            }],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ ok: true }),
+        });
+      vi.stubGlobal('fetch', fetchMock);
+      reinitChannelsRuntime({
+        denChannelsApiBase: '/api',
+        conversationSuccessorReads: {
+          enabled: true,
+          writeEnabled: true,
+          apiBase: '/api/v1/conversation',
+          projectIds: ['pilot-project'],
+          writeProjectIds: ['pilot-project'],
+        },
+      });
+
+      await listChannels({ projectId: 'pilot-project', limit: 1 });
+      await listChannelMessages(702, { limit: 1 });
+      await addChannelReaction(9001, {
+        reactorType: 'user',
+        reactorIdentity: 'patch',
+        reactionKey: 'eyes',
+      });
+
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        3,
+        '/api/v1/conversation/messages/9001/reactions',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ 'X-Den-Migrated-Functions': 'true' }),
+        }),
+      );
+      expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toMatchObject({
+        reactor_type: 'user',
+        reactor_identity: 'patch',
+        reaction: 'eyes',
+      });
     });
   });
 

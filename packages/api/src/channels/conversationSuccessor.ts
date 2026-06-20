@@ -1,3 +1,4 @@
+import type { AddChannelReactionRequest, PostChannelMessageRequest } from './client';
 import type { Channel, ChannelMessage } from './types';
 import { normalizeApiBase } from '../config';
 import { dedupedFetch } from '../requestCache';
@@ -5,8 +6,10 @@ import type { ListChannelsOpts, ListChannelMessagesOpts } from './client';
 
 export interface ConversationSuccessorReadConfig {
   enabled: boolean;
+  writeEnabled: boolean;
   apiBase: string;
   projectIds: string[];
+  writeProjectIds: string[];
 }
 
 type JsonObject = Record<string, unknown>;
@@ -98,18 +101,28 @@ interface SuccessorMessageDto extends JsonObject {
 
 let config: ConversationSuccessorReadConfig = {
   enabled: false,
+  writeEnabled: false,
   apiBase: '/api/v1/conversation',
   projectIds: [],
+  writeProjectIds: [],
 };
 const successorChannelIds = new Set<number>();
+const successorChannelProjects = new Map<number, string | null>();
+const successorMessageIds = new Set<number>();
+const successorMessageProjects = new Map<number, string | null>();
 
 export function reinitConversationSuccessorReads(next: Partial<ConversationSuccessorReadConfig>): void {
   config = {
     enabled: next.enabled ?? false,
+    writeEnabled: next.writeEnabled ?? false,
     apiBase: normalizeApiBase(next.apiBase, '/api/v1/conversation'),
     projectIds: [...new Set((next.projectIds ?? []).map(id => id.trim()).filter(Boolean))],
+    writeProjectIds: [...new Set((next.writeProjectIds ?? []).map(id => id.trim()).filter(Boolean))],
   };
   successorChannelIds.clear();
+  successorChannelProjects.clear();
+  successorMessageIds.clear();
+  successorMessageProjects.clear();
 }
 
 export function conversationSuccessorReadsEnabledForProject(projectId: string | null | undefined): boolean {
@@ -118,6 +131,34 @@ export function conversationSuccessorReadsEnabledForProject(projectId: string | 
 
 export function conversationSuccessorReadsEnabledForChannel(channelId: number): boolean {
   return config.enabled && successorChannelIds.has(channelId);
+}
+
+export function conversationSuccessorWritesEnabledForChannel(channelId: number): boolean {
+  if (!config.writeEnabled || !successorChannelIds.has(channelId)) return false;
+  const projectId = successorChannelProjects.get(channelId);
+  return Boolean(projectId && config.writeProjectIds.includes(projectId));
+}
+
+export function conversationSuccessorReactionsEnabledForMessage(messageId: number): boolean {
+  if (!config.writeEnabled || !successorMessageIds.has(messageId)) return false;
+  const projectId = successorMessageProjects.get(messageId);
+  return Boolean(projectId && config.writeProjectIds.includes(projectId));
+}
+
+export function registerConversationSuccessorChannel(channelId: number, projectId: string | null | undefined): void {
+  if (channelId > 0) {
+    successorChannelIds.add(channelId);
+    successorChannelProjects.set(channelId, projectId ?? null);
+  }
+}
+
+export function registerConversationSuccessorMessageId(messageId: number, projectId?: string | null): void {
+  if (messageId > 0) {
+    successorMessageIds.add(messageId);
+    if (projectId !== undefined || !successorMessageProjects.has(messageId)) {
+      successorMessageProjects.set(messageId, projectId ?? null);
+    }
+  }
 }
 
 function buildQuery(params: Record<string, string | number | boolean | undefined | null>): string {
@@ -142,6 +183,21 @@ function getSuccessor<T>(path: string): Promise<T> {
     if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
     return res.json();
   });
+}
+
+async function postSuccessor<T>(path: string, body: unknown, idempotencyKey?: string): Promise<T> {
+  const requestUrl = conversationSuccessorUrl(path);
+  const res = await fetch(requestUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Den-Migrated-Functions': 'true',
+      ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`POST ${requestUrl}: ${res.status}`);
+  return res.json();
 }
 
 function objectRecord(value: unknown): JsonObject {
@@ -240,7 +296,7 @@ export async function listConversationSuccessorChannels(opts: ListChannelsOpts):
   const response = await getSuccessor<unknown>(`/channels${q}`);
   const channels = arrayFromResponse(response, 'channels').map(normalizeConversationSuccessorChannel);
   for (const channel of channels) {
-    successorChannelIds.add(channel.id);
+    registerConversationSuccessorChannel(channel.id, channel.projectId);
   }
   return channels;
 }
@@ -248,5 +304,66 @@ export async function listConversationSuccessorChannels(opts: ListChannelsOpts):
 export async function listConversationSuccessorMessages(channelId: number, opts: ListChannelMessagesOpts): Promise<ChannelMessage[]> {
   const q = buildQuery({ after_id: opts.afterId, limit: opts.limit });
   const response = await getSuccessor<unknown>(`/channels/${encodeURIComponent(String(channelId))}/messages${q}`);
-  return arrayFromResponse(response, 'messages').map(normalizeConversationSuccessorMessage);
+  const messages = arrayFromResponse(response, 'messages').map(normalizeConversationSuccessorMessage);
+  const projectId = successorChannelProjects.get(channelId) ?? null;
+  for (const message of messages) registerConversationSuccessorMessageId(message.id, projectId);
+  return messages;
+}
+
+export function postConversationSuccessorMessage(channelId: number, request: PostChannelMessageRequest): Promise<ChannelMessage> {
+  const idempotencyKey = request.dedupeKey || generateIdempotencyKey(channelId);
+  return postSuccessor<unknown>(`/channels/${encodeURIComponent(String(channelId))}/messages`, {
+    sender_type: request.senderType,
+    sender_identity: request.senderIdentity,
+    body: request.body,
+    message_kind: request.messageKind,
+    source_kind: request.sourceKind,
+    source_id: request.sourceId,
+    source_project_id: request.sourceProjectId,
+    target_project_id: request.targetProjectId,
+    target_task_id: request.targetTaskId,
+    assignment_id: request.assignmentId,
+    worker_run_id: request.workerRunId,
+    worker_role: request.workerRole,
+    profile_identity: request.profileIdentity,
+    agent_instance_id: request.agentInstanceId,
+    pool_member_id: request.poolMemberId,
+    session_owner_id: request.sessionOwnerId,
+    session_id: request.sessionId,
+    summary: request.summary,
+    deep_link: request.deepLink,
+    thread_root_message_id: request.threadRootMessageId,
+    reply_to_message_id: request.replyToMessageId,
+    metadata: parseMetadataJson(request.metadataJson),
+    delivery_request_id: request.deliveryRequestId,
+    dedupe_key: idempotencyKey,
+  }, idempotencyKey).then(raw => {
+    const record = objectRecord(raw);
+    const message = normalizeConversationSuccessorMessage(objectRecord(record.message ?? record));
+    registerConversationSuccessorMessageId(message.id, successorChannelProjects.get(channelId) ?? message.sourceProjectId);
+    return message;
+  });
+}
+
+export function addConversationSuccessorReaction(messageId: number, request: AddChannelReactionRequest): Promise<unknown> {
+  return postSuccessor(`/messages/${encodeURIComponent(String(messageId))}/reactions`, {
+    reactor_type: request.reactorType,
+    reactor_identity: request.reactorIdentity,
+    reaction: request.reactionKey,
+  });
+}
+
+function parseMetadataJson(value: string | null | undefined): unknown {
+  if (!value) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function generateIdempotencyKey(channelId: number): string {
+  const random = globalThis.crypto?.randomUUID?.();
+  if (random) return `den-web:${channelId}:${random}`;
+  return `den-web:${channelId}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
 }

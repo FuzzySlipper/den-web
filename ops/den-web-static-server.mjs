@@ -25,6 +25,8 @@
  *   DEN_GATEWAY_SERVICE_TOKEN - Gateway service token for /api/* outbound proxy (default: empty, no auth)
  *   DEN_GATEWAY_OBSERVATION_READ_TOKEN - Gateway caller token for /api/v1/observation/* reads (default: empty, no auth)
  *   DEN_GATEWAY_CONVERSATION_READ_TOKEN - Gateway caller token for /api/v1/conversation/* read pilot (default: empty, no auth)
+ *   DEN_GATEWAY_CONVERSATION_WRITE_TOKEN - Gateway caller token for /api/v1/conversation/* write pilot (default: empty, no auth)
+ *   DEN_GATEWAY_TIMELINE_READ_TOKEN - Gateway caller token for /api/v1/timeline/* reads/streams (default: empty, no auth)
  *   DEN_WEB_CONFIG_PATH   - path to den-web-config.json (default: ${STATIC_ROOT}/den-web-config.json)
  *   DEN_WEB_BUILD_SENTINEL - path to den-web-build.json (default: ${STATIC_ROOT}/den-web-build.json)
  *   CACHE_MAX_AGE_SECONDS - max-age for immutable assets (default: 31536000)
@@ -35,6 +37,7 @@
  *   PI_CREW_ADMIN_API_BASE - runtime config Pi Crew admin API base (default: /pi-crew-admin-api)
  *   CONVERSATION_SUCCESSOR_READS_ENABLED - runtime config conversation successor read pilot flag (default: false)
  *   CONVERSATION_SUCCESSOR_API_BASE - runtime config conversation successor browser proxy base (default: /api/v1/conversation)
+ *   TIMELINE_SUCCESSOR_API_BASE - runtime config timeline browser proxy base (default: /api/v1/timeline)
  *   CONVERSATION_SUCCESSOR_READ_PROJECT_IDS - comma-separated pilot project IDs for successor reads (default: empty)
  *   APP_BASE_PATH         - runtime config app base path (default: /)
  *   ENVIRONMENT_NAME      - runtime config environment label (default: den-srv)
@@ -82,6 +85,8 @@ const PI_CREW_ADMIN_TARGET = process.env.PI_CREW_ADMIN_TARGET ?? 'http://127.0.0
 const DEN_GATEWAY_SERVICE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_SERVICE_TOKEN ?? process.env.DEN_GATEWAY_SERVICE_TOKEN ?? '';
 const DEN_GATEWAY_OBSERVATION_READ_TOKEN = GATEWAY_ENV.DEN_GATEWAY_OBSERVATION_READ_TOKEN ?? process.env.DEN_GATEWAY_OBSERVATION_READ_TOKEN ?? '';
 const DEN_GATEWAY_CONVERSATION_READ_TOKEN = GATEWAY_ENV.DEN_GATEWAY_CONVERSATION_READ_TOKEN ?? process.env.DEN_GATEWAY_CONVERSATION_READ_TOKEN ?? '';
+const DEN_GATEWAY_CONVERSATION_WRITE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_CONVERSATION_WRITE_TOKEN ?? process.env.DEN_GATEWAY_CONVERSATION_WRITE_TOKEN ?? '';
+const DEN_GATEWAY_TIMELINE_READ_TOKEN = GATEWAY_ENV.DEN_GATEWAY_TIMELINE_READ_TOKEN ?? process.env.DEN_GATEWAY_TIMELINE_READ_TOKEN ?? '';
 const CONFIG_PATH      = process.env.DEN_WEB_CONFIG_PATH ?? path.join(STATIC_ROOT, 'den-web-config.json');
 const BUILD_SENTINEL_PATH = process.env.DEN_WEB_BUILD_SENTINEL ?? path.join(STATIC_ROOT, 'den-web-build.json');
 const CACHE_MAX_AGE    = parseInt(process.env.CACHE_MAX_AGE_SECONDS ?? '31536000', 10);
@@ -178,8 +183,13 @@ function loadConfig() {
     denHostApiBase: process.env.DEN_HOST_API_BASE ?? '/den-host-api',
     piCrewAdminApiBase: process.env.PI_CREW_ADMIN_API_BASE ?? '/pi-crew-admin-api',
     conversationSuccessorReadsEnabled: process.env.CONVERSATION_SUCCESSOR_READS_ENABLED === '1' || process.env.CONVERSATION_SUCCESSOR_READS_ENABLED === 'true',
+    conversationSuccessorWritesEnabled: process.env.CONVERSATION_SUCCESSOR_WRITES_ENABLED === '1' || process.env.CONVERSATION_SUCCESSOR_WRITES_ENABLED === 'true',
     conversationSuccessorApiBase: process.env.CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation',
     conversationSuccessorReadProjectIds: (process.env.CONVERSATION_SUCCESSOR_READ_PROJECT_IDS ?? '').split(',').map(item => item.trim()).filter(Boolean),
+    conversationSuccessorWriteProjectIds: (process.env.CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS ?? '').split(',').map(item => item.trim()).filter(Boolean),
+    timelineSuccessorEnabled: process.env.TIMELINE_SUCCESSOR_ENABLED === '1' || process.env.TIMELINE_SUCCESSOR_ENABLED === 'true',
+    timelineSuccessorApiBase: process.env.TIMELINE_SUCCESSOR_API_BASE ?? '/api/v1/timeline',
+    timelineSuccessorProjectIds: (process.env.TIMELINE_SUCCESSOR_PROJECT_IDS ?? '').split(',').map(item => item.trim()).filter(Boolean),
     appBasePath: process.env.APP_BASE_PATH ?? '/',
     environmentName: process.env.ENVIRONMENT_NAME ?? 'den-srv',
   };
@@ -205,8 +215,13 @@ function loadConfig() {
       denHostApiBase: typeof fileConfig.denHostApiBase === 'string' ? fileConfig.denHostApiBase : defaults.denHostApiBase,
       piCrewAdminApiBase: typeof fileConfig.piCrewAdminApiBase === 'string' ? fileConfig.piCrewAdminApiBase : defaults.piCrewAdminApiBase,
       conversationSuccessorReadsEnabled: typeof fileConfig.conversationSuccessorReadsEnabled === 'boolean' ? fileConfig.conversationSuccessorReadsEnabled : defaults.conversationSuccessorReadsEnabled,
+      conversationSuccessorWritesEnabled: typeof fileConfig.conversationSuccessorWritesEnabled === 'boolean' ? fileConfig.conversationSuccessorWritesEnabled : defaults.conversationSuccessorWritesEnabled,
       conversationSuccessorApiBase: typeof fileConfig.conversationSuccessorApiBase === 'string' ? fileConfig.conversationSuccessorApiBase : defaults.conversationSuccessorApiBase,
       conversationSuccessorReadProjectIds: Array.isArray(fileConfig.conversationSuccessorReadProjectIds) ? fileConfig.conversationSuccessorReadProjectIds.filter(item => typeof item === 'string') : defaults.conversationSuccessorReadProjectIds,
+      conversationSuccessorWriteProjectIds: Array.isArray(fileConfig.conversationSuccessorWriteProjectIds) ? fileConfig.conversationSuccessorWriteProjectIds.filter(item => typeof item === 'string') : defaults.conversationSuccessorWriteProjectIds,
+      timelineSuccessorEnabled: typeof fileConfig.timelineSuccessorEnabled === 'boolean' ? fileConfig.timelineSuccessorEnabled : defaults.timelineSuccessorEnabled,
+      timelineSuccessorApiBase: typeof fileConfig.timelineSuccessorApiBase === 'string' ? fileConfig.timelineSuccessorApiBase : defaults.timelineSuccessorApiBase,
+      timelineSuccessorProjectIds: Array.isArray(fileConfig.timelineSuccessorProjectIds) ? fileConfig.timelineSuccessorProjectIds.filter(item => typeof item === 'string') : defaults.timelineSuccessorProjectIds,
       appBasePath: typeof fileConfig.appBasePath === 'string' ? fileConfig.appBasePath : defaults.appBasePath,
       environmentName: typeof fileConfig.environmentName === 'string' ? fileConfig.environmentName : defaults.environmentName,
     });
@@ -255,6 +270,9 @@ function proxyRequest(targetBase, req, res, pathRewrite) {
   }
   if (req.headers['x-den-migrated-functions']) {
     proxyHeaders['X-Den-Migrated-Functions'] = req.headers['x-den-migrated-functions'];
+  }
+  if (req.headers['idempotency-key']) {
+    proxyHeaders['Idempotency-Key'] = req.headers['idempotency-key'];
   }
   if (req.headers['x-forwarded-for']) {
     proxyHeaders['X-Forwarded-For'] = req.headers['x-forwarded-for'];
@@ -407,8 +425,19 @@ function handleRequest(req, res) {
     // X-Den-Migrated-Functions canary header only when its feature flag is on;
     // the read caller token stays server-side here.
     if (requestPath === '/api/v1/conversation' || requestPath.startsWith('/api/v1/conversation/')) {
-      if (DEN_GATEWAY_CONVERSATION_READ_TOKEN) {
-        req.headers['authorization'] = `Bearer ${DEN_GATEWAY_CONVERSATION_READ_TOKEN}`;
+      const token = req.method === 'GET' ? DEN_GATEWAY_CONVERSATION_READ_TOKEN : DEN_GATEWAY_CONVERSATION_WRITE_TOKEN;
+      if (token) {
+        req.headers['authorization'] = `Bearer ${token}`;
+      }
+      const stripped = requestPath.replace(/^\/api/, '') || '/';
+      return proxyRequest(DEN_GATEWAY_TARGET, req, res, () => stripped + requestSearch);
+    }
+
+    // Timeline read/SSE compositor. Gateway owns caller/upstream auth; the
+    // browser sees only same-origin /api/v1/timeline/* paths.
+    if (requestPath === '/api/v1/timeline' || requestPath.startsWith('/api/v1/timeline/')) {
+      if (DEN_GATEWAY_TIMELINE_READ_TOKEN) {
+        req.headers['authorization'] = `Bearer ${DEN_GATEWAY_TIMELINE_READ_TOKEN}`;
       }
       const stripped = requestPath.replace(/^\/api/, '') || '/';
       return proxyRequest(DEN_GATEWAY_TARGET, req, res, () => stripped + requestSearch);

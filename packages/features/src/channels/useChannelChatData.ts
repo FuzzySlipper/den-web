@@ -21,11 +21,13 @@ import {
   listChannelMessages,
   listChannelReactions,
   listChannels,
+  listChannelTimelineItems,
   listDirectAgentEvents,
   listGatewayMemberships,
   listObservationActiveWork,
   listObservationLane,
   listProjectLinkedChannels,
+  timelineSuccessorEnabledForChannel,
 } from '@den-web/api/client';
 import { useLiveData } from '@den-web/ui/hooks/useLiveData';
 import {
@@ -52,18 +54,30 @@ function useChannelLiveResources(activeChannel: Channel | null) {
   const refreshActivityRef = useRef(() => {});
   const triggerMessageRefresh = useCallback(() => refreshMessagesRef.current(), []);
   const triggerActivityRefresh = useCallback(() => refreshActivityRef.current(), []);
+  const timelineEnabled = timelineSuccessorEnabledForChannel(activeChannel);
   const channelStream = useChannelEventStream({
     channelId: activeChannel?.id ?? null,
     onMessage: triggerMessageRefresh,
     onActivity: triggerActivityRefresh,
   });
   const liveListInterval = isStreamDelivering(channelStream.status) ? STREAM_SAFETY_POLL_MS : 4000;
-  const fetchMessages = useCallback(() => activeChannel ? listChannelMessages(activeChannel.id, { limit: 80 }) : Promise.resolve([]), [activeChannel]);
-  const messagesState = useLiveData(fetchMessages, { interval: liveListInterval });
-  const fetchActivityEvents = useCallback(() => activeChannel ? listChannelActivityEvents(activeChannel.id, { limit: 120 }) : Promise.resolve([]), [activeChannel]);
-  const activityState = useLiveData<ChannelActivityEvent[]>(fetchActivityEvents, { interval: liveListInterval });
-  const fetchObservationLane = useCallback(() => activeChannel ? listObservationLane({ limit: 120 }) : Promise.resolve(null), [activeChannel]);
-  const observationLaneState = useLiveData<ObservationLaneResponse | null>(fetchObservationLane, { interval: liveListInterval });
+  const fetchTimeline = useCallback(() => activeChannel && timelineEnabled ? listChannelTimelineItems(activeChannel.id, { limit: 160 }) : Promise.resolve(null), [activeChannel, timelineEnabled]);
+  const timelineState = useLiveData(fetchTimeline, { interval: liveListInterval });
+  const fetchMessages = useCallback(() => activeChannel && !timelineEnabled ? listChannelMessages(activeChannel.id, { limit: 80 }) : Promise.resolve([]), [activeChannel, timelineEnabled]);
+  const legacyMessagesState = useLiveData(fetchMessages, { interval: liveListInterval });
+  const fetchActivityEvents = useCallback(() => activeChannel && !timelineEnabled ? listChannelActivityEvents(activeChannel.id, { limit: 120 }) : Promise.resolve([]), [activeChannel, timelineEnabled]);
+  const legacyActivityState = useLiveData<ChannelActivityEvent[]>(fetchActivityEvents, { interval: liveListInterval });
+  const fetchObservationLane = useCallback(() => activeChannel && !timelineEnabled ? listObservationLane({ limit: 120 }) : Promise.resolve(null), [activeChannel, timelineEnabled]);
+  const legacyObservationLaneState = useLiveData<ObservationLaneResponse | null>(fetchObservationLane, { interval: liveListInterval });
+  const messagesState = timelineEnabled
+    ? { data: timelineState.data?.messages ?? [], loading: timelineState.loading, error: timelineState.error, refresh: timelineState.refresh }
+    : legacyMessagesState;
+  const activityState = timelineEnabled
+    ? { data: timelineState.data?.activityEvents ?? [], loading: timelineState.loading, error: timelineState.error, refresh: timelineState.refresh }
+    : legacyActivityState;
+  const observationLaneState = timelineEnabled
+    ? { data: { events: [] }, loading: false, error: null, refresh: timelineState.refresh }
+    : legacyObservationLaneState;
   const fetchObservationActiveWork = useCallback(() => activeChannel ? listObservationActiveWork() : Promise.resolve(null), [activeChannel]);
   const observationActiveWorkState = useLiveData<ObservationActiveWorkResponse | null>(fetchObservationActiveWork, { interval: 5000 });
   const fetchAgentWorkCurrent = useCallback(() => activeChannel ? listAgentWorkCurrent({ channelId: activeChannel.id, limit: 12 }) : Promise.resolve(null), [activeChannel]);

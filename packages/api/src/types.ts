@@ -159,3 +159,14 @@ export type {
   ObservationRuntimeProjection,
   ObservationAgentOverviewResponse,
 } from './gateway/observationTypes';
+
+export type {
+  TimelineScope,
+  TimelineActor,
+  TimelineSourceRef,
+  TimelineItem,
+  TimelineItemsResponse,
+  TimelineStreamOpenEvent,
+  TimelineRefreshEvent,
+  TimelineHeartbeatEvent,
+} from './timeline/types';

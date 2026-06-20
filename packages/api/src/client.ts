@@ -12,6 +12,7 @@ import { getConfig } from './config';
 import { initClient as initCoreClient, resetClient as resetCoreClient } from './core/client';
 import { reinitChannelsRuntime } from './channels/client';
 import { reinitHostBase } from './gateway/client';
+import { reinitTimelineSuccessor } from './timeline/client';
 
 // Core API
 export { getApiBases } from './core/client';
@@ -23,9 +24,16 @@ export async function initClient(): Promise<void> {
     denChannelsApiBase: config.denChannelsApiBase,
     conversationSuccessorReads: {
       enabled: config.conversationSuccessorReadsEnabled,
+      writeEnabled: config.conversationSuccessorWritesEnabled,
       apiBase: config.conversationSuccessorApiBase,
       projectIds: config.conversationSuccessorReadProjectIds,
+      writeProjectIds: config.conversationSuccessorWriteProjectIds,
     },
+  });
+  reinitTimelineSuccessor({
+    enabled: config.timelineSuccessorEnabled,
+    apiBase: config.timelineSuccessorApiBase,
+    projectIds: config.timelineSuccessorProjectIds,
   });
   reinitHostBase(config.denHostApiBase);
 }
@@ -36,9 +44,16 @@ export function resetClient(): void {
     denChannelsApiBase: import.meta.env.VITE_DEN_CHANNELS_API_BASE ?? '/api',
     conversationSuccessorReads: {
       enabled: false,
+      writeEnabled: false,
       apiBase: '/api/v1/conversation',
       projectIds: [],
+      writeProjectIds: [],
     },
+  });
+  reinitTimelineSuccessor({
+    enabled: false,
+    apiBase: '/api/v1/timeline',
+    projectIds: [],
   });
   reinitHostBase(import.meta.env.VITE_DEN_HOST_API_BASE ?? '/den-host-api');
 }
@@ -164,3 +179,16 @@ export {
   postFleetOpsActionRun,
   getFleetOpsRun,
 } from './gateway/client';
+
+// Timeline API
+export type {
+  TimelineSuccessorConfig,
+  TimelineChannelProjection,
+  ListTimelineItemsOpts,
+} from './timeline/client';
+export {
+  listChannelTimelineItems,
+  timelineSuccessorEnabledForChannel,
+  timelineSuccessorEnabledForChannelId,
+  timelineChannelStreamUrl,
+} from './timeline/client';

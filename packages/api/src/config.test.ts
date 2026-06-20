@@ -46,8 +46,13 @@ describe('getConfig - no runtime config (404)', () => {
     expect(config.denChannelsApiBase).toBe('/api');
     expect(config.denHostApiBase).toBe('/den-host-api');
     expect(config.conversationSuccessorReadsEnabled).toBe(false);
+    expect(config.conversationSuccessorWritesEnabled).toBe(false);
     expect(config.conversationSuccessorApiBase).toBe('/api/v1/conversation');
     expect(config.conversationSuccessorReadProjectIds).toEqual([]);
+    expect(config.conversationSuccessorWriteProjectIds).toEqual([]);
+    expect(config.timelineSuccessorEnabled).toBe(false);
+    expect(config.timelineSuccessorApiBase).toBe('/api/v1/timeline');
+    expect(config.timelineSuccessorProjectIds).toEqual([]);
     expect(config.appBasePath).toBe('/');
     expect(config.environmentName).toBe('development');
   });
@@ -57,8 +62,13 @@ describe('getConfig - no runtime config (404)', () => {
     vi.stubEnv('VITE_DEN_CHANNELS_API_BASE', '/env-channels-api/');
     vi.stubEnv('VITE_DEN_HOST_API_BASE', '/env-host-api/');
     vi.stubEnv('VITE_CONVERSATION_SUCCESSOR_READS_ENABLED', 'true');
+    vi.stubEnv('VITE_CONVERSATION_SUCCESSOR_WRITES_ENABLED', 'true');
     vi.stubEnv('VITE_CONVERSATION_SUCCESSOR_API_BASE', '/env-conversation/');
     vi.stubEnv('VITE_CONVERSATION_SUCCESSOR_READ_PROJECT_IDS', 'den-web, pi-crew');
+    vi.stubEnv('VITE_CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS', 'den-web');
+    vi.stubEnv('VITE_TIMELINE_SUCCESSOR_ENABLED', 'true');
+    vi.stubEnv('VITE_TIMELINE_SUCCESSOR_API_BASE', '/env-timeline/');
+    vi.stubEnv('VITE_TIMELINE_SUCCESSOR_PROJECT_IDS', 'den-web, den-services');
 
     const config = await getConfig();
 
@@ -66,8 +76,13 @@ describe('getConfig - no runtime config (404)', () => {
     expect(config.denChannelsApiBase).toBe('/env-channels-api');
     expect(config.denHostApiBase).toBe('/env-host-api');
     expect(config.conversationSuccessorReadsEnabled).toBe(true);
+    expect(config.conversationSuccessorWritesEnabled).toBe(true);
     expect(config.conversationSuccessorApiBase).toBe('/env-conversation');
     expect(config.conversationSuccessorReadProjectIds).toEqual(['den-web', 'pi-crew']);
+    expect(config.conversationSuccessorWriteProjectIds).toEqual(['den-web']);
+    expect(config.timelineSuccessorEnabled).toBe(true);
+    expect(config.timelineSuccessorApiBase).toBe('/env-timeline');
+    expect(config.timelineSuccessorProjectIds).toEqual(['den-web', 'den-services']);
     expect(config.appBasePath).toBe('/');
     expect(config.environmentName).toBe('development');
   });
@@ -95,8 +110,13 @@ describe('getConfig - with runtime config loaded', () => {
         denChannelsApiBase: '/custom-channels-api',
         denHostApiBase: '/custom-host-api',
         conversationSuccessorReadsEnabled: true,
+        conversationSuccessorWritesEnabled: true,
         conversationSuccessorApiBase: '/custom-conversation/',
         conversationSuccessorReadProjectIds: ['den-web', 'pilot-canary-2917'],
+        conversationSuccessorWriteProjectIds: 'den-web,pilot-canary-2917',
+        timelineSuccessorEnabled: true,
+        timelineSuccessorApiBase: '/custom-timeline/',
+        timelineSuccessorProjectIds: ['den-web'],
         appBasePath: '/den-web/',
         environmentName: 'test-env',
       }),
@@ -109,8 +129,13 @@ describe('getConfig - with runtime config loaded', () => {
     expect(config.denChannelsApiBase).toBe('/custom-channels-api');
     expect(config.denHostApiBase).toBe('/custom-host-api');
     expect(config.conversationSuccessorReadsEnabled).toBe(true);
+    expect(config.conversationSuccessorWritesEnabled).toBe(true);
     expect(config.conversationSuccessorApiBase).toBe('/custom-conversation');
     expect(config.conversationSuccessorReadProjectIds).toEqual(['den-web', 'pilot-canary-2917']);
+    expect(config.conversationSuccessorWriteProjectIds).toEqual(['den-web', 'pilot-canary-2917']);
+    expect(config.timelineSuccessorEnabled).toBe(true);
+    expect(config.timelineSuccessorApiBase).toBe('/custom-timeline');
+    expect(config.timelineSuccessorProjectIds).toEqual(['den-web']);
     expect(config.appBasePath).toBe('/den-web');
     expect(config.environmentName).toBe('test-env');
   });
