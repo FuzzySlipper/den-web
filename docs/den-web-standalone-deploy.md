@@ -44,10 +44,18 @@ management.
 
 ## Recommended deploy path
 
-Run the durable deploy script from the repo root on `den-srv`:
+On first deploy, clone the repo under the deploy user:
 
 ```bash
-cd /home/dev/den-web
+sudo install -d -o agent -g agent -m 0755 /home/agent/den-web
+sudo -u agent git clone git@github.com:FuzzySlipper/den-web.git /home/agent/den-web
+```
+
+Then run the durable deploy script from the repo root on `den-srv`:
+
+```bash
+cd /home/agent/den-web
+git pull --ff-only origin main
 npm run deploy:den-srv
 ```
 
@@ -185,7 +193,7 @@ deployment process because it lacks atomic release switching and automatic
 rollback.
 
 ```bash
-cd /home/dev/den-web
+cd /home/agent/den-web
 npm ci
 npm run check:all
 npm test
@@ -197,7 +205,7 @@ cp ops/den-web-static-server.mjs /data/services/den-web/den-web-static-server.mj
 sudo systemctl restart den-web.service
 ```
 
-After any manual copy, run `node /home/dev/den-web/ops/smoke-den-web.mjs`
+After any manual copy, run `node /home/agent/den-web/ops/smoke-den-web.mjs`
 with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 
 ## Environment reference
