@@ -432,7 +432,16 @@ function startServer() {
   return server;
 }
 
-if (process.argv[1] && import.meta.url === url.pathToFileURL(path.resolve(process.argv[1])).href) {
+function isMainModule() {
+  if (!process.argv[1]) return false;
+  try {
+    return fs.realpathSync(process.argv[1]) === fs.realpathSync(url.fileURLToPath(import.meta.url));
+  } catch {
+    return path.resolve(process.argv[1]) === url.fileURLToPath(import.meta.url);
+  }
+}
+
+if (isMainModule()) {
   startServer();
 }
 

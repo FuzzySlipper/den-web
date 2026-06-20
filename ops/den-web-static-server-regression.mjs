@@ -104,6 +104,52 @@ async function startStaticServer(targetUrl, t) {
   return { baseUrl, child, getLogs: () => ({ stdout, stderr }) };
 }
 
+test('static server starts when launched through a deploy symlink', async (t) => {
+  const staticRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'den-web-static-root-'));
+  const binRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'den-web-static-bin-'));
+  await fs.writeFile(path.join(staticRoot, 'index.html'), '<!doctype html><title>den-web-test</title>');
+  await fs.writeFile(path.join(staticRoot, 'den-web-config.json'), JSON.stringify({ denCoreApiBase: '/den-core-api', denChannelsApiBase: '/api', denHostApiBase: '/den-host-api' }));
+  const symlinkPath = path.join(binRoot, 'den-web-static-server.mjs');
+  await fs.symlink(path.resolve('ops/den-web-static-server.mjs'), symlinkPath);
+
+  const portProbe = http.createServer();
+  const port = await listen(portProbe);
+  await new Promise(resolve => portProbe.close(resolve));
+
+  const child = spawn(process.execPath, [symlinkPath], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      HOST: '127.0.0.1',
+      PORT: String(port),
+      STATIC_ROOT: staticRoot,
+      DEN_WEB_CONFIG_PATH: path.join(staticRoot, 'den-web-config.json'),
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  t.after(async () => {
+    if (child.exitCode === null) {
+      child.kill('SIGTERM');
+      await Promise.race([
+        once(child, 'exit'),
+        new Promise(resolve => setTimeout(resolve, 1_000)),
+      ]);
+      if (child.exitCode === null) {
+        child.kill('SIGKILL');
+      }
+    }
+    await fs.rm(staticRoot, { recursive: true, force: true });
+    await fs.rm(binRoot, { recursive: true, force: true });
+  });
+
+  const baseUrl = `http://127.0.0.1:${port}`;
+  await waitForReady(baseUrl, child);
+  const response = await request(`${baseUrl}/den-web-config.json`);
+  assert.equal(response.statusCode, 200);
+  assert.equal(child.exitCode, null);
+});
+
 test('static proxy returns bounded 502 before response headers are sent', async (t) => {
   const targetPort = 9; // Discard service is almost always closed in CI/dev; connection should fail before headers.
   const { baseUrl, child } = await startStaticServer(`http://127.0.0.1:${targetPort}`, t);
