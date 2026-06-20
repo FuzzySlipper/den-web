@@ -28,9 +28,12 @@ eslint_json = Path(sys.argv[1])
 ownership = tomllib.loads((ROOT / "governance" / "ownership.toml").read_text())
 guard = ownership["guards"]["function_complexity"]
 baseline_path = ROOT / guard.get("baseline_file", "governance/complexity-baseline.json")
+exception_doc = "governance/warning-exceptions.md#complexity-baseline-exceptions"
 baseline = {}
 if baseline_path.exists():
-    baseline = json.loads(baseline_path.read_text()).get("files", {})
+    baseline_config = json.loads(baseline_path.read_text())
+    baseline = baseline_config.get("files", {})
+    exception_doc = baseline_config.get("exception_doc", exception_doc)
 
 tracked_rules = {"max-lines-per-function", "sonarjs/cognitive-complexity"}
 current: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -48,7 +51,7 @@ for result in results:
             current[rel][rule_id] += 1
 
 failures: list[str] = []
-warnings: list[str] = []
+documented_exception_count = 0
 
 for rel, rules in sorted(current.items()):
     baseline_rules = baseline.get(rel, {})
@@ -57,15 +60,15 @@ for rel, rules in sorted(current.items()):
         if count > allowed:
             failures.append(f"FAIL: {rel} has {count} {rule_id} violations (baseline {allowed})")
         elif count:
-            warnings.append(f"WARN: {rel} has {count} baseline {rule_id} violation(s); clear in Phase 2/5")
+            documented_exception_count += count
 
 for rel, rules in sorted(baseline.items()):
     for rule_id, allowed in sorted(rules.items()):
         if current.get(rel, {}).get(rule_id, 0) == 0:
-            warnings.append(f"WARN: {rel} cleared baseline {rule_id}; remove it from governance/complexity-baseline.json")
+            failures.append(f"FAIL: {rel} cleared documented {rule_id} exception; remove it from governance/complexity-baseline.json")
 
-for warning in warnings:
-    print(warning)
+if documented_exception_count:
+    print(f"INFO: {documented_exception_count} documented complexity exception(s) remain; see {exception_doc}")
 
 if failures:
     for failure in failures:

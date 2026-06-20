@@ -2,6 +2,15 @@ import type { NotificationItem } from './notificationFeed';
 
 const PENDING_NOTIFICATION_CUE_IDS_KEY = 'den-web-notification-pending-cue-ids:v1';
 
+function getBrowserLocalStorage(): Storage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export interface NotificationBellCue {
   ids: string[];
   count: number;
@@ -57,7 +66,7 @@ export function notificationCueLabel(cue: NotificationBellCue | null): string | 
 
 function readStoredIdArray(): string[] {
   try {
-    const raw = localStorage.getItem(PENDING_NOTIFICATION_CUE_IDS_KEY);
+    const raw = getBrowserLocalStorage()?.getItem(PENDING_NOTIFICATION_CUE_IDS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
@@ -68,11 +77,13 @@ function readStoredIdArray(): string[] {
 
 function writeStoredIdArray(ids: string[]): void {
   try {
+    const storage = getBrowserLocalStorage();
+    if (!storage) return;
     if (ids.length === 0) {
-      localStorage.removeItem(PENDING_NOTIFICATION_CUE_IDS_KEY);
+      storage.removeItem(PENDING_NOTIFICATION_CUE_IDS_KEY);
       return;
     }
-    localStorage.setItem(PENDING_NOTIFICATION_CUE_IDS_KEY, JSON.stringify(ids));
+    storage.setItem(PENDING_NOTIFICATION_CUE_IDS_KEY, JSON.stringify(ids));
   } catch {
     // Storage is only a cross-window UI cue bridge; never block notification rendering.
   }

@@ -74,9 +74,18 @@ export interface NotificationFeedResult {
 
 const CACHE_KEY = 'den-web-notification-read-cache';
 
+function getBrowserLocalStorage(): Storage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function loadCachedReadIds(): Set<string> {
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
+    const raw = getBrowserLocalStorage()?.getItem(CACHE_KEY);
     if (!raw) return new Set();
     return new Set(JSON.parse(raw));
   } catch {
@@ -86,7 +95,7 @@ function loadCachedReadIds(): Set<string> {
 
 function saveCachedReadIds(ids: Set<string>): void {
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(Array.from(ids)));
+    getBrowserLocalStorage()?.setItem(CACHE_KEY, JSON.stringify(Array.from(ids)));
   } catch {
     // Silently ignore storage errors (quota, private browsing)
   }

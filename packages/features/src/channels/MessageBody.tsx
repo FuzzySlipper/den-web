@@ -1,5 +1,6 @@
 import { parseMessageBodySegments } from '@den-web/models/channels';
-import { ClarifyCard, parseClarifyBody } from './ClarifyCard';
+import { ClarifyCard } from './ClarifyCard';
+import { parseClarifyBody } from './clarifyBody';
 
 interface Props {
   body: string;

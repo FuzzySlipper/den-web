@@ -98,21 +98,31 @@ function mockAgentWorkComplete(overrides: Record<string, unknown> = {}): Record<
   });
 }
 
+function createLocalStorageMock() {
+  const store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => { store[key] = value; },
+    clear: () => { for (const key in store) delete store[key]; },
+    removeItem: (key: string) => { delete store[key]; },
+    length: 0,
+    key: () => null,
+  };
+}
+
+function stubBrowserStorage(): void {
+  const storage = createLocalStorageMock();
+  vi.stubGlobal('localStorage', storage);
+  vi.stubGlobal('window', { localStorage: storage });
+}
+
 // ---------------------------------------------------------------------------
 // Feed adapter tests
 // ---------------------------------------------------------------------------
 
 describe('notificationFeed adapter', () => {
   beforeEach(() => {
-    const store: Record<string, string> = {};
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => store[key] ?? null,
-      setItem: (key: string, value: string) => { store[key] = value; },
-      clear: () => { for (const key in store) delete store[key]; },
-      removeItem: (key: string) => { delete store[key]; },
-      length: 0,
-      key: () => null,
-    });
+    stubBrowserStorage();
     clearLocalReadState();
   });
 
@@ -470,15 +480,7 @@ describe('notificationFeed adapter', () => {
 
 describe('notificationBell helpers', () => {
   beforeEach(() => {
-    const store: Record<string, string> = {};
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => store[key] ?? null,
-      setItem: (key: string, value: string) => { store[key] = value; },
-      clear: () => { for (const key in store) delete store[key]; },
-      removeItem: (key: string) => { delete store[key]; },
-      length: 0,
-      key: () => null,
-    });
+    stubBrowserStorage();
   });
 
   afterEach(() => {

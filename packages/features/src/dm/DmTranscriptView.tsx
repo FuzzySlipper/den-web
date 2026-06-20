@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DirectConversation, DirectConversationEntry } from '@den-web/api/channels/types';
 import {
   listDirectConversationEntries,
@@ -56,18 +56,18 @@ export function DmTranscriptView({ conversation, onBack, readIdentity }: Props) 
     { interval: 5000 },
   );
 
-  const entries = sortEntriesChronological(entriesResp?.entries ?? []);
+  const entries = useMemo(() => sortEntriesChronological(entriesResp?.entries ?? []), [entriesResp?.entries]);
+  const latestId = useMemo(() => latestEntryId(entries), [entries]);
 
   // Mark read on mount and when new entries arrive
   useEffect(() => {
-    const latestId = latestEntryId(entries);
     if (latestId) {
       updateReadCursor(conversation.id, {
         readerIdentity: reader,
         lastReadEntryId: latestId,
       }).catch(() => { /* best-effort */ });
     }
-  }, [conversation.id, reader, entries.length > 0 ? entries[entries.length - 1]?.id : null]);
+  }, [conversation.id, latestId, reader]);
 
   // Auto-scroll to bottom on new entries
   useEffect(() => {

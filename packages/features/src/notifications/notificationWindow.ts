@@ -16,6 +16,15 @@ export interface NotificationWindowFocusResult {
 
 let notificationWindowRef: Window | null = null;
 
+function getBrowserLocalStorage(): Storage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function notificationPanelUrl(): string {
   return `${window.location.origin}${window.location.pathname}#/notification-panel`;
 }
@@ -23,7 +32,7 @@ function notificationPanelUrl(): string {
 function markNotificationWindowArmed(win: Window | null): void {
   notificationWindowRef = win;
   try {
-    localStorage.setItem(NOTIFICATION_WINDOW_ARMED_KEY, 'true');
+    getBrowserLocalStorage()?.setItem(NOTIFICATION_WINDOW_ARMED_KEY, 'true');
   } catch {
     // Private browsing/quota failures should not break the explicit launcher.
   }
@@ -32,7 +41,7 @@ function markNotificationWindowArmed(win: Window | null): void {
 export function isNotificationPanelWindowArmed(): boolean {
   if (notificationWindowRef && !notificationWindowRef.closed) return true;
   try {
-    return localStorage.getItem(NOTIFICATION_WINDOW_ARMED_KEY) === 'true';
+    return getBrowserLocalStorage()?.getItem(NOTIFICATION_WINDOW_ARMED_KEY) === 'true';
   } catch {
     return false;
   }

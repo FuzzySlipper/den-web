@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from 'react';
-import { getCachedConfig } from '@den-web/api/config';
 import { getPiCrewDiagnosticsOverview, postPiCrewControl, type PiCrewControlResponse, type PiCrewDiagnosticsConfig, type PiCrewDiagnosticsOverview, type PiCrewSessionProjection } from '@den-web/api/piCrewDiagnostics';
 import { useLiveData } from '@den-web/ui/hooks/useLiveData';
 import { formatTimeAgo } from '@den-web/shared';
@@ -15,67 +14,11 @@ import {
   validateControlRequest,
   workerSessions,
   type PiCrewGlobalControl,
-  type PiCrewAdminAuthMode,
 } from '@den-web/models/piCrew/piCrewDiagnostics';
-
-const STORAGE_KEY = 'den-web.piCrewDiagnostics.config';
-const LEGACY_LOCAL_ADMIN_BASES = new Set([
-  'http://127.0.0.1:9237',
-  'http://localhost:9237',
-  // Current Pi Crew admin target behind Den Web. The service does not answer
-  // browser CORS preflights directly, so the browser must use the same-origin
-  // Den Web proxy instead of this LAN URL.
-  'http://192.168.1.22:9237',
-]);
-
-interface StoredConfig { baseUrl: string; operator: string; authMode: PiCrewAdminAuthMode }
-
-function defaultPiCrewAdminBaseUrl(): string {
-  return getCachedConfig()?.piCrewAdminApiBase ?? import.meta.env?.VITE_PI_CREW_ADMIN_API_BASE ?? '/pi-crew-admin-api';
-}
-
-export function normalizeStoredPiCrewAdminBaseUrl(value: unknown, fallback = '/pi-crew-admin-api'): string {
-  if (typeof value !== 'string') return fallback;
-  const trimmed = value.trim().replace(/\/+$/, '');
-  if (!trimmed) return fallback;
-  return LEGACY_LOCAL_ADMIN_BASES.has(trimmed) ? fallback : trimmed;
-}
-
-function readStoredConfig(): StoredConfig {
-  const defaultBaseUrl = defaultPiCrewAdminBaseUrl();
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<StoredConfig> & { bearerToken?: unknown };
-      const authMode: PiCrewAdminAuthMode = parsed.authMode === 'none' ? 'none' : 'bearer';
-      const sanitized: StoredConfig = {
-        baseUrl: normalizeStoredPiCrewAdminBaseUrl(parsed.baseUrl, defaultBaseUrl),
-        operator: typeof parsed.operator === 'string' ? parsed.operator : 'patch',
-        authMode,
-      };
-      if (parsed.bearerToken !== undefined || sanitized.baseUrl !== parsed.baseUrl) persistConfig(sanitized);
-      return sanitized;
-    }
-  } catch {
-    // Ignore storage failures; the panel remains manually configurable.
-  }
-  return {
-    baseUrl: defaultBaseUrl,
-    operator: 'patch',
-    authMode: 'bearer',
-  };
-}
-
-function persistConfig(config: StoredConfig): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  } catch {
-    // Best effort only.
-  }
-}
+import { persistPiCrewDiagnosticsConfig, readStoredPiCrewDiagnosticsConfig, type StoredPiCrewDiagnosticsConfig } from './piCrewDiagnosticsConfig';
 
 export function PiCrewDiagnosticsPanel() {
-  const [storedConfig, setStoredConfig] = useState(readStoredConfig);
+  const [storedConfig, setStoredConfig] = useState(readStoredPiCrewDiagnosticsConfig);
   const [bearerToken, setBearerToken] = useState('');
   const [reason, setReason] = useState('operator-requested safe dry-run from Den Web');
   const [idempotencyKey, setIdempotencyKey] = useState(() => `den-web-${Date.now()}`);
@@ -98,10 +41,10 @@ export function PiCrewDiagnosticsPanel() {
   );
   const { data: overview, loading, error, refresh } = useLiveData<PiCrewDiagnosticsOverview | null>(fetchOverview, { interval: 10000 });
 
-  const updateConfig = (patch: Partial<StoredConfig>) => {
+  const updateConfig = (patch: Partial<StoredPiCrewDiagnosticsConfig>) => {
     setStoredConfig(current => {
       const next = { ...current, ...patch };
-      persistConfig(next);
+      persistPiCrewDiagnosticsConfig(next);
       return next;
     });
   };

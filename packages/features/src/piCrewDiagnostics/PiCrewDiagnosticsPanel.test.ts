@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeStoredPiCrewAdminBaseUrl } from './PiCrewDiagnosticsPanel';
+import { normalizeStoredPiCrewAdminBaseUrl } from './piCrewDiagnosticsConfig';
 
 describe('normalizeStoredPiCrewAdminBaseUrl', () => {
   it('migrates legacy browser-local Pi Crew defaults to the same-origin proxy', () => {

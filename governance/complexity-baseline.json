@@ -1,6 +1,7 @@
 {
   "mode": "baseline_warn_only",
   "generated_for": "phase-1-governance",
+  "exception_doc": "governance/warning-exceptions.md#complexity-baseline-exceptions",
   "files": {
     "packages/shell/src/App.tsx": {
       "max-lines-per-function": 1
@@ -16,7 +17,7 @@
       "max-lines-per-function": 1
     },
     "packages/features/src/agents/AgentsOverviewView.tsx": {
-      "max-lines-per-function": 2
+      "max-lines-per-function": 1
     },
     "packages/features/src/agents/AssignmentTraceView.tsx": {
       "max-lines-per-function": 1

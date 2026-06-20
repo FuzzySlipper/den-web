@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   appendHistory,
   clearHistory,
@@ -95,29 +95,45 @@ describe('appendHistory', () => {
 });
 
 // ---------------------------------------------------------------------------
-// localStorage roundtrip (only runs when localStorage is available)
+// localStorage roundtrip
 // ---------------------------------------------------------------------------
 
-const localStorageAvailable =
-  typeof window !== 'undefined' &&
-  typeof window.localStorage !== 'undefined' &&
-  typeof window.localStorage.setItem === 'function';
+function createLocalStorageMock() {
+  const store = new Map<string, string>();
 
-function lscar() {
-  try {
-    window.localStorage.setItem('__vitest_ls_check', '1');
-    window.localStorage.removeItem('__vitest_ls_check');
-    return true;
-  } catch {
-    return false;
-  }
+  return {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      store.set(key, String(value));
+    },
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
+    clear: () => {
+      store.clear();
+    },
+    key: (index: number) => Array.from(store.keys())[index] ?? null,
+    get length() {
+      return store.size;
+    },
+  };
 }
 
-const canTestLocalStorage = localStorageAvailable && lscar();
+describe('localStorage roundtrip', () => {
+  let origWindow: unknown;
 
-describe.runIf(canTestLocalStorage)('localStorage roundtrip', () => {
   beforeEach(() => {
+    origWindow = (globalThis as Record<string, unknown>).window;
+    (globalThis as Record<string, unknown>).window = {
+      localStorage: createLocalStorageMock(),
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    };
     window.localStorage.removeItem(storageKey());
+  });
+
+  afterEach(() => {
+    (globalThis as Record<string, unknown>).window = origWindow;
   });
 
   it('returns empty array when no stored data', () => {

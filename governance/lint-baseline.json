@@ -1,15 +1,5 @@
 {
   "mode": "baseline_warn_only",
   "generated_for": "phase-1-governance",
-  "files": {
-    "packages/features/src/channels/ClarifyCard.tsx": {
-      "react-refresh/only-export-components": 1
-    },
-    "packages/features/src/dm/DmTranscriptView.tsx": {
-      "react-hooks/exhaustive-deps": 2
-    },
-    "packages/features/src/piCrewDiagnostics/PiCrewDiagnosticsPanel.tsx": {
-      "react-refresh/only-export-components": 1
-    }
-  }
+  "files": {}
 }
