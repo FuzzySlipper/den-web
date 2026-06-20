@@ -56,7 +56,7 @@ async function waitForReady(baseUrl, child) {
   throw lastError ?? new Error('static server did not become ready');
 }
 
-async function startStaticServer(targetUrl, t) {
+async function startStaticServer(targetUrl, t, envOverrides = {}) {
   const staticRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'den-web-static-root-'));
   await fs.writeFile(path.join(staticRoot, 'index.html'), '<!doctype html><title>den-web-test</title>');
   await fs.writeFile(path.join(staticRoot, 'den-web-config.json'), JSON.stringify({ denCoreApiBase: '/den-core-api', denChannelsApiBase: '/api', denHostApiBase: '/den-host-api' }));
@@ -76,6 +76,7 @@ async function startStaticServer(targetUrl, t) {
       DEN_CORE_TARGET: targetUrl,
       DEN_CHANNELS_TARGET: targetUrl,
       DEN_HOST_TARGET: targetUrl,
+      ...envOverrides,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -181,6 +182,32 @@ test('Den Host FleetOps proxy rewrites /den-host-api and retires stale Gateway r
   const retiredResponse = await request(`${baseUrl}/den-gateway-api/fleet-ops`);
   assert.equal(retiredResponse.statusCode, 410);
   assert.match(retiredResponse.body, /den_gateway_api_retired/);
+});
+
+test('Observation reads use the Gateway observation read token, not the default service token', async (t) => {
+  const observed = [];
+  const upstream = http.createServer((req, res) => {
+    observed.push({ url: req.url, authorization: req.headers.authorization ?? null });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ events: [] }));
+  });
+  const upstreamPort = await listen(upstream);
+  t.after(() => new Promise(resolve => upstream.close(resolve)));
+
+  const { baseUrl } = await startStaticServer(`http://127.0.0.1:${upstreamPort}`, t, {
+    DEN_GATEWAY_SERVICE_TOKEN: 'default-service-token',
+    DEN_GATEWAY_OBSERVATION_READ_TOKEN: 'observation-read-token',
+  });
+
+  const observationResponse = await request(`${baseUrl}/api/v1/observation/lane?limit=1`);
+  assert.equal(observationResponse.statusCode, 200);
+  const channelsResponse = await request(`${baseUrl}/api/channels?limit=1`);
+  assert.equal(channelsResponse.statusCode, 200);
+
+  assert.deepEqual(observed, [
+    { url: '/api/v1/observation/lane?limit=1', authorization: 'Bearer observation-read-token' },
+    { url: '/api/channels?limit=1', authorization: 'Bearer default-service-token' },
+  ]);
 });
 
 test('static proxy survives upstream reset after response headers have been sent', async (t) => {

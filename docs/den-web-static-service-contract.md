@@ -49,6 +49,7 @@ The browser app must use explicit configured API bases and must not infer backen
 | --- | --- | --- | --- | --- |
 | Den Core | `den-core` | `/den-core-api` | `/den-core-api/health`, `/den-core-api/api/projects` | Canonical tasks/docs/messages/workflow REST facade. Current live health returns commit/version metadata. |
 | Den Channels | `den-channels` | `/api` | `/api/channels?limit=1` | Channel/chat/membership/reaction/activity APIs. The current extracted app may temporarily keep this base for compatibility. |
+| Observation | `den-services` Gateway route | `/api/v1/observation` | `/api/v1/observation/lane?limit=1` | Canonical display-only agent activity breadcrumbs. The static server injects `DEN_GATEWAY_OBSERVATION_READ_TOKEN` for read routes; browser code must not call Observation loopback directly. |
 | Gateway-visible Channels helpers | `den-channels` | `/api/gateway` | `/api/gateway/memberships?projectId=den-web` | Direct-agent message, membership, test-wake, and delivery-observability helpers exposed through Channels. |
 | Den Host FleetOps APIs | `den-host` | `/den-host-api` | `/den-host-api/fleet-ops` | Bounded Hermes fleet status/actions. The static service rewrites `/den-host-api/*` to Den Host's internal `/api/host/*` namespace and does not consume Channels' `/api/gateway/*` helpers. |
 | Agents overview | `den-channels` aggregate over Gateway/Core | `/api/agents` | `/api/agents/overview` | Read-only operator overview; must degrade gracefully if Gateway data is unavailable. |

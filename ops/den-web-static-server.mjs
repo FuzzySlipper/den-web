@@ -73,6 +73,7 @@ const DEN_CHANNELS_TARGET = GATEWAY_ENV.DEN_CHANNELS_TARGET ?? process.env.DEN_C
 const DEN_HOST_TARGET = process.env.DEN_HOST_TARGET ?? 'http://127.0.0.1:5400';
 const PI_CREW_ADMIN_TARGET = process.env.PI_CREW_ADMIN_TARGET ?? 'http://127.0.0.1:9237';
 const DEN_GATEWAY_SERVICE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_SERVICE_TOKEN ?? process.env.DEN_GATEWAY_SERVICE_TOKEN ?? '';
+const DEN_GATEWAY_OBSERVATION_READ_TOKEN = GATEWAY_ENV.DEN_GATEWAY_OBSERVATION_READ_TOKEN ?? process.env.DEN_GATEWAY_OBSERVATION_READ_TOKEN ?? '';
 const CONFIG_PATH      = process.env.DEN_WEB_CONFIG_PATH ?? path.join(STATIC_ROOT, 'den-web-config.json');
 const BUILD_SENTINEL_PATH = process.env.DEN_WEB_BUILD_SENTINEL ?? path.join(STATIC_ROOT, 'den-web-build.json');
 const CACHE_MAX_AGE    = parseInt(process.env.CACHE_MAX_AGE_SECONDS ?? '31536000', 10);
@@ -375,10 +376,13 @@ function handleRequest(req, res) {
 
   // ── Channels/Gateway/Agents API proxy (through gateway with service token) ──
   if (requestPath.startsWith('/api/')) {
-    // Inject gateway service token for outbound proxy requests.
+    // Inject gateway tokens for outbound proxy requests.
     // Browsers must not receive the token, so it's added server-side only.
-    if (DEN_GATEWAY_SERVICE_TOKEN) {
-      req.headers['authorization'] = `Bearer ${DEN_GATEWAY_SERVICE_TOKEN}`;
+    const gatewayToken = requestPath.startsWith('/api/v1/observation/')
+      ? DEN_GATEWAY_OBSERVATION_READ_TOKEN
+      : DEN_GATEWAY_SERVICE_TOKEN;
+    if (gatewayToken) {
+      req.headers['authorization'] = `Bearer ${gatewayToken}`;
     }
     return proxyRequest(DEN_CHANNELS_TARGET, req, res, () => requestPath + requestSearch);
   }

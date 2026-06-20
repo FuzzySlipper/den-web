@@ -8,9 +8,11 @@ import type {
   ChannelMessage,
   ChannelReactionSummary,
   DirectAgentEventsResponse,
+  ObservationLaneResponse,
 } from '@den-web/api/types';
 import {
   groupActivityEventsForChannelMessages,
+  observationEventsToChannelActivityEvents,
   piCrewAgentWorkActivityEventsFromLifecycleEvents,
   piCrewDelegationActivityEventsFromMessages,
 } from '@den-web/models/channels';
@@ -45,6 +47,7 @@ export function useChannelMessageDerivations({
   effectiveProjectAttributionFilter,
   messageSearchQuery,
   messages,
+  observationLane,
   reactions,
 }: {
   activeChannel: Channel | null;
@@ -55,6 +58,7 @@ export function useChannelMessageDerivations({
   effectiveProjectAttributionFilter: string;
   messageSearchQuery: string;
   messages: ChannelMessage[] | null | undefined;
+  observationLane: ObservationLaneResponse | null | undefined;
   reactions: ChannelReactionSummary[] | null | undefined;
 }) {
   const sortedMessages = useMemo(() => {
@@ -71,6 +75,17 @@ export function useChannelMessageDerivations({
       ? (activityEvents ?? []).filter(event => messageProjectAttribution(event) === effectiveProjectAttributionFilter)
       : (activityEvents ?? []),
     [activityEvents, effectiveProjectAttributionFilter],
+  );
+  const observationAvailable = observationLane != null;
+  const observationActivityEvents = useMemo(
+    () => activeChannel
+      ? observationEventsToChannelActivityEvents(observationLane?.events, {
+        channelId: activeChannel.id,
+        projectId: effectiveProjectAttributionFilter || activeChannel.projectId,
+        hideDebug: true,
+      })
+      : [],
+    [activeChannel, effectiveProjectAttributionFilter, observationLane],
   );
   const scopedDirectAgentEvents = useMemo(
     () => effectiveProjectAttributionFilter
@@ -90,14 +105,17 @@ export function useChannelMessageDerivations({
       : agentWorkEvents,
     [agentWorkEvents, effectiveProjectAttributionFilter],
   );
-  const piCrewDelegationActivityEvents = useMemo(() => isMessageSearchActive ? [] : piCrewDelegationActivityEventsFromMessages(displayedMessages), [displayedMessages, isMessageSearchActive]);
+  const piCrewDelegationActivityEvents = useMemo(
+    () => isMessageSearchActive || observationAvailable ? [] : piCrewDelegationActivityEventsFromMessages(displayedMessages),
+    [displayedMessages, isMessageSearchActive, observationAvailable],
+  );
   const piCrewAgentWorkActivityEvents = useMemo(
-    () => isMessageSearchActive ? [] : piCrewAgentWorkActivityEventsFromLifecycleEvents(dedupeAgentWorkLifecycleEvents(scopedAgentWorkEvents?.items ?? [])),
-    [isMessageSearchActive, scopedAgentWorkEvents],
+    () => isMessageSearchActive || observationAvailable ? [] : piCrewAgentWorkActivityEventsFromLifecycleEvents(dedupeAgentWorkLifecycleEvents(scopedAgentWorkEvents?.items ?? [])),
+    [isMessageSearchActive, observationAvailable, scopedAgentWorkEvents],
   );
   const groupedActivityEvents = useMemo(
-    () => groupActivityEventsForChannelMessages(displayedMessages, isMessageSearchActive ? [] : [...scopedActivityEvents, ...piCrewDelegationActivityEvents, ...piCrewAgentWorkActivityEvents]),
-    [displayedMessages, isMessageSearchActive, scopedActivityEvents, piCrewDelegationActivityEvents, piCrewAgentWorkActivityEvents],
+    () => groupActivityEventsForChannelMessages(displayedMessages, isMessageSearchActive ? [] : [...scopedActivityEvents, ...observationActivityEvents, ...piCrewDelegationActivityEvents, ...piCrewAgentWorkActivityEvents]),
+    [displayedMessages, isMessageSearchActive, scopedActivityEvents, observationActivityEvents, piCrewDelegationActivityEvents, piCrewAgentWorkActivityEvents],
   );
   const reactionsByMessageId = useMemo(() => {
     const grouped = new Map<number, ChannelReactionSummary[]>();
@@ -110,7 +128,7 @@ export function useChannelMessageDerivations({
     groupedActivityEvents,
     isMessageSearchActive,
     reactionsByMessageId,
-    scopedActivityEvents,
+    scopedActivityEvents: [...scopedActivityEvents, ...observationActivityEvents],
     scopedAgentWorkCurrent: scopedAgentWorkCurrent ?? null,
     scopedAgentWorkEvents: scopedAgentWorkEvents ?? null,
     scopedDirectAgentEvents,

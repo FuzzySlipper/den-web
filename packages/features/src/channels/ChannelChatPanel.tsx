@@ -74,6 +74,8 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     members,
     membershipsState,
     messagesState,
+    observationActiveWorkState,
+    observationLaneState,
     reactionsByMessageId,
     reactionsState,
     refreshChannels,
@@ -101,6 +103,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
 
   const { loading: messagesLoading, error: messagesError, refresh: refreshMessages } = messagesState;
   const { loading: activityLoading, error: activityError, refresh: refreshActivityEvents } = activityState;
+  const { loading: observationLaneLoading, error: observationLaneError, refresh: refreshObservationLane } = observationLaneState;
   const agentWorkCurrentLoading = agentWorkCurrentState.loading;
   const agentWorkCurrentError = agentWorkCurrentState.error;
   const refreshAgentWorkCurrent = agentWorkCurrentState.refresh;
@@ -120,8 +123,9 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     refreshAgentWorkCurrent();
     refreshAgentWorkEvents();
     refreshActivityEvents();
+    refreshObservationLane();
     refreshDirectAgentEvents();
-  }, [refreshActivityEvents, refreshAgentWorkCurrent, refreshAgentWorkEvents, refreshDirectAgentEvents]);
+  }, [refreshActivityEvents, refreshAgentWorkCurrent, refreshAgentWorkEvents, refreshDirectAgentEvents, refreshObservationLane]);
 
   const { onComposerHotkey, bindings } = useComposerHotkeys({
     sendMode,
@@ -170,8 +174,8 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
   const disabledReason = channelError
     ? 'Channel unavailable. Check den-channels API health.'
     : null;
-  const agentWorkLoading = agentWorkCurrentLoading || agentWorkEventsLoading || directAgentEventsLoading || activityLoading;
-  const agentWorkError = agentWorkCurrentError ?? agentWorkEventsError ?? directAgentEventsError ?? null;
+  const agentWorkLoading = agentWorkCurrentLoading || agentWorkEventsLoading || directAgentEventsLoading || activityLoading || observationLaneLoading || observationActiveWorkState.loading;
+  const agentWorkError = agentWorkCurrentError ?? agentWorkEventsError ?? directAgentEventsError ?? observationLaneError ?? observationActiveWorkState.error ?? null;
   const identityRequired = normalizedSenderIdentity.length === 0;
   const directModeRequiresTarget = sendMode === 'direct' && !selectedTarget;
   const isComposerDisabled = !activeChannel || sending || Boolean(disabledReason) || identityRequired || directModeRequiresTarget;
@@ -204,7 +208,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
 
   useChannelAutoScroll({
     activeChannel,
-    activityLoading,
+    activityLoading: activityLoading || observationLaneLoading,
     autoScroll,
     displayedMessageCount: displayedMessages.length,
     isScrollPinnedToBottomRef,
@@ -252,9 +256,9 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
           reactionsByMessageId={reactionsByMessageId}
           activityEventsByMessageId={activityEventsByMessageId}
           messagesLoading={messagesLoading}
-          activityLoading={activityLoading}
+          activityLoading={activityLoading || observationLaneLoading}
           messagesError={messagesError}
-          activityError={activityError}
+          activityError={activityError ?? observationLaneError}
           disabledReason={disabledReason}
           isMessageSearchActive={isMessageSearchActive}
           messageSearchQuery={messageSearchQuery}
@@ -309,9 +313,9 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
         </aside>
       </div>
 
-      {(channelError || messagesError || activityError || membershipsError || sendError) && (
+      {(channelError || messagesError || activityError || observationLaneError || membershipsError || sendError) && (
         <div className="channel-chat-error">
-          {(sendError ?? membershipsError ?? activityError ?? messagesError ?? channelError)?.message}
+          {(sendError ?? membershipsError ?? observationLaneError ?? activityError ?? messagesError ?? channelError)?.message}
         </div>
       )}
 

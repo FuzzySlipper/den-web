@@ -9,6 +9,8 @@ import type {
   ChannelReactionSummary,
   DirectAgentEventsResponse,
   GatewayMemberships,
+  ObservationActiveWorkResponse,
+  ObservationLaneResponse,
 } from '@den-web/api/types';
 import {
   ensureProjectDefaultChannel,
@@ -21,6 +23,8 @@ import {
   listChannels,
   listDirectAgentEvents,
   listGatewayMemberships,
+  listObservationActiveWork,
+  listObservationLane,
   listProjectLinkedChannels,
 } from '@den-web/api/client';
 import { useLiveData } from '@den-web/ui/hooks/useLiveData';
@@ -39,6 +43,7 @@ import { isStreamDelivering } from './channelEventStream';
 import { deriveParticipantActivity, memberIsActiveAgent } from './channelParticipantActivity';
 import { resolveAgentCommonsChannel, resolveWorkerPoolChannel } from './channelResolve';
 import { useChannelMessageDerivations } from './useChannelMessageDerivations';
+import { observationActiveWorkIncludesMember } from '@den-web/models/channels';
 
 const STREAM_SAFETY_POLL_MS = 20000;
 
@@ -57,6 +62,10 @@ function useChannelLiveResources(activeChannel: Channel | null) {
   const messagesState = useLiveData(fetchMessages, { interval: liveListInterval });
   const fetchActivityEvents = useCallback(() => activeChannel ? listChannelActivityEvents(activeChannel.id, { limit: 120 }) : Promise.resolve([]), [activeChannel]);
   const activityState = useLiveData<ChannelActivityEvent[]>(fetchActivityEvents, { interval: liveListInterval });
+  const fetchObservationLane = useCallback(() => activeChannel ? listObservationLane({ limit: 120 }) : Promise.resolve(null), [activeChannel]);
+  const observationLaneState = useLiveData<ObservationLaneResponse | null>(fetchObservationLane, { interval: liveListInterval });
+  const fetchObservationActiveWork = useCallback(() => activeChannel ? listObservationActiveWork() : Promise.resolve(null), [activeChannel]);
+  const observationActiveWorkState = useLiveData<ObservationActiveWorkResponse | null>(fetchObservationActiveWork, { interval: 5000 });
   const fetchAgentWorkCurrent = useCallback(() => activeChannel ? listAgentWorkCurrent({ channelId: activeChannel.id, limit: 12 }) : Promise.resolve(null), [activeChannel]);
   const agentWorkCurrentState = useLiveData<AgentWorkCurrentResponse | null>(fetchAgentWorkCurrent, { interval: 4000 });
   const fetchAgentWorkEvents = useCallback(() => activeChannel ? listAgentWorkEvents({ channelId: activeChannel.id, limit: 24 }) : Promise.resolve(null), [activeChannel]);
@@ -90,6 +99,8 @@ function useChannelLiveResources(activeChannel: Channel | null) {
     directAgentEventsState,
     membershipsState,
     messagesState,
+    observationActiveWorkState,
+    observationLaneState,
     reactionsState,
   };
 }
@@ -99,6 +110,7 @@ function useChannelMemberDerivations({
   inviteIdentity,
   memberships,
   normalizedSenderIdentity,
+  observationActiveWork,
   setTargetMemberIdentity,
   sortedMessages,
   targetMemberIdentity,
@@ -107,12 +119,18 @@ function useChannelMemberDerivations({
   inviteIdentity: string;
   memberships: GatewayMemberships | null | undefined;
   normalizedSenderIdentity: string;
+  observationActiveWork: ObservationActiveWorkResponse | null | undefined;
   setTargetMemberIdentity: (identity: string) => void;
   sortedMessages: ChannelMessage[];
   targetMemberIdentity: string;
 }) {
   const members = useMemo(() => (memberships?.members ?? []).filter(member => isVisibleNormalParticipant(member)), [memberships]);
-  const memberActivityByIdentity = useMemo(() => new Map(members.map(member => [member.memberIdentity, deriveParticipantActivity(member, sortedMessages)] as const)), [members, sortedMessages]);
+  const memberActivityByIdentity = useMemo(() => new Map(members.map(member => [
+    member.memberIdentity,
+    observationActiveWorkIncludesMember(observationActiveWork?.items, member.memberIdentity)
+      ? 'working'
+      : deriveParticipantActivity(member, sortedMessages),
+  ] as const)), [members, observationActiveWork, sortedMessages]);
   const activeAgentMembers = members.filter(memberIsActiveAgent);
   const selectedTarget = activeAgentMembers.find(member => member.memberIdentity === targetMemberIdentity) ?? null;
   const editingMember = members.find(member => member.memberIdentity === editingMemberIdentity && member.memberType === 'agent') ?? null;
@@ -261,6 +279,8 @@ export function useChannelChatData({
     directAgentEventsState,
     membershipsState,
     messagesState,
+    observationActiveWorkState,
+    observationLaneState,
     reactionsState,
   } = useChannelLiveResources(activeChannel);
 
@@ -292,6 +312,7 @@ export function useChannelChatData({
     effectiveProjectAttributionFilter,
     messageSearchQuery,
     messages: messagesState.data,
+    observationLane: observationLaneState.data,
     reactions: reactionsState.data,
   });
 
@@ -308,6 +329,7 @@ export function useChannelChatData({
     inviteIdentity,
     memberships: membershipsState.data,
     normalizedSenderIdentity,
+    observationActiveWork: observationActiveWorkState.data,
     setTargetMemberIdentity,
     sortedMessages,
     targetMemberIdentity,
@@ -326,7 +348,7 @@ export function useChannelChatData({
     activityState, agentWorkCurrentState, agentWorkEventsState, availableChannels, channelError, channelLoading, channelStatus,
     channelStream, composer, deliveryProgressBlocks: groupedActivityEvents.displayBlocks, directAgentEventsState, displayedMessages,
     editingMember, effectiveProjectAttributionFilter, inviteExistingMember, isMessageSearchActive, memberActivityByIdentity, members,
-    membershipsState, messagesState, reactionsByMessageId, reactionsState, refreshChannels, scopedActivityEvents, scopedAgentWorkCurrent,
+    membershipsState, messagesState, observationActiveWorkState, observationLaneState, reactionsByMessageId, reactionsState, refreshChannels, scopedActivityEvents, scopedAgentWorkCurrent,
     scopedAgentWorkEvents, scopedDirectAgentEvents, selectedTarget, sortedMessages, unanchoredActivityEvents: groupedActivityEvents.unanchoredEvents,
   };
 }

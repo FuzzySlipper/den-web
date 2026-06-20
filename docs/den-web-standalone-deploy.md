@@ -130,6 +130,7 @@ Example `gateway.env`:
 ```bash
 DEN_CHANNELS_TARGET=http://127.0.0.1:18081
 DEN_GATEWAY_SERVICE_TOKEN=<service-token>
+DEN_GATEWAY_OBSERVATION_READ_TOKEN=<observation-read-token>
 ```
 
 To let the `agent` user deploy without full root, add a narrow sudoers drop-in:
@@ -227,6 +228,7 @@ with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 | `DEN_CHANNELS_TARGET` | `http://127.0.0.1:18081` | Den Channels backend URL |
 | `DEN_HOST_TARGET` | `http://127.0.0.1:5400` | Den Host backend URL; live den-srv points this to `http://192.168.1.22:5400` |
 | `GATEWAY_ENV_PATH` | sibling `gateway.env` next to the server script | Optional service-token/target override file |
+| `DEN_GATEWAY_OBSERVATION_READ_TOKEN` | empty | Gateway caller token for `GET /v1/observation/*`; injected server-side for `/api/v1/observation/*` reads. |
 | `DEN_WEB_CONFIG_PATH` | `${STATIC_ROOT}/den-web-config.json` | Path to runtime config |
 | `DEN_WEB_BUILD_SENTINEL` | `${STATIC_ROOT}/den-web-build.json` | Path to build sentinel |
 | `CACHE_MAX_AGE_SECONDS` | `31536000` | max-age for hashed assets |

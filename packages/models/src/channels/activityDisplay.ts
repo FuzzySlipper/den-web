@@ -28,7 +28,16 @@ export interface ActivityDisplayModel {
   durationMs: number | null;
   outcome: string | null;
   sourceMessageId: number | null;
+  severity: string | null;
+  visibility: string | null;
+  displayOnly: boolean;
+  refLinks: ActivityRefLink[];
   createdAt: string;
+}
+
+export interface ActivityRefLink {
+  label: string;
+  href: string | null;
 }
 
 export function toActivityDisplayModel(event: ChannelActivityEvent): ActivityDisplayModel {
@@ -74,6 +83,70 @@ export function toActivityDisplayModel(event: ChannelActivityEvent): ActivityDis
     durationMs,
     outcome: firstString(metadata.outcome, metadata.result, metadata.status),
     sourceMessageId: firstPositiveInteger(metadata.sourceMessageId, metadata.source_message_id),
+    severity: firstString(metadata.severity, event.status),
+    visibility: firstString(metadata.visibility, event.deliveryStage),
+    displayOnly: metadata.displayOnly === true || metadata.display_only === true,
+    refLinks: activityRefLinks(metadata, event),
     createdAt: event.createdAt,
   };
+}
+
+function activityRefLinks(metadata: Record<string, unknown>, event: ChannelActivityEvent): ActivityRefLink[] {
+  const workRef = objectRecord(metadata.workRef);
+  const resultRef = objectRecord(metadata.resultRef);
+  return [
+    taskRefLink(workRef, event),
+    channelMessageRefLink(workRef, event),
+    documentRefLink(workRef, resultRef, event),
+    reviewRefLink(workRef),
+    resultMessageRefLink(resultRef),
+    commitRefLink(resultRef),
+    artifactRefLink(resultRef),
+  ].filter((link): link is ActivityRefLink => Boolean(link));
+}
+
+function objectRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function taskRefLink(workRef: Record<string, unknown>, event: ChannelActivityEvent): ActivityRefLink | null {
+  const taskId = firstPositiveInteger(workRef.task_id, event.taskId);
+  if (!taskId) return null;
+  const projectId = firstString(workRef.project_id, event.projectId);
+  return { label: `task #${taskId}`, href: projectId ? `/den-core-api/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}` : null };
+}
+
+function channelMessageRefLink(workRef: Record<string, unknown>, event: ChannelActivityEvent): ActivityRefLink | null {
+  const channelMessageId = firstPositiveInteger(workRef.channel_message_id, event.anchorMessageId);
+  if (!channelMessageId) return null;
+  const channelId = firstPositiveInteger(workRef.channel_id, event.channelId);
+  return { label: `channel message #${channelMessageId}`, href: channelId ? `/api/channels/${channelId}/messages?limit=80` : null };
+}
+
+function documentRefLink(workRef: Record<string, unknown>, resultRef: Record<string, unknown>, event: ChannelActivityEvent): ActivityRefLink | null {
+  const documentSlug = firstString(resultRef.document_slug);
+  if (!documentSlug) return null;
+  const projectId = firstString(workRef.project_id, event.projectId);
+  return { label: `doc ${documentSlug}`, href: projectId ? `/den-core-api/api/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(documentSlug)}` : null };
+}
+
+function reviewRefLink(workRef: Record<string, unknown>): ActivityRefLink | null {
+  const reviewRoundId = firstString(workRef.review_round_id);
+  return reviewRoundId ? { label: `review ${reviewRoundId}`, href: null } : null;
+}
+
+function resultMessageRefLink(resultRef: Record<string, unknown>): ActivityRefLink | null {
+  return resultRef.message_id != null ? { label: `result message #${resultRef.message_id}`, href: null } : null;
+}
+
+function commitRefLink(resultRef: Record<string, unknown>): ActivityRefLink | null {
+  const commit = firstString(resultRef.commit);
+  return commit ? { label: `commit ${commit.slice(0, 12)}`, href: null } : null;
+}
+
+function artifactRefLink(resultRef: Record<string, unknown>): ActivityRefLink | null {
+  const artifactPath = firstString(resultRef.artifact_path);
+  if (!artifactPath) return null;
+  const href = artifactPath.startsWith('/') || /^https?:\/\//i.test(artifactPath) ? artifactPath : null;
+  return { label: `artifact ${artifactPath}`, href };
 }

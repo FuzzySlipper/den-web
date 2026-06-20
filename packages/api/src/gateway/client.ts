@@ -15,6 +15,11 @@ import type {
   FleetOpsActionRunResponse,
   FleetOpsRunDetailResponse,
 } from './types';
+import type {
+  ObservationLaneResponse,
+  ObservationAgentOverviewResponse,
+  ObservationActiveWorkResponse,
+} from './observationTypes';
 import { normalizeApiBase } from '../config';
 import { dedupedFetch } from '../requestCache';
 
@@ -185,6 +190,23 @@ export function getAgentDetail(agentIdentity: string, opts: { projectId?: string
     deliveryLimit: opts.deliveryLimit,
   });
   return getChannels(`/agents/${encodeURIComponent(agentIdentity)}/overview${q}`);
+}
+
+// Observation agent-activity reads (#2813)
+// The browser calls the same-origin static proxy at /api/v1/observation/*.
+// den-web-static-server injects the Gateway observation read token server-side.
+
+export function listObservationLane(opts: { limit?: number } = {}): Promise<ObservationLaneResponse> {
+  const q = buildQuery({ limit: opts.limit });
+  return getChannels(`/v1/observation/lane${q}`);
+}
+
+export function getObservationAgentOverview(agentIdentity: string): Promise<ObservationAgentOverviewResponse> {
+  return getChannels(`/v1/observation/agents/${encodeURIComponent(agentIdentity)}/overview`);
+}
+
+export function listObservationActiveWork(): Promise<ObservationActiveWorkResponse> {
+  return getChannels('/v1/observation/active-work');
 }
 
 // Worker-pool assignment trace (#1729)

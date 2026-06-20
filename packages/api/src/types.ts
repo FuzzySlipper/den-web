@@ -145,3 +145,17 @@ export type {
   FleetOpsActionRunResponse,
   FleetOpsRunDetailResponse,
 } from './gateway/types';
+export type {
+  ObservationSeverity,
+  ObservationVisibility,
+  ObservationAgentIdentity,
+  ObservationWorkRef,
+  ObservationResultRef,
+  ObservationAgentActivityPayload,
+  ObservationLaneEvent,
+  ObservationLaneResponse,
+  ObservationActiveWorkItem,
+  ObservationActiveWorkResponse,
+  ObservationRuntimeProjection,
+  ObservationAgentOverviewResponse,
+} from './gateway/observationTypes';

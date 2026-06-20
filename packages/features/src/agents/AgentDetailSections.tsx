@@ -1,4 +1,4 @@
-import type { AgentDetailResponse } from '@den-web/api/types';
+import type { AgentDetailResponse, ObservationAgentOverviewResponse, ObservationLaneEvent } from '@den-web/api/types';
 import {
   bindingHasStaleControlChannel,
   membershipLaneLabel,
@@ -12,6 +12,7 @@ import {
   DetailLine,
 } from './AgentDetailShared';
 import { copyableDiagnosticPacket, type FullDetailItem } from './AgentDetailSharedUtils';
+import { normalizeObservationPayload } from '@den-web/models/channels';
 
 export function AgentMembershipsSection({
   agent,
@@ -113,6 +114,89 @@ export function AgentGatewayBindingsSection({ agent }: { agent: AgentDetailRespo
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+export function AgentObservationSection({
+  overview,
+  onOpen,
+}: {
+  overview: ObservationAgentOverviewResponse | null;
+  onOpen: (item: FullDetailItem) => void;
+}) {
+  if (!overview) return null;
+
+  return (
+    <div className="detail-section">
+      <div className="detail-section-header">
+        <h3>Observation ({overview.agent_id})</h3>
+        <span className="detail-subtle">Display-only runtime, active work, and activity readback</span>
+      </div>
+
+      {overview.runtime_instances.length > 0 && (
+        <div className="agents-binding-counts">
+          {overview.runtime_instances.map(runtime => (
+            <span key={runtime.runtime_instance_id}>
+              {runtime.profile_identity} · {runtime.state} · {runtime.host}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {overview.active_work.length > 0 && (
+        <div className="agents-task-list">
+          {overview.active_work.map(work => (
+            <div key={work.intent_id} className="agents-task-card">
+              <div className="agents-task-header">
+                <span>Intent #{work.intent_id}</span>
+                <span className={`agents-binding-status ${chipClass(work.state, 'agents-binding')}`}>{work.state}</span>
+              </div>
+              <div className="agents-task-meta">
+                <span>Target: {work.target_identity.profile}</span>
+                {work.runtime_instance_id && <span>Runtime: {work.runtime_instance_id}</span>}
+                {work.channel_message_id != null && <span>Channel message #{work.channel_message_id}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {overview.activity_events.length > 0 && (
+        <div className="agents-activity-list">
+          {overview.activity_events
+            .filter(event => normalizeObservationPayload(event.payload)?.visibility !== 'debug')
+            .map(event => <ObservationActivityCard key={event.event_id} event={event} onOpen={onOpen} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ObservationActivityCard({ event, onOpen }: { event: ObservationLaneEvent; onOpen: (item: FullDetailItem) => void }) {
+  const payload = normalizeObservationPayload(event.payload);
+  if (!payload) return null;
+  return (
+    <div className="agents-activity-card">
+      <div className="agents-activity-header">
+        <span className={`agents-binding-status ${chipClass(payload.severity ?? 'info', 'agents-event')}`}>
+          {payload.severity ?? 'info'}
+        </span>
+        <span>{event.event_type}</span>
+        <span className="agents-activity-time">{formatTimestamp(event.created_at)}</span>
+        {event.display_only && <span className="agents-terminal-badge">display-only</span>}
+      </div>
+      <div className="agents-activity-ids">
+        <span>Visibility: {payload.visibility}</span>
+        {payload.adapter && <span>Adapter: {payload.adapter}</span>}
+        {payload.surface && <span>Surface: {payload.surface}</span>}
+        {payload.work_ref?.task_id != null && <span>Task: #{payload.work_ref.task_id}</span>}
+        {payload.work_ref?.assignment_id && <span>Assignment: {payload.work_ref.assignment_id}</span>}
+        {payload.result_ref?.message_id != null && <span>Result message: #{payload.result_ref.message_id}</span>}
+        {payload.result_ref?.document_slug && <span>Doc: {payload.result_ref.document_slug}</span>}
+      </div>
+      <div className="agents-activity-preview">{payload.summary}</div>
+      <DetailLine label="Full observation event" value={event} onOpen={item => onOpen({ ...item, title: `${event.event_type} ${event.event_id}` })} />
     </div>
   );
 }

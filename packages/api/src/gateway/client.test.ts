@@ -1,5 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getFleetOps, getFleetOpsRun, getWorkerPoolLobbyPresence, postFleetOpsActionRun, postGatewayDirectAgentMessage, reinitHostBase } from './client';
+import {
+  getFleetOps,
+  getFleetOpsRun,
+  getObservationAgentOverview,
+  getWorkerPoolLobbyPresence,
+  listObservationActiveWork,
+  listObservationLane,
+  postFleetOpsActionRun,
+  postGatewayDirectAgentMessage,
+  reinitHostBase,
+} from './client';
 
 describe('postGatewayDirectAgentMessage', () => {
   afterEach(() => {
@@ -175,6 +185,28 @@ describe('getWorkerPoolLobbyPresence', () => {
       activeAssignmentCount: 1,
       activeAssignmentIds: ['1840'],
     });
+  });
+});
+
+describe('Observation API client', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('routes lane, agent overview, and active-work reads through Gateway observation paths', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ events: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ agent_id: 'den-mcp-runner', runtime_instances: [], active_work: [], activity_events: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: [] }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await listObservationLane({ limit: 5 });
+    await getObservationAgentOverview('den-mcp-runner');
+    await listObservationActiveWork();
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/observation/lane?limit=5', { cache: 'no-store' });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/observation/agents/den-mcp-runner/overview', { cache: 'no-store' });
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/v1/observation/active-work', { cache: 'no-store' });
   });
 });
 

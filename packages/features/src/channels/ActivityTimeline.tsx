@@ -12,6 +12,17 @@ function activityStatusClass(status: string): string {
   return status.toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
 }
 
+function activitySeverityClass(severity: string | null): string {
+  switch (severity) {
+    case 'success':
+    case 'warning':
+    case 'error':
+      return `channel-chat-activity-severity-${severity}`;
+    default:
+      return 'channel-chat-activity-severity-info';
+  }
+}
+
 function activityWorkerChip(event: ReturnType<typeof toActivityDisplayModel>) {
   if (!event.workerRunId && !event.workerRole && !event.parentAgentIdentity && !event.parentHermesSessionKey && !event.childSessionId && !event.toolCallId) return null;
   const role = event.workerRole?.trim() || 'worker';
@@ -43,14 +54,15 @@ export function ActivityTimeline({ events, compact = false }: { events: ChannelA
         </div>
       )}
       {displayEvents.map(event => (
-        <div key={event.id} className={`channel-chat-activity-row channel-chat-activity-${activityStatusClass(event.status)} ${event.terminal ? 'channel-chat-activity-terminal' : ''}`}>
+        <div key={event.id} className={`channel-chat-activity-row channel-chat-activity-${activityStatusClass(event.status)} ${activitySeverityClass(event.severity)} ${event.terminal ? 'channel-chat-activity-terminal' : ''}`}>
           <span className="message-time">{formatTimeAgo(event.createdAt)}</span>
           <span className="channel-chat-activity-agent">{event.agentIdentity}</span>
           <span className="channel-chat-activity-main">
             {activityWorkerChip(event)}
             <strong>{event.title}{event.count ? ` ×${event.count}` : ''}</strong>
-            <span className="channel-chat-activity-status">{event.status}</span>
-            <span className="channel-chat-activity-stage">{event.terminal ? 'terminal' : event.deliveryStage}</span>
+            <span className="channel-chat-activity-status">{event.severity ?? event.status}</span>
+            <span className="channel-chat-activity-stage">{event.displayOnly ? 'display-only' : (event.terminal ? 'terminal' : event.deliveryStage)}</span>
+            {event.visibility && <span className="channel-chat-activity-task">visibility {event.visibility}</span>}
             {event.toolName && <span className="channel-chat-activity-task">tool {event.toolName}</span>}
             {event.toolCallId && <span className="channel-chat-activity-task" title={event.toolCallId}>call {shortWorkerRunId(event.toolCallId)}</span>}
             {event.durationMs !== null && <span className="channel-chat-activity-task">{event.durationMs}ms</span>}
@@ -58,6 +70,11 @@ export function ActivityTimeline({ events, compact = false }: { events: ChannelA
             {event.taskId && <span className="channel-chat-activity-task">task #{event.taskId}</span>}
             {event.finalChannelMessageId && <span className="channel-chat-activity-task">final message #{event.finalChannelMessageId}</span>}
             {event.sourceMessageId && <span className="channel-chat-activity-task">source message #{event.sourceMessageId}</span>}
+            {event.refLinks.map(ref => ref.href ? (
+              <a key={ref.label} className="channel-chat-activity-task" href={ref.href} target="_blank" rel="noreferrer">{ref.label}</a>
+            ) : (
+              <span key={ref.label} className="channel-chat-activity-task">{ref.label}</span>
+            ))}
             {event.preview && <span className="channel-chat-activity-preview">{event.preview}</span>}
           </span>
         </div>

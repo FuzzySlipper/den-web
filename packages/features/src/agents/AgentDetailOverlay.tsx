@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
-import type { AgentDetailResponse } from '@den-web/api/types';
-import { getAgentDetail } from '@den-web/api/client';
+import type { AgentDetailResponse, ObservationAgentOverviewResponse } from '@den-web/api/types';
+import { getAgentDetail, getObservationAgentOverview } from '@den-web/api/client';
 import { useLiveData } from '@den-web/ui/hooks/useLiveData';
 import { severityClass } from './agentsOverviewFormat';
 import { AgentDetailBody } from './AgentDetailBody';
@@ -33,6 +33,15 @@ export function AgentDetailOverlay({
     [agentIdentity, projectId, isAggregate],
   );
   const { data: agent, loading, error, refresh } = useLiveData<AgentDetailResponse>(fetchDetail, { interval: 10000 });
+  const fetchObservationOverview = useCallback(
+    () => getObservationAgentOverview(agentIdentity).catch(() => null),
+    [agentIdentity],
+  );
+  const { data: observationOverview, refresh: refreshObservationOverview } = useLiveData<ObservationAgentOverviewResponse | null>(fetchObservationOverview, { interval: 10000 });
+  const handleRefresh = useCallback(() => {
+    refresh();
+    refreshObservationOverview();
+  }, [refresh, refreshObservationOverview]);
 
   return (
     <div className="detail-overlay detail-overlay-wide">
@@ -53,7 +62,7 @@ export function AgentDetailOverlay({
               Open DM Transcript
             </button>
           )}
-          <button className="detail-action" onClick={refresh} disabled={loading}>
+          <button className="detail-action" onClick={handleRefresh} disabled={loading}>
             Refresh
           </button>
           <button className="detail-close" onClick={onClose}>Close</button>
@@ -64,6 +73,7 @@ export function AgentDetailOverlay({
         agent={agent}
         loading={loading}
         error={error}
+        observationOverview={observationOverview ?? null}
         projectId={projectId}
         isAggregate={isAggregate}
         closePanelKey={closePanelKey}

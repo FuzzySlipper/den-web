@@ -751,6 +751,21 @@
   font-weight: 700;
 }
 
+.channel-chat-activity-severity-success .channel-chat-activity-status {
+  border-color: rgba(158, 206, 106, 0.45);
+  color: var(--green);
+}
+
+.channel-chat-activity-severity-warning .channel-chat-activity-status {
+  border-color: rgba(224, 175, 104, 0.45);
+  color: var(--yellow);
+}
+
+.channel-chat-activity-severity-error .channel-chat-activity-status {
+  border-color: rgba(247, 118, 142, 0.45);
+  color: var(--red);
+}
+
 .channel-chat-activity-preview {
   flex-basis: 100%;
   color: var(--text);

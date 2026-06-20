@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { AgentDetailResponse } from '@den-web/api/types';
+import type { AgentDetailResponse, ObservationAgentOverviewResponse } from '@den-web/api/types';
 import { StaleWorkerDiagnosticsPanel } from './StaleWorkerDiagnosticsPanel';
 import { AgentDeliverySection } from './AgentDeliverySection';
 import {
@@ -11,6 +11,7 @@ import {
   AgentDiagnosticPacketSection,
   AgentGatewayBindingsSection,
   AgentMembershipsSection,
+  AgentObservationSection,
   AgentTaskAssociationsSection,
 } from './AgentDetailSections';
 
@@ -18,6 +19,7 @@ interface Props {
   agent: AgentDetailResponse | null;
   loading: boolean;
   error: Error | null;
+  observationOverview: ObservationAgentOverviewResponse | null;
   projectId: string | null;
   isAggregate: boolean;
   closePanelKey: string;
@@ -29,6 +31,7 @@ export function AgentDetailBody({
   agent,
   loading,
   error,
+  observationOverview,
   projectId,
   isAggregate,
   closePanelKey,
@@ -99,6 +102,7 @@ export function AgentDetailBody({
 
       {agent && <AgentMembershipsSection agent={agent} projectId={projectId} />}
       {agent && <AgentGatewayBindingsSection agent={agent} />}
+      <AgentObservationSection overview={observationOverview} onOpen={setFullDetailItem} />
 
       {agent?.currentDeliveries && agent.currentDeliveries.length > 0 && (
         <AgentDeliverySection
