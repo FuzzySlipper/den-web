@@ -33,6 +33,12 @@ Features may import sibling features when that reflects real composition. For ex
 - Cognitive complexity limit is 15.
 - If a change pushes a file past the warning threshold, split into a sibling file in the same layer.
 
+## Task Closeout
+
+- When a completed task changes shipped frontend behavior, config, or deploy scripts, deploy `main` with `npm run deploy:den-srv` after commit/push unless the user asks not to or the change is intentionally local-only.
+- Use the durable `den-srv` deploy path from `docs/den-web-standalone-deploy.md`; it runs checks, builds, restarts `den-web.service`, smokes the live URL, and rolls back on smoke failure.
+- Record the deployed commit and smoke result in the relevant Den task thread so stale deployments are not mistaken for fresh bugs.
+
 ## Training-Bias Correction
 
 These patterns are forbidden in this codebase:
