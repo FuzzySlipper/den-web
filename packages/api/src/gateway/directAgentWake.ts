@@ -43,6 +43,12 @@ interface ConversationChannelResponse {
   kind?: string | null;
 }
 
+type ConversationChannelListResponse = ConversationChannelResponse[] | {
+  channels?: ConversationChannelResponse[] | null;
+  items?: ConversationChannelResponse[] | null;
+  results?: ConversationChannelResponse[] | null;
+};
+
 interface ObservationAgentOverviewResponse {
   runtime_instances?: Array<{ instance_id?: string | null; runtime_instance_id?: string | null }> | null;
   activity_events?: Array<{
@@ -128,7 +134,10 @@ async function appendDirectAgentConversationMessage(
 async function resolveConversationChannelId(request: PostGatewayDirectAgentMessageRequest): Promise<number | null> {
   if (!request.projectId) return request.channelId ?? null;
   const q = `?project_id=${encodeURIComponent(request.projectId)}&kind=project_default&limit=5`;
-  const channels = await getJson<ConversationChannelResponse[]>(conversationApiBase, `/channels${q}`);
+  const response = await getJson<ConversationChannelListResponse>(conversationApiBase, `/channels${q}`);
+  const channels = Array.isArray(response)
+    ? response
+    : response.channels ?? response.items ?? response.results ?? [];
   return channels.find(channel => channel.project_id === request.projectId && channel.kind === 'project_default')?.id
     ?? channels[0]?.id
     ?? request.channelId

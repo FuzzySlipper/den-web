@@ -147,6 +147,50 @@ describe('postGatewayDirectAgentMessage', () => {
     });
   });
 
+  it('accepts the live bare-array conversation channel listing shape', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([{ id: 31, project_id: 'den-web', kind: 'project_default' }]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ id: 4051, channel_id: 31 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ runtime_instances: [{ instance_id: 'den-mcp-planner@live' }], activity_events: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 813,
+          state: 'pending',
+          idempotency_key: 'direct-agent-message:584:den-mcp-planner:req-array',
+          created_at: '2026-06-20T00:00:00Z',
+          expires_at: '2026-06-20T00:05:00Z',
+          channel_message_id: 4051,
+        }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'req-array' });
+
+    const result = await postGatewayDirectAgentMessage({
+      channelId: 584,
+      projectId: 'den-web',
+      memberIdentity: 'den-mcp-planner',
+      senderIdentity: 'patch',
+      body: '@den-mcp-planner live shape check',
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/conversation/channels/31/messages', expect.anything());
+    expect(result).toMatchObject({
+      messageId: 4051,
+      channelId: 31,
+      gatewayEventsUrl: '/api/v1/delivery/intents/813',
+    });
+  });
+
   it('includes successor error body when delivery creation is rejected', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({
