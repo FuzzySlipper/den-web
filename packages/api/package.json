@@ -1,0 +1,13 @@
+{
+  "name": "@den-web/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "@den-web/shared": "0.1.0"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  }
+}

@@ -1,0 +1,80 @@
+[layers]
+foundation = 0
+browser_foundation = 1
+data = 2
+transform = 3
+presentation = 4
+composition = 5
+bootstrap = 6
+app = 7
+
+[paths."packages/shared/src"]
+layer = "foundation"
+may_import_internal = []
+must_not_import_external = ["react", "react-dom"]
+
+[paths."packages/ui/src/hooks"]
+layer = "browser_foundation"
+may_import_internal = ["shared"]
+must_not_import_external = []
+phase = "target"
+notes = "Reusable browser/React foundation hooks used by features and shell."
+
+[paths."packages/api/src"]
+layer = "data"
+may_import_internal = ["shared"]
+must_not_import_external = ["react", "react-dom"]
+
+[paths."packages/models/src"]
+layer = "transform"
+may_import_internal = ["api", "shared"]
+must_not_import_external = ["react", "react-dom"]
+
+[paths."packages/features/src"]
+layer = "composition"
+may_import_internal = ["api", "models", "shared", "hooks", "features"]
+must_not_import_external = []
+allow_sibling_feature_imports = true
+
+[paths."packages/shell/src"]
+layer = "bootstrap"
+may_import_internal = ["*"]
+must_not_import_external = []
+
+[paths."apps/web/src"]
+layer = "app"
+may_import_internal = ["*"]
+must_not_import_external = []
+
+[paths."apps/web/src/styles"]
+layer = "app"
+may_import_internal = []
+must_not_import_external = []
+phase = "phase3_move_with_apps_web"
+
+[expected_violations]
+model_files_in_features = []
+shared_utilities_in_features = []
+
+[guards.file_size]
+warn_lines = 400
+error_lines = 600
+phase1_mode = "baseline_warn_only"
+baseline_file = "governance/file-size-baseline.json"
+
+[guards.file_size.contract_exceptions."packages/api/src/gateway/types.ts"]
+reason = "Gateway DTO contract mirrors external Den Host and gateway payloads; split by upstream contract or generated source when that boundary exists."
+max_lines = 650
+
+[guards.function_size]
+warn_lines = 80
+error_lines = 120
+
+[guards.function_complexity]
+max = 15
+phase1_mode = "baseline_warn_only"
+baseline_file = "governance/complexity-baseline.json"
+
+[guards.lint]
+phase1_mode = "baseline_warn_only"
+baseline_file = "governance/lint-baseline.json"

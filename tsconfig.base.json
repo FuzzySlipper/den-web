@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "useDefineForClassFields": true,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "types": ["vite/client", "node"],
+    "skipLibCheck": true,
+
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@den-web/api": ["packages/api/src/index.ts"],
+      "@den-web/api/*": ["packages/api/src/*"],
+      "@den-web/features": ["packages/features/src/index.ts"],
+      "@den-web/features/*": ["packages/features/src/*"],
+      "@den-web/models": ["packages/models/src/index.ts"],
+      "@den-web/models/*": ["packages/models/src/*"],
+      "@den-web/shared": ["packages/shared/src/index.ts"],
+      "@den-web/shared/*": ["packages/shared/src/*"],
+      "@den-web/shell": ["packages/shell/src/index.ts"],
+      "@den-web/shell/*": ["packages/shell/src/*"],
+      "@den-web/ui": ["packages/ui/src/index.ts"],
+      "@den-web/ui/*": ["packages/ui/src/*"]
+    }
+  }
+}

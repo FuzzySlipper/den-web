@@ -78,3 +78,17 @@ In local development, use `npm install` (updates lockfile) or `npm ci` (strict l
 Production build writes to `dist/`. The output is a fully static site that can be served
 by any HTTP server (nginx, caddy, deno serve, etc.) at any path with proper URL rewriting
 for SPA client-side routing.
+
+## Deployment
+
+The durable `den-srv` path is:
+
+```bash
+npm run deploy:den-srv
+```
+
+The deploy script stages timestamped releases under `/data/services/den-web/releases`,
+flips stable symlinks, restarts `den-web.service`, runs the live smoke check, and
+rolls back to the previous release if smoke fails. See
+[Standalone deploy guide](docs/den-web-standalone-deploy.md) for the required
+`den-srv` ownership, sudoers, and systemd settings.

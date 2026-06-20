@@ -40,7 +40,7 @@ import * as path from 'node:path';
 import * as url from 'node:url';
 
 // ── Load gateway env from local file (agent-writable, no systemd edit needed) ──
-const GATEWAY_ENV_PATH = path.join(path.dirname(url.fileURLToPath(import.meta.url)), 'gateway.env');
+const GATEWAY_ENV_PATH = process.env.GATEWAY_ENV_PATH ?? path.join(path.dirname(url.fileURLToPath(import.meta.url)), 'gateway.env');
 function loadGatewayEnv() {
   const env = {};
   try {
@@ -69,7 +69,7 @@ const PORT             = parseInt(process.env.PORT ?? '18080', 10);
 const HOST             = process.env.HOST ?? '0.0.0.0';
 const STATIC_ROOT      = process.env.STATIC_ROOT ?? '/data/services/den-web/wwwroot';
 const DEN_CORE_TARGET  = process.env.DEN_CORE_TARGET ?? 'http://127.0.0.1:5299';
-const DEN_CHANNELS_TARGET = GATEWAY_ENV.DEN_CHANNELS_TARGET ?? process.env.DEN_CHANNELS_TARGET ?? 'http://127.0.0.1:8079';
+const DEN_CHANNELS_TARGET = GATEWAY_ENV.DEN_CHANNELS_TARGET ?? process.env.DEN_CHANNELS_TARGET ?? 'http://127.0.0.1:18081';
 const DEN_HOST_TARGET = process.env.DEN_HOST_TARGET ?? 'http://127.0.0.1:5400';
 const PI_CREW_ADMIN_TARGET = process.env.PI_CREW_ADMIN_TARGET ?? 'http://127.0.0.1:9237';
 const DEN_GATEWAY_SERVICE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_SERVICE_TOKEN ?? process.env.DEN_GATEWAY_SERVICE_TOKEN ?? '';

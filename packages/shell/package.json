@@ -1,0 +1,21 @@
+{
+  "name": "@den-web/shell",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "@den-web/api": "0.1.0",
+    "@den-web/features": "0.1.0",
+    "@den-web/models": "0.1.0",
+    "@den-web/shared": "0.1.0",
+    "@den-web/ui": "0.1.0"
+  },
+  "peerDependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  }
+}

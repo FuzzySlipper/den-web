@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "src",
+    "outDir": "../../node_modules/.tmp/types/features",
+    "tsBuildInfoFile": "../../node_modules/.tmp/packages-features.tsbuildinfo"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../api" },
+    { "path": "../models" },
+    { "path": "../shared" },
+    { "path": "../ui" }
+  ]
+}

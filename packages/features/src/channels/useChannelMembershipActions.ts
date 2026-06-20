@@ -1,0 +1,107 @@
+import { useCallback, useState } from 'react';
+import type { GatewayMember } from '@den-web/api/types';
+import { upsertChannelMembership } from '@den-web/api/client';
+import { DEFAULT_WAKE_POLICY } from './channelParticipantOptions';
+import type { useChannelChatData } from './useChannelChatData';
+
+type ChatData = ReturnType<typeof useChannelChatData>;
+
+interface Options {
+  activeChannel: ChatData['activeChannel'];
+  editingMember: ChatData['editingMember'];
+  editingMembershipStatus: string;
+  editingWakePolicy: string;
+  inviteExistingMember: ChatData['inviteExistingMember'];
+  inviteIdentity: string;
+  inviteWakePolicy: string;
+  refreshMemberships: () => void;
+  setEditingMembershipStatus: (status: string) => void;
+  setEditingMemberIdentity: (identity: string | null) => void;
+  setEditingWakePolicy: (wakePolicy: string) => void;
+  setInviteIdentity: (identity: string) => void;
+  setSendError: (error: Error | null) => void;
+}
+
+export function useChannelMembershipActions({
+  activeChannel,
+  editingMember,
+  editingMembershipStatus,
+  editingWakePolicy,
+  inviteExistingMember,
+  inviteIdentity,
+  inviteWakePolicy,
+  refreshMemberships,
+  setEditingMembershipStatus,
+  setEditingMemberIdentity,
+  setEditingWakePolicy,
+  setInviteIdentity,
+  setSendError,
+}: Options) {
+  const [inviteSending, setInviteSending] = useState(false);
+  const [memberSaving, setMemberSaving] = useState(false);
+
+  const handleInviteAgent = useCallback(async () => {
+    const identity = inviteIdentity.trim();
+    if (!activeChannel || !identity) return;
+    setInviteSending(true);
+    setSendError(null);
+    try {
+      await upsertChannelMembership(activeChannel.id, {
+        memberType: 'agent',
+        memberIdentity: identity,
+        membershipStatus: inviteExistingMember?.membershipStatus ?? 'active',
+        wakePolicy: inviteWakePolicy,
+        canSend: inviteExistingMember?.canSend ?? true,
+        canReact: inviteExistingMember?.canReact ?? true,
+        canInvite: inviteExistingMember?.canInvite ?? false,
+        cooldownSeconds: inviteExistingMember?.cooldownSeconds,
+        maxAutoRepliesPerWindow: inviteExistingMember?.maxAutoRepliesPerWindow,
+      });
+      refreshMemberships();
+      setInviteIdentity('');
+    } catch (error) {
+      setSendError(error instanceof Error ? error : new Error(String(error)));
+    } finally {
+      setInviteSending(false);
+    }
+  }, [activeChannel, inviteExistingMember, inviteIdentity, inviteWakePolicy, refreshMemberships, setInviteIdentity, setSendError]);
+
+  const handleEditMember = useCallback((member: GatewayMember) => {
+    setEditingMemberIdentity(member.memberIdentity);
+    setEditingWakePolicy(member.wakePolicy || DEFAULT_WAKE_POLICY);
+    setEditingMembershipStatus(member.membershipStatus || 'active');
+  }, [setEditingMembershipStatus, setEditingMemberIdentity, setEditingWakePolicy]);
+
+  const handleSaveMemberSettings = useCallback(async () => {
+    if (!activeChannel || !editingMember) return;
+    setMemberSaving(true);
+    setSendError(null);
+    try {
+      await upsertChannelMembership(activeChannel.id, {
+        memberType: editingMember.memberType,
+        memberIdentity: editingMember.memberIdentity,
+        membershipStatus: editingMembershipStatus,
+        wakePolicy: editingWakePolicy,
+        canSend: editingMember.canSend,
+        canReact: editingMember.canReact,
+        canInvite: editingMember.canInvite,
+        cooldownSeconds: editingMember.cooldownSeconds,
+        maxAutoRepliesPerWindow: editingMember.maxAutoRepliesPerWindow,
+      });
+      setEditingMemberIdentity(null);
+      refreshMemberships();
+    } catch (error) {
+      setSendError(error instanceof Error ? error : new Error(String(error)));
+    } finally {
+      setMemberSaving(false);
+    }
+  }, [activeChannel, editingMember, editingMembershipStatus, editingWakePolicy, refreshMemberships, setEditingMemberIdentity, setSendError]);
+
+  return {
+    handleEditMember,
+    handleInviteAgent,
+    handleSaveMemberSettings,
+    inviteSending,
+    memberSaving,
+  };
+}

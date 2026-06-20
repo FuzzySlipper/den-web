@@ -3,15 +3,25 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
     "test:static-server": "node --test ops/den-web-static-server-regression.mjs",
-    "test:rendering": "vitest run src/components/channelChatRenderModel.test.ts",
+    "test:rendering": "vitest run packages/models/src/channels/channelChatRenderModel.test.ts",
+    "check:deps": "bash harness/ci/verify-deps.sh",
+    "check:size": "bash harness/ci/check-file-size.sh",
+    "check:complexity": "bash harness/ci/check-complexity.sh",
+    "check:lint": "bash harness/ci/check-lint.sh",
+    "check:all": "npm run check:deps && npm run check:size && npm run check:complexity && npm run check:lint",
     "preview": "vite preview",
     "serve:static": "node ops/den-web-static-server.mjs",
+    "deploy:den-srv": "node ops/deploy-den-web.mjs",
     "smoke:live": "node ops/smoke-den-web.mjs"
   },
   "dependencies": {
@@ -27,6 +37,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "eslint-plugin-sonarjs": "^4.1.0",
     "globals": "^17.4.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.57.0",

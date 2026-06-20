@@ -1,6 +1,13 @@
 {
   "files": [],
   "references": [
+    { "path": "./packages/shared" },
+    { "path": "./packages/api" },
+    { "path": "./packages/models" },
+    { "path": "./packages/ui" },
+    { "path": "./packages/features" },
+    { "path": "./packages/shell" },
+    { "path": "./apps/web" },
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" }
   ]

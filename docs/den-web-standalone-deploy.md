@@ -20,94 +20,118 @@ services.
 
 ```
 /data/services/den-web/
-├── wwwroot/              # Built static assets (dist/ contents)
-│   ├── index.html
-│   ├── assets/
-│   │   ├── index-<hash>.js
-│   │   └── index-<hash>.css
-│   ├── den-web-config.json   # Runtime configuration (create on deploy)
-│   └── den-web-build.json    # Build sentinel (create on deploy)
-├── den-web-static-server.mjs # Copied from ops/den-web-static-server.mjs
-└── .env                     # (optional) Service environment overrides
+├── current -> releases/<release-id>        # Active release
+├── previous -> releases/<previous-id>      # Previous release, for rollback
+├── wwwroot -> current/wwwroot              # Stable STATIC_ROOT for systemd
+├── den-web-static-server.mjs -> current/den-web-static-server.mjs
+├── releases/
+│   └── <release-id>/
+│       ├── wwwroot/
+│       │   ├── index.html
+│       │   ├── assets/
+│       │   ├── den-web-config.json
+│       │   └── den-web-build.json
+│       ├── den-web-static-server.mjs
+│       └── gateway.env -> ../../shared/gateway.env  # if present
+└── shared/
+    └── gateway.env       # Optional token/target overrides, not release-owned
 ```
 
-## Build and deploy steps
+Older manual deployments used a real `/data/services/den-web/wwwroot`
+directory. The deploy script preserves that directory by moving it aside to
+`wwwroot.pre-symlink-<timestamp>` the first time it takes over symlink
+management.
 
-### 1. Build the frontend
+## Recommended deploy path
+
+Run the durable deploy script from the repo root on `den-srv`:
 
 ```bash
-# From the repository root on a development machine
 cd /home/dev/den-web
-npm ci
-npm run build
+npm run deploy:den-srv
 ```
 
-The build output lands in `dist/`.
+What the script does:
 
-### 2. Create runtime config
+1. Refuses a dirty git tree unless `ALLOW_DIRTY=1` is set.
+2. Runs `npm ci`, `npm run check:all`, `npm test`, `npm run test:static-server`, and `npm run build`.
+3. Stages `dist/`, runtime config, build sentinel, and the static server into `releases/<timestamp>-<commit>`.
+4. Flips `current`, `previous`, `wwwroot`, and `den-web-static-server.mjs` symlinks.
+5. Restarts `den-web.service`.
+6. Runs `ops/smoke-den-web.mjs` against `DEN_WEB_URL` and the expected commit.
+7. If restart or smoke fails, rolls `current` back to the previous release and restarts the service again.
 
-Create `den-web-config.json` at the deploy root. This file is served at
-`/den-web-config.json` and configures API base URLs without a rebuild.
+Useful deploy overrides:
 
-Expected contents for `den-srv`:
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `DEPLOY_ROOT` | `/data/services/den-web` | Deployment root. |
+| `DEN_WEB_URL` | `http://192.168.1.10:18080` | Public URL used by smoke. |
+| `SERVICE_NAME` | `den-web.service` | systemd service to restart. |
+| `SYSTEMCTL` | `systemctl` | Command used for service operations, e.g. `sudo systemctl`. |
+| `KEEP_RELEASES` | `5` | Number of release directories to keep. |
+| `ALLOW_DIRTY` | unset | Set to `1` to allow deploying uncommitted source. |
+| `SKIP_INSTALL` | unset | Set to `1` to skip `npm ci`. |
+| `SKIP_CHECKS` | unset | Set to `1` to skip check/test gates before build. |
+| `DEPLOY_RESTART` | `1` | Set to `0` to stage and flip symlinks without restarting. |
+| `DEPLOY_SMOKE` | `1` | Set to `0` to skip live smoke. |
+| `DRY_RUN` | unset | Set to `1` to print commands without writing releases. |
 
-```json
-{
-  "denCoreApiBase": "/den-core-api",
-  "denChannelsApiBase": "/api",
-  "denHostApiBase": "/den-host-api",
-  "appBasePath": "/",
-  "environmentName": "den-srv"
-}
-```
-
-### 3. Create build sentinel
-
-Create `den-web-build.json` at the deploy root. This file is served at
-`/den-web-build.json` and provides deploy provenance for smoke tests.
-
-```json
-{
-  "commit": "<full git commit SHA>",
-  "builtAt": "2026-05-28T09:00:00Z",
-  "builtBy": "deploy-runner",
-  "sourceRepo": "/home/dev/den-web"
-}
-```
-
-You can generate this automatically during a CI/CD pipeline:
+Runtime config values are generated from:
 
 ```bash
-cat > /data/services/den-web/wwwroot/den-web-build.json <<EOF
-{
-  "commit": "$(git rev-parse HEAD)",
-  "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "builtBy": "deploy",
-  "sourceRepo": "/home/dev/den-web"
-}
-EOF
+DEN_CORE_API_BASE=/den-core-api
+DEN_CHANNELS_API_BASE=/api
+DEN_HOST_API_BASE=/den-host-api
+PI_CREW_ADMIN_API_BASE=/pi-crew-admin-api
+APP_BASE_PATH=/
+ENVIRONMENT_NAME=den-srv
 ```
 
-### 4. Copy artifacts
+The deployed service target URLs are systemd/static-server settings, not browser
+runtime config. Keep service tokens in `/data/services/den-web/shared/gateway.env`
+with mode `0640`, not in release directories or git.
+
+## Required den-srv service setup
+
+One-time deploy-root ownership:
 
 ```bash
-# Create deploy root
-mkdir -p /data/services/den-web/wwwroot
-
-# Copy built assets
-cp -r dist/* /data/services/den-web/wwwroot/
-
-# Copy runtime config
-cp den-web-config.json /data/services/den-web/wwwroot/den-web-config.json
-
-# Copy build sentinel
-cp den-web-build.json /data/services/den-web/wwwroot/den-web-build.json
-
-# Copy static server script
-cp ops/den-web-static-server.mjs /data/services/den-web/den-web-static-server.mjs
+sudo install -d -o agent -g agent -m 0755 /data/services/den-web
+sudo install -d -o agent -g agent -m 0755 /data/services/den-web/releases
+sudo install -d -o agent -g agent -m 0750 /data/services/den-web/shared
 ```
 
-### 5. systemd service unit
+If gateway proxy credentials are needed:
+
+```bash
+sudo install -o agent -g agent -m 0640 /dev/null /data/services/den-web/shared/gateway.env
+sudoedit /data/services/den-web/shared/gateway.env
+```
+
+Example `gateway.env`:
+
+```bash
+DEN_CHANNELS_TARGET=http://127.0.0.1:18081
+DEN_GATEWAY_SERVICE_TOKEN=<service-token>
+```
+
+To let the `agent` user deploy without full root, add a narrow sudoers drop-in:
+
+```sudoers
+agent ALL=NOPASSWD: /bin/systemctl restart den-web.service, /bin/systemctl status den-web.service
+```
+
+Then run deploys with:
+
+```bash
+SYSTEMCTL="sudo systemctl" npm run deploy:den-srv
+```
+
+The service itself should run as `agent` and read only the stable symlinks under
+`/data/services/den-web`.
+
+### systemd service unit
 
 Create `/etc/systemd/system/den-web.service`:
 
@@ -131,6 +155,7 @@ Environment=STATIC_ROOT=/data/services/den-web/wwwroot
 Environment=DEN_CORE_TARGET=http://127.0.0.1:5299
 Environment=DEN_CHANNELS_TARGET=http://127.0.0.1:18081
 Environment=DEN_HOST_TARGET=http://192.168.1.22:5400
+Environment=GATEWAY_ENV_PATH=/data/services/den-web/shared/gateway.env
 
 # Hardening
 NoNewPrivileges=true
@@ -144,7 +169,7 @@ AmbientCapabilities=
 WantedBy=multi-user.target
 ```
 
-### 6. Start and enable
+Start and enable:
 
 ```bash
 sudo systemctl daemon-reload
@@ -153,21 +178,27 @@ sudo systemctl start den-web.service
 sudo systemctl status den-web.service
 ```
 
-### 7. Smoke
+## Manual fallback
 
-Run the smoke script against the deployment:
+The old manual path is still useful for diagnosis, but should not be the normal
+deployment process because it lacks atomic release switching and automatic
+rollback.
 
 ```bash
-# Get the deployed commit
-DEPLOYED_COMMIT=$(cat /data/services/den-web/wwwroot/den-web-build.json | node -e "process.stdin.setEncoding('utf8');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>process.stdout.write(JSON.parse(d).commit))")
-
-# Run smoke tests
-DEN_WEB_URL=http://192.168.1.10:18080 \
-  EXPECTED_BUILD_COMMIT="$DEPLOYED_COMMIT" \
-  node /home/dev/den-web/ops/smoke-den-web.mjs
+cd /home/dev/den-web
+npm ci
+npm run check:all
+npm test
+npm run test:static-server
+npm run build
+mkdir -p /data/services/den-web/wwwroot
+cp -r dist/* /data/services/den-web/wwwroot/
+cp ops/den-web-static-server.mjs /data/services/den-web/den-web-static-server.mjs
+sudo systemctl restart den-web.service
 ```
 
-Expected output: all PASS lines, exit code 0.
+After any manual copy, run `node /home/dev/den-web/ops/smoke-den-web.mjs`
+with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 
 ## Environment reference
 
@@ -179,6 +210,7 @@ Expected output: all PASS lines, exit code 0.
 | `DEN_CORE_TARGET` | `http://127.0.0.1:5299` | Den Core backend URL |
 | `DEN_CHANNELS_TARGET` | `http://127.0.0.1:18081` | Den Channels backend URL |
 | `DEN_HOST_TARGET` | `http://127.0.0.1:5400` | Den Host backend URL; live den-srv points this to `http://192.168.1.22:5400` |
+| `GATEWAY_ENV_PATH` | sibling `gateway.env` next to the server script | Optional service-token/target override file |
 | `DEN_WEB_CONFIG_PATH` | `${STATIC_ROOT}/den-web-config.json` | Path to runtime config |
 | `DEN_WEB_BUILD_SENTINEL` | `${STATIC_ROOT}/den-web-build.json` | Path to build sentinel |
 | `CACHE_MAX_AGE_SECONDS` | `31536000` | max-age for hashed assets |
@@ -207,6 +239,8 @@ provides the artifacts needed for that deployment.
 
 - Keep the previous live `den-channels` static asset bundle identifiable until the
   first `den-web` live smoke passes.
+- `npm run deploy:den-srv` automatically restores `current` to `previous` if
+  restart or live smoke fails.
 - If static asset serving fails but APIs are healthy, revert only the reverse proxy/
   static root to the previous `den-channels` path. Do not roll back Core/Channels/
   Gateway services.
@@ -218,6 +252,14 @@ provides the artifacts needed for that deployment.
   sudo systemctl disable den-web.service
   # Restore previous static server / reverse proxy configuration
   # (e.g., point port 18080 back to den-channels wwwroot)
+  ```
+- With release symlinks, manual rollback is:
+  ```bash
+  cd /data/services/den-web
+  ln -sfn "$(readlink previous)" current
+  ln -sfn current/wwwroot wwwroot
+  ln -sfn current/den-web-static-server.mjs den-web-static-server.mjs
+  sudo systemctl restart den-web.service
   ```
 - Post rollback evidence to the relevant Den task thread: failing URL, restored
   asset root, restored build sentinel hash, and API health checks.

@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "src",
+    "outDir": "../../node_modules/.tmp/types/web",
+    "tsBuildInfoFile": "../../node_modules/.tmp/apps-web.tsbuildinfo"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../packages/api" },
+    { "path": "../../packages/shell" }
+  ]
+}
