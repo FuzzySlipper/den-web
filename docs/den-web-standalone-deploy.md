@@ -56,7 +56,7 @@ Then run the durable deploy script from the repo root on `den-srv`:
 ```bash
 cd /data/dev/den-web
 git pull --ff-only origin main
-SYSTEMCTL="sudo /usr/bin/systemctl" npm run deploy:den-srv
+SYSTEMCTL="sudo -n /usr/bin/systemctl" npm run deploy:den-srv
 ```
 
 If invoking the deploy from a root shell rather than an `agent` shell, pass the
@@ -64,7 +64,7 @@ environment through `sudo` explicitly:
 
 ```bash
 cd /data/dev/den-web
-sudo -H -u agent env SYSTEMCTL="sudo /usr/bin/systemctl" npm run deploy:den-srv
+sudo -H -u agent env SYSTEMCTL="sudo -n /usr/bin/systemctl" npm run deploy:den-srv
 ```
 
 What the script does:
@@ -84,7 +84,7 @@ Useful deploy overrides:
 | `DEPLOY_ROOT` | `/data/services/den-web` | Deployment root. |
 | `DEN_WEB_URL` | `http://192.168.1.10:18080` | Public URL used by smoke. |
 | `SERVICE_NAME` | `den-web.service` | systemd service to restart. |
-| `SYSTEMCTL` | `systemctl` | Command used for service operations, e.g. `sudo systemctl`. |
+| `SYSTEMCTL` | `systemctl` | Command used for service restart, e.g. `sudo -n /usr/bin/systemctl`. |
 | `KEEP_RELEASES` | `5` | Number of release directories to keep. |
 | `ALLOW_DIRTY` | unset | Set to `1` to allow deploying uncommitted source. |
 | `SKIP_INSTALL` | unset | Set to `1` to skip `npm ci`. |
@@ -141,7 +141,7 @@ agent ALL=(root) NOPASSWD: /usr/bin/systemctl restart den-web.service, /usr/bin/
 Then run deploys with:
 
 ```bash
-SYSTEMCTL="sudo /usr/bin/systemctl" npm run deploy:den-srv
+SYSTEMCTL="sudo -n /usr/bin/systemctl" npm run deploy:den-srv
 ```
 
 The service itself should run as `agent` and read only the stable symlinks under

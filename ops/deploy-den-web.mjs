@@ -208,9 +208,9 @@ function systemctl(...args) {
   run(SYSTEMCTL[0], [...SYSTEMCTL.slice(1), ...args], { cwd: '/' });
 }
 
-function systemctlStatus(...args) {
-  if (!SHOULD_RESTART) return 0;
-  return runStatus(SYSTEMCTL[0], [...SYSTEMCTL.slice(1), ...args], { cwd: '/' });
+function systemctlReadOnly(...args) {
+  const systemctlBin = SYSTEMCTL.at(-1) ?? 'systemctl';
+  return runStatus(systemctlBin, args, { cwd: '/' });
 }
 
 function sleep(ms) {
@@ -244,17 +244,16 @@ async function waitForServiceReady() {
   log(`waiting for ${SERVICE_NAME} to serve ${target.href}`);
 
   while (Date.now() < deadline) {
-    const active = systemctlStatus('is-active', '--quiet', SERVICE_NAME) === 0;
     const status = await probeHttp(target);
-    if (active && status === 200) {
-      log(`${SERVICE_NAME} is active and serving build sentinel`);
+    if (status === 200) {
+      log(`${SERVICE_NAME} is serving build sentinel`);
       return;
     }
     await sleep(250);
   }
 
   log(`${SERVICE_NAME} did not become ready within ${SERVICE_READY_TIMEOUT_MS}ms`);
-  systemctlStatus('status', SERVICE_NAME, '--no-pager', '-l');
+  systemctlReadOnly('status', SERVICE_NAME, '--no-pager', '-l');
   throw new Error(`${SERVICE_NAME} did not become ready at ${target.href}`);
 }
 
