@@ -23,10 +23,24 @@ async function postJson<T>(base: string, url: string, body: unknown, headers: Re
   return res.json();
 }
 
+function getJson<T>(base: string, url: string): Promise<T> {
+  const requestUrl = `${base}${url.startsWith('/') ? url : `/${url}`}`;
+  return fetch(requestUrl, { cache: 'no-store', headers: { 'X-Den-Migrated-Functions': 'true' } }).then(async res => {
+    if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
+    return res.json();
+  });
+}
+
 interface ConversationMessageResponse {
   id: number;
   channel_id: number;
   dedupe_key?: string | null;
+}
+
+interface ConversationChannelResponse {
+  id: number;
+  project_id?: string | null;
+  kind?: string | null;
 }
 
 function cleanIdempotencyPart(value: string | number | null | undefined, fallback: string): string {
@@ -70,11 +84,12 @@ async function appendDirectAgentConversationMessage(
   request: PostGatewayDirectAgentMessageRequest,
   deliveryDedupeKey: string,
 ): Promise<ConversationMessageResponse | null> {
-  if (!request.channelId) return null;
+  const channelId = await resolveConversationChannelId(request);
+  if (!channelId) return null;
   const messageDedupeKey = `conversation-${deliveryDedupeKey}`;
   return postJson<ConversationMessageResponse>(
     conversationApiBase,
-    `/channels/${encodeURIComponent(String(request.channelId))}/messages`,
+    `/channels/${encodeURIComponent(String(channelId))}/messages`,
     {
       sender_type: 'user',
       sender_identity: request.senderIdentity,
@@ -100,6 +115,16 @@ async function appendDirectAgentConversationMessage(
       'Idempotency-Key': messageDedupeKey,
     },
   );
+}
+
+async function resolveConversationChannelId(request: PostGatewayDirectAgentMessageRequest): Promise<number | null> {
+  if (!request.projectId) return request.channelId ?? null;
+  const q = `?project_id=${encodeURIComponent(request.projectId)}&kind=project_default&limit=5`;
+  const channels = await getJson<ConversationChannelResponse[]>(conversationApiBase, `/channels${q}`);
+  return channels.find(channel => channel.project_id === request.projectId && channel.kind === 'project_default')?.id
+    ?? channels[0]?.id
+    ?? request.channelId
+    ?? null;
 }
 
 function deliverySourceRef(request: PostGatewayDirectAgentMessageRequest, message: ConversationMessageResponse | null): string {

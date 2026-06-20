@@ -20,9 +20,13 @@ describe('postGatewayDirectAgentMessage', () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
+        json: () => Promise.resolve([{ id: 31, project_id: 'den-web', kind: 'project_default' }]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
         json: () => Promise.resolve({
           id: 4044,
-          channel_id: 584,
+          channel_id: 31,
           dedupe_key: 'conversation-direct-agent-message:584:den-mcp-planner:req1',
         }),
       })
@@ -48,29 +52,33 @@ describe('postGatewayDirectAgentMessage', () => {
       body: '@den-mcp-planner please check this',
     });
 
-    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/conversation/channels/584/messages', expect.objectContaining({
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/conversation/channels?project_id=den-web&kind=project_default&limit=5', {
+      cache: 'no-store',
+      headers: { 'X-Den-Migrated-Functions': 'true' },
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/conversation/channels/31/messages', expect.objectContaining({
       method: 'POST',
       headers: expect.objectContaining({
         'X-Den-Migrated-Functions': 'true',
         'Idempotency-Key': 'conversation-direct-agent-message:584:den-mcp-planner:req1',
       }),
     }));
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({
+    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toMatchObject({
       sender_identity: 'patch',
       body: '@den-mcp-planner please check this',
       message_kind: 'direct_agent_wake',
       source_kind: 'den_web_direct_agent',
       profile_identity: 'den-mcp-planner',
     });
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/delivery/intents', expect.objectContaining({
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/v1/delivery/intents', expect.objectContaining({
       method: 'POST',
       headers: expect.objectContaining({ 'X-Den-Migrated-Functions': 'true' }),
     }));
-    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toMatchObject({
+    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toMatchObject({
       member_identity: 'den-mcp-planner',
       profile_identity: 'den-mcp-planner',
       idempotency_key: 'direct-agent-message:584:den-mcp-planner:req1',
-      source_ref: '/api/v1/conversation/channels/584/messages/4044',
+      source_ref: '/api/v1/conversation/channels/31/messages/4044',
       channel_message_id: 4044,
     });
     expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/api/direct-agent-events'), expect.anything());
@@ -78,8 +86,9 @@ describe('postGatewayDirectAgentMessage', () => {
       status: 'pending',
       deliveryStatus: 'pending',
       messageId: 4044,
+      channelId: 31,
       requestId: 'direct-agent-message:584:den-mcp-planner:req1',
-      gatewayMessageUrl: '/api/v1/conversation/channels/584/messages?after_id=4043&limit=10',
+      gatewayMessageUrl: '/api/v1/conversation/channels/31/messages?after_id=4043&limit=10',
       gatewayEventsUrl: '/api/v1/delivery/intents/812',
     });
   });
@@ -90,7 +99,7 @@ describe('postGatewayDirectAgentMessage', () => {
       json: () => Promise.resolve({
         id: 900,
         state: 'pending',
-        idempotency_key: 'direct-agent-message:den-web:den-mcp-planner:req2',
+        idempotency_key: 'direct-agent-message:direct:den-mcp-planner:req2',
         created_at: '2026-06-20T00:00:00Z',
         expires_at: '2026-06-20T00:05:00Z',
       }),
@@ -99,7 +108,6 @@ describe('postGatewayDirectAgentMessage', () => {
     vi.stubGlobal('crypto', { randomUUID: () => 'req-2' });
 
     const result = await postGatewayDirectAgentMessage({
-      projectId: 'den-web',
       memberIdentity: 'den-mcp-planner',
       senderIdentity: 'patch',
       body: 'hello DM',
@@ -111,7 +119,7 @@ describe('postGatewayDirectAgentMessage', () => {
     }));
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({
       member_identity: 'den-mcp-planner',
-      idempotency_key: 'direct-agent-message:den-web:den-mcp-planner:req2',
+      idempotency_key: 'direct-agent-message:direct:den-mcp-planner:req2',
     });
     expect(result).toMatchObject({
       status: 'pending',
@@ -125,9 +133,13 @@ describe('postGatewayDirectAgentMessage', () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
+        json: () => Promise.resolve([{ id: 31, project_id: 'pi-crew', kind: 'project_default' }]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
         json: () => Promise.resolve({
           id: 4044,
-          channel_id: 584,
+          channel_id: 31,
         }),
       })
       .mockResolvedValueOnce({

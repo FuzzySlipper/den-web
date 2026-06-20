@@ -421,6 +421,17 @@ describe('channels DM API client', () => {
         })
         .mockResolvedValueOnce({
           ok: true,
+          json: () => Promise.resolve([{ id: 31, project_id: 'den-web', kind: 'project_default' }]),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 41,
+            channel_id: 31,
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
           json: () => Promise.resolve({
             id: 42,
             state: 'pending',
@@ -435,19 +446,27 @@ describe('channels DM API client', () => {
       const result = await sendDirectMessage(1, { senderIdentity: 'patch', body: 'Hi' });
 
       expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/direct-conversations/1', { cache: 'no-store' });
-      expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/delivery/intents', expect.objectContaining({
+      expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/conversation/channels?project_id=den-web&kind=project_default&limit=5', {
+        cache: 'no-store',
+        headers: { 'X-Den-Migrated-Functions': 'true' },
+      });
+      expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/v1/conversation/channels/31/messages', expect.objectContaining({
         method: 'POST',
       }));
-      expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toMatchObject({
+      expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/v1/delivery/intents', expect.objectContaining({
+        method: 'POST',
+      }));
+      expect(JSON.parse(String(fetchMock.mock.calls[3][1]?.body))).toMatchObject({
         member_identity: 'pi',
         profile_identity: 'pi',
         idempotency_key: 'direct-agent-message:den-web:pi:req',
+        channel_message_id: 41,
       });
       expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/direct-conversations/1/send'), expect.anything());
       expect(result).toEqual({
         status: 'pending',
-        eventId: 42,
-        channelId: 0,
+        eventId: 41,
+        channelId: 31,
         conversationId: 1,
         entryId: 0,
         requestId: 'direct-agent-message:den-web:pi:req',
