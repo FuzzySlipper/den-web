@@ -38,6 +38,8 @@ const ALLOW_DIRTY = env.ALLOW_DIRTY === '1';
 const DRY_RUN = env.DRY_RUN === '1';
 const SYSTEMCTL = (env.SYSTEMCTL ?? 'systemctl').split(/\s+/).filter(Boolean);
 const SERVICE_READY_TIMEOUT_MS = Number.parseInt(env.SERVICE_READY_TIMEOUT_MS ?? '15000', 10);
+const DEFAULT_TIMELINE_SUCCESSOR_ENABLED = 'true';
+const DEFAULT_TIMELINE_SUCCESSOR_PROJECT_IDS = 'den-web';
 
 function log(message) {
   console.log(`[deploy-den-web] ${message}`);
@@ -135,9 +137,9 @@ function buildRuntimeConfig() {
     conversationSuccessorApiBase: env.CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation',
     conversationSuccessorReadProjectIds: (env.CONVERSATION_SUCCESSOR_READ_PROJECT_IDS ?? '').split(',').map(item => item.trim()).filter(Boolean),
     conversationSuccessorWriteProjectIds: (env.CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS ?? '').split(',').map(item => item.trim()).filter(Boolean),
-    timelineSuccessorEnabled: env.TIMELINE_SUCCESSOR_ENABLED === '1' || env.TIMELINE_SUCCESSOR_ENABLED === 'true',
+    timelineSuccessorEnabled: (env.TIMELINE_SUCCESSOR_ENABLED ?? DEFAULT_TIMELINE_SUCCESSOR_ENABLED) === '1' || (env.TIMELINE_SUCCESSOR_ENABLED ?? DEFAULT_TIMELINE_SUCCESSOR_ENABLED) === 'true',
     timelineSuccessorApiBase: env.TIMELINE_SUCCESSOR_API_BASE ?? '/api/v1/timeline',
-    timelineSuccessorProjectIds: (env.TIMELINE_SUCCESSOR_PROJECT_IDS ?? '').split(',').map(item => item.trim()).filter(Boolean),
+    timelineSuccessorProjectIds: (env.TIMELINE_SUCCESSOR_PROJECT_IDS ?? DEFAULT_TIMELINE_SUCCESSOR_PROJECT_IDS).split(',').map(item => item.trim()).filter(Boolean),
     appBasePath: env.APP_BASE_PATH ?? '/',
     environmentName: env.ENVIRONMENT_NAME ?? 'den-srv',
   };
@@ -277,7 +279,7 @@ function smoke(commit) {
       EXPECTED_ENV_NAME: env.ENVIRONMENT_NAME ?? 'den-srv',
       EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED: env.CONVERSATION_SUCCESSOR_READS_ENABLED ?? 'false',
       EXPECTED_CONVERSATION_SUCCESSOR_API_BASE: env.CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation',
-      EXPECTED_TIMELINE_SUCCESSOR_ENABLED: env.TIMELINE_SUCCESSOR_ENABLED ?? 'false',
+      EXPECTED_TIMELINE_SUCCESSOR_ENABLED: env.TIMELINE_SUCCESSOR_ENABLED ?? DEFAULT_TIMELINE_SUCCESSOR_ENABLED,
       EXPECTED_TIMELINE_SUCCESSOR_API_BASE: env.TIMELINE_SUCCESSOR_API_BASE ?? '/api/v1/timeline',
     },
   });

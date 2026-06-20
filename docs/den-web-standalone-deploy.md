@@ -106,9 +106,9 @@ CONVERSATION_SUCCESSOR_WRITES_ENABLED=false
 CONVERSATION_SUCCESSOR_API_BASE=/api/v1/conversation
 CONVERSATION_SUCCESSOR_READ_PROJECT_IDS=
 CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS=
-TIMELINE_SUCCESSOR_ENABLED=false
+TIMELINE_SUCCESSOR_ENABLED=true
 TIMELINE_SUCCESSOR_API_BASE=/api/v1/timeline
-TIMELINE_SUCCESSOR_PROJECT_IDS=
+TIMELINE_SUCCESSOR_PROJECT_IDS=den-web
 APP_BASE_PATH=/
 ENVIRONMENT_NAME=den-srv
 ```
@@ -261,9 +261,9 @@ with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 | `CONVERSATION_SUCCESSOR_API_BASE` | `/api/v1/conversation` | Same-origin Den Web proxy base for Gateway conversation canary reads. |
 | `CONVERSATION_SUCCESSOR_READ_PROJECT_IDS` | empty | Comma-separated project IDs allowed to use successor channel/message reads. Empty means route no projects. |
 | `CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS` | empty | Comma-separated project IDs allowed to use successor message/reaction writes. Empty means route no projects. |
-| `TIMELINE_SUCCESSOR_ENABLED` | `false` | Enables den-services Timeline read/SSE display composition in browser config. |
+| `TIMELINE_SUCCESSOR_ENABLED` | `true` | Enables den-services Timeline read/SSE display composition in browser config. Set to `false` to roll back to legacy message/activity reads. |
 | `TIMELINE_SUCCESSOR_API_BASE` | `/api/v1/timeline` | Same-origin Den Web proxy base for Gateway Timeline reads/streams. |
-| `TIMELINE_SUCCESSOR_PROJECT_IDS` | empty | Comma-separated project IDs allowed to use Timeline display composition. Empty means route no projects. |
+| `TIMELINE_SUCCESSOR_PROJECT_IDS` | `den-web` | Comma-separated project IDs allowed to use Timeline display composition. Empty means route no projects. |
 
 ## Cutover from den-channels
 

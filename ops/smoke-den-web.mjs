@@ -18,7 +18,7 @@
  *   EXPECTED_ENV_NAME     - Expected environmentName value (default: den-srv)
  *   EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED - Expected read pilot flag (default: false)
  *   EXPECTED_CONVERSATION_SUCCESSOR_API_BASE - Expected read pilot API base (default: /api/v1/conversation)
- *   EXPECTED_TIMELINE_SUCCESSOR_ENABLED - Expected timeline pilot flag (default: false)
+ *   EXPECTED_TIMELINE_SUCCESSOR_ENABLED - Expected timeline pilot flag (default: true)
  *   EXPECTED_TIMELINE_SUCCESSOR_API_BASE - Expected timeline API base (default: /api/v1/timeline)
  *   REQUIRE_AGENT_WORK_COMPLETE_NOTIFICATION - If set to 1, require at least one
  *                         agent_work_complete row in the Core notification feed
@@ -34,7 +34,7 @@ const EXPECTED_BUILD_COMMIT = process.env.EXPECTED_BUILD_COMMIT ?? '';
 const EXPECTED_ENV_NAME = process.env.EXPECTED_ENV_NAME ?? 'den-srv';
 const EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED = (process.env.EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED ?? 'false').toLowerCase() === 'true';
 const EXPECTED_CONVERSATION_SUCCESSOR_API_BASE = process.env.EXPECTED_CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation';
-const EXPECTED_TIMELINE_SUCCESSOR_ENABLED = (process.env.EXPECTED_TIMELINE_SUCCESSOR_ENABLED ?? 'false').toLowerCase() === 'true';
+const EXPECTED_TIMELINE_SUCCESSOR_ENABLED = (process.env.EXPECTED_TIMELINE_SUCCESSOR_ENABLED ?? 'true').toLowerCase() === 'true';
 const EXPECTED_TIMELINE_SUCCESSOR_API_BASE = process.env.EXPECTED_TIMELINE_SUCCESSOR_API_BASE ?? '/api/v1/timeline';
 const REQUIRE_AGENT_WORK_COMPLETE_NOTIFICATION = process.env.REQUIRE_AGENT_WORK_COMPLETE_NOTIFICATION === '1';
 

@@ -85,9 +85,9 @@ Recommended runtime config keys:
 | `conversationSuccessorApiBase` | `/api/v1/conversation` | Same-origin Den Web proxy base for Gateway conversation canary reads. |
 | `conversationSuccessorReadProjectIds` | `[]` | Project allowlist for the pilot. Empty means no channel/message reads use successor. |
 | `conversationSuccessorWriteProjectIds` | `[]` | Project allowlist for successor conversation writes. Empty means all channel-message writes stay legacy. |
-| `timelineSuccessorEnabled` | `false` | Feature flag for the den-services composed timeline read/SSE surface. |
+| `timelineSuccessorEnabled` | `true` on den-srv | Feature flag for the den-services composed timeline read/SSE surface. Set false to roll back to legacy message/activity reads. |
 | `timelineSuccessorApiBase` | `/api/v1/timeline` | Same-origin Den Web proxy base for Gateway timeline reads/streams. |
-| `timelineSuccessorProjectIds` | `[]` | Project allowlist for timeline display composition. Empty means legacy message/activity reads and legacy SSE stay active. |
+| `timelineSuccessorProjectIds` | `["den-web"]` on den-srv | Project allowlist for timeline display composition. Empty means legacy message/activity reads and legacy SSE stay active. |
 | `appBasePath` | `/` | Static app base path. |
 | `environmentName` | `den-srv` | Human-readable deployment/environment label. |
 
