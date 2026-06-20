@@ -61,6 +61,45 @@
   font-size: 10px;
 }
 
+.space-visibility-toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.space-visibility-toggle {
+  flex: 1 1 0;
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 0;
+  padding: 4px 6px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+
+.space-visibility-toggle:hover:not(:disabled),
+.space-visibility-toggle.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.space-visibility-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.space-visibility-toggle-count {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 .space-list-title,
 .space-list-id,
 .space-list-meta {

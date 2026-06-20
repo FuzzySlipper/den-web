@@ -4,6 +4,7 @@ import {
   ALL_SPACES_ID,
   GLOBAL_SPACE_ID,
   defaultSpaceId,
+  filterSpacesByVisibility,
   nextSpaceId,
   notificationScopeProjectIds,
   spaceSupportsGit,
@@ -39,6 +40,34 @@ describe('withAllSpacesAggregate', () => {
   it('handles null/undefined input', () => {
     expect(withAllSpacesAggregate(null)[0].id).toBe(ALL_SPACES_ID);
     expect(withAllSpacesAggregate(undefined)).toHaveLength(1);
+  });
+});
+
+describe('filterSpacesByVisibility', () => {
+  const spaces = [
+    space({ id: 'normal' }),
+    space({ id: 'hidden', visibility: 'hidden' }),
+    space({ id: 'archived', visibility: 'archived' }),
+  ];
+
+  it('hides hidden and archived spaces by default', () => {
+    expect(filterSpacesByVisibility(spaces, { showHidden: false, showArchived: false }).map(s => s.id))
+      .toEqual(['normal']);
+  });
+
+  it('can include hidden spaces without archived spaces', () => {
+    expect(filterSpacesByVisibility(spaces, { showHidden: true, showArchived: false }).map(s => s.id))
+      .toEqual(['normal', 'hidden']);
+  });
+
+  it('can include archived spaces without hidden spaces', () => {
+    expect(filterSpacesByVisibility(spaces, { showHidden: false, showArchived: true }).map(s => s.id))
+      .toEqual(['normal', 'archived']);
+  });
+
+  it('includes both optional visibility states when enabled', () => {
+    expect(filterSpacesByVisibility(spaces, { showHidden: true, showArchived: true }).map(s => s.id))
+      .toEqual(['normal', 'hidden', 'archived']);
   });
 });
 

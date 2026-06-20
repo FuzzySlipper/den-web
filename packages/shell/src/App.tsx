@@ -32,6 +32,7 @@ import {
   ALL_SPACES_ID,
   GLOBAL_SPACE_ID,
   defaultSpaceId,
+  filterSpacesByVisibility,
   nextSpaceId,
   notificationScopeProjectIds,
   spaceSupportsGit,
@@ -71,6 +72,8 @@ export default function App() {
   const [channelPanelSize, setChannelPanelSize] = useState<ChannelChatPanelSize>('medium');
   const [showPreferences, setShowPreferences] = useState(false);
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
+  const [showHiddenSpaces, setShowHiddenSpaces] = useState(false);
+  const [showArchivedSpaces, setShowArchivedSpaces] = useState(false);
 
   const { prefs, updateSection, resetToDefaults } = usePreferences();
   const workspace = useWorkspaceState();
@@ -84,7 +87,22 @@ export default function App() {
   const { data: operatorNotificationFeed } = useLiveData(fetchOperatorNotifications, { interval: 10000 });
   const fetchSpaces = useCallback(() => listSpaces({ includeHidden: true, includeArchived: true }), []);
   const { data: fetchedSpaces } = useLiveData(fetchSpaces, { interval: 5000 });
-  const spaces = useMemo(() => withAllSpacesAggregate(fetchedSpaces), [fetchedSpaces]);
+  const visibleFetchedSpaces = useMemo(
+    () => filterSpacesByVisibility(fetchedSpaces, {
+      showHidden: showHiddenSpaces,
+      showArchived: showArchivedSpaces,
+    }),
+    [fetchedSpaces, showArchivedSpaces, showHiddenSpaces],
+  );
+  const spaces = useMemo(() => withAllSpacesAggregate(visibleFetchedSpaces), [visibleFetchedSpaces]);
+  const hiddenSpaceCount = useMemo(
+    () => (fetchedSpaces ?? []).filter(space => space.visibility === 'hidden').length,
+    [fetchedSpaces],
+  );
+  const archivedSpaceCount = useMemo(
+    () => (fetchedSpaces ?? []).filter(space => space.visibility === 'archived').length,
+    [fetchedSpaces],
+  );
 
   const bell = useNotificationBell(operatorNotificationFeed, prefs.layout.notificationHistoryMode);
 
@@ -288,6 +306,12 @@ export default function App() {
           spaces={spaces}
           selectedId={effectiveSpaceId}
           onSelect={nav.handleProjectSelect}
+          showHiddenSpaces={showHiddenSpaces}
+          showArchivedSpaces={showArchivedSpaces}
+          hiddenSpaceCount={hiddenSpaceCount}
+          archivedSpaceCount={archivedSpaceCount}
+          onToggleHiddenSpaces={() => setShowHiddenSpaces(value => !value)}
+          onToggleArchivedSpaces={() => setShowArchivedSpaces(value => !value)}
           notificationHistoryMode={prefs.layout.notificationHistoryMode}
           onToggleNotificationPanel={() => setShowNotificationPanel(toggleNotificationSidePanel)}
           notificationUnreadCount={bell.unreadCount}

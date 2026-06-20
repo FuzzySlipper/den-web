@@ -15,10 +15,27 @@ export const ALL_SPACES: Space = {
   updated_at: null,
 };
 
+export interface SpaceVisibilityFilters {
+  showHidden: boolean;
+  showArchived: boolean;
+}
+
 /** Prepend the synthetic "All spaces" aggregate unless it is already present. */
 export function withAllSpacesAggregate(spaces: Space[] | null | undefined): Space[] {
   const list = spaces ?? [];
   return list.some(space => space.id === ALL_SPACES.id) ? list : [ALL_SPACES, ...list];
+}
+
+/** Filter concrete spaces for the operator sidebar while preserving normal spaces by default. */
+export function filterSpacesByVisibility(
+  spaces: Space[] | null | undefined,
+  filters: SpaceVisibilityFilters,
+): Space[] {
+  return (spaces ?? []).filter(space => {
+    if (space.visibility === 'hidden') return filters.showHidden;
+    if (space.visibility === 'archived') return filters.showArchived;
+    return true;
+  });
 }
 
 /** Pick the startup space, preferring a normal project-kind space to preserve project-centric startup. */
