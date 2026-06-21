@@ -92,6 +92,19 @@ export function preferredProjectChannel(channels: Channel[], projectId: string |
     ?? channels[0];
 }
 
+export function shouldPreferProjectChannelAfterProjectChange(
+  previousProjectId: string | null,
+  projectId: string | null,
+  selectedChannel: Channel | null | undefined,
+): boolean {
+  return Boolean(
+    projectId
+    && previousProjectId !== projectId
+    && selectedChannel
+    && (isAgentCommonsChannel(selectedChannel) || isSharedProjectChannel(selectedChannel)),
+  );
+}
+
 export function messageProjectAttribution(
   message: { sourceProjectId?: string | null; targetProjectId?: string | null; projectId?: string | null; metadataJson?: string | null },
 ): string | null {

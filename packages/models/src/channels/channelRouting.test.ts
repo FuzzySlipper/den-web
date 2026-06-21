@@ -10,6 +10,7 @@ import {
   preferredProjectChannel,
   projectChannelScopeLabel,
   selectProjectChannels,
+  shouldPreferProjectChannelAfterProjectChange,
 } from './channelRouting';
 
 function channel(overrides: Partial<Channel>): Channel {
@@ -113,6 +114,14 @@ describe('channel routing helpers', () => {
     expect(projectChannelScopeLabel(workerPool)).toBe('shared worker-pool lane');
     expect(isWorkerPoolChannel(workerPool)).toBe(true);
     expect(preferredProjectChannel(selected, 'den-router')?.slug).toBe('project-den-router');
+  });
+
+  it('resets shared channel selection when navigating between projects', () => {
+    expect(shouldPreferProjectChannelAfterProjectChange('agora-os', 'den-web', agentCommons)).toBe(true);
+    expect(shouldPreferProjectChannelAfterProjectChange('agora-os', 'den-web', denSystem)).toBe(true);
+    expect(shouldPreferProjectChannelAfterProjectChange('den-web', 'den-web', agentCommons)).toBe(false);
+    expect(shouldPreferProjectChannelAfterProjectChange('agora-os', 'den-web', channel({ projectId: 'den-web' }))).toBe(false);
+    expect(shouldPreferProjectChannelAfterProjectChange('agora-os', null, agentCommons)).toBe(false);
   });
 
   it('extracts project attribution from first-class fields or metadata', () => {

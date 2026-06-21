@@ -44,12 +44,14 @@ export function timelineSuccessorEnabledForChannel(channel: Channel | null | und
   const projectId = channel.projectId ?? null;
   timelineChannelProjects.set(channel.id, projectId);
   registerConversationSuccessorChannel(channel.id, projectId);
+  if (!projectId && channel.kind === 'system') return true;
   return Boolean(projectId && config.projectIds.includes(projectId));
 }
 
 export function timelineSuccessorEnabledForChannelId(channelId: number): boolean {
   if (!config.enabled) return false;
   const projectId = timelineChannelProjects.get(channelId);
+  if (projectId === null) return true;
   return Boolean(projectId && config.projectIds.includes(projectId));
 }
 

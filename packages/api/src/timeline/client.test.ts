@@ -48,6 +48,26 @@ describe('timeline successor client', () => {
     expect(timelineChannelStreamUrl(7, { after: 'cursor-1' })).toBe('/api/v1/timeline/channels/7/stream?after=cursor-1');
   });
 
+  it('uses timeline for shared system channels when the successor is enabled', () => {
+    reinitTimelineSuccessor({ enabled: true, apiBase: '/api/v1/timeline', projectIds: ['den-web'] });
+
+    expect(timelineSuccessorEnabledForChannel({
+      id: 21,
+      slug: 'agent-commons',
+      displayName: 'Agent Commons',
+      kind: 'system',
+      projectId: null,
+      spaceId: null,
+      createdBy: 'den-web',
+      visibility: 'normal',
+      settingsJson: '{"channelRole":"agent_commons"}',
+      createdAt: 't0',
+      updatedAt: 't0',
+      archivedAt: null,
+    })).toBe(true);
+    expect(timelineChannelStreamUrl(21)).toBe('/api/v1/timeline/channels/21/stream');
+  });
+
   it('normalizes timeline messages and breadcrumbs into existing channel render shapes', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -123,4 +143,3 @@ describe('timeline successor client', () => {
     });
   });
 });
-

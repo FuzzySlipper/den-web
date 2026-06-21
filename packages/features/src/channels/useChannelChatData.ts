@@ -38,6 +38,7 @@ import {
   preferredProjectChannel,
   projectChannelScopeLabel,
   selectProjectChannels,
+  shouldPreferProjectChannelAfterProjectChange,
 } from '@den-web/models/channels/channelRouting';
 import { NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS, isVisibleNormalParticipant } from './participantVisibility';
 import { useChannelComposer } from './useChannelComposer';
@@ -188,6 +189,7 @@ function useChannelSelection({
   setSelectedChannelId: (channelId: number | null) => void;
   spaceName?: string | null;
 }) {
+  const previousProjectIdRef = useRef<string | null>(projectId);
   const fetchChannels = useCallback(async () => {
     const agentCommons = await resolveAgentCommonsChannel();
     if (!projectId) return [agentCommons];
@@ -217,12 +219,17 @@ function useChannelSelection({
   const availableChannels = useMemo(() => channels ?? [], [channels]);
 
   useEffect(() => {
+    const previousProjectId = previousProjectIdRef.current;
+    previousProjectIdRef.current = projectId;
     if (availableChannels.length === 0) {
       setSelectedChannelId(null);
       return;
     }
-    if (!selectedChannelId || !availableChannels.some(candidate => candidate.id === selectedChannelId)) {
-      setSelectedChannelId(preferredProjectChannel(availableChannels, projectId)?.id ?? null);
+    const selectedChannel = availableChannels.find(candidate => candidate.id === selectedChannelId);
+    const shouldPreferProjectChannel = shouldPreferProjectChannelAfterProjectChange(previousProjectId, projectId, selectedChannel);
+    if (!selectedChannelId || !selectedChannel || shouldPreferProjectChannel) {
+      const preferredChannelId = preferredProjectChannel(availableChannels, projectId)?.id ?? null;
+      if (preferredChannelId !== selectedChannelId) setSelectedChannelId(preferredChannelId);
     }
   }, [availableChannels, projectId, selectedChannelId, setSelectedChannelId]);
 
