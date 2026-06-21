@@ -146,6 +146,7 @@ export {
   ensureProjectDefaultChannel,
   ensureAgentCommonsChannel,
   listChannelMessages,
+  channelUsesConversationSuccessor,
   listChannelActivityEvents,
   listAgentWorkCurrent,
   listAgentWorkEvents,

@@ -15,6 +15,7 @@ export function useChannelChatActions({
   inviteExistingMember,
   inviteIdentity,
   inviteWakePolicy,
+  membershipChannelId,
   normalizedSenderIdentity,
   projectId,
   refreshActivityEvents,
@@ -38,6 +39,7 @@ export function useChannelChatActions({
   inviteExistingMember: ChatData['inviteExistingMember'];
   inviteIdentity: string;
   inviteWakePolicy: string;
+  membershipChannelId: number | null;
   normalizedSenderIdentity: string;
   projectId: string | null;
   refreshActivityEvents: () => void;
@@ -86,6 +88,7 @@ export function useChannelChatActions({
     inviteExistingMember,
     inviteIdentity,
     inviteWakePolicy,
+    membershipChannelId,
     refreshMemberships,
     setEditingMembershipStatus,
     setEditingMemberIdentity,

@@ -1,10 +1,11 @@
 import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse, AgentWorkCurrentResponse, AgentWorkEventsResponse, AgentWorkLifecycleEvent, DirectAgentEventsResponse, DirectConversation, DirectConversationListResponse, DirectConversationEntriesResponse, DirectConversationCreateRequest, ReadCursor } from './types';
 import { normalizeApiBase } from '../config';
 import { dedupedFetch } from '../requestCache';
-import { addConversationSuccessorReaction, conversationSuccessorReactionsEnabledForMessage, conversationSuccessorReadsEnabledForChannel, conversationSuccessorReadsEnabledForProject, conversationSuccessorWritesEnabledForChannel, conversationSuccessorWritesEnabledForProject, listConversationSuccessorChannels, listConversationSuccessorMessages, postConversationSuccessorMessage, postConversationSuccessorProjectMessage, reinitConversationSuccessorReads, type ConversationSuccessorReadConfig } from './conversationSuccessor';
+import { addConversationSuccessorReaction, conversationSuccessorReactionsEnabledForMessage, conversationSuccessorReadsEnabledForChannel as channelUsesConversationSuccessor, conversationSuccessorReadsEnabledForProject, conversationSuccessorWritesEnabledForChannel, conversationSuccessorWritesEnabledForProject, listConversationSuccessorChannels, listConversationSuccessorMessages, postConversationSuccessorMessage, postConversationSuccessorProjectMessage, reinitConversationSuccessorReads, type ConversationSuccessorReadConfig } from './conversationSuccessor';
 import { timelineChannelStreamUrl, timelineSuccessorEnabledForChannelId } from '../timeline/client';
 import { reinitDirectMessagesRuntime } from './directMessages';
 export { sendDirectMessage } from './directMessages';
+export { channelUsesConversationSuccessor };
 
 let denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
 
@@ -168,13 +169,10 @@ export function ensureAgentCommonsChannel(): Promise<Channel> {
   return putChannels('/agent-commons', {});
 }
 
-export interface ListChannelMessagesOpts {
-  afterId?: number;
-  limit?: number;
-}
+export interface ListChannelMessagesOpts { afterId?: number; limit?: number; }
 
 export function listChannelMessages(channelId: number, opts: ListChannelMessagesOpts = {}): Promise<ChannelMessage[]> {
-  if (conversationSuccessorReadsEnabledForChannel(channelId)) {
+  if (channelUsesConversationSuccessor(channelId)) {
     return listConversationSuccessorMessages(channelId, opts);
   }
   const q = buildQuery({ afterId: opts.afterId, limit: opts.limit });

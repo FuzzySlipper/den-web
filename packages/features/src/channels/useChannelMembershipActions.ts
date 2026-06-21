@@ -3,6 +3,7 @@ import type { GatewayMember } from '@den-web/api/types';
 import { upsertChannelMembership } from '@den-web/api/client';
 import { DEFAULT_WAKE_POLICY } from './channelParticipantOptions';
 import type { useChannelChatData } from './useChannelChatData';
+import { membershipWriteChannelId } from './channelMembershipLookup';
 
 type ChatData = ReturnType<typeof useChannelChatData>;
 
@@ -14,6 +15,7 @@ interface Options {
   inviteExistingMember: ChatData['inviteExistingMember'];
   inviteIdentity: string;
   inviteWakePolicy: string;
+  membershipChannelId: number | null;
   refreshMemberships: () => void;
   setEditingMembershipStatus: (status: string) => void;
   setEditingMemberIdentity: (identity: string | null) => void;
@@ -30,6 +32,7 @@ export function useChannelMembershipActions({
   inviteExistingMember,
   inviteIdentity,
   inviteWakePolicy,
+  membershipChannelId,
   refreshMemberships,
   setEditingMembershipStatus,
   setEditingMemberIdentity,
@@ -46,7 +49,9 @@ export function useChannelMembershipActions({
     setInviteSending(true);
     setSendError(null);
     try {
-      await upsertChannelMembership(activeChannel.id, {
+      const writeChannelId = membershipWriteChannelId(activeChannel, membershipChannelId);
+      if (!writeChannelId) return;
+      await upsertChannelMembership(writeChannelId, {
         memberType: 'agent',
         memberIdentity: identity,
         membershipStatus: inviteExistingMember?.membershipStatus ?? 'active',
@@ -64,7 +69,7 @@ export function useChannelMembershipActions({
     } finally {
       setInviteSending(false);
     }
-  }, [activeChannel, inviteExistingMember, inviteIdentity, inviteWakePolicy, refreshMemberships, setInviteIdentity, setSendError]);
+  }, [activeChannel, inviteExistingMember, inviteIdentity, inviteWakePolicy, membershipChannelId, refreshMemberships, setInviteIdentity, setSendError]);
 
   const handleEditMember = useCallback((member: GatewayMember) => {
     setEditingMemberIdentity(member.memberIdentity);
@@ -77,7 +82,9 @@ export function useChannelMembershipActions({
     setMemberSaving(true);
     setSendError(null);
     try {
-      await upsertChannelMembership(activeChannel.id, {
+      const writeChannelId = membershipWriteChannelId(activeChannel, membershipChannelId);
+      if (!writeChannelId) return;
+      await upsertChannelMembership(writeChannelId, {
         memberType: editingMember.memberType,
         memberIdentity: editingMember.memberIdentity,
         membershipStatus: editingMembershipStatus,
@@ -95,7 +102,7 @@ export function useChannelMembershipActions({
     } finally {
       setMemberSaving(false);
     }
-  }, [activeChannel, editingMember, editingMembershipStatus, editingWakePolicy, refreshMemberships, setEditingMemberIdentity, setSendError]);
+  }, [activeChannel, editingMember, editingMembershipStatus, editingWakePolicy, membershipChannelId, refreshMemberships, setEditingMemberIdentity, setSendError]);
 
   return {
     handleEditMember,

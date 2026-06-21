@@ -16,6 +16,7 @@ import {
   ensureProjectDefaultChannel,
   listAgentWorkCurrent,
   listAgentWorkEvents,
+  channelUsesConversationSuccessor,
   listChannelActivityEvents,
   listChannelLinkedProjects,
   listChannelMessages,
@@ -46,6 +47,7 @@ import { deriveParticipantActivity, memberIsActiveAgent } from './channelPartici
 import { resolveAgentCommonsChannel, resolveWorkerPoolChannel } from './channelResolve';
 import { useChannelMessageDerivations } from './useChannelMessageDerivations';
 import { observationActiveWorkIncludesMember } from '@den-web/models/channels';
+import { membershipLookupForChannel } from './channelMembershipLookup';
 
 const STREAM_SAFETY_POLL_MS = 20000;
 
@@ -84,12 +86,16 @@ function useChannelLiveResources(activeChannel: Channel | null) {
   const agentWorkCurrentState = useLiveData<AgentWorkCurrentResponse | null>(fetchAgentWorkCurrent, { interval: 4000 });
   const fetchAgentWorkEvents = useCallback(() => activeChannel ? listAgentWorkEvents({ channelId: activeChannel.id, limit: 24 }) : Promise.resolve(null), [activeChannel]);
   const agentWorkEventsState = useLiveData<AgentWorkEventsResponse | null>(fetchAgentWorkEvents, { interval: 4000 });
-  const fetchDirectAgentEvents = useCallback(() => activeChannel ? listDirectAgentEvents({ channelId: activeChannel.id, limit: 24 }) : Promise.resolve(null), [activeChannel]);
+  const fetchDirectAgentEvents = useCallback(() => (
+    activeChannel && !channelUsesConversationSuccessor(activeChannel.id)
+      ? listDirectAgentEvents({ channelId: activeChannel.id, limit: 24 })
+      : Promise.resolve(null)
+  ), [activeChannel]);
   const directAgentEventsState = useLiveData<DirectAgentEventsResponse | null>(fetchDirectAgentEvents, { interval: 4000 });
   const fetchReactions = useCallback(() => activeChannel ? listChannelReactions(activeChannel.id) : Promise.resolve([]), [activeChannel]);
   const reactionsState = useLiveData<ChannelReactionSummary[]>(fetchReactions, { interval: 5000 });
   const fetchMemberships = useCallback(
-    () => activeChannel ? listGatewayMemberships({ channelId: activeChannel.id, ...NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS }) : Promise.resolve(null),
+    () => activeChannel ? listGatewayMemberships({ ...membershipLookupForChannel(activeChannel), ...NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS }) : Promise.resolve(null),
     [activeChannel],
   );
   const membershipsState = useLiveData<GatewayMemberships | null>(fetchMemberships, { interval: 5000 });

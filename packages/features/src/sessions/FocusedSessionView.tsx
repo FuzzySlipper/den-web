@@ -18,6 +18,7 @@ import {
   routeAllows,
 } from './sessionPolicy';
 import { NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS, isVisibleNormalParticipant } from '../channels/participantVisibility';
+import { membershipLookupForChannel } from '../channels/channelMembershipLookup';
 import { readStoredSenderIdentity } from '../channels/channelChatStorage';
 import { useLiveData } from '@den-web/ui/hooks/useLiveData';
 import {
@@ -109,7 +110,7 @@ export function FocusedSessionView({ projectId, spaceName }: Props) {
   const selectedThreadId: number | null = null;
 
   const fetchMemberships = useCallback(
-    () => activeChannel ? listGatewayMemberships({ channelId: activeChannel.id, ...NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS }) : Promise.resolve(null),
+    () => activeChannel ? listGatewayMemberships({ ...membershipLookupForChannel(activeChannel), ...NORMAL_PARTICIPANT_MEMBERSHIP_OPTIONS }) : Promise.resolve(null),
     [activeChannel],
   );
   const { data: memberships, loading: membershipsLoading, error: membershipsError, refresh: refreshMemberships } = useLiveData<GatewayMemberships | null>(fetchMemberships, { interval: 5000 });

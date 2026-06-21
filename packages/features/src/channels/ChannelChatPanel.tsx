@@ -156,6 +156,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     inviteExistingMember,
     inviteIdentity,
     inviteWakePolicy,
+    membershipChannelId: membershipsState.data?.channelId ?? null,
     normalizedSenderIdentity,
     projectId,
     refreshActivityEvents,
