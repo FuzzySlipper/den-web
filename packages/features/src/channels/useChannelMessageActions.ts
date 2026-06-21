@@ -64,6 +64,7 @@ export function useChannelMessageActions({
           senderIdentity: normalizedSenderIdentity,
           messageKind: 'human_text',
           body,
+          sourceProjectId: projectId ?? activeChannel.projectId ?? null,
         });
         const mentionedDirectTargets = directTargetsForComposerBody(body, activeAgentMembers);
         await Promise.all(mentionedDirectTargets.map(target => postGatewayDirectAgentMessage({
@@ -108,6 +109,7 @@ export function useChannelMessageActions({
         messageKind: 'human_text',
         body: replyBody,
         replyToMessageId: messageId,
+        sourceProjectId: projectId,
       });
       refreshMessages();
       refreshActivityEvents();
@@ -116,7 +118,7 @@ export function useChannelMessageActions({
     } finally {
       setSending(false);
     }
-  }, [normalizedSenderIdentity, refreshActivityEvents, refreshMessages]);
+  }, [normalizedSenderIdentity, projectId, refreshActivityEvents, refreshMessages]);
 
   return {
     handleClarifyChoice,

@@ -258,6 +258,69 @@ describe('channels DM API client', () => {
       expect(message).toMatchObject({ id: 9100, channelId: 702, dedupeKey: 'manual-key' });
     });
 
+    it('routes allowlisted project writes through conversation even when reads used legacy channel ids', async () => {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([{ id: 31, slug: 'project-den-web', display_name: 'Den Web', kind: 'project_default', project_id: 'den-web', created_at: 't0', updated_at: 't0' }]),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 9101,
+            channel_id: 31,
+            sender_type: 'user',
+            sender_identity: 'patch',
+            body: 'hello from legacy-loaded channel',
+            message_kind: 'human_text',
+            dedupe_key: 'manual-key-2',
+            created_at: '2026-06-20T00:03:00Z',
+          }),
+        });
+      vi.stubGlobal('fetch', fetchMock);
+      reinitChannelsRuntime({
+        denChannelsApiBase: '/api',
+        conversationSuccessorReads: {
+          enabled: false,
+          writeEnabled: true,
+          apiBase: '/api/v1/conversation',
+          projectIds: [],
+          writeProjectIds: ['den-web'],
+        },
+      });
+
+      const message = await postChannelMessage(584, {
+        senderType: 'user',
+        senderIdentity: 'patch',
+        messageKind: 'human_text',
+        body: 'hello from legacy-loaded channel',
+        sourceProjectId: 'den-web',
+        dedupeKey: 'manual-key-2',
+      });
+
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        1,
+        '/api/v1/conversation/channels?project_id=den-web&kind=project_default&limit=5',
+        {
+          cache: 'no-store',
+          headers: { 'X-Den-Migrated-Functions': 'true' },
+        },
+      );
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        2,
+        '/api/v1/conversation/channels/31/messages',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'X-Den-Migrated-Functions': 'true',
+            'Idempotency-Key': 'manual-key-2',
+          }),
+        }),
+      );
+      expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/api/channels/584/messages'), expect.anything());
+      expect(message).toMatchObject({ id: 9101, channelId: 31, dedupeKey: 'manual-key-2' });
+    });
+
     it('routes reactions through conversation only for write-allowlisted successor messages', async () => {
       const fetchMock = vi.fn()
         .mockResolvedValueOnce({

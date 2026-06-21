@@ -40,9 +40,23 @@ const SYSTEMCTL = (env.SYSTEMCTL ?? 'systemctl').split(/\s+/).filter(Boolean);
 const SERVICE_READY_TIMEOUT_MS = Number.parseInt(env.SERVICE_READY_TIMEOUT_MS ?? '15000', 10);
 const DEFAULT_TIMELINE_SUCCESSOR_ENABLED = 'true';
 const DEFAULT_TIMELINE_SUCCESSOR_PROJECT_IDS = 'den-web';
+const runtimeEnv = { ...readEnvFile(path.join(SHARED_DIR, 'gateway.env')), ...env };
 
 function log(message) {
   console.log(`[deploy-den-web] ${message}`);
+}
+
+function readEnvFile(filePath) {
+  if (!fssync.existsSync(filePath)) return {};
+  const values = {};
+  for (const line of fssync.readFileSync(filePath, 'utf8').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eqIdx = trimmed.indexOf('=');
+    if (eqIdx <= 0) continue;
+    values[trimmed.slice(0, eqIdx).trim()] = trimmed.slice(eqIdx + 1).trim();
+  }
+  return values;
 }
 
 function run(command, args, options = {}) {
@@ -128,20 +142,20 @@ async function copyDir(src, dest) {
 
 function buildRuntimeConfig() {
   return {
-    denCoreApiBase: env.DEN_CORE_API_BASE ?? '/den-core-api',
-    denChannelsApiBase: env.DEN_CHANNELS_API_BASE ?? '/api',
-    denHostApiBase: env.DEN_HOST_API_BASE ?? '/den-host-api',
-    piCrewAdminApiBase: env.PI_CREW_ADMIN_API_BASE ?? '/pi-crew-admin-api',
-    conversationSuccessorReadsEnabled: env.CONVERSATION_SUCCESSOR_READS_ENABLED === '1' || env.CONVERSATION_SUCCESSOR_READS_ENABLED === 'true',
-    conversationSuccessorWritesEnabled: env.CONVERSATION_SUCCESSOR_WRITES_ENABLED === '1' || env.CONVERSATION_SUCCESSOR_WRITES_ENABLED === 'true',
-    conversationSuccessorApiBase: env.CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation',
-    conversationSuccessorReadProjectIds: (env.CONVERSATION_SUCCESSOR_READ_PROJECT_IDS ?? '').split(',').map(item => item.trim()).filter(Boolean),
-    conversationSuccessorWriteProjectIds: (env.CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS ?? '').split(',').map(item => item.trim()).filter(Boolean),
-    timelineSuccessorEnabled: (env.TIMELINE_SUCCESSOR_ENABLED ?? DEFAULT_TIMELINE_SUCCESSOR_ENABLED) === '1' || (env.TIMELINE_SUCCESSOR_ENABLED ?? DEFAULT_TIMELINE_SUCCESSOR_ENABLED) === 'true',
-    timelineSuccessorApiBase: env.TIMELINE_SUCCESSOR_API_BASE ?? '/api/v1/timeline',
-    timelineSuccessorProjectIds: (env.TIMELINE_SUCCESSOR_PROJECT_IDS ?? DEFAULT_TIMELINE_SUCCESSOR_PROJECT_IDS).split(',').map(item => item.trim()).filter(Boolean),
-    appBasePath: env.APP_BASE_PATH ?? '/',
-    environmentName: env.ENVIRONMENT_NAME ?? 'den-srv',
+    denCoreApiBase: runtimeEnv.DEN_CORE_API_BASE ?? '/den-core-api',
+    denChannelsApiBase: runtimeEnv.DEN_CHANNELS_API_BASE ?? '/api',
+    denHostApiBase: runtimeEnv.DEN_HOST_API_BASE ?? '/den-host-api',
+    piCrewAdminApiBase: runtimeEnv.PI_CREW_ADMIN_API_BASE ?? '/pi-crew-admin-api',
+    conversationSuccessorReadsEnabled: runtimeEnv.CONVERSATION_SUCCESSOR_READS_ENABLED === '1' || runtimeEnv.CONVERSATION_SUCCESSOR_READS_ENABLED === 'true',
+    conversationSuccessorWritesEnabled: runtimeEnv.CONVERSATION_SUCCESSOR_WRITES_ENABLED === '1' || runtimeEnv.CONVERSATION_SUCCESSOR_WRITES_ENABLED === 'true',
+    conversationSuccessorApiBase: runtimeEnv.CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation',
+    conversationSuccessorReadProjectIds: (runtimeEnv.CONVERSATION_SUCCESSOR_READ_PROJECT_IDS ?? '').split(',').map(item => item.trim()).filter(Boolean),
+    conversationSuccessorWriteProjectIds: (runtimeEnv.CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS ?? '').split(',').map(item => item.trim()).filter(Boolean),
+    timelineSuccessorEnabled: (runtimeEnv.TIMELINE_SUCCESSOR_ENABLED ?? DEFAULT_TIMELINE_SUCCESSOR_ENABLED) === '1' || (runtimeEnv.TIMELINE_SUCCESSOR_ENABLED ?? DEFAULT_TIMELINE_SUCCESSOR_ENABLED) === 'true',
+    timelineSuccessorApiBase: runtimeEnv.TIMELINE_SUCCESSOR_API_BASE ?? '/api/v1/timeline',
+    timelineSuccessorProjectIds: (runtimeEnv.TIMELINE_SUCCESSOR_PROJECT_IDS ?? DEFAULT_TIMELINE_SUCCESSOR_PROJECT_IDS).split(',').map(item => item.trim()).filter(Boolean),
+    appBasePath: runtimeEnv.APP_BASE_PATH ?? '/',
+    environmentName: runtimeEnv.ENVIRONMENT_NAME ?? 'den-srv',
   };
 }
 

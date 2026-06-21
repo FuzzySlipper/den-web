@@ -1,7 +1,7 @@
 import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse, AgentWorkCurrentResponse, AgentWorkEventsResponse, AgentWorkLifecycleEvent, DirectAgentEventsResponse, DirectConversation, DirectConversationListResponse, DirectConversationEntriesResponse, DirectConversationCreateRequest, ReadCursor } from './types';
 import { normalizeApiBase } from '../config';
 import { dedupedFetch } from '../requestCache';
-import { addConversationSuccessorReaction, conversationSuccessorReactionsEnabledForMessage, conversationSuccessorReadsEnabledForChannel, conversationSuccessorReadsEnabledForProject, conversationSuccessorWritesEnabledForChannel, listConversationSuccessorChannels, listConversationSuccessorMessages, postConversationSuccessorMessage, reinitConversationSuccessorReads, type ConversationSuccessorReadConfig } from './conversationSuccessor';
+import { addConversationSuccessorReaction, conversationSuccessorReactionsEnabledForMessage, conversationSuccessorReadsEnabledForChannel, conversationSuccessorReadsEnabledForProject, conversationSuccessorWritesEnabledForChannel, conversationSuccessorWritesEnabledForProject, listConversationSuccessorChannels, listConversationSuccessorMessages, postConversationSuccessorMessage, postConversationSuccessorProjectMessage, reinitConversationSuccessorReads, type ConversationSuccessorReadConfig } from './conversationSuccessor';
 import { timelineChannelStreamUrl, timelineSuccessorEnabledForChannelId } from '../timeline/client';
 import { reinitDirectMessagesRuntime } from './directMessages';
 export { sendDirectMessage } from './directMessages';
@@ -13,10 +13,7 @@ export function reinitChannelsBase(base: string): void {
   denChannelsApiBase = normalizeApiBase(base, '/api');
 }
 
-export function reinitChannelsRuntime(config: {
-  denChannelsApiBase: string;
-  conversationSuccessorReads: Partial<ConversationSuccessorReadConfig>;
-}): void {
+export function reinitChannelsRuntime(config: { denChannelsApiBase: string; conversationSuccessorReads: Partial<ConversationSuccessorReadConfig> }): void {
   reinitChannelsBase(config.denChannelsApiBase);
   reinitDirectMessagesRuntime(config.denChannelsApiBase);
   reinitConversationSuccessorReads(config.conversationSuccessorReads);
@@ -338,6 +335,10 @@ export interface PostChannelMessageRequest {
 }
 
 export function postChannelMessage(channelId: number, request: PostChannelMessageRequest): Promise<ChannelMessage> {
+  const sourceProjectId = request.sourceProjectId;
+  if (sourceProjectId && conversationSuccessorWritesEnabledForProject(sourceProjectId)) {
+    return postConversationSuccessorProjectMessage(sourceProjectId, request);
+  }
   if (conversationSuccessorWritesEnabledForChannel(channelId)) {
     return postConversationSuccessorMessage(channelId, request);
   }

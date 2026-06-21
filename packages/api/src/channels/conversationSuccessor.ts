@@ -139,6 +139,10 @@ export function conversationSuccessorWritesEnabledForChannel(channelId: number):
   return Boolean(projectId && config.writeProjectIds.includes(projectId));
 }
 
+export function conversationSuccessorWritesEnabledForProject(projectId: string | null | undefined): boolean {
+  return Boolean(config.writeEnabled && projectId && config.writeProjectIds.includes(projectId));
+}
+
 export function conversationSuccessorReactionsEnabledForMessage(messageId: number): boolean {
   if (!config.writeEnabled || !successorMessageIds.has(messageId)) return false;
   const projectId = successorMessageProjects.get(messageId);
@@ -343,6 +347,13 @@ export function postConversationSuccessorMessage(channelId: number, request: Pos
     registerConversationSuccessorMessageId(message.id, successorChannelProjects.get(channelId) ?? message.sourceProjectId);
     return message;
   });
+}
+
+export async function postConversationSuccessorProjectMessage(projectId: string, request: PostChannelMessageRequest): Promise<ChannelMessage> {
+  const channels = await listConversationSuccessorChannels({ projectId, kind: 'project_default', limit: 5 });
+  const channel = channels.find(item => item.projectId === projectId && item.kind === 'project_default') ?? channels[0];
+  if (!channel) throw new Error(`No conversation successor project channel found for ${projectId}.`);
+  return postConversationSuccessorMessage(channel.id, request);
 }
 
 export function addConversationSuccessorReaction(messageId: number, request: AddChannelReactionRequest): Promise<unknown> {
