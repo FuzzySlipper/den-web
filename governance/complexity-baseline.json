@@ -54,9 +54,6 @@
     "packages/features/src/documents/DocumentDiscussion.tsx": {
       "max-lines-per-function": 1
     },
-    "packages/features/src/fleetops/FleetOpsCockpit.tsx": {
-      "max-lines-per-function": 1
-    },
     "packages/features/src/git/GitView.tsx": {
       "max-lines-per-function": 1,
       "sonarjs/cognitive-complexity": 1

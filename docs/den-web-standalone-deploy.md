@@ -14,8 +14,16 @@ services.
 | Den Core (backend) | `den-srv:5299` (127.0.0.1) | `/den-core-api/*` | Core REST facade (tasks, docs, messages) |
 | Den Channels (backend) | `den-srv:18081` | `/api/*` | Channels/Gateway/Agents API |
 | Den Gateway (backend) | `den-srv:8079` | `/api/v1/observation/*` → `/v1/observation/*` | Gateway-owned observation reads |
-| Den Host FleetOps (backend) | `den-k8plus:5400` (`192.168.1.22`) | `/den-host-api/*` → `/api/host/*` | Bounded Hermes fleet status/actions |
+| Retired Den Host FleetOps route | none | `/den-host-api/*` | Returns `410 den_host_api_retired`; Den Web no longer consumes Den Host. |
 | Public operator URL | `http://192.168.1.10:18080/` | — | Entry point for browser users |
+
+## Den Host/FleetOps retirement note
+
+After deploying a release that includes task #3085, Den Web no longer needs the
+den-k8 `/home/agents/local/den-host/bin/den-host serve` process. If no other
+consumer depends on that process, stop and disable its service on den-k8 after
+the Den Web smoke passes. The Den Web `/den-host-api/*` route intentionally
+returns `410 den_host_api_retired`.
 
 ## Deploy root
 
@@ -99,7 +107,6 @@ Runtime config values are generated from:
 ```bash
 DEN_CORE_API_BASE=/den-core-api
 DEN_CHANNELS_API_BASE=/api
-DEN_HOST_API_BASE=/den-host-api
 PI_CREW_ADMIN_API_BASE=/pi-crew-admin-api
 CONVERSATION_SUCCESSOR_READS_ENABLED=true
 CONVERSATION_SUCCESSOR_WRITES_ENABLED=false
@@ -186,7 +193,6 @@ Environment=STATIC_ROOT=/data/services/den-web/wwwroot
 Environment=DEN_CORE_TARGET=http://127.0.0.1:5299
 Environment=DEN_CHANNELS_TARGET=http://127.0.0.1:18081
 Environment=DEN_GATEWAY_TARGET=http://127.0.0.1:8079
-Environment=DEN_HOST_TARGET=http://192.168.1.22:5400
 Environment=GATEWAY_ENV_PATH=/data/services/den-web/shared/gateway.env
 
 # Hardening
@@ -242,7 +248,6 @@ with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 | `DEN_CORE_TARGET` | `http://127.0.0.1:5299` | Den Core backend URL |
 | `DEN_CHANNELS_TARGET` | `http://127.0.0.1:18081` | Den Channels backend URL |
 | `DEN_GATEWAY_TARGET` | `http://127.0.0.1:8079` | Den Gateway backend URL for Gateway-owned read APIs such as Observation |
-| `DEN_HOST_TARGET` | `http://127.0.0.1:5400` | Den Host backend URL; live den-srv points this to `http://192.168.1.22:5400` |
 | `GATEWAY_ENV_PATH` | sibling `gateway.env` next to the server script | Optional service-token/target override file |
 | `DEN_GATEWAY_DELIVERY_WRITE_TOKEN` | `DEN_GATEWAY_SERVICE_TOKEN` | Gateway caller token for `/v1/delivery/*`; injected server-side for `/api/v1/delivery/*` wake intent writes/reads. |
 | `DEN_GATEWAY_OBSERVATION_READ_TOKEN` | empty | Gateway caller token for `GET /v1/observation/*`; injected server-side for `/api/v1/observation/*` reads. |
@@ -257,7 +262,6 @@ with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 | `ENVIRONMENT_NAME` | `den-srv` | Environment name for config defaults |
 | `DEN_CORE_API_BASE` | `/den-core-api` | Core API base for config defaults |
 | `DEN_CHANNELS_API_BASE` | `/api` | Channels API base for config defaults |
-| `DEN_HOST_API_BASE` | `/den-host-api` | Den Host API base for config defaults |
 | `CONVERSATION_SUCCESSOR_READS_ENABLED` | `false` | Enables Conversation successor channel/message reads in browser config. On den-srv this should stay aligned with write allowlists so posted messages are visible in the same UI. |
 | `CONVERSATION_SUCCESSOR_WRITES_ENABLED` | `false` | Enables conversation successor message/reaction writes in browser config. |
 | `CONVERSATION_SUCCESSOR_API_BASE` | `/api/v1/conversation` | Same-origin Den Web proxy base for Gateway conversation canary reads. |

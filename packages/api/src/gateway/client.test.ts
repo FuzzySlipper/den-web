@@ -1,7 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  getFleetOps,
-  getFleetOpsRun,
   getAgentDetail,
   getAssignmentTrace,
   getObservationAgentOverview,
@@ -9,9 +7,7 @@ import {
   listAgentsOverview,
   listObservationActiveWork,
   listObservationLane,
-  postFleetOpsActionRun,
   postGatewayDirectAgentMessage,
-  reinitHostBase,
 } from './client';
 
 describe('postGatewayDirectAgentMessage', () => {
@@ -458,23 +454,9 @@ describe('Observation API client', () => {
   });
 });
 
-describe('Den Host FleetOps client', () => {
+describe('Gateway polling client', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
-    reinitHostBase('/den-host-api');
-  });
-
-  it('routes FleetOps overview reads through the Den Host API base', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ service: 'den-host', generatedAt: '2026-06-06T00:00:00Z', serviceUnits: [], actions: [] }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
-    reinitHostBase('/custom-den-host');
-
-    await getFleetOps();
-
-    expect(fetchMock).toHaveBeenCalledWith('/custom-den-host/fleet-ops', { cache: 'no-store' });
   });
 
   it('passes cache: no-store to Channels GET calls so polling bypasses the browser cache', async () => {
@@ -496,22 +478,4 @@ describe('Den Host FleetOps client', () => {
     );
   });
 
-  it('routes FleetOps action runs and run details through Den Host, not Gateway', async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ runId: 'run-1', actionId: 'fleet-status', status: 'completed', createdAt: '2026-06-06T00:00:00Z', wasDryRun: true }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ run: null }),
-      });
-    vi.stubGlobal('fetch', fetchMock);
-
-    await postFleetOpsActionRun({ actionId: 'fleet-status', dryRun: true });
-    await getFleetOpsRun('run-1');
-
-    expect(fetchMock).toHaveBeenNthCalledWith(1, '/den-host-api/fleet-ops/actions/fleet-status/runs', expect.objectContaining({ method: 'POST' }));
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/den-host-api/fleet-ops/runs/run-1', { cache: 'no-store' });
-  });
 });

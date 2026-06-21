@@ -31,7 +31,6 @@ same change. The complexity check fails if an entry clears but remains listed.
 | `packages/features/src/channels/useChannelComposer.ts` | `max-lines-per-function`, `sonarjs/cognitive-complexity` | `useChannelComposer`, 159 lines, nested handler complexity 40 | Composer state machine is concentrated in one hook; extract command/history/send reducers before adding behavior. |
 | `packages/features/src/documents/DocumentDetail.tsx` | `max-lines-per-function` | `DocumentDetail`, 237 lines | Document body, metadata, and discussion entry points share selection state. |
 | `packages/features/src/documents/DocumentDiscussion.tsx` | `max-lines-per-function` | `DocumentDiscussion`, 181 lines | Discussion threading state is still local; split comment form/list when discussion work resumes. |
-| `packages/features/src/fleetops/FleetOpsCockpit.tsx` | `max-lines-per-function` | `FleetOpsCockpit`, 193 lines | FleetOps is a compact operations surface; extract cards/charts on next feature pass. |
 | `packages/features/src/git/GitView.tsx` | `max-lines-per-function`, `sonarjs/cognitive-complexity` | `GitView`, 205 lines, complexity 18 | Git summary/action branching remains in one view; split status/action sections before adding commands. |
 | `packages/features/src/notifications/NotificationHistoryPanel.tsx` | `max-lines-per-function` | `NotificationHistoryPanel`, 225 lines | Notification filtering, grouping, and detail actions share local state. |
 | `packages/features/src/piCrewDiagnostics/PiCrewDiagnosticsPanel.tsx` | `max-lines-per-function` | `PiCrewDiagnosticsPanel`, 130 lines | Slightly above threshold after config extraction; split controls if Pi Crew diagnostics remains active. |
@@ -48,4 +47,4 @@ same change. The complexity check fails if an entry clears but remains listed.
 
 | File | Rule | Rationale | Revisit trigger |
 | --- | --- | --- | --- |
-| `packages/api/src/gateway/types.ts` | 650-line exception ceiling | Gateway DTO contract mirrors external Den Host and gateway payloads. | Split by upstream contract or generated source when that boundary exists. |
+| `packages/api/src/gateway/types.ts` | 650-line exception ceiling | Gateway DTO contract mirrors external Channels/Gateway payloads. | Split by upstream contract or generated source when that boundary exists. |

@@ -12,7 +12,6 @@ export const WORKSPACE_VIEW_LABELS: Record<WorkspaceViewMode, string> = {
   sessions: 'Sessions',
   agents: 'Agents',
   dm: 'DM',
-  'fleet-ops': 'Fleet Ops',
   'pi-crew-diagnostics': 'Pi Crew',
   notifications: 'Notifications',
 };
@@ -28,7 +27,6 @@ export const WORKSPACE_VIEW_TITLES: Record<WorkspaceViewMode, string> = {
   sessions: 'Sessions',
   agents: 'Agents',
   dm: 'Direct Messages',
-  'fleet-ops': 'Fleet Ops',
   'pi-crew-diagnostics': 'Pi Crew Diagnostics',
   notifications: 'Notifications',
 };

@@ -1,6 +1,6 @@
 # Den Web
 
-Den Web is the standalone static-site browser cockpit for the Den system. It owns the React/Vite frontend, static assets, frontend tests, and UI smoke checks while consuming API contracts owned by `den-core`, `den-channels`, and Den Host/FleetOps.
+Den Web is the standalone static-site browser cockpit for the Den system. It owns the React/Vite frontend, static assets, frontend tests, and UI smoke checks while consuming API contracts owned by `den-core`, `den-channels`, and den-services Gateway surfaces.
 
 This repository was scaffolded from the `den-channels` ClientApp (source commit `cd7bb549ea6dcbc1ce912aea87fd81cec346451c`) as part of Den task #1706.
 
@@ -14,7 +14,7 @@ This repository was scaffolded from the `den-channels` ClientApp (source commit 
 - `den-web`: frontend app, static deploy/smoke, browser UX modules, UI tests.
 - `den-core`: canonical tasks, documents, messages, workflow/review state, and Core REST APIs.
 - `den-channels`: channels, channel messages, memberships, reactions, activity events, and channel/Gateway-facing HTTP APIs.
-- Den Host/FleetOps: bounded local Hermes fleet status and maintenance actions.
+- den-services Gateway: Observation, Delivery, Conversation, and Timeline successor surfaces.
 
 Do not add backend state authority to `den-web`; add API/client adapters here and backend behavior in the owning service.
 
@@ -42,12 +42,11 @@ npm run build
 
 ### Vite dev server proxy
 
-The Vite dev server proxies `/den-core-api` requests to Den Core and `/den-host-api` requests to Den Host.
-Configure targets with `VITE_DEV_DEN_CORE_TARGET` (default: `http://localhost:5299`) and `VITE_DEV_DEN_HOST_TARGET` (default: `http://localhost:5400`):
+The Vite dev server proxies `/den-core-api` requests to Den Core. Den Web no longer proxies Den Host/FleetOps.
+Configure the Core target with `VITE_DEV_DEN_CORE_TARGET` (default: `http://localhost:5299`):
 
 ```bash
 VITE_DEV_DEN_CORE_TARGET=http://192.168.1.10:5299 \
-  VITE_DEV_DEN_HOST_TARGET=http://192.168.1.22:5400 \
   npm run dev
 ```
 
@@ -57,15 +56,14 @@ The app loads API base URLs from `/den-web-config.json` at runtime when present.
 Fallback order:
 
 1. `/den-web-config.json` (deploy-time JSON override)
-2. Vite build-time env vars (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, `VITE_DEN_HOST_API_BASE`)
-3. Hardcoded defaults (`/den-core-api`, `/api`, `/den-host-api`)
+2. Vite build-time env vars (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`)
+3. Hardcoded defaults (`/den-core-api`, `/api`)
 
 For local development without a runtime config file, copy `.env.example` to `.env` and adjust values if needed:
 
 ```
 VITE_DEN_CORE_API_BASE=/den-core-api
 VITE_DEN_CHANNELS_API_BASE=/api
-VITE_DEN_HOST_API_BASE=/den-host-api
 ```
 
 ### Lockfile strategy

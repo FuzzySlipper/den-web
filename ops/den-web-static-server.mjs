@@ -7,7 +7,6 @@
  *
  * Serves the production build of Den Web (React/Vite SPA) from STATIC_ROOT,
  * proxies /den-core-api/* to Den Core (stripping the prefix), proxies
- * /den-host-api/* to Den Host (rewriting to /api/host/*), proxies
  * /pi-crew-admin-api/* to local Pi Crew admin diagnostics, and proxies
  * /api/* to Den Channels (preserving the prefix). Falls back to
  * index.html for unknown paths (SPA routing). Serves /den-web-config.json
@@ -20,7 +19,6 @@
  *   DEN_CORE_TARGET       - Den Core backend URL (default: http://127.0.0.1:5299)
  *   DEN_CHANNELS_TARGET   - Den Channels backend URL (default: http://127.0.0.1:18081)
  *   DEN_GATEWAY_TARGET    - Den Gateway backend URL for Gateway-owned read APIs (default: http://127.0.0.1:8079)
- *   DEN_HOST_TARGET       - Den Host backend URL (default: http://127.0.0.1:5400)
  *   PI_CREW_ADMIN_TARGET  - Pi Crew admin diagnostics URL (default: http://127.0.0.1:9237)
  *   DEN_GATEWAY_SERVICE_TOKEN - Gateway service token for /api/* outbound proxy (default: empty, no auth)
  *   DEN_GATEWAY_DELIVERY_WRITE_TOKEN - Gateway caller token for /api/v1/delivery/* writes/reads (default: DEN_GATEWAY_SERVICE_TOKEN)
@@ -34,7 +32,6 @@
  *   CACHE_HTML_SECONDS    - max-age for HTML and un-hashed files (default: 0)
  *   DEN_CORE_API_BASE     - runtime config Core API base (default: /den-core-api)
  *   DEN_CHANNELS_API_BASE - runtime config Channels API base (default: /api)
- *   DEN_HOST_API_BASE     - runtime config Den Host API base (default: /den-host-api)
  *   PI_CREW_ADMIN_API_BASE - runtime config Pi Crew admin API base (default: /pi-crew-admin-api)
  *   CONVERSATION_SUCCESSOR_READS_ENABLED - runtime config conversation successor read pilot flag (default: false)
  *   CONVERSATION_SUCCESSOR_API_BASE - runtime config conversation successor browser proxy base (default: /api/v1/conversation)
@@ -81,7 +78,6 @@ const STATIC_ROOT      = process.env.STATIC_ROOT ?? '/data/services/den-web/wwwr
 const DEN_CORE_TARGET  = process.env.DEN_CORE_TARGET ?? 'http://127.0.0.1:5299';
 const DEN_CHANNELS_TARGET = GATEWAY_ENV.DEN_CHANNELS_TARGET ?? process.env.DEN_CHANNELS_TARGET ?? 'http://127.0.0.1:18081';
 const DEN_GATEWAY_TARGET = GATEWAY_ENV.DEN_GATEWAY_TARGET ?? process.env.DEN_GATEWAY_TARGET ?? 'http://127.0.0.1:8079';
-const DEN_HOST_TARGET = process.env.DEN_HOST_TARGET ?? 'http://127.0.0.1:5400';
 const PI_CREW_ADMIN_TARGET = process.env.PI_CREW_ADMIN_TARGET ?? 'http://127.0.0.1:9237';
 const DEN_GATEWAY_SERVICE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_SERVICE_TOKEN ?? process.env.DEN_GATEWAY_SERVICE_TOKEN ?? '';
 const DEN_GATEWAY_DELIVERY_WRITE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_DELIVERY_WRITE_TOKEN ?? process.env.DEN_GATEWAY_DELIVERY_WRITE_TOKEN ?? DEN_GATEWAY_SERVICE_TOKEN;
@@ -182,7 +178,6 @@ function loadConfig() {
   const defaults = {
     denCoreApiBase: process.env.DEN_CORE_API_BASE ?? '/den-core-api',
     denChannelsApiBase: process.env.DEN_CHANNELS_API_BASE ?? '/api',
-    denHostApiBase: process.env.DEN_HOST_API_BASE ?? '/den-host-api',
     piCrewAdminApiBase: process.env.PI_CREW_ADMIN_API_BASE ?? '/pi-crew-admin-api',
     conversationSuccessorReadsEnabled: process.env.CONVERSATION_SUCCESSOR_READS_ENABLED === '1' || process.env.CONVERSATION_SUCCESSOR_READS_ENABLED === 'true',
     conversationSuccessorWritesEnabled: process.env.CONVERSATION_SUCCESSOR_WRITES_ENABLED === '1' || process.env.CONVERSATION_SUCCESSOR_WRITES_ENABLED === 'true',
@@ -209,12 +204,11 @@ function loadConfig() {
     }
 
     // Serve a canonical runtime config shape. This intentionally drops retired
-    // denGatewayApiBase values from older deploy-time config files so the app no
-    // longer advertises FleetOps through the stale Gateway route.
+    // Den Host/FleetOps and denGatewayApiBase values from older deploy-time
+    // config files so the app no longer advertises retired routes.
     configData = JSON.stringify({
       denCoreApiBase: typeof fileConfig.denCoreApiBase === 'string' ? fileConfig.denCoreApiBase : defaults.denCoreApiBase,
       denChannelsApiBase: typeof fileConfig.denChannelsApiBase === 'string' ? fileConfig.denChannelsApiBase : defaults.denChannelsApiBase,
-      denHostApiBase: typeof fileConfig.denHostApiBase === 'string' ? fileConfig.denHostApiBase : defaults.denHostApiBase,
       piCrewAdminApiBase: typeof fileConfig.piCrewAdminApiBase === 'string' ? fileConfig.piCrewAdminApiBase : defaults.piCrewAdminApiBase,
       conversationSuccessorReadsEnabled: typeof fileConfig.conversationSuccessorReadsEnabled === 'boolean' ? fileConfig.conversationSuccessorReadsEnabled : defaults.conversationSuccessorReadsEnabled,
       conversationSuccessorWritesEnabled: typeof fileConfig.conversationSuccessorWritesEnabled === 'boolean' ? fileConfig.conversationSuccessorWritesEnabled : defaults.conversationSuccessorWritesEnabled,
@@ -383,12 +377,17 @@ function handleRequest(req, res) {
     return proxyRequest(DEN_CORE_TARGET, req, res, () => stripped + requestSearch);
   }
 
-  // ── Den Host FleetOps/API proxy ──
+  // ── Retired Den Host FleetOps/API proxy ──
   if (requestPath.startsWith('/den-host-api/') || requestPath === '/den-host-api') {
-    // Rewrite /den-host-api prefix to Den Host's internal /api/host namespace.
-    const suffix = requestPath.replace(/^\/den-host-api/, '') || '/';
-    const rewritten = `/api/host${suffix === '/' ? '' : suffix}`;
-    return proxyRequest(DEN_HOST_TARGET, req, res, () => rewritten + requestSearch);
+    res.writeHead(410, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+    });
+    res.end(JSON.stringify({
+      error: 'den_host_api_retired',
+      message: 'Den Host FleetOps is retired from Den Web. Stop the den-k8 den-host serve process after deploying this release if no other consumer remains.',
+    }));
+    return;
   }
 
   // ── Pi Crew admin diagnostics proxy ──
@@ -405,8 +404,7 @@ function handleRequest(req, res) {
     });
     res.end(JSON.stringify({
       error: 'den_gateway_api_retired',
-      message: 'Den Gateway API proxy is retired. FleetOps is served by Den Host at /den-host-api/fleet-ops.',
-      replacement: '/den-host-api/fleet-ops',
+      message: 'Den Gateway API proxy is retired.',
     }));
     return;
   }
@@ -502,7 +500,6 @@ function startServer() {
     console.log(`[den-web-static-server] Den Core target: ${DEN_CORE_TARGET}`);
     console.log(`[den-web-static-server] Den Channels target: ${DEN_CHANNELS_TARGET}`);
     console.log(`[den-web-static-server] Den Gateway target: ${DEN_GATEWAY_TARGET}`);
-    console.log(`[den-web-static-server] Den Host target: ${DEN_HOST_TARGET}`);
     console.log(`[den-web-static-server] Pi Crew admin target: ${PI_CREW_ADMIN_TARGET}`);
     if (configData) {
       console.log(`[den-web-static-server] config: ${CONFIG_PATH}`);

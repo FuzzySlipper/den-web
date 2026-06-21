@@ -144,7 +144,6 @@ function buildRuntimeConfig() {
   return {
     denCoreApiBase: runtimeEnv.DEN_CORE_API_BASE ?? '/den-core-api',
     denChannelsApiBase: runtimeEnv.DEN_CHANNELS_API_BASE ?? '/api',
-    denHostApiBase: runtimeEnv.DEN_HOST_API_BASE ?? '/den-host-api',
     piCrewAdminApiBase: runtimeEnv.PI_CREW_ADMIN_API_BASE ?? '/pi-crew-admin-api',
     conversationSuccessorReadsEnabled: runtimeEnv.CONVERSATION_SUCCESSOR_READS_ENABLED === '1' || runtimeEnv.CONVERSATION_SUCCESSOR_READS_ENABLED === 'true',
     conversationSuccessorWritesEnabled: runtimeEnv.CONVERSATION_SUCCESSOR_WRITES_ENABLED === '1' || runtimeEnv.CONVERSATION_SUCCESSOR_WRITES_ENABLED === 'true',

@@ -5,13 +5,12 @@
  * New code should import directly from the specific API module:
  *   - `@api/core/client`   — Spaces, Projects, Tasks, Messages, Documents, Stream, Git, Desktop, Dispatch
  *   - `@api/channels/client` — Channels, Messages, Activity Events, Reactions
- *   - `@api/gateway/client` — Channels gateway helpers, Agents Overview, Den Host FleetOps
+ *   - `@api/gateway/client` — Channels gateway helpers, Agents Overview
  */
 
 import { getConfig } from './config';
 import { initClient as initCoreClient, resetClient as resetCoreClient } from './core/client';
 import { reinitChannelsRuntime } from './channels/client';
-import { reinitHostBase } from './gateway/client';
 import { reinitTimelineSuccessor } from './timeline/client';
 
 // Core API
@@ -35,7 +34,6 @@ export async function initClient(): Promise<void> {
     apiBase: config.timelineSuccessorApiBase,
     projectIds: config.timelineSuccessorProjectIds,
   });
-  reinitHostBase(config.denHostApiBase);
 }
 
 export function resetClient(): void {
@@ -55,7 +53,6 @@ export function resetClient(): void {
     apiBase: '/api/v1/timeline',
     projectIds: [],
   });
-  reinitHostBase(import.meta.env.VITE_DEN_HOST_API_BASE ?? '/den-host-api');
 }
 export type {
   ListSpacesOpts,
@@ -175,9 +172,6 @@ export {
   listObservationActiveWork,
   getAssignmentTrace,
   getWorkerPoolLobbyPresence,
-  getFleetOps,
-  postFleetOpsActionRun,
-  getFleetOpsRun,
 } from './gateway/client';
 
 // Timeline API

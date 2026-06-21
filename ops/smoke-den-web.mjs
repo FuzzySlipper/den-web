@@ -190,12 +190,6 @@ async function checkConfig() {
     fail('config.denChannelsApiBase', `expected "/api", got "${config.denChannelsApiBase}"`);
   }
 
-  if (config.denHostApiBase === '/den-host-api') {
-    pass('config.denHostApiBase == "/den-host-api"');
-  } else {
-    fail('config.denHostApiBase', `expected "/den-host-api", got "${config.denHostApiBase}"`);
-  }
-
   if (config.conversationSuccessorReadsEnabled === EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED) {
     pass(`config.conversationSuccessorReadsEnabled == ${EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED}`);
   } else {
@@ -352,22 +346,14 @@ async function checkTimelineApi() {
   }
 }
 
-async function checkDenHostApi() {
-  console.log('\n── Den Host API (via /den-host-api/) ──');
+async function checkRetiredApis() {
+  console.log('\n── Retired API routes ──');
 
-  const fleetOps = await fetchUrl(fullUrl('/den-host-api/fleet-ops'));
-  assertStatus('GET /den-host-api/fleet-ops', fleetOps);
-  assertJson('/den-host-api/fleet-ops returns JSON', fleetOps);
-
-  try {
-    const body = JSON.parse(fleetOps.body);
-    if (body.service === 'den-host' && Array.isArray(body.actions)) {
-      pass('/den-host-api/fleet-ops returns FleetOps overview shape');
-    } else {
-      fail('/den-host-api/fleet-ops shape', 'expected service="den-host" and actions array');
-    }
-  } catch (e) {
-    fail('/den-host-api/fleet-ops shape', `invalid JSON: ${e.message}`);
+  const host = await fetchUrl(fullUrl('/den-host-api/fleet-ops'));
+  if (host.status === 410 || host.status === 404) {
+    pass('retired /den-host-api/fleet-ops no longer proxies Den Host');
+  } else {
+    fail('/den-host-api/fleet-ops retired route', `expected 410/404, got ${host.status}`);
   }
 
   const retiredGateway = await fetchUrl(fullUrl('/den-gateway-api/fleet-ops'));
@@ -415,7 +401,7 @@ async function main() {
     await checkChannelsApi();
     await checkObservationApi();
     await checkTimelineApi();
-    await checkDenHostApi();
+  await checkRetiredApis();
     await checkDocumentDiscussion();
   } catch (err) {
     console.error(`\n  ERROR  Unhandled exception: ${err.message}`);

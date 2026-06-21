@@ -15,7 +15,7 @@ It does **not** own backend state:
 - Den Core owns spaces/projects/tasks/documents/task messages/review/worker state.
 - Den Channels owns channels, channel messages, channel activity events, memberships, reactions, and channel-local Gateway-facing APIs.
 - Den Gateway owns delivery/wake/binding/claim/session routing authority.
-- Den Host owns bounded machine/Hermes fleet status and maintenance APIs.
+- Den Host/FleetOps was retired from Den Web in task #3085; `/den-host-api/*` is not a live backend dependency for this service.
 
 Any backend contract gap discovered during extraction should become a task in the owning backend project, not an ad hoc backend in `den-web`.
 
@@ -53,16 +53,15 @@ The browser app must use explicit configured API bases and must not infer backen
 | Delivery | `den-services` Gateway route | `/api/v1/delivery` | `/api/v1/delivery/intents` | Canonical executable direct-agent wake intent surface. The static server injects `DEN_GATEWAY_DELIVERY_WRITE_TOKEN` and the migrated route header; browser code must not create wakes through legacy den-channels routes. |
 | Timeline | `den-services` Gateway route | `/api/v1/timeline` | `/api/v1/timeline/channels/1/items?limit=1` | Composed human-facing conversation + observation timeline. The static server injects `DEN_GATEWAY_TIMELINE_READ_TOKEN`; browser code must not call Timeline loopback directly. |
 | Gateway-visible Channels helpers | `den-channels` | `/api/gateway` | `/api/gateway/memberships?projectId=den-web` | Direct-agent message, membership, test-wake, and delivery-observability helpers exposed through Channels. |
-| Den Host FleetOps APIs | `den-host` | `/den-host-api` | `/den-host-api/fleet-ops` | Bounded Hermes fleet status/actions. The static service rewrites `/den-host-api/*` to Den Host's internal `/api/host/*` namespace and does not consume Channels' `/api/gateway/*` helpers. |
+| Retired Den Host FleetOps APIs | none | `/den-host-api` | `/den-host-api/fleet-ops` | Returns `410 den_host_api_retired`. Den Web no longer consumes Den Host/FleetOps. |
 | Agents overview | `den-services` Gateway route | `/api/v1/observation` | `/api/v1/observation/lane?limit=1` | Operator overview is derived from Observation successor reads. Membership/binding aggregates are visibly degraded until den-services exposes successor parity. |
 
 Current app code uses explicit Vite build-time variables for backend bases:
 
 - `VITE_DEN_CORE_API_BASE`, fallback `/den-core-api`;
-- `VITE_DEN_CHANNELS_API_BASE`, fallback `/api`;
-- `VITE_DEN_HOST_API_BASE`, fallback `/den-host-api`.
+- `VITE_DEN_CHANNELS_API_BASE`, fallback `/api`.
 
-During scaffold extraction (#1706), keep those names working for compatibility. Channels helper routes under `/api/gateway/...` continue to use the Channels API base. FleetOps uses the separate Den Host frontend adapter and `/den-host-api` runtime base.
+Channels helper routes under `/api/gateway/...` continue to use the Channels API base. FleetOps and `/den-host-api/*` were retired from Den Web in task #3085.
 
 ## Runtime config strategy
 
@@ -71,8 +70,8 @@ The standalone static site should support deploy-time runtime configuration inst
 Required precedence for the extracted app:
 
 1. Runtime config loaded from `/den-web-config.json` when present.
-2. Vite build-time env values (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, `VITE_DEN_HOST_API_BASE`, and disabled conversation successor pilot flags) as fallback.
-3. Safe local defaults: `/den-core-api`, `/api`, `/den-host-api`, and conversation successor reads disabled.
+2. Vite build-time env values (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, and disabled conversation successor pilot flags) as fallback.
+3. Safe local defaults: `/den-core-api`, `/api`, and conversation successor reads disabled.
 
 Recommended runtime config keys:
 
@@ -80,7 +79,6 @@ Recommended runtime config keys:
 | --- | --- | --- |
 | `denCoreApiBase` | `/den-core-api` | Core REST facade base path. |
 | `denChannelsApiBase` | `/api` | Channels API base path. |
-| `denHostApiBase` | `/den-host-api` | Den Host FleetOps API base; rewritten by the static service to Den Host's internal `/api/host` route. |
 | `conversationSuccessorReadsEnabled` | `true` on den-srv | Feature flag for Conversation successor channel/message reads. Keep aligned with write allowlists so posted messages are visible in the same UI. |
 | `conversationSuccessorWritesEnabled` | `false` | Feature flag for conversation successor message/reaction writes. |
 | `conversationSuccessorApiBase` | `/api/v1/conversation` | Same-origin Den Web proxy base for Gateway conversation canary reads. |
@@ -132,9 +130,9 @@ After standalone deployment (#1707), smoke the public URL and API-backed UI path
    - For the Den Web project channel, `curl -fsS 'http://192.168.1.10:18080/api/gateway/memberships?projectId=den-web'` should return the project default channel and membership list, even if the member list is empty.
    - `curl -fsS 'http://192.168.1.10:18080/api/v1/observation/lane?limit=1'` should return an Observation lane JSON object through Gateway.
    - `curl -fsS 'http://192.168.1.10:18080/api/v1/timeline/channels/1/items?limit=1'` should return a Timeline JSON object through Gateway.
-4. Agents overview and Den Host FleetOps reachability:
+4. Agents overview and retired API reachability:
    - Operator overview renders from `/api/v1/observation/lane?limit=1` plus `/api/v1/observation/active-work`; `/api/agents/overview` is no longer a smoke requirement.
-   - `curl -fsS http://192.168.1.10:18080/den-host-api/fleet-ops` returns the Den Host FleetOps overview JSON shape without consuming `/api/gateway/*`.
+   - `curl -fsS -o /dev/null -w '%{http_code}' http://192.168.1.10:18080/den-host-api/fleet-ops` returns `410` or `404`, not a proxied Den Host response.
    - `curl -fsS -o /dev/null -w '%{http_code}' http://192.168.1.10:18080/den-gateway-api/fleet-ops` returns `410` or `404`, not a misleading Gateway `502`.
 5. Browser behavior smoke:
    - project/space list loads from Core;

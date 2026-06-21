@@ -44,7 +44,6 @@ describe('getConfig - no runtime config (404)', () => {
 
     expect(config.denCoreApiBase).toBe('/den-core-api');
     expect(config.denChannelsApiBase).toBe('/api');
-    expect(config.denHostApiBase).toBe('/den-host-api');
     expect(config.conversationSuccessorReadsEnabled).toBe(false);
     expect(config.conversationSuccessorWritesEnabled).toBe(false);
     expect(config.conversationSuccessorApiBase).toBe('/api/v1/conversation');
@@ -60,7 +59,6 @@ describe('getConfig - no runtime config (404)', () => {
   it('uses VITE env values when runtime config is missing', async () => {
     vi.stubEnv('VITE_DEN_CORE_API_BASE', '/env-core-api/');
     vi.stubEnv('VITE_DEN_CHANNELS_API_BASE', '/env-channels-api/');
-    vi.stubEnv('VITE_DEN_HOST_API_BASE', '/env-host-api/');
     vi.stubEnv('VITE_CONVERSATION_SUCCESSOR_READS_ENABLED', 'true');
     vi.stubEnv('VITE_CONVERSATION_SUCCESSOR_WRITES_ENABLED', 'true');
     vi.stubEnv('VITE_CONVERSATION_SUCCESSOR_API_BASE', '/env-conversation/');
@@ -74,7 +72,6 @@ describe('getConfig - no runtime config (404)', () => {
 
     expect(config.denCoreApiBase).toBe('/env-core-api');
     expect(config.denChannelsApiBase).toBe('/env-channels-api');
-    expect(config.denHostApiBase).toBe('/env-host-api');
     expect(config.conversationSuccessorReadsEnabled).toBe(true);
     expect(config.conversationSuccessorWritesEnabled).toBe(true);
     expect(config.conversationSuccessorApiBase).toBe('/env-conversation');
@@ -108,7 +105,6 @@ describe('getConfig - with runtime config loaded', () => {
       json: () => Promise.resolve({
         denCoreApiBase: '/custom-core-api/',
         denChannelsApiBase: '/custom-channels-api',
-        denHostApiBase: '/custom-host-api',
         conversationSuccessorReadsEnabled: true,
         conversationSuccessorWritesEnabled: true,
         conversationSuccessorApiBase: '/custom-conversation/',
@@ -127,7 +123,6 @@ describe('getConfig - with runtime config loaded', () => {
     const config = await getConfig();
     expect(config.denCoreApiBase).toBe('/custom-core-api');
     expect(config.denChannelsApiBase).toBe('/custom-channels-api');
-    expect(config.denHostApiBase).toBe('/custom-host-api');
     expect(config.conversationSuccessorReadsEnabled).toBe(true);
     expect(config.conversationSuccessorWritesEnabled).toBe(true);
     expect(config.conversationSuccessorApiBase).toBe('/custom-conversation');

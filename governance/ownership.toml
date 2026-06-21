@@ -63,7 +63,7 @@ phase1_mode = "baseline_warn_only"
 baseline_file = "governance/file-size-baseline.json"
 
 [guards.file_size.contract_exceptions."packages/api/src/gateway/types.ts"]
-reason = "Gateway DTO contract mirrors external Den Host and gateway payloads; split by upstream contract or generated source when that boundary exists."
+reason = "Gateway DTO contract mirrors external Channels/Gateway payloads; split by upstream contract or generated source when that boundary exists."
 max_lines = 650
 
 [guards.function_size]

@@ -5,7 +5,7 @@
  * New code should import from the specific type module:
  *   - `@api/core/types`     — Spaces, Projects, Tasks, Messages, Documents, Stream, Git, etc.
  *   - `@api/channels/types`  — Channel, ChannelMessage, ChannelReactionSummary, etc.
- *   - `@api/gateway/types`  — Channels gateway helpers, agents overview, Den Host FleetOps
+ *   - `@api/gateway/types`  — Channels gateway helpers, agents overview, worker-pool projections
  */
 
 // === Core types ===
@@ -136,14 +136,6 @@ export type {
   WorkerPoolMemberPresence,
   WorkerPoolAvailabilityState,
   WorkerPoolLobbyPresence,
-  FleetOpsServiceUnit,
-  FleetOpsActionArgSchema,
-  FleetOpsAction,
-  FleetOpsActionRun,
-  FleetOpsResponse,
-  FleetOpsActionRunRequest,
-  FleetOpsActionRunResponse,
-  FleetOpsRunDetailResponse,
 } from './gateway/types';
 export type {
   ObservationSeverity,

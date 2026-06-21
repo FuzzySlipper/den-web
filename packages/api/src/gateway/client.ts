@@ -7,10 +7,6 @@ import type {
   WorkerPoolMemberPresence,
   RawWorkerPoolLobbyResponse,
   RawWorkerPoolMember,
-  FleetOpsResponse,
-  FleetOpsActionRunRequest,
-  FleetOpsActionRunResponse,
-  FleetOpsRunDetailResponse,
 } from './types';
 import type {
   ObservationLaneResponse,
@@ -28,21 +24,10 @@ import { dedupedFetch } from '../requestCache';
 export { postGatewayDirectAgentMessage } from './directAgentWake';
 
 const denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
-let denHostApiBase = normalizeApiBase(import.meta.env.VITE_DEN_HOST_API_BASE, '/den-host-api');
-
-/** Reinitialize Den Host-specific base URL from runtime config. */
-export function reinitHostBase(base: string): void {
-  denHostApiBase = normalizeApiBase(base, '/den-host-api');
-}
 
 function channelsApiUrl(url: string): string {
   if (/^https?:\/\//i.test(url)) return url;
   return `${denChannelsApiBase}${url.startsWith('/') ? url : `/${url}`}`;
-}
-
-function hostApiUrl(url: string): string {
-  if (/^https?:\/\//i.test(url)) return url;
-  return `${denHostApiBase}${url.startsWith('/') ? url : `/${url}`}`;
 }
 
 async function putChannels<T>(url: string, body: unknown): Promise<T> {
@@ -64,27 +49,6 @@ function getChannels<T>(url: string): Promise<T> {
     if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
     return res.json();
   });
-}
-
-function getHost<T>(url: string): Promise<T> {
-  const requestUrl = hostApiUrl(url);
-  // Share overlapping identical GETs across panels (#2145).
-  return dedupedFetch(`GET ${requestUrl}`, async () => {
-    const res = await fetch(requestUrl, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
-    return res.json();
-  });
-}
-
-async function postHost<T>(url: string, body: unknown): Promise<T> {
-  const requestUrl = hostApiUrl(url);
-  const res = await fetch(requestUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`POST ${requestUrl}: ${res.status}`);
-  return res.json();
 }
 
 function buildQuery(params: Record<string, string | number | boolean | undefined | null>): string {
@@ -245,21 +209,4 @@ function mapWorkerPoolLobbyPresence(raw: RawWorkerPoolLobbyResponse): WorkerPool
 
 export function getWorkerPoolLobbyPresence(): Promise<WorkerPoolLobbyPresence> {
   return getChannels<RawWorkerPoolLobbyResponse>('/worker-pool/lobby/presence').then(mapWorkerPoolLobbyPresence);
-}
-
-// =============================================================================
-// Fleet Ops cockpit
-// Den Host FleetOps API — bounded Hermes fleet status, actions, runs.
-// =============================================================================
-
-export function getFleetOps(): Promise<FleetOpsResponse> {
-  return getHost('/fleet-ops');
-}
-
-export function postFleetOpsActionRun(request: FleetOpsActionRunRequest): Promise<FleetOpsActionRunResponse> {
-  return postHost(`/fleet-ops/actions/${encodeURIComponent(request.actionId)}/runs`, request);
-}
-
-export function getFleetOpsRun(runId: string): Promise<FleetOpsRunDetailResponse> {
-  return getHost(`/fleet-ops/runs/${encodeURIComponent(runId)}`);
 }

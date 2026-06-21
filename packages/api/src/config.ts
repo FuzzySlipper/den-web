@@ -3,8 +3,8 @@
  *
  * Precedence (highest to lowest):
  * 1. Runtime config fetched from `/den-web-config.json` (deploy-time JSON file)
- * 2. Vite build-time env variables (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, `VITE_DEN_HOST_API_BASE`, `VITE_PI_CREW_ADMIN_API_BASE`, successor pilot flags)
- * 3. Safe local defaults (`/den-core-api`, `/api`, `/den-host-api`, `/pi-crew-admin-api`, successor flags disabled)
+ * 2. Vite build-time env variables (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, `VITE_PI_CREW_ADMIN_API_BASE`, successor pilot flags)
+ * 3. Safe local defaults (`/den-core-api`, `/api`, `/pi-crew-admin-api`, successor flags disabled)
  *
  * Malformed or inaccessible config triggers a console diagnostic and falls back
  * gracefully — it never silently points at wrong API endpoints.
@@ -13,7 +13,6 @@
 export interface DenWebRuntimeConfig {
   denCoreApiBase: string;
   denChannelsApiBase: string;
-  denHostApiBase: string;
   piCrewAdminApiBase: string;
   conversationSuccessorReadsEnabled: boolean;
   conversationSuccessorWritesEnabled: boolean;
@@ -30,7 +29,6 @@ export interface DenWebRuntimeConfig {
 const DEFAULTS: DenWebRuntimeConfig = {
   denCoreApiBase: '/den-core-api',
   denChannelsApiBase: '/api',
-  denHostApiBase: '/den-host-api',
   piCrewAdminApiBase: '/pi-crew-admin-api',
   conversationSuccessorReadsEnabled: false,
   conversationSuccessorWritesEnabled: false,
@@ -80,7 +78,7 @@ export function parseCommaList(value: unknown): string[] {
 }
 
 function runtimeStringFieldsAreValid(obj: Record<string, unknown>): boolean {
-  const fields = ['denCoreApiBase', 'denChannelsApiBase', 'denHostApiBase', 'piCrewAdminApiBase', 'conversationSuccessorApiBase', 'timelineSuccessorApiBase'] as const;
+  const fields = ['denCoreApiBase', 'denChannelsApiBase', 'piCrewAdminApiBase', 'conversationSuccessorApiBase', 'timelineSuccessorApiBase'] as const;
   for (const key of fields) {
     if (obj[key] !== undefined && typeof obj[key] !== 'string') {
       console.error(`[den-web-config] key "${key}" must be a string (got ${typeof obj[key]}); falling back to env/defaults`);
@@ -120,7 +118,6 @@ function runtimeConfigFromRecord(obj: Record<string, unknown>): DenWebRuntimeCon
   return {
     denCoreApiBase: normalizeApiBase(obj.denCoreApiBase as string | undefined, DEFAULTS.denCoreApiBase),
     denChannelsApiBase: normalizeApiBase(obj.denChannelsApiBase as string | undefined, DEFAULTS.denChannelsApiBase),
-    denHostApiBase: normalizeApiBase(obj.denHostApiBase as string | undefined, DEFAULTS.denHostApiBase),
     piCrewAdminApiBase: normalizeApiBase(obj.piCrewAdminApiBase as string | undefined, DEFAULTS.piCrewAdminApiBase),
     conversationSuccessorReadsEnabled: parseBooleanFlag(obj.conversationSuccessorReadsEnabled, DEFAULTS.conversationSuccessorReadsEnabled),
     conversationSuccessorWritesEnabled: parseBooleanFlag(obj.conversationSuccessorWritesEnabled, DEFAULTS.conversationSuccessorWritesEnabled),
@@ -192,7 +189,6 @@ export async function getConfig(reload = false): Promise<DenWebRuntimeConfig> {
   // Use try/catch to handle non-Vite environments (e.g., tests without import.meta.env)
   let viteEnvViteCoreBase: string | undefined;
   let viteEnvChannelsBase: string | undefined;
-  let viteEnvHostBase: string | undefined;
   let viteEnvPiCrewAdminBase: string | undefined;
   let viteEnvConversationSuccessorReadsEnabled: string | undefined;
   let viteEnvConversationSuccessorWritesEnabled: string | undefined;
@@ -205,7 +201,6 @@ export async function getConfig(reload = false): Promise<DenWebRuntimeConfig> {
   try {
     viteEnvViteCoreBase = import.meta.env?.VITE_DEN_CORE_API_BASE;
     viteEnvChannelsBase = import.meta.env?.VITE_DEN_CHANNELS_API_BASE;
-    viteEnvHostBase = import.meta.env?.VITE_DEN_HOST_API_BASE;
     viteEnvPiCrewAdminBase = import.meta.env?.VITE_PI_CREW_ADMIN_API_BASE;
     viteEnvConversationSuccessorReadsEnabled = import.meta.env?.VITE_CONVERSATION_SUCCESSOR_READS_ENABLED;
     viteEnvConversationSuccessorWritesEnabled = import.meta.env?.VITE_CONVERSATION_SUCCESSOR_WRITES_ENABLED;
@@ -222,7 +217,6 @@ export async function getConfig(reload = false): Promise<DenWebRuntimeConfig> {
   const config: DenWebRuntimeConfig = {
     denCoreApiBase: normalizeApiBase(viteEnvViteCoreBase, DEFAULTS.denCoreApiBase),
     denChannelsApiBase: normalizeApiBase(viteEnvChannelsBase, DEFAULTS.denChannelsApiBase),
-    denHostApiBase: normalizeApiBase(viteEnvHostBase, DEFAULTS.denHostApiBase),
     piCrewAdminApiBase: normalizeApiBase(viteEnvPiCrewAdminBase, DEFAULTS.piCrewAdminApiBase),
     conversationSuccessorReadsEnabled: parseBooleanFlag(viteEnvConversationSuccessorReadsEnabled, DEFAULTS.conversationSuccessorReadsEnabled),
     conversationSuccessorWritesEnabled: parseBooleanFlag(viteEnvConversationSuccessorWritesEnabled, DEFAULTS.conversationSuccessorWritesEnabled),
