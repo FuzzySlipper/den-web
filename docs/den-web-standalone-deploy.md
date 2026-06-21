@@ -101,10 +101,10 @@ DEN_CORE_API_BASE=/den-core-api
 DEN_CHANNELS_API_BASE=/api
 DEN_HOST_API_BASE=/den-host-api
 PI_CREW_ADMIN_API_BASE=/pi-crew-admin-api
-CONVERSATION_SUCCESSOR_READS_ENABLED=false
+CONVERSATION_SUCCESSOR_READS_ENABLED=true
 CONVERSATION_SUCCESSOR_WRITES_ENABLED=false
 CONVERSATION_SUCCESSOR_API_BASE=/api/v1/conversation
-CONVERSATION_SUCCESSOR_READ_PROJECT_IDS=
+CONVERSATION_SUCCESSOR_READ_PROJECT_IDS=den-web
 CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS=
 TIMELINE_SUCCESSOR_ENABLED=true
 TIMELINE_SUCCESSOR_API_BASE=/api/v1/timeline
@@ -258,10 +258,10 @@ with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 | `DEN_CORE_API_BASE` | `/den-core-api` | Core API base for config defaults |
 | `DEN_CHANNELS_API_BASE` | `/api` | Channels API base for config defaults |
 | `DEN_HOST_API_BASE` | `/den-host-api` | Den Host API base for config defaults |
-| `CONVERSATION_SUCCESSOR_READS_ENABLED` | `false` | Enables the read-only conversation successor pilot in browser config. |
+| `CONVERSATION_SUCCESSOR_READS_ENABLED` | `false` | Enables Conversation successor channel/message reads in browser config. On den-srv this should stay aligned with write allowlists so posted messages are visible in the same UI. |
 | `CONVERSATION_SUCCESSOR_WRITES_ENABLED` | `false` | Enables conversation successor message/reaction writes in browser config. |
 | `CONVERSATION_SUCCESSOR_API_BASE` | `/api/v1/conversation` | Same-origin Den Web proxy base for Gateway conversation canary reads. |
-| `CONVERSATION_SUCCESSOR_READ_PROJECT_IDS` | empty | Comma-separated project IDs allowed to use successor channel/message reads. Empty means route no projects. |
+| `CONVERSATION_SUCCESSOR_READ_PROJECT_IDS` | empty | Comma-separated project IDs allowed to use successor channel/message reads. Empty means route no projects. On den-srv, mirror the write allowlist during migration. |
 | `CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS` | empty | Comma-separated project IDs allowed to use successor message/reaction writes. Empty means route no projects. |
 | `TIMELINE_SUCCESSOR_ENABLED` | `true` | Enables den-services Timeline read/SSE display composition in browser config. Set to `false` to roll back to legacy message/activity reads. |
 | `TIMELINE_SUCCESSOR_API_BASE` | `/api/v1/timeline` | Same-origin Den Web proxy base for Gateway Timeline reads/streams. |

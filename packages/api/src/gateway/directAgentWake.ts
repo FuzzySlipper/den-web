@@ -58,15 +58,6 @@ interface ObservationAgentOverviewResponse {
   }> | null;
 }
 
-interface GatewayAgentsOverviewResponse {
-  agents?: Array<{
-    recentActivity?: Array<{
-      agentInstanceId?: string | null;
-      sessionKey?: string | null;
-    }> | null;
-  }> | null;
-}
-
 interface DeliveryTargetIdentity {
   profile: string;
   instanceId: string;
@@ -203,10 +194,6 @@ async function resolveDeliveryTargetIdentity(request: PostGatewayDirectAgentMess
   if (observed) {
     return { profile, instanceId: observed.instanceId, sessionKey: cleanTargetIdentityPart(request.sessionId) ?? observed.sessionKey };
   }
-  const gateway = await resolveGatewayAgentIdentity(request.memberIdentity);
-  if (gateway) {
-    return { profile, instanceId: gateway.instanceId, sessionKey: cleanTargetIdentityPart(request.sessionId) ?? gateway.sessionKey };
-  }
   throw new Error(`No concrete delivery target instance found for ${request.memberIdentity}; Delivery successor requires target_identity.instance_id.`);
 }
 
@@ -238,23 +225,6 @@ async function resolveObservedAgentIdentity(memberIdentity: string): Promise<{ i
       instanceId: eventInstanceId,
       sessionKey: cleanTargetIdentityPart(event?.session_key) ?? cleanTargetIdentityPart(event?.agent_identity?.session_key) ?? undefined,
     };
-  } catch {
-    return null;
-  }
-}
-
-async function resolveGatewayAgentIdentity(memberIdentity: string): Promise<{ instanceId: string; sessionKey?: string } | null> {
-  try {
-    const overview = await getJson<GatewayAgentsOverviewResponse>('/api', `/agents/overview?agentIdentity=${encodeURIComponent(memberIdentity)}`);
-    for (const agent of overview.agents ?? []) {
-      for (const event of agent.recentActivity ?? []) {
-        const instanceId = cleanTargetIdentityPart(event.agentInstanceId) ?? cleanTargetIdentityPart(event.sessionKey);
-        if (instanceId) {
-          return { instanceId, sessionKey: cleanTargetIdentityPart(event.sessionKey) ?? undefined };
-        }
-      }
-    }
-    return null;
   } catch {
     return null;
   }

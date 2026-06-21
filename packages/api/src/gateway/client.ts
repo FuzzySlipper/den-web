@@ -17,6 +17,12 @@ import type {
   ObservationAgentOverviewResponse,
   ObservationActiveWorkResponse,
 } from './observationTypes';
+import {
+  degradedAgentDetail,
+  degradedAssignmentTrace,
+  observationAgentDetail,
+  observationOverviewFromLane,
+} from './observationAdapters';
 import { normalizeApiBase } from '../config';
 import { dedupedFetch } from '../requestCache';
 export { postGatewayDirectAgentMessage } from './directAgentWake';
@@ -130,26 +136,26 @@ export interface ListAgentsOverviewOpts {
 }
 
 export function listAgentsOverview(opts: ListAgentsOverviewOpts = {}): Promise<AgentsOverviewResponse> {
-  const q = buildQuery({
+  return Promise.all([
+    listObservationLane({ limit: opts.activityLimit ?? 50 }),
+    listObservationActiveWork(),
+  ]).then(([lane, activeWork]) => observationOverviewFromLane(lane, activeWork, {
     projectId: opts.projectId,
-    channelId: opts.channelId,
-    scope: opts.scope,
     agentIdentity: opts.agentIdentity,
     activityLimit: opts.activityLimit,
-    includeLeft: opts.includeLeft,
-    includeGateway: opts.includeGateway,
-  });
-  return getChannels(`/agents/overview${q}`);
+  }));
 }
 
 export function getAgentDetail(agentIdentity: string, opts: { projectId?: string; channelId?: string; activityLimit?: number; deliveryLimit?: number } = {}): Promise<AgentDetailResponse> {
-  const q = buildQuery({
-    projectId: opts.projectId,
-    channelId: opts.channelId,
-    activityLimit: opts.activityLimit,
-    deliveryLimit: opts.deliveryLimit,
-  });
-  return getChannels(`/agents/${encodeURIComponent(agentIdentity)}/overview${q}`);
+  void opts.channelId;
+  void opts.projectId;
+  void opts.deliveryLimit;
+  return getObservationAgentOverview(agentIdentity)
+    .then(overview => observationAgentDetail(agentIdentity, overview, opts.activityLimit ?? 50))
+    .catch(error => degradedAgentDetail(
+      agentIdentity,
+      error instanceof Error ? error.message : 'Observation agent overview unavailable.',
+    ));
 }
 
 // Observation agent-activity reads (#2813)
@@ -169,17 +175,12 @@ export function listObservationActiveWork(): Promise<ObservationActiveWorkRespon
   return getChannels('/v1/observation/active-work');
 }
 
-// Worker-pool assignment trace (#1729)
-// Fetches a read-only assignment trace projection. If the backend endpoint does not
-// exist yet, consumers should handle the rejection gracefully (e.g. by showing
-// "core_unavailable" / "gateway_unavailable" states).
+// Worker-pool assignment trace (#1729 / #3076)
+// The den-channels trace aggregate is retired. Until den-services exposes
+// successor parity, return an explicit degraded trace projection for the UI.
 
 export function getAssignmentTrace(assignmentId: string, opts: { projectId?: string; channelId?: string } = {}): Promise<AssignmentTraceResponse> {
-  const q = buildQuery({
-    projectId: opts.projectId,
-    channelId: opts.channelId,
-  });
-  return getChannels(`/assignments/${encodeURIComponent(assignmentId)}/trace${q}`);
+  return Promise.resolve(degradedAssignmentTrace(assignmentId, opts));
 }
 
 // Worker-pool lobby presence (#1781)

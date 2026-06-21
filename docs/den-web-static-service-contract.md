@@ -54,7 +54,7 @@ The browser app must use explicit configured API bases and must not infer backen
 | Timeline | `den-services` Gateway route | `/api/v1/timeline` | `/api/v1/timeline/channels/1/items?limit=1` | Composed human-facing conversation + observation timeline. The static server injects `DEN_GATEWAY_TIMELINE_READ_TOKEN`; browser code must not call Timeline loopback directly. |
 | Gateway-visible Channels helpers | `den-channels` | `/api/gateway` | `/api/gateway/memberships?projectId=den-web` | Direct-agent message, membership, test-wake, and delivery-observability helpers exposed through Channels. |
 | Den Host FleetOps APIs | `den-host` | `/den-host-api` | `/den-host-api/fleet-ops` | Bounded Hermes fleet status/actions. The static service rewrites `/den-host-api/*` to Den Host's internal `/api/host/*` namespace and does not consume Channels' `/api/gateway/*` helpers. |
-| Agents overview | `den-channels` aggregate over Gateway/Core | `/api/agents` | `/api/agents/overview` | Read-only operator overview; must degrade gracefully if Gateway data is unavailable. |
+| Agents overview | `den-services` Gateway route | `/api/v1/observation` | `/api/v1/observation/lane?limit=1` | Operator overview is derived from Observation successor reads. Membership/binding aggregates are visibly degraded until den-services exposes successor parity. |
 
 Current app code uses explicit Vite build-time variables for backend bases:
 
@@ -81,10 +81,10 @@ Recommended runtime config keys:
 | `denCoreApiBase` | `/den-core-api` | Core REST facade base path. |
 | `denChannelsApiBase` | `/api` | Channels API base path. |
 | `denHostApiBase` | `/den-host-api` | Den Host FleetOps API base; rewritten by the static service to Den Host's internal `/api/host` route. |
-| `conversationSuccessorReadsEnabled` | `false` | Feature flag for read-only conversation successor pilot routes. |
+| `conversationSuccessorReadsEnabled` | `true` on den-srv | Feature flag for Conversation successor channel/message reads. Keep aligned with write allowlists so posted messages are visible in the same UI. |
 | `conversationSuccessorWritesEnabled` | `false` | Feature flag for conversation successor message/reaction writes. |
 | `conversationSuccessorApiBase` | `/api/v1/conversation` | Same-origin Den Web proxy base for Gateway conversation canary reads. |
-| `conversationSuccessorReadProjectIds` | `[]` | Project allowlist for the pilot. Empty means no channel/message reads use successor. |
+| `conversationSuccessorReadProjectIds` | same as write allowlist on den-srv | Project allowlist for successor channel/message reads. Empty means no channel/message reads use successor. |
 | `conversationSuccessorWriteProjectIds` | `[]` | Project allowlist for successor conversation writes. Empty means all channel-message writes stay legacy. |
 | `timelineSuccessorEnabled` | `true` on den-srv | Feature flag for the den-services composed timeline read/SSE surface. Set false to roll back to legacy message/activity reads. |
 | `timelineSuccessorApiBase` | `/api/v1/timeline` | Same-origin Den Web proxy base for Gateway timeline reads/streams. |
@@ -133,7 +133,7 @@ After standalone deployment (#1707), smoke the public URL and API-backed UI path
    - `curl -fsS 'http://192.168.1.10:18080/api/v1/observation/lane?limit=1'` should return an Observation lane JSON object through Gateway.
    - `curl -fsS 'http://192.168.1.10:18080/api/v1/timeline/channels/1/items?limit=1'` should return a Timeline JSON object through Gateway.
 4. Agents overview and Den Host FleetOps reachability:
-   - `curl -fsS http://192.168.1.10:18080/api/agents/overview` returns JSON or a UI-degradable health warning, not a hard app crash.
+   - Operator overview renders from `/api/v1/observation/lane?limit=1` plus `/api/v1/observation/active-work`; `/api/agents/overview` is no longer a smoke requirement.
    - `curl -fsS http://192.168.1.10:18080/den-host-api/fleet-ops` returns the Den Host FleetOps overview JSON shape without consuming `/api/gateway/*`.
    - `curl -fsS -o /dev/null -w '%{http_code}' http://192.168.1.10:18080/den-gateway-api/fleet-ops` returns `410` or `404`, not a misleading Gateway `502`.
 5. Browser behavior smoke:
@@ -142,6 +142,21 @@ After standalone deployment (#1707), smoke the public URL and API-backed UI path
    - project default channel and Agent Commons selection load from Channels;
    - agent overview renders with source-health warnings when Gateway data is degraded;
    - a visible asset/version marker confirms the standalone `den-web` build is being served, not stale `den-channels` assets.
+
+## Observation Successor Gaps
+
+Den Web no longer calls the retired den-channels operator observation aggregates:
+
+- `GET /api/agents/overview`
+- `GET /api/agents/{id}/overview`
+- `GET /api/assignments/{assignmentId}/trace`
+
+The current successor-backed operator overview uses Observation lane and active-work reads. It intentionally marks channel membership, gateway binding, and assignment trace data as degraded where den-services does not yet provide parity.
+
+Needed den-services successor contracts:
+
+- All-agents operator overview: grouped agent/runtime summaries with current binding/residency, active delivery counts, recent activity, source health, and project/channel filters.
+- Assignment trace: assignment id to Core lifecycle state, Delivery intent evidence, Timeline/Conversation messages, Observation activity, source availability states, and a human summary.
 
 ## Rollback notes
 

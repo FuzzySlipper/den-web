@@ -319,9 +319,7 @@ async function checkChannelsApi() {
   assertStatus('GET /api/gateway/memberships?projectId=den-web', memberships);
   assertJson('/api/gateway/memberships returns JSON', memberships);
 
-  const overview = await fetchUrl(fullUrl('/api/agents/overview'));
-  assertStatus('GET /api/agents/overview', overview);
-  assertJson('/api/agents/overview returns JSON', overview);
+  pass('legacy /api/agents/overview is not a smoke requirement; operator overview reads Observation successor data');
 }
 
 async function checkObservationApi() {

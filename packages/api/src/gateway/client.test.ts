@@ -2,8 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   getFleetOps,
   getFleetOpsRun,
+  getAgentDetail,
+  getAssignmentTrace,
   getObservationAgentOverview,
   getWorkerPoolLobbyPresence,
+  listAgentsOverview,
   listObservationActiveWork,
   listObservationLane,
   postFleetOpsActionRun,
@@ -153,65 +156,11 @@ describe('postGatewayDirectAgentMessage', () => {
     });
   });
 
-  it('uses Gateway agent activity session as the concrete target when Observation has no instance', async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ runtime_instances: [], activity_events: [] }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          agents: [{
-            recentActivity: [{
-              agentInstanceId: null,
-              sessionKey: 'sess-den-services-runner',
-            }],
-          }],
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          id: 901,
-          state: 'pending',
-          idempotency_key: 'direct-agent-message:direct:den-services-runner:reqsession',
-          created_at: '2026-06-20T00:00:00Z',
-          expires_at: '2026-06-20T00:05:00Z',
-        }),
-      });
-    vi.stubGlobal('fetch', fetchMock);
-    vi.stubGlobal('crypto', { randomUUID: () => 'req-session' });
-
-    await postGatewayDirectAgentMessage({
-      memberIdentity: 'den-services-runner',
-      senderIdentity: 'patch',
-      body: 'hello full agent',
-    });
-
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/agents/overview?agentIdentity=den-services-runner', {
-      cache: 'no-store',
-      headers: { 'X-Den-Migrated-Functions': 'true' },
-    });
-    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toMatchObject({
-      target_identity: {
-        profile: 'den-services-runner',
-        instance_id: 'sess-den-services-runner',
-        session_key: 'sess-den-services-runner',
-      },
-      idempotency_key: 'direct-agent-message:direct:den-services-runner:reqsession',
-    });
-  });
-
   it('fails locally instead of posting an invalid profile-only delivery intent', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ runtime_instances: [], activity_events: [] }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ agents: [{ recentActivity: [] }] }),
       });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -220,7 +169,8 @@ describe('postGatewayDirectAgentMessage', () => {
       senderIdentity: 'patch',
       body: 'hello',
     })).rejects.toThrow(/No concrete delivery target instance/);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/api/agents/overview'), expect.anything());
   });
 
   it('accepts the live bare-array conversation channel listing shape', async () => {
@@ -427,6 +377,84 @@ describe('Observation API client', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/observation/lane?limit=5', { cache: 'no-store' });
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/observation/agents/den-mcp-runner/overview', { cache: 'no-store' });
     expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/v1/observation/active-work', { cache: 'no-store' });
+  });
+
+  it('builds the agents overview from Observation successor reads instead of den-channels aggregates', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          events: [{
+            event_id: 'evt-1',
+            source_domain: 'observation',
+            event_type: 'agent_activity',
+            agent_identity: { profile: 'den-web-runner', instance_id: 'inst-1' },
+            runtime_instance_id: 'inst-1',
+            payload: { summary: 'Working task', severity: 'info', visibility: 'channel', work_ref: { project_id: 'den-web', task_id: 3076 } },
+            display_only: true,
+            created_at: '2026-06-21T00:00:00Z',
+          }],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          items: [{
+            intent_id: 10,
+            target_identity: { profile: 'den-web-runner', instance_id: 'inst-1' },
+            state: 'pending',
+            source_ref: 'test',
+            channel_message_id: 20,
+            created_at: '2026-06-21T00:00:01Z',
+          }],
+        }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const overview = await listAgentsOverview({ projectId: 'den-web', activityLimit: 5 });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/observation/lane?limit=5', { cache: 'no-store' });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/observation/active-work', { cache: 'no-store' });
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/api/agents/overview'), expect.anything());
+    expect(overview.agents[0]).toMatchObject({
+      agentIdentity: 'den-web-runner',
+      operatorStatus: 'active',
+      flags: ['observation_only'],
+      summary: { activeDeliveryCount: 1, recentActivityCount: 1 },
+    });
+    expect(overview.sourceHealth.channels?.status).toBe('degraded');
+  });
+
+  it('maps agent detail from Observation and degrades assignment trace without legacy trace calls', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        agent_id: 'den-web-runner',
+        runtime_instances: [{ runtime_instance_id: 'inst-1', profile_identity: 'den-web-runner', host: 'den-srv', state: 'running', started_at: '2026-06-21T00:00:00Z', display_only: true }],
+        active_work: [],
+        activity_events: [],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const detail = await getAgentDetail('den-web-runner');
+    const trace = await getAssignmentTrace('assignment-1', { projectId: 'den-web' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/observation/agents/den-web-runner/overview', { cache: 'no-store' });
+    expect(detail).toMatchObject({
+      agentIdentity: 'den-web-runner',
+      operatorStatus: 'observed',
+      flags: expect.arrayContaining(['observation_only']),
+    });
+    expect(trace).toMatchObject({
+      assignmentId: 'assignment-1',
+      projectId: 'den-web',
+      coreAvailability: 'core_unavailable',
+      gatewayAvailability: 'gateway_unavailable',
+      summary: expect.stringContaining('successor is not available yet'),
+    });
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/assignments/assignment-1/trace'), expect.anything());
   });
 });
 
