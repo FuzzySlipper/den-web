@@ -252,6 +252,7 @@ describe('channels DM API client', () => {
         sender_type: 'user',
         sender_identity: 'patch',
         message_kind: 'human_text',
+        source_kind: 'den_web_channel_post',
         dedupe_key: 'manual-key',
         metadata: { from: 'test' },
       });
@@ -318,6 +319,9 @@ describe('channels DM API client', () => {
         }),
       );
       expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/api/channels/584/messages'), expect.anything());
+      expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toMatchObject({
+        source_kind: 'den_web_channel_post',
+      });
       expect(message).toMatchObject({ id: 9101, channelId: 31, dedupeKey: 'manual-key-2' });
     });
 

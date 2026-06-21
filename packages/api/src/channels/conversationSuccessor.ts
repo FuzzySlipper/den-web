@@ -321,7 +321,7 @@ export function postConversationSuccessorMessage(channelId: number, request: Pos
     sender_identity: request.senderIdentity,
     body: request.body,
     message_kind: request.messageKind,
-    source_kind: request.sourceKind,
+    source_kind: request.sourceKind ?? 'den_web_channel_post',
     source_id: request.sourceId,
     source_project_id: request.sourceProjectId,
     target_project_id: request.targetProjectId,
