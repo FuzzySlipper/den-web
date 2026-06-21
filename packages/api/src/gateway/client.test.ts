@@ -153,6 +153,76 @@ describe('postGatewayDirectAgentMessage', () => {
     });
   });
 
+  it('uses Gateway agent activity session as the concrete target when Observation has no instance', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ runtime_instances: [], activity_events: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          agents: [{
+            recentActivity: [{
+              agentInstanceId: null,
+              sessionKey: 'sess-den-services-runner',
+            }],
+          }],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 901,
+          state: 'pending',
+          idempotency_key: 'direct-agent-message:direct:den-services-runner:reqsession',
+          created_at: '2026-06-20T00:00:00Z',
+          expires_at: '2026-06-20T00:05:00Z',
+        }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'req-session' });
+
+    await postGatewayDirectAgentMessage({
+      memberIdentity: 'den-services-runner',
+      senderIdentity: 'patch',
+      body: 'hello full agent',
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/agents/overview?agentIdentity=den-services-runner', {
+      cache: 'no-store',
+      headers: { 'X-Den-Migrated-Functions': 'true' },
+    });
+    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toMatchObject({
+      target_identity: {
+        profile: 'den-services-runner',
+        instance_id: 'sess-den-services-runner',
+        session_key: 'sess-den-services-runner',
+      },
+      idempotency_key: 'direct-agent-message:direct:den-services-runner:reqsession',
+    });
+  });
+
+  it('fails locally instead of posting an invalid profile-only delivery intent', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ runtime_instances: [], activity_events: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ agents: [{ recentActivity: [] }] }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(postGatewayDirectAgentMessage({
+      memberIdentity: 'spawned-coder',
+      senderIdentity: 'patch',
+      body: 'hello',
+    })).rejects.toThrow(/No concrete delivery target instance/);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('accepts the live bare-array conversation channel listing shape', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({

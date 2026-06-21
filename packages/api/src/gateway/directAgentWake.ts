@@ -53,8 +53,24 @@ interface ObservationAgentOverviewResponse {
   runtime_instances?: Array<{ instance_id?: string | null; runtime_instance_id?: string | null }> | null;
   activity_events?: Array<{
     runtime_instance_id?: string | null;
-    agent_identity?: { instance_id?: string | null } | null;
+    agent_identity?: { instance_id?: string | null; runtime_instance_id?: string | null; session_key?: string | null } | null;
+    session_key?: string | null;
   }> | null;
+}
+
+interface GatewayAgentsOverviewResponse {
+  agents?: Array<{
+    recentActivity?: Array<{
+      agentInstanceId?: string | null;
+      sessionKey?: string | null;
+    }> | null;
+  }> | null;
+}
+
+interface DeliveryTargetIdentity {
+  profile: string;
+  instanceId: string;
+  sessionKey?: string;
 }
 
 function cleanIdempotencyPart(value: string | number | null | undefined, fallback: string): string {
@@ -159,16 +175,15 @@ async function createDeliveryIntent(
   idempotencyKey: string,
   message: ConversationMessageResponse | null,
 ): Promise<DeliveryIntentResponse> {
-  const agentInstanceId = request.agentInstanceId ?? await resolveAgentInstanceId(request.memberIdentity);
-  const sessionKey = request.sessionId ?? undefined;
+  const target = await resolveDeliveryTargetIdentity(request);
   return postJson<DeliveryIntentResponse>(
     deliveryApiBase,
     '/intents',
     {
       target_identity: {
-        profile: request.profileIdentity ?? request.memberIdentity,
-        instance_id: agentInstanceId ?? request.agentInstanceId,
-        ...(sessionKey ? { session_key: sessionKey } : {}),
+        profile: target.profile,
+        instance_id: target.instanceId,
+        ...(target.sessionKey ? { session_key: target.sessionKey } : {}),
       },
       idempotency_key: idempotencyKey,
       source_ref: deliverySourceRef(request, message),
@@ -178,14 +193,68 @@ async function createDeliveryIntent(
   );
 }
 
-async function resolveAgentInstanceId(memberIdentity: string): Promise<string | null> {
+async function resolveDeliveryTargetIdentity(request: PostGatewayDirectAgentMessageRequest): Promise<DeliveryTargetIdentity> {
+  const profile = request.profileIdentity ?? request.memberIdentity;
+  const explicitInstanceId = cleanTargetIdentityPart(request.agentInstanceId);
+  if (explicitInstanceId) {
+    return { profile, instanceId: explicitInstanceId, sessionKey: cleanTargetIdentityPart(request.sessionId) ?? undefined };
+  }
+  const observed = await resolveObservedAgentIdentity(request.memberIdentity);
+  if (observed) {
+    return { profile, instanceId: observed.instanceId, sessionKey: cleanTargetIdentityPart(request.sessionId) ?? observed.sessionKey };
+  }
+  const gateway = await resolveGatewayAgentIdentity(request.memberIdentity);
+  if (gateway) {
+    return { profile, instanceId: gateway.instanceId, sessionKey: cleanTargetIdentityPart(request.sessionId) ?? gateway.sessionKey };
+  }
+  throw new Error(`No concrete delivery target instance found for ${request.memberIdentity}; Delivery successor requires target_identity.instance_id.`);
+}
+
+function cleanTargetIdentityPart(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed || null;
+}
+
+async function resolveObservedAgentIdentity(memberIdentity: string): Promise<{ instanceId: string; sessionKey?: string } | null> {
   try {
     const overview = await getJson<ObservationAgentOverviewResponse>('/api/v1/observation', `/agents/${encodeURIComponent(memberIdentity)}/overview`);
-    return overview.runtime_instances?.find(item => item.instance_id || item.runtime_instance_id)?.instance_id
-      ?? overview.runtime_instances?.find(item => item.instance_id || item.runtime_instance_id)?.runtime_instance_id
-      ?? overview.activity_events?.find(item => item.agent_identity?.instance_id || item.runtime_instance_id)?.agent_identity?.instance_id
-      ?? overview.activity_events?.find(item => item.agent_identity?.instance_id || item.runtime_instance_id)?.runtime_instance_id
-      ?? null;
+    const runtime = overview.runtime_instances?.find(item => cleanTargetIdentityPart(item.instance_id) || cleanTargetIdentityPart(item.runtime_instance_id));
+    const runtimeInstanceId = cleanTargetIdentityPart(runtime?.instance_id) ?? cleanTargetIdentityPart(runtime?.runtime_instance_id);
+    if (runtimeInstanceId) return { instanceId: runtimeInstanceId };
+    const event = overview.activity_events?.find(item => (
+      cleanTargetIdentityPart(item.agent_identity?.instance_id)
+      || cleanTargetIdentityPart(item.agent_identity?.runtime_instance_id)
+      || cleanTargetIdentityPart(item.runtime_instance_id)
+      || cleanTargetIdentityPart(item.session_key)
+      || cleanTargetIdentityPart(item.agent_identity?.session_key)
+    ));
+    const eventInstanceId = cleanTargetIdentityPart(event?.agent_identity?.instance_id)
+      ?? cleanTargetIdentityPart(event?.agent_identity?.runtime_instance_id)
+      ?? cleanTargetIdentityPart(event?.runtime_instance_id)
+      ?? cleanTargetIdentityPart(event?.session_key)
+      ?? cleanTargetIdentityPart(event?.agent_identity?.session_key);
+    if (!eventInstanceId) return null;
+    return {
+      instanceId: eventInstanceId,
+      sessionKey: cleanTargetIdentityPart(event?.session_key) ?? cleanTargetIdentityPart(event?.agent_identity?.session_key) ?? undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function resolveGatewayAgentIdentity(memberIdentity: string): Promise<{ instanceId: string; sessionKey?: string } | null> {
+  try {
+    const overview = await getJson<GatewayAgentsOverviewResponse>('/api', `/agents/overview?agentIdentity=${encodeURIComponent(memberIdentity)}`);
+    for (const agent of overview.agents ?? []) {
+      for (const event of agent.recentActivity ?? []) {
+        const instanceId = cleanTargetIdentityPart(event.agentInstanceId) ?? cleanTargetIdentityPart(event.sessionKey);
+        if (instanceId) {
+          return { instanceId, sessionKey: cleanTargetIdentityPart(event.sessionKey) ?? undefined };
+        }
+      }
+    }
+    return null;
   } catch {
     return null;
   }
