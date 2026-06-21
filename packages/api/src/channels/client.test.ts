@@ -465,9 +465,10 @@ describe('channels DM API client', () => {
         method: 'POST',
       }));
       expect(JSON.parse(String(fetchMock.mock.calls[4][1]?.body))).toMatchObject({
-        member_identity: 'pi',
-        profile_identity: 'pi',
-        agent_instance_id: 'pi@live',
+        target_identity: {
+          profile: 'pi',
+          instance_id: 'pi@live',
+        },
         idempotency_key: 'direct-agent-message:den-web:pi:req',
         channel_message_id: 41,
       });

@@ -85,14 +85,18 @@ describe('postGatewayDirectAgentMessage', () => {
       method: 'POST',
       headers: expect.objectContaining({ 'X-Den-Migrated-Functions': 'true' }),
     }));
-    expect(JSON.parse(String(fetchMock.mock.calls[3][1]?.body))).toMatchObject({
-      member_identity: 'den-mcp-planner',
-      profile_identity: 'den-mcp-planner',
-      agent_instance_id: 'den-mcp-planner@live',
+    const deliveryBody = JSON.parse(String(fetchMock.mock.calls[3][1]?.body));
+    expect(deliveryBody).toMatchObject({
+      target_identity: {
+        profile: 'den-mcp-planner',
+        instance_id: 'den-mcp-planner@live',
+      },
       idempotency_key: 'direct-agent-message:584:den-mcp-planner:req1',
       source_ref: '/api/v1/conversation/channels/31/messages/4044',
       channel_message_id: 4044,
     });
+    expect(deliveryBody).not.toHaveProperty('member_identity');
+    expect(deliveryBody).not.toHaveProperty('agent_instance_id');
     expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/api/direct-agent-events'), expect.anything());
     expect(result).toMatchObject({
       status: 'pending',
@@ -135,8 +139,10 @@ describe('postGatewayDirectAgentMessage', () => {
       method: 'POST',
     }));
     expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toMatchObject({
-      member_identity: 'den-mcp-planner',
-      agent_instance_id: 'den-mcp-planner@recent',
+      target_identity: {
+        profile: 'den-mcp-planner',
+        instance_id: 'den-mcp-planner@recent',
+      },
       idempotency_key: 'direct-agent-message:direct:den-mcp-planner:req2',
     });
     expect(result).toMatchObject({

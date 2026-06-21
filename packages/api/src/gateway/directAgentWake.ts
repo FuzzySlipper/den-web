@@ -160,15 +160,16 @@ async function createDeliveryIntent(
   message: ConversationMessageResponse | null,
 ): Promise<DeliveryIntentResponse> {
   const agentInstanceId = request.agentInstanceId ?? await resolveAgentInstanceId(request.memberIdentity);
+  const sessionKey = request.sessionId ?? undefined;
   return postJson<DeliveryIntentResponse>(
     deliveryApiBase,
     '/intents',
     {
-      member_identity: request.memberIdentity,
-      profile_identity: request.profileIdentity ?? request.memberIdentity,
-      agent_instance_id: agentInstanceId ?? undefined,
-      concrete_identity: agentInstanceId ?? undefined,
-      hermes_session_key: request.sessionId ?? undefined,
+      target_identity: {
+        profile: request.profileIdentity ?? request.memberIdentity,
+        instance_id: agentInstanceId ?? request.agentInstanceId,
+        ...(sessionKey ? { session_key: sessionKey } : {}),
+      },
       idempotency_key: idempotencyKey,
       source_ref: deliverySourceRef(request, message),
       channel_message_id: message?.id ?? undefined,
