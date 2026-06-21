@@ -49,6 +49,7 @@ import { resolveAgentCommonsChannel, resolveWorkerPoolChannel } from './channelR
 import { useChannelMessageDerivations } from './useChannelMessageDerivations';
 import { observationActiveWorkIncludesMember } from '@den-web/models/channels';
 import { membershipLookupForChannel } from './channelMembershipLookup';
+import { persistDirectTarget, readStoredDirectTarget } from './channelChatStorage';
 
 const STREAM_SAFETY_POLL_MS = 20000;
 
@@ -127,6 +128,7 @@ function useChannelLiveResources(activeChannel: Channel | null) {
 }
 
 function useChannelMemberDerivations({
+  activeChannel,
   editingMemberIdentity,
   inviteIdentity,
   memberships,
@@ -135,16 +137,8 @@ function useChannelMemberDerivations({
   setTargetMemberIdentity,
   sortedMessages,
   targetMemberIdentity,
-}: {
-  editingMemberIdentity: string | null;
-  inviteIdentity: string;
-  memberships: GatewayMemberships | null | undefined;
-  normalizedSenderIdentity: string;
-  observationActiveWork: ObservationActiveWorkResponse | null | undefined;
-  setTargetMemberIdentity: (identity: string) => void;
-  sortedMessages: ChannelMessage[];
-  targetMemberIdentity: string;
-}) {
+}: { activeChannel: Channel | null; editingMemberIdentity: string | null; inviteIdentity: string; memberships: GatewayMemberships | null | undefined; normalizedSenderIdentity: string; observationActiveWork: ObservationActiveWorkResponse | null | undefined; setTargetMemberIdentity: (identity: string) => void; sortedMessages: ChannelMessage[]; targetMemberIdentity: string }) {
+  const previousChannelIdRef = useRef<number | null>(activeChannel?.id ?? null);
   const members = useMemo(() => (memberships?.members ?? []).filter(member => isVisibleNormalParticipant(member)), [memberships]);
   const memberActivityByIdentity = useMemo(() => new Map(members.map(member => [
     member.memberIdentity,
@@ -159,11 +153,27 @@ function useChannelMemberDerivations({
   const composer = useChannelComposer({ members, normalizedSenderIdentity });
 
   useEffect(() => {
+    const activeChannelId = activeChannel?.id ?? null;
+    const previousChannelId = previousChannelIdRef.current;
+    previousChannelIdRef.current = activeChannelId;
     if (activeAgentMembers.length === 0) return setTargetMemberIdentity('');
-    if (!targetMemberIdentity || !activeAgentMembers.some(member => member.memberIdentity === targetMemberIdentity)) {
-      setTargetMemberIdentity(activeAgentMembers[0].memberIdentity);
+    const targetIsAvailable = activeAgentMembers.some(member => member.memberIdentity === targetMemberIdentity);
+    if (activeChannelId && previousChannelId !== activeChannelId) {
+      const storedTarget = readStoredDirectTarget(activeChannelId);
+      if (storedTarget && activeAgentMembers.some(member => member.memberIdentity === storedTarget)) {
+        if (storedTarget !== targetMemberIdentity) setTargetMemberIdentity(storedTarget);
+        return;
+      }
+      const defaultTarget = activeAgentMembers[0].memberIdentity;
+      if (defaultTarget !== targetMemberIdentity) setTargetMemberIdentity(defaultTarget);
+      return;
     }
-  }, [activeAgentMembers, setTargetMemberIdentity, targetMemberIdentity]);
+    if (!targetMemberIdentity || !targetIsAvailable) {
+      setTargetMemberIdentity(activeAgentMembers[0].memberIdentity);
+      return;
+    }
+    persistDirectTarget(activeChannelId, targetMemberIdentity);
+  }, [activeAgentMembers, activeChannel, setTargetMemberIdentity, targetMemberIdentity]);
 
   return {
     activeAgentMembers,
@@ -352,6 +362,7 @@ export function useChannelChatData({
     members,
     selectedTarget,
   } = useChannelMemberDerivations({
+    activeChannel,
     editingMemberIdentity,
     inviteIdentity,
     memberships: membershipsState.data,
