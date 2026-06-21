@@ -41,6 +41,9 @@ const SERVICE_READY_TIMEOUT_MS = Number.parseInt(env.SERVICE_READY_TIMEOUT_MS ??
 const DEFAULT_TIMELINE_SUCCESSOR_ENABLED = 'true';
 const DEFAULT_TIMELINE_SUCCESSOR_PROJECT_IDS = 'den-web';
 const runtimeEnv = { ...readEnvFile(path.join(SHARED_DIR, 'gateway.env')), ...env };
+const timelineSuccessorProjectIds = runtimeEnv.TIMELINE_SUCCESSOR_PROJECT_IDS
+  ?? runtimeEnv.CONVERSATION_SUCCESSOR_READ_PROJECT_IDS
+  ?? DEFAULT_TIMELINE_SUCCESSOR_PROJECT_IDS;
 
 function log(message) {
   console.log(`[deploy-den-web] ${message}`);
@@ -152,7 +155,7 @@ function buildRuntimeConfig() {
     conversationSuccessorWriteProjectIds: (runtimeEnv.CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS ?? '').split(',').map(item => item.trim()).filter(Boolean),
     timelineSuccessorEnabled: (runtimeEnv.TIMELINE_SUCCESSOR_ENABLED ?? DEFAULT_TIMELINE_SUCCESSOR_ENABLED) === '1' || (runtimeEnv.TIMELINE_SUCCESSOR_ENABLED ?? DEFAULT_TIMELINE_SUCCESSOR_ENABLED) === 'true',
     timelineSuccessorApiBase: runtimeEnv.TIMELINE_SUCCESSOR_API_BASE ?? '/api/v1/timeline',
-    timelineSuccessorProjectIds: (runtimeEnv.TIMELINE_SUCCESSOR_PROJECT_IDS ?? DEFAULT_TIMELINE_SUCCESSOR_PROJECT_IDS).split(',').map(item => item.trim()).filter(Boolean),
+    timelineSuccessorProjectIds: timelineSuccessorProjectIds.split(',').map(item => item.trim()).filter(Boolean),
     appBasePath: runtimeEnv.APP_BASE_PATH ?? '/',
     environmentName: runtimeEnv.ENVIRONMENT_NAME ?? 'den-srv',
   };

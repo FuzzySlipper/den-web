@@ -325,6 +325,59 @@ describe('channels DM API client', () => {
       expect(message).toMatchObject({ id: 9101, channelId: 31, dedupeKey: 'manual-key-2' });
     });
 
+    it('prefers the registered successor channel over a surrounding project fallback', async () => {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([{ id: 40, slug: 'project-asha', display_name: 'ASHA', kind: 'project_default', project_id: 'asha', created_at: 't0', updated_at: 't0' }]),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 9102,
+            channel_id: 40,
+            sender_type: 'user',
+            sender_identity: 'patch',
+            body: 'hello linked successor channel',
+            message_kind: 'human_text',
+            dedupe_key: 'manual-key-3',
+            created_at: '2026-06-20T00:03:00Z',
+          }),
+        });
+      vi.stubGlobal('fetch', fetchMock);
+      reinitChannelsRuntime({
+        denChannelsApiBase: '/api',
+        conversationSuccessorReads: {
+          enabled: true,
+          writeEnabled: true,
+          apiBase: '/api/v1/conversation',
+          projectIds: ['asha'],
+          writeProjectIds: ['asha', 'den-services'],
+        },
+      });
+
+      await listChannels({ projectId: 'asha', limit: 1 });
+      const message = await postChannelMessage(40, {
+        senderType: 'user',
+        senderIdentity: 'patch',
+        messageKind: 'human_text',
+        body: 'hello linked successor channel',
+        sourceProjectId: 'den-services',
+        dedupeKey: 'manual-key-3',
+      });
+
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        2,
+        '/api/v1/conversation/channels/40/messages',
+        expect.objectContaining({ method: 'POST' }),
+      );
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        expect.stringContaining('project_id=den-services'),
+        expect.anything(),
+      );
+      expect(message).toMatchObject({ id: 9102, channelId: 40, dedupeKey: 'manual-key-3' });
+    });
+
     it('routes reactions through conversation only for write-allowlisted successor messages', async () => {
       const fetchMock = vi.fn()
         .mockResolvedValueOnce({

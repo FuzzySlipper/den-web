@@ -478,7 +478,8 @@ describe('direct-agent wake producer guardrails', () => {
 
     expect(source).toContain('postGatewayDirectAgentMessage({');
     expect(source).toContain("sendMode === 'direct'");
-    expect(source).toContain('sourceProjectId: projectId ?? activeChannel.projectId ?? null');
+    expect(source).toContain('const writeProjectId = activeChannel.projectId ?? projectId ?? null');
+    expect(source).toContain('sourceProjectId: writeProjectId');
     expect(source).toContain('mentionedDirectTargets.map(target => postGatewayDirectAgentMessage({');
     expect(source).not.toContain('/direct-agent-events');
     expect(source).not.toContain('/direct-conversations/');

@@ -46,6 +46,7 @@ export function useChannelMessageActions({
     const body = composer.draft.trim();
     if (!activeChannel || !body || !normalizedSenderIdentity) return;
     if (sendMode === 'direct' && !selectedTarget) return;
+    const writeProjectId = activeChannel.projectId ?? projectId ?? null;
 
     setSending(true);
     setSendError(null);
@@ -53,10 +54,11 @@ export function useChannelMessageActions({
       if (sendMode === 'direct' && selectedTarget) {
         await postGatewayDirectAgentMessage({
           channelId: activeChannel.id,
-          projectId: projectId ?? undefined,
+          projectId: writeProjectId ?? undefined,
           memberIdentity: selectedTarget.memberIdentity,
           senderIdentity: normalizedSenderIdentity,
           body,
+          sourceProjectId: writeProjectId,
         });
       } else if (sendMode === 'channel') {
         await postChannelMessage(activeChannel.id, {
@@ -64,15 +66,16 @@ export function useChannelMessageActions({
           senderIdentity: normalizedSenderIdentity,
           messageKind: 'human_text',
           body,
-          sourceProjectId: projectId ?? activeChannel.projectId ?? null,
+          sourceProjectId: writeProjectId,
         });
         const mentionedDirectTargets = directTargetsForComposerBody(body, activeAgentMembers);
         await Promise.all(mentionedDirectTargets.map(target => postGatewayDirectAgentMessage({
           channelId: activeChannel.id,
-          projectId: projectId ?? undefined,
+          projectId: writeProjectId ?? undefined,
           memberIdentity: target.memberIdentity,
           senderIdentity: normalizedSenderIdentity,
           body,
+          sourceProjectId: writeProjectId,
         })));
       }
       composer.recordSentMessage(body);
@@ -109,7 +112,7 @@ export function useChannelMessageActions({
         messageKind: 'human_text',
         body: replyBody,
         replyToMessageId: messageId,
-        sourceProjectId: projectId,
+        sourceProjectId: activeChannel?.projectId ?? projectId,
       });
       refreshMessages();
       refreshActivityEvents();
@@ -118,7 +121,7 @@ export function useChannelMessageActions({
     } finally {
       setSending(false);
     }
-  }, [normalizedSenderIdentity, projectId, refreshActivityEvents, refreshMessages]);
+  }, [activeChannel, normalizedSenderIdentity, projectId, refreshActivityEvents, refreshMessages]);
 
   return {
     handleClarifyChoice,

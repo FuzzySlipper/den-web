@@ -334,11 +334,11 @@ export interface PostChannelMessageRequest {
 
 export function postChannelMessage(channelId: number, request: PostChannelMessageRequest): Promise<ChannelMessage> {
   const sourceProjectId = request.sourceProjectId;
-  if (sourceProjectId && conversationSuccessorWritesEnabledForProject(sourceProjectId)) {
-    return postConversationSuccessorProjectMessage(sourceProjectId, request);
-  }
   if (conversationSuccessorWritesEnabledForChannel(channelId)) {
     return postConversationSuccessorMessage(channelId, request);
+  }
+  if (sourceProjectId && conversationSuccessorWritesEnabledForProject(sourceProjectId)) {
+    return postConversationSuccessorProjectMessage(sourceProjectId, request);
   }
   return postChannels(`/channels/${channelId}/messages`, request);
 }

@@ -71,6 +71,10 @@ function buildSessionMessageMetadata({
   };
 }
 
+function channelWriteProjectId(activeChannel: Channel, projectId: string | null): string | null {
+  return activeChannel.projectId ?? projectId;
+}
+
 async function postSessionChannelMessage({
   activeChannel,
   body,
@@ -92,14 +96,15 @@ async function postSessionChannelMessage({
   selectedSnapshot: DesktopSessionSnapshot | null;
   selectedTarget: GatewayMember | null;
 }) {
+  const writeProjectId = channelWriteProjectId(activeChannel, projectId);
   await postChannelMessage(activeChannel.id, {
     senderType: 'user',
     senderIdentity: normalizedSenderIdentity,
     messageKind: body.startsWith('/') ? 'command' : 'human_text',
     sourceKind: 'den_web_active_work',
     sourceId: selectedLane?.key ?? null,
-    sourceProjectId: projectId ?? null,
-    targetProjectId: selectedActiveRoute?.targetProjectId ?? projectId ?? null,
+    sourceProjectId: writeProjectId,
+    targetProjectId: selectedActiveRoute?.targetProjectId ?? writeProjectId,
     targetTaskId: selectedActiveRoute?.targetTaskId ?? selectedSnapshot?.task_id ?? null,
     assignmentId: selectedActiveRoute?.assignmentId ?? null,
     workerRunId: selectedActiveRoute?.workerRunId ?? null,
@@ -178,14 +183,15 @@ export function useFocusedSessionComposerActions({
       });
 
       if (directTarget) {
+        const writeProjectId = channelWriteProjectId(activeChannel, projectId);
         await postGatewayDirectAgentMessage({
           channelId: activeChannel.id,
-          projectId: projectId ?? undefined,
+          projectId: writeProjectId ?? undefined,
           memberIdentity: directTarget.memberIdentity,
           senderIdentity: normalizedSenderIdentity,
           body,
-          sourceProjectId: projectId ?? null,
-          targetProjectId: selectedActiveRoute?.targetProjectId ?? projectId ?? null,
+          sourceProjectId: writeProjectId,
+          targetProjectId: selectedActiveRoute?.targetProjectId ?? writeProjectId,
           targetTaskId: selectedActiveRoute?.targetTaskId ?? selectedSnapshot?.task_id ?? null,
           assignmentId: selectedActiveRoute?.assignmentId ?? null,
           workerRunId: selectedActiveRoute?.workerRunId ?? null,
