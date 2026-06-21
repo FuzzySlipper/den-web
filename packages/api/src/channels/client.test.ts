@@ -563,6 +563,16 @@ describe('channels DM API client', () => {
             created_at: '2026-01-01T00:00:00Z',
             expires_at: '2026-01-01T00:05:00Z',
           }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 42,
+            state: 'pending',
+            idempotency_key: 'direct-agent-message:den-web:pi:req',
+            created_at: '2026-01-01T00:00:00Z',
+            expires_at: '2026-01-01T00:05:00Z',
+          }),
         });
       vi.stubGlobal('fetch', fetchMock);
       vi.stubGlobal('crypto', { randomUUID: () => 'req' });
@@ -584,6 +594,10 @@ describe('channels DM API client', () => {
       expect(fetchMock).toHaveBeenNthCalledWith(5, '/api/v1/delivery/intents', expect.objectContaining({
         method: 'POST',
       }));
+      expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/v1/delivery/intents/42', {
+        cache: 'no-store',
+        headers: { 'X-Den-Migrated-Functions': 'true' },
+      });
       expect(JSON.parse(String(fetchMock.mock.calls[4][1]?.body))).toMatchObject({
         target_identity: {
           profile: 'pi',

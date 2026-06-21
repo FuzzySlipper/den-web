@@ -46,6 +46,17 @@ describe('postGatewayDirectAgentMessage', () => {
           expires_at: '2026-06-20T00:05:00Z',
           channel_message_id: 4044,
         }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 812,
+          state: 'pending',
+          idempotency_key: 'direct-agent-message:584:den-mcp-planner:req1',
+          created_at: '2026-06-20T00:00:00Z',
+          expires_at: '2026-06-20T00:05:00Z',
+          channel_message_id: 4044,
+        }),
       });
     vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal('crypto', { randomUUID: () => 'req-1' });
@@ -84,6 +95,10 @@ describe('postGatewayDirectAgentMessage', () => {
       method: 'POST',
       headers: expect.objectContaining({ 'X-Den-Migrated-Functions': 'true' }),
     }));
+    expect(fetchMock).toHaveBeenNthCalledWith(5, '/api/v1/delivery/intents/812', {
+      cache: 'no-store',
+      headers: { 'X-Den-Migrated-Functions': 'true' },
+    });
     const deliveryBody = JSON.parse(String(fetchMock.mock.calls[3][1]?.body));
     expect(deliveryBody).toMatchObject({
       target_identity: {
@@ -123,6 +138,16 @@ describe('postGatewayDirectAgentMessage', () => {
           created_at: '2026-06-20T00:00:00Z',
           expires_at: '2026-06-20T00:05:00Z',
         }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 900,
+          state: 'pending',
+          idempotency_key: 'direct-agent-message:direct:den-mcp-planner:req2',
+          created_at: '2026-06-20T00:00:00Z',
+          expires_at: '2026-06-20T00:05:00Z',
+        }),
       });
     vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal('crypto', { randomUUID: () => 'req-2' });
@@ -133,7 +158,7 @@ describe('postGatewayDirectAgentMessage', () => {
       body: 'hello DM',
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/delivery/intents', expect.objectContaining({
       method: 'POST',
     }));
@@ -143,6 +168,10 @@ describe('postGatewayDirectAgentMessage', () => {
         instance_id: 'den-mcp-planner@recent',
       },
       idempotency_key: 'direct-agent-message:direct:den-mcp-planner:req2',
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/v1/delivery/intents/900', {
+      cache: 'no-store',
+      headers: { 'X-Den-Migrated-Functions': 'true' },
     });
     expect(result).toMatchObject({
       status: 'pending',
@@ -164,7 +193,7 @@ describe('postGatewayDirectAgentMessage', () => {
       memberIdentity: 'spawned-coder',
       senderIdentity: 'patch',
       body: 'hello',
-    })).rejects.toThrow(/No concrete delivery target instance/);
+    })).rejects.toThrow(/No target instance found/);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/api/agents/overview'), expect.anything());
   });
@@ -182,6 +211,17 @@ describe('postGatewayDirectAgentMessage', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ runtime_instances: [{ instance_id: 'den-mcp-planner@live' }], activity_events: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 813,
+          state: 'pending',
+          idempotency_key: 'direct-agent-message:584:den-mcp-planner:req-array',
+          created_at: '2026-06-20T00:00:00Z',
+          expires_at: '2026-06-20T00:05:00Z',
+          channel_message_id: 4051,
+        }),
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -211,6 +251,136 @@ describe('postGatewayDirectAgentMessage', () => {
       channelId: 31,
       gatewayEventsUrl: '/api/v1/delivery/intents/813',
     });
+  });
+
+  it('surfaces expired delivery readback with actionable evidence', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([{ id: 31, project_id: 'den-web', kind: 'project_default' }]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ id: 29273, channel_id: 31 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ runtime_instances: [], activity_events: [{ agent_identity: { instance_id: 'den-k8plus:goblin-overseer:overseer:gateway' } }] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 37,
+          state: 'pending',
+          idempotency_key: 'direct-agent-message:den-web:goblin-overseer:req-expired',
+          created_at: '2026-06-20T00:00:00Z',
+          expires_at: '2026-06-20T00:05:00Z',
+          channel_message_id: 29273,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 37,
+          state: 'expired',
+          idempotency_key: 'direct-agent-message:den-web:goblin-overseer:req-expired',
+          created_at: '2026-06-20T00:00:00Z',
+          expires_at: '2026-06-20T00:00:01Z',
+          claimed_at: null,
+          completed_at: null,
+          channel_message_id: 29273,
+        }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'req-expired' });
+
+    await expect(postGatewayDirectAgentMessage({
+      channelId: 31,
+      projectId: 'den-web',
+      memberIdentity: 'goblin-overseer',
+      senderIdentity: 'patch',
+      body: '@goblin-overseer please check this',
+    })).rejects.toThrow(/Runtime did not claim the wake.*Delivery intent 37 expired.*\/api\/v1\/delivery\/intents\/37/);
+    expect(fetchMock).toHaveBeenNthCalledWith(5, '/api/v1/delivery/intents/37', {
+      cache: 'no-store',
+      headers: { 'X-Den-Migrated-Functions': 'true' },
+    });
+  });
+
+  it('distinguishes claimed delivery expiry from unclaimed runtime liveness expiry', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ runtime_instances: [{ instance_id: 'runner@live' }], activity_events: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 38,
+          state: 'pending',
+          idempotency_key: 'direct-agent-message:direct:runner:req-claimed-expired',
+          created_at: '2026-06-20T00:00:00Z',
+          expires_at: '2026-06-20T00:05:00Z',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 38,
+          state: 'expired',
+          idempotency_key: 'direct-agent-message:direct:runner:req-claimed-expired',
+          created_at: '2026-06-20T00:00:00Z',
+          expires_at: '2026-06-20T00:05:00Z',
+          claimed_at: '2026-06-20T00:00:01Z',
+          completed_at: null,
+        }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'req-claimed-expired' });
+
+    await expect(postGatewayDirectAgentMessage({
+      memberIdentity: 'runner',
+      senderIdentity: 'patch',
+      body: 'hello',
+    })).rejects.toThrow(/claimed Delivery intent 38, but no reply\/completion was recorded/);
+  });
+
+  it('surfaces failed delivery readback with evidence', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ runtime_instances: [{ instance_id: 'runner@live' }], activity_events: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 39,
+          state: 'pending',
+          idempotency_key: 'direct-agent-message:direct:runner:req-failed',
+          created_at: '2026-06-20T00:00:00Z',
+          expires_at: '2026-06-20T00:05:00Z',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 39,
+          state: 'failed',
+          idempotency_key: 'direct-agent-message:direct:runner:req-failed',
+          created_at: '2026-06-20T00:00:00Z',
+          expires_at: '2026-06-20T00:05:00Z',
+          claimed_at: null,
+          completed_at: null,
+        }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'req-failed' });
+
+    await expect(postGatewayDirectAgentMessage({
+      memberIdentity: 'runner',
+      senderIdentity: 'patch',
+      body: 'hello',
+    })).rejects.toThrow(/Delivery intent 39 for runner failed with state "failed".*\/api\/v1\/delivery\/intents\/39/);
   });
 
   it('includes successor error body when delivery creation is rejected', async () => {

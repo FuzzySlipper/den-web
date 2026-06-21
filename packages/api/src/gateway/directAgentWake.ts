@@ -184,6 +184,36 @@ async function createDeliveryIntent(
   );
 }
 
+async function readDeliveryIntent(intentId: number): Promise<DeliveryIntentResponse> {
+  return getJson<DeliveryIntentResponse>(deliveryApiBase, `/intents/${encodeURIComponent(String(intentId))}`);
+}
+
+function deliveryIntentEvidenceUrl(intent: DeliveryIntentResponse): string {
+  return `/api/v1/delivery/intents/${intent.id}`;
+}
+
+function deliveryIntentIsTerminalFailure(intent: DeliveryIntentResponse): boolean {
+  return ['expired', 'failed'].includes(intent.state.toLowerCase());
+}
+
+function terminalDeliveryIntentError(intent: DeliveryIntentResponse, memberIdentity: string): Error {
+  const state = intent.state.toLowerCase();
+  const evidenceUrl = deliveryIntentEvidenceUrl(intent);
+  if (intent.claimed_at && !intent.completed_at) {
+    return new Error(`Agent ${memberIdentity} claimed Delivery intent ${intent.id}, but no reply/completion was recorded before it ${state}. Evidence: ${evidenceUrl}`);
+  }
+  if (state === 'expired') {
+    return new Error(`Runtime did not claim the wake for ${memberIdentity}; Delivery intent ${intent.id} expired, usually because Runtime liveness is missing or stale. Evidence: ${evidenceUrl}`);
+  }
+  return new Error(`Delivery intent ${intent.id} for ${memberIdentity} failed with state "${intent.state}". Evidence: ${evidenceUrl}`);
+}
+
+async function readBackDeliveryIntent(intent: DeliveryIntentResponse, memberIdentity: string): Promise<DeliveryIntentResponse> {
+  const readback = await readDeliveryIntent(intent.id);
+  if (deliveryIntentIsTerminalFailure(readback)) throw terminalDeliveryIntentError(readback, memberIdentity);
+  return readback;
+}
+
 async function resolveDeliveryTargetIdentity(request: PostGatewayDirectAgentMessageRequest): Promise<DeliveryTargetIdentity> {
   const profile = request.profileIdentity ?? request.memberIdentity;
   const explicitInstanceId = cleanTargetIdentityPart(request.agentInstanceId);
@@ -194,7 +224,7 @@ async function resolveDeliveryTargetIdentity(request: PostGatewayDirectAgentMess
   if (observed) {
     return { profile, instanceId: observed.instanceId, sessionKey: cleanTargetIdentityPart(request.sessionId) ?? observed.sessionKey };
   }
-  throw new Error(`No concrete delivery target instance found for ${request.memberIdentity}; Delivery successor requires target_identity.instance_id.`);
+  throw new Error(`No target instance found for ${request.memberIdentity}; Delivery successor requires target_identity.instance_id from Runtime/Observation liveness.`);
 }
 
 function cleanTargetIdentityPart(value: string | null | undefined): string | null {
@@ -234,19 +264,20 @@ export async function postGatewayDirectAgentMessage(request: PostGatewayDirectAg
   const idempotencyKey = directAgentIdempotencyKey(request);
   const message = await appendDirectAgentConversationMessage(request, idempotencyKey);
   const intent = await createDeliveryIntent(request, idempotencyKey, message);
+  const readback = await readBackDeliveryIntent(intent, request.memberIdentity);
   return {
-    status: intent.state,
-    deliveryStatus: intent.state,
-    claimStatus: intent.claimed_at ? 'claimed' : 'unclaimed',
-    completionStatus: intent.completed_at ? 'completed' : 'pending',
+    status: readback.state,
+    deliveryStatus: readback.state,
+    claimStatus: readback.claimed_at ? 'claimed' : 'unclaimed',
+    completionStatus: readback.completed_at ? 'completed' : 'pending',
     suppressionStatus: 'not_applicable',
     memberIdentity: request.memberIdentity,
     wakePolicy: '',
-    messageId: message?.id ?? intent.id,
+    messageId: message?.id ?? readback.id,
     channelId: message?.channel_id ?? request.channelId ?? 0,
-    requestId: intent.idempotency_key,
+    requestId: readback.idempotency_key,
     gatewayMessageUrl: message ? `/api/v1/conversation/channels/${message.channel_id}/messages?after_id=${Math.max(0, message.id - 1)}&limit=10` : `/api/v1/delivery/intents/${intent.id}`,
-    gatewayEventsUrl: `/api/v1/delivery/intents/${intent.id}`,
-    evidenceSummary: `Delivery successor intent ${intent.id} created for ${request.memberIdentity}.`,
+    gatewayEventsUrl: deliveryIntentEvidenceUrl(readback),
+    evidenceSummary: `Delivery successor intent ${readback.id} created for ${request.memberIdentity}; current state ${readback.state}.`,
   };
 }
