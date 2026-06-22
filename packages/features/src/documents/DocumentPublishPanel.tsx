@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { DocumentPublicationResponse } from '@den-web/api/client';
 import { previewDocumentPublication, publishDocument } from '@den-web/api/client';
 import type { Document } from '@den-web/api/types';
+import { normalizeDocumentPublishTimestamp } from './documentPublishTimestamp';
 
 interface Props {
   document: Document;
@@ -32,7 +33,7 @@ export function DocumentPublishPanel({ document, onClose }: Props) {
       title: document.title,
       slug: document.slug,
       markdown: document.content,
-      updated_at: document.updated_at,
+      updated_at: normalizeDocumentPublishTimestamp(document.updated_at),
     },
   }), [document, overwrite]);
 

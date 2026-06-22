@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { normalizeDocumentPublishTimestamp } from './documentPublishTimestamp';
 
 const cwd = process.cwd();
 
@@ -26,5 +27,11 @@ describe('Document blog publishing UI (#2567)', () => {
     expect(panel).toContain("requested_by: 'den-web'");
     expect(panel).toContain("const canPublish = preview !== null");
     expect(panel).toContain('disabled={busy || !canPublish}');
+  });
+
+  it('normalizes Core document timestamps to RFC3339 for doc-publish', () => {
+    expect(normalizeDocumentPublishTimestamp('2026-06-22T04:45:06')).toBe('2026-06-22T04:45:06Z');
+    expect(normalizeDocumentPublishTimestamp('2026-06-22T04:45:06Z')).toBe('2026-06-22T04:45:06Z');
+    expect(normalizeDocumentPublishTimestamp('2026-06-22T04:45:06-07:00')).toBe('2026-06-22T04:45:06-07:00');
   });
 });
