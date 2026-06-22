@@ -56,14 +56,15 @@ The app loads API base URLs from `/den-web-config.json` at runtime when present.
 Fallback order:
 
 1. `/den-web-config.json` (deploy-time JSON override)
-2. Vite build-time env vars (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`)
-3. Hardcoded defaults (`/den-core-api`, `/api`)
+2. Vite build-time env vars (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, `VITE_DOC_PUBLISH_API_BASE`)
+3. Hardcoded defaults (`/den-core-api`, `/api`, `/api/v1/blog/publications`)
 
 For local development without a runtime config file, copy `.env.example` to `.env` and adjust values if needed:
 
 ```
 VITE_DEN_CORE_API_BASE=/den-core-api
 VITE_DEN_CHANNELS_API_BASE=/api
+VITE_DOC_PUBLISH_API_BASE=/api/v1/blog/publications
 ```
 
 ### Lockfile strategy

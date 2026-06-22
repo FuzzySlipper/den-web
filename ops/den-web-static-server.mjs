@@ -26,6 +26,7 @@
  *   DEN_GATEWAY_CONVERSATION_READ_TOKEN - Gateway caller token for /api/v1/conversation/* read pilot (default: empty, no auth)
  *   DEN_GATEWAY_CONVERSATION_WRITE_TOKEN - Gateway caller token for /api/v1/conversation/* write pilot (default: empty, no auth)
  *   DEN_GATEWAY_TIMELINE_READ_TOKEN - Gateway caller token for /api/v1/timeline/* reads/streams (default: empty, no auth)
+ *   DEN_GATEWAY_DOC_PUBLISH_CALLER_TOKEN - Gateway caller token for /api/v1/blog/publications/* writes/reads (default: empty, no auth)
  *   DEN_WEB_CONFIG_PATH   - path to den-web-config.json (default: ${STATIC_ROOT}/den-web-config.json)
  *   DEN_WEB_BUILD_SENTINEL - path to den-web-build.json (default: ${STATIC_ROOT}/den-web-build.json)
  *   CACHE_MAX_AGE_SECONDS - max-age for immutable assets (default: 31536000)
@@ -33,6 +34,7 @@
  *   DEN_CORE_API_BASE     - runtime config Core API base (default: /den-core-api)
  *   DEN_CHANNELS_API_BASE - runtime config Channels API base (default: /api)
  *   PI_CREW_ADMIN_API_BASE - runtime config Pi Crew admin API base (default: /pi-crew-admin-api)
+ *   DOC_PUBLISH_API_BASE - runtime config document publishing API base (default: /api/v1/blog/publications)
  *   CONVERSATION_SUCCESSOR_READS_ENABLED - runtime config conversation successor read pilot flag (default: false)
  *   CONVERSATION_SUCCESSOR_API_BASE - runtime config conversation successor browser proxy base (default: /api/v1/conversation)
  *   TIMELINE_SUCCESSOR_API_BASE - runtime config timeline browser proxy base (default: /api/v1/timeline)
@@ -85,6 +87,7 @@ const DEN_GATEWAY_OBSERVATION_READ_TOKEN = GATEWAY_ENV.DEN_GATEWAY_OBSERVATION_R
 const DEN_GATEWAY_CONVERSATION_READ_TOKEN = GATEWAY_ENV.DEN_GATEWAY_CONVERSATION_READ_TOKEN ?? process.env.DEN_GATEWAY_CONVERSATION_READ_TOKEN ?? '';
 const DEN_GATEWAY_CONVERSATION_WRITE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_CONVERSATION_WRITE_TOKEN ?? process.env.DEN_GATEWAY_CONVERSATION_WRITE_TOKEN ?? '';
 const DEN_GATEWAY_TIMELINE_READ_TOKEN = GATEWAY_ENV.DEN_GATEWAY_TIMELINE_READ_TOKEN ?? process.env.DEN_GATEWAY_TIMELINE_READ_TOKEN ?? '';
+const DEN_GATEWAY_DOC_PUBLISH_CALLER_TOKEN = GATEWAY_ENV.DEN_GATEWAY_DOC_PUBLISH_CALLER_TOKEN ?? process.env.DEN_GATEWAY_DOC_PUBLISH_CALLER_TOKEN ?? '';
 const CONFIG_PATH      = process.env.DEN_WEB_CONFIG_PATH ?? path.join(STATIC_ROOT, 'den-web-config.json');
 const BUILD_SENTINEL_PATH = process.env.DEN_WEB_BUILD_SENTINEL ?? path.join(STATIC_ROOT, 'den-web-build.json');
 const CACHE_MAX_AGE    = parseInt(process.env.CACHE_MAX_AGE_SECONDS ?? '31536000', 10);
@@ -178,6 +181,7 @@ function loadConfig() {
   const defaults = {
     denCoreApiBase: process.env.DEN_CORE_API_BASE ?? '/den-core-api',
     denChannelsApiBase: process.env.DEN_CHANNELS_API_BASE ?? '/api',
+    docPublishApiBase: process.env.DOC_PUBLISH_API_BASE ?? '/api/v1/blog/publications',
     piCrewAdminApiBase: process.env.PI_CREW_ADMIN_API_BASE ?? '/pi-crew-admin-api',
     conversationSuccessorReadsEnabled: process.env.CONVERSATION_SUCCESSOR_READS_ENABLED === '1' || process.env.CONVERSATION_SUCCESSOR_READS_ENABLED === 'true',
     conversationSuccessorWritesEnabled: process.env.CONVERSATION_SUCCESSOR_WRITES_ENABLED === '1' || process.env.CONVERSATION_SUCCESSOR_WRITES_ENABLED === 'true',
@@ -209,6 +213,7 @@ function loadConfig() {
     configData = JSON.stringify({
       denCoreApiBase: typeof fileConfig.denCoreApiBase === 'string' ? fileConfig.denCoreApiBase : defaults.denCoreApiBase,
       denChannelsApiBase: typeof fileConfig.denChannelsApiBase === 'string' ? fileConfig.denChannelsApiBase : defaults.denChannelsApiBase,
+      docPublishApiBase: typeof fileConfig.docPublishApiBase === 'string' ? fileConfig.docPublishApiBase : defaults.docPublishApiBase,
       piCrewAdminApiBase: typeof fileConfig.piCrewAdminApiBase === 'string' ? fileConfig.piCrewAdminApiBase : defaults.piCrewAdminApiBase,
       conversationSuccessorReadsEnabled: typeof fileConfig.conversationSuccessorReadsEnabled === 'boolean' ? fileConfig.conversationSuccessorReadsEnabled : defaults.conversationSuccessorReadsEnabled,
       conversationSuccessorWritesEnabled: typeof fileConfig.conversationSuccessorWritesEnabled === 'boolean' ? fileConfig.conversationSuccessorWritesEnabled : defaults.conversationSuccessorWritesEnabled,
@@ -449,6 +454,16 @@ function handleRequest(req, res) {
     if (requestPath === '/api/v1/timeline' || requestPath.startsWith('/api/v1/timeline/')) {
       if (DEN_GATEWAY_TIMELINE_READ_TOKEN) {
         req.headers['authorization'] = `Bearer ${DEN_GATEWAY_TIMELINE_READ_TOKEN}`;
+      }
+      const stripped = requestPath.replace(/^\/api/, '') || '/';
+      return proxyRequest(DEN_GATEWAY_TARGET, req, res, () => stripped + requestSearch);
+    }
+
+    // Doc Publish writes configured blog repo commits through Gateway. The
+    // browser sees only same-origin paths; caller auth stays server-side.
+    if (requestPath === '/api/v1/blog/publications' || requestPath.startsWith('/api/v1/blog/publications/')) {
+      if (DEN_GATEWAY_DOC_PUBLISH_CALLER_TOKEN) {
+        req.headers['authorization'] = `Bearer ${DEN_GATEWAY_DOC_PUBLISH_CALLER_TOKEN}`;
       }
       const stripped = requestPath.replace(/^\/api/, '') || '/';
       return proxyRequest(DEN_GATEWAY_TARGET, req, res, () => stripped + requestSearch);

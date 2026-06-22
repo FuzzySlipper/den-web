@@ -44,6 +44,7 @@ describe('getConfig - no runtime config (404)', () => {
 
     expect(config.denCoreApiBase).toBe('/den-core-api');
     expect(config.denChannelsApiBase).toBe('/api');
+    expect(config.docPublishApiBase).toBe('/api/v1/blog/publications');
     expect(config.conversationSuccessorReadsEnabled).toBe(false);
     expect(config.conversationSuccessorWritesEnabled).toBe(false);
     expect(config.conversationSuccessorApiBase).toBe('/api/v1/conversation');
@@ -59,6 +60,7 @@ describe('getConfig - no runtime config (404)', () => {
   it('uses VITE env values when runtime config is missing', async () => {
     vi.stubEnv('VITE_DEN_CORE_API_BASE', '/env-core-api/');
     vi.stubEnv('VITE_DEN_CHANNELS_API_BASE', '/env-channels-api/');
+    vi.stubEnv('VITE_DOC_PUBLISH_API_BASE', '/env-blog-publications/');
     vi.stubEnv('VITE_CONVERSATION_SUCCESSOR_READS_ENABLED', 'true');
     vi.stubEnv('VITE_CONVERSATION_SUCCESSOR_WRITES_ENABLED', 'true');
     vi.stubEnv('VITE_CONVERSATION_SUCCESSOR_API_BASE', '/env-conversation/');
@@ -72,6 +74,7 @@ describe('getConfig - no runtime config (404)', () => {
 
     expect(config.denCoreApiBase).toBe('/env-core-api');
     expect(config.denChannelsApiBase).toBe('/env-channels-api');
+    expect(config.docPublishApiBase).toBe('/env-blog-publications');
     expect(config.conversationSuccessorReadsEnabled).toBe(true);
     expect(config.conversationSuccessorWritesEnabled).toBe(true);
     expect(config.conversationSuccessorApiBase).toBe('/env-conversation');
@@ -105,6 +108,7 @@ describe('getConfig - with runtime config loaded', () => {
       json: () => Promise.resolve({
         denCoreApiBase: '/custom-core-api/',
         denChannelsApiBase: '/custom-channels-api',
+        docPublishApiBase: '/custom-blog-publications/',
         conversationSuccessorReadsEnabled: true,
         conversationSuccessorWritesEnabled: true,
         conversationSuccessorApiBase: '/custom-conversation/',
@@ -123,6 +127,7 @@ describe('getConfig - with runtime config loaded', () => {
     const config = await getConfig();
     expect(config.denCoreApiBase).toBe('/custom-core-api');
     expect(config.denChannelsApiBase).toBe('/custom-channels-api');
+    expect(config.docPublishApiBase).toBe('/custom-blog-publications');
     expect(config.conversationSuccessorReadsEnabled).toBe(true);
     expect(config.conversationSuccessorWritesEnabled).toBe(true);
     expect(config.conversationSuccessorApiBase).toBe('/custom-conversation');
@@ -164,6 +169,16 @@ describe('getConfig - malformed runtime config', () => {
     });
     const config = await getConfig();
     expect(config.denCoreApiBase).toBe('/den-core-api');
+  });
+
+  it('falls back when docPublishApiBase is not a string', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ denCoreApiBase: '/api', docPublishApiBase: false }),
+    });
+    const config = await getConfig();
+    expect(config.docPublishApiBase).toBe('/api/v1/blog/publications');
   });
 
   it('falls back when denChannelsApiBase is not a string', async () => {

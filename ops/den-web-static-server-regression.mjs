@@ -65,7 +65,7 @@ async function waitForReady(baseUrl, child) {
 async function startStaticServer(targetUrl, t, envOverrides = {}) {
   const staticRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'den-web-static-root-'));
   await fs.writeFile(path.join(staticRoot, 'index.html'), '<!doctype html><title>den-web-test</title>');
-  await fs.writeFile(path.join(staticRoot, 'den-web-config.json'), JSON.stringify({ denCoreApiBase: '/den-core-api', denChannelsApiBase: '/api' }));
+  await fs.writeFile(path.join(staticRoot, 'den-web-config.json'), JSON.stringify({ denCoreApiBase: '/den-core-api', denChannelsApiBase: '/api', docPublishApiBase: '/api/v1/blog/publications' }));
 
   const portProbe = http.createServer();
   const port = await listen(portProbe);
@@ -114,7 +114,7 @@ test('static server starts when launched through a deploy symlink', async (t) =>
   const staticRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'den-web-static-root-'));
   const binRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'den-web-static-bin-'));
   await fs.writeFile(path.join(staticRoot, 'index.html'), '<!doctype html><title>den-web-test</title>');
-  await fs.writeFile(path.join(staticRoot, 'den-web-config.json'), JSON.stringify({ denCoreApiBase: '/den-core-api', denChannelsApiBase: '/api' }));
+  await fs.writeFile(path.join(staticRoot, 'den-web-config.json'), JSON.stringify({ denCoreApiBase: '/den-core-api', denChannelsApiBase: '/api', docPublishApiBase: '/api/v1/blog/publications' }));
   const symlinkPath = path.join(binRoot, 'den-web-static-server.mjs');
   await fs.symlink(path.resolve('ops/den-web-static-server.mjs'), symlinkPath);
 
@@ -376,6 +376,49 @@ test('Timeline reads and streams use the Gateway timeline read token', async (t)
   assert.deepEqual(gatewayObserved, [
     { url: '/v1/timeline/channels/1/items?limit=1', authorization: 'Bearer timeline-read-token' },
   ]);
+});
+
+test('Doc Publish requests use the Gateway doc-publish caller token', async (t) => {
+  const gatewayObserved = [];
+  const gateway = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      gatewayObserved.push({
+        url: req.url,
+        method: req.method,
+        authorization: req.headers.authorization ?? null,
+        body,
+      });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ publication_id: 'pub-1', status: 'previewed', dry_run: true }));
+    });
+  });
+  const gatewayPort = await listen(gateway);
+  t.after(() => new Promise(resolve => gateway.close(resolve)));
+
+  const { baseUrl } = await startStaticServer(`http://127.0.0.1:9`, t, {
+    DEN_GATEWAY_TARGET: `http://127.0.0.1:${gatewayPort}`,
+    DEN_GATEWAY_DOC_PUBLISH_CALLER_TOKEN: 'doc-publish-token',
+  });
+
+  const body = JSON.stringify({
+    source: { document_project_id: 'den-web', document_slug: 'example-doc' },
+    requested_by: 'den-web',
+  });
+  const response = await request(`${baseUrl}/api/v1/blog/publications/preview`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(gatewayObserved, [{
+    url: '/v1/blog/publications/preview',
+    method: 'POST',
+    authorization: 'Bearer doc-publish-token',
+    body,
+  }]);
 });
 
 test('static proxy survives upstream reset after response headers have been sent', async (t) => {

@@ -79,6 +79,7 @@ Recommended runtime config keys:
 | --- | --- | --- |
 | `denCoreApiBase` | `/den-core-api` | Core REST facade base path. |
 | `denChannelsApiBase` | `/api` | Channels API base path. |
+| `docPublishApiBase` | `/api/v1/blog/publications` | Same-origin Den Web proxy base for the den-services document blog publisher. |
 | `conversationSuccessorReadsEnabled` | `true` on den-srv | Feature flag for Conversation successor channel/message reads. Keep aligned with write allowlists so posted messages are visible in the same UI. |
 | `conversationSuccessorWritesEnabled` | `false` | Feature flag for conversation successor message/reaction writes. |
 | `conversationSuccessorApiBase` | `/api/v1/conversation` | Same-origin Den Web proxy base for Gateway conversation canary reads. |

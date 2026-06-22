@@ -4,6 +4,7 @@ import { getDocument, saveDocument } from '@den-web/api/client';
 import { isDocumentEditorSaveShortcut } from './documentEditor';
 import { documentSummaryFromReference, splitDocumentReferenceText } from './documentRefs';
 import { DocumentDiscussion } from './DocumentDiscussion';
+import { DocumentPublishPanel } from './DocumentPublishPanel';
 
 interface Props {
   summary: DocumentSummary;
@@ -25,6 +26,7 @@ export function DocumentDetail({ summary, onClose, onSaved, onOpenDocument, onDi
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [panelTab, setPanelTab] = useState<'content' | 'discussion'>('content');
+  const [publishPanelOpen, setPublishPanelOpen] = useState(false);
 
   const displayed = doc ?? summary;
   const tags = displayed.tags ?? [];
@@ -46,6 +48,7 @@ export function DocumentDetail({ summary, onClose, onSaved, onOpenDocument, onDi
     setLoadError(null);
     setSaveError(null);
     setSaving(false);
+    setPublishPanelOpen(false);
 
     getDocument(summary.project_id, summary.slug)
       .then(loadedDoc => {
@@ -86,6 +89,7 @@ export function DocumentDetail({ summary, onClose, onSaved, onOpenDocument, onDi
     setDraft(doc.content);
     setIsEditing(true);
     setSaveError(null);
+    setPublishPanelOpen(false);
   }, [doc]);
 
   const handleCancel = useCallback(() => {
@@ -161,7 +165,20 @@ export function DocumentDetail({ summary, onClose, onSaved, onOpenDocument, onDi
         </div>
         <div className="detail-actions">
           {doc && !isEditing && (
-            <button className="detail-action" onClick={handleStartEdit}>Edit</button>
+            <>
+              <button
+                className="detail-action"
+                onClick={() => {
+                  setPublishPanelOpen(true);
+                  setPanelTab('content');
+                }}
+                disabled={dirty}
+                title={dirty ? 'Save or discard document edits before publishing' : 'Share via blog'}
+              >
+                Share via blog
+              </button>
+              <button className="detail-action" onClick={handleStartEdit}>Edit</button>
+            </>
           )}
           {isEditing && (
             <>
@@ -222,6 +239,9 @@ export function DocumentDetail({ summary, onClose, onSaved, onOpenDocument, onDi
           <>
             {loadError && <div className="detail-error" role="alert">{loadError}</div>}
             {saveError && <div className="detail-error" role="alert">Save failed: {saveError}</div>}
+            {doc && publishPanelOpen && (
+              <DocumentPublishPanel document={doc} onClose={() => setPublishPanelOpen(false)} />
+            )}
             {pendingSwitch && dirty && (
               <div className="detail-info document-switch-guard" role="status">
                 <div>

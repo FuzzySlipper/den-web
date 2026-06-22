@@ -190,6 +190,12 @@ async function checkConfig() {
     fail('config.denChannelsApiBase', `expected "/api", got "${config.denChannelsApiBase}"`);
   }
 
+  if (config.docPublishApiBase === '/api/v1/blog/publications') {
+    pass('config.docPublishApiBase == "/api/v1/blog/publications"');
+  } else {
+    fail('config.docPublishApiBase', `expected "/api/v1/blog/publications", got "${config.docPublishApiBase}"`);
+  }
+
   if (config.conversationSuccessorReadsEnabled === EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED) {
     pass(`config.conversationSuccessorReadsEnabled == ${EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED}`);
   } else {

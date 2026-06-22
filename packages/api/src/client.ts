@@ -12,6 +12,7 @@ import { getConfig } from './config';
 import { initClient as initCoreClient, resetClient as resetCoreClient } from './core/client';
 import { reinitChannelsRuntime } from './channels/client';
 import { reinitTimelineSuccessor } from './timeline/client';
+import { reinitDocPublishClient } from './docPublish/client';
 
 // Core API
 export { getApiBases } from './core/client';
@@ -34,6 +35,9 @@ export async function initClient(): Promise<void> {
     apiBase: config.timelineSuccessorApiBase,
     projectIds: config.timelineSuccessorProjectIds,
   });
+  reinitDocPublishClient({
+    apiBase: config.docPublishApiBase,
+  });
 }
 
 export function resetClient(): void {
@@ -53,6 +57,7 @@ export function resetClient(): void {
     apiBase: '/api/v1/timeline',
     projectIds: [],
   });
+  reinitDocPublishClient({ apiBase: '/api/v1/blog/publications' });
 }
 export type {
   ListSpacesOpts,
@@ -187,3 +192,20 @@ export {
   timelineSuccessorEnabledForChannelId,
   timelineChannelStreamUrl,
 } from './timeline/client';
+
+// Doc Publish API
+export type {
+  DocumentPublicationDraft,
+  DocumentPublicationOptions,
+  DocumentPublicationRecord,
+  DocumentPublicationRequest,
+  DocumentPublicationResponse,
+  DocumentPublicationSource,
+  DocumentPublicationStatus,
+} from './docPublish/types';
+export {
+  getDocumentPublication,
+  previewDocumentPublication,
+  publishDocument,
+  reinitDocPublishClient,
+} from './docPublish/client';
