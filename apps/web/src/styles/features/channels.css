@@ -432,11 +432,22 @@
   font-family: var(--font-mono);
 }
 
-.channel-chat-title span:last-child {
+.channel-chat-status-text {
   color: var(--text-muted);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channel-chat-channel-id {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 4px;
   white-space: nowrap;
 }
 

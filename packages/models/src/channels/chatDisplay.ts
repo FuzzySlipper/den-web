@@ -24,8 +24,9 @@ export function channelLabel(
 export function channelOptionLabel(channel: Channel, projectId: string | null): string {
   const base = channelLabel(channel, projectId);
   const scope = projectChannelScopeLabel(channel);
-  if (scope) return `${base} — ${scope}`;
-  return base;
+  const idLabel = `ch:${channel.id}`;
+  if (scope) return `${base} (${idLabel}) — ${scope}`;
+  return `${base} (${idLabel})`;
 }
 
 /** Human-facing sender for a channel message, falling back to the sender type. */

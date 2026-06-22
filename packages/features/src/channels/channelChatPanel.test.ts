@@ -204,6 +204,7 @@ describe('participant wake-policy matching (stable logic)', () => {
 
 describe('participant DM shortcut source invariants', () => {
   const panelSource = readFileSync(resolve(process.cwd(), 'packages/features/src/channels/ChannelChatPanel.tsx'), 'utf8');
+  const headerSource = readFileSync(resolve(process.cwd(), 'packages/features/src/channels/ChannelChatHeader.tsx'), 'utf8');
   // The participant roster/double-click UI moved into ChannelParticipants during the #2141 decomposition.
   const participantsSource = readFileSync(resolve(process.cwd(), 'packages/features/src/channels/ChannelParticipants.tsx'), 'utf8');
   const appSource = readFileSync(resolve(process.cwd(), 'packages/shell/src/App.tsx'), 'utf8');
@@ -219,6 +220,11 @@ describe('participant DM shortcut source invariants', () => {
   it('threads the DM opener and single-click targeting into ChannelParticipants', () => {
     expect(panelSource).toContain('onOpenDmTranscript={onOpenDmTranscript}');
     expect(panelSource).toContain('onSelectTarget={setTargetMemberIdentity}');
+  });
+
+  it('keeps the active channel id visible in the header for cross-service debugging', () => {
+    expect(headerSource).toContain('channel-chat-channel-id');
+    expect(headerSource).toContain('ch:{activeChannel.id}');
   });
 
   it('opens the member DM transcript on double-click without replacing single-click targeting', () => {

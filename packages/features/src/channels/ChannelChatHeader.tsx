@@ -67,6 +67,11 @@ export function ChannelChatHeader({
       <div className="channel-chat-title">
         <span className="channel-chat-kicker">Channel</span>
         <strong>{channelLabel(activeChannel, projectId)}</strong>
+        {activeChannel && (
+          <span className="channel-chat-channel-id" title={`Channel id ${activeChannel.id}`}>
+            ch:{activeChannel.id}
+          </span>
+        )}
         {STREAM_PILL[streamStatus] && (
           <span
             className={`channel-chat-stream-pill channel-chat-stream-${streamStatus}`}
@@ -75,7 +80,7 @@ export function ChannelChatHeader({
             {STREAM_PILL[streamStatus]!.label}
           </span>
         )}
-        <span>{channelStatus}</span>
+        <span className="channel-chat-status-text">{channelStatus}</span>
       </div>
       <div className="channel-chat-quick-controls" aria-label="Channel display controls">
         <div className="channel-chat-size-controls" role="group" aria-label="Channel panel size">

@@ -74,13 +74,13 @@ describe('channelLabel', () => {
 
 describe('channelOptionLabel', () => {
   it('appends the project scope when present', () => {
-    const projectDefault = channel({ slug: 'den-channels', kind: 'project_default', projectId: 'den-channels' });
-    expect(channelOptionLabel(projectDefault, 'den-channels')).toBe('#den-channels — project lane');
+    const projectDefault = channel({ id: 43, slug: 'den-channels', kind: 'project_default', projectId: 'den-channels' });
+    expect(channelOptionLabel(projectDefault, 'den-channels')).toBe('#den-channels (ch:43) — project lane');
   });
 
-  it('returns just the channel label when there is no scope', () => {
-    const regular = channel({ slug: 'random', kind: 'regular', projectId: null });
-    expect(channelOptionLabel(regular, 'den-channels')).toBe('#random');
+  it('includes the channel id when there is no scope', () => {
+    const regular = channel({ id: 7593, slug: 'random', kind: 'regular', projectId: null });
+    expect(channelOptionLabel(regular, 'den-channels')).toBe('#random (ch:7593)');
   });
 });
 
