@@ -1,4 +1,4 @@
-import type { AddChannelReactionRequest, PostChannelMessageRequest } from './client';
+import type { AddChannelReactionRequest, EnsureProjectDefaultChannelRequest, PostChannelMessageRequest } from './client';
 import type { Channel, ChannelMessage } from './types';
 import { normalizeApiBase } from '../config';
 import { dedupedFetch } from '../requestCache';
@@ -97,6 +97,64 @@ interface SuccessorMessageDto extends JsonObject {
   editedAt?: unknown;
   deleted_at?: unknown;
   deletedAt?: unknown;
+}
+
+interface SuccessorMembershipDto extends JsonObject {
+  id?: unknown;
+  channel_id?: unknown;
+  channelId?: unknown;
+  member_type?: unknown;
+  memberType?: unknown;
+  member_identity?: unknown;
+  memberIdentity?: unknown;
+  profile_identity?: unknown;
+  profileIdentity?: unknown;
+  membership_status?: unknown;
+  membershipStatus?: unknown;
+  wake_policy?: unknown;
+  wakePolicy?: unknown;
+  can_send?: unknown;
+  canSend?: unknown;
+  can_react?: unknown;
+  canReact?: unknown;
+  can_invite?: unknown;
+  canInvite?: unknown;
+  membership_purpose?: unknown;
+  membershipPurpose?: unknown;
+  settings?: unknown;
+  settings_json?: unknown;
+  settingsJson?: unknown;
+  created_at?: unknown;
+  createdAt?: unknown;
+  updated_at?: unknown;
+  updatedAt?: unknown;
+  left_at?: unknown;
+  leftAt?: unknown;
+}
+
+export interface ConversationSuccessorMembership {
+  id: number;
+  channelId: number;
+  memberType: string;
+  memberIdentity: string;
+  profileIdentity: string | null;
+  membershipStatus: string;
+  wakePolicy: string;
+  canSend: boolean;
+  canReact: boolean;
+  canInvite: boolean;
+  membershipPurpose: string | null;
+  settingsJson: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  leftAt: string | null;
+}
+
+export interface ListConversationSuccessorMembershipsOpts {
+  channelId?: number;
+  projectId?: string;
+  includeLeft?: boolean;
+  limit?: number;
 }
 
 let config: ConversationSuccessorReadConfig = {
@@ -204,6 +262,20 @@ async function postSuccessor<T>(path: string, body: unknown, idempotencyKey?: st
   return res.json();
 }
 
+async function putSuccessor<T>(path: string, body: unknown): Promise<T> {
+  const requestUrl = conversationSuccessorUrl(path);
+  const res = await fetch(requestUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Den-Migrated-Functions': 'true',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`PUT ${requestUrl}: ${res.status}`);
+  return res.json();
+}
+
 function objectRecord(value: unknown): JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as JsonObject : {};
 }
@@ -229,6 +301,10 @@ function numberValue(value: unknown, fallback = 0): number {
 
 function nullableNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function booleanValue(value: unknown, fallback = false): boolean {
+  return typeof value === 'boolean' ? value : fallback;
 }
 
 function jsonStringValue(value: unknown): string | null {
@@ -295,6 +371,30 @@ export function normalizeConversationSuccessorMessage(raw: SuccessorMessageDto):
   };
 }
 
+export function normalizeConversationSuccessorMembership(raw: SuccessorMembershipDto): ConversationSuccessorMembership {
+  return {
+    id: numberValue(raw.id),
+    channelId: numberValue(raw.channel_id ?? raw.channelId),
+    memberType: stringValue(raw.member_type ?? raw.memberType, 'agent'),
+    memberIdentity: stringValue(raw.member_identity ?? raw.memberIdentity),
+    profileIdentity: nullableString(raw.profile_identity ?? raw.profileIdentity),
+    membershipStatus: stringValue(raw.membership_status ?? raw.membershipStatus, 'active'),
+    wakePolicy: stringValue(raw.wake_policy ?? raw.wakePolicy, 'mentions_only'),
+    canSend: booleanValue(raw.can_send ?? raw.canSend, true),
+    canReact: booleanValue(raw.can_react ?? raw.canReact, true),
+    canInvite: booleanValue(raw.can_invite ?? raw.canInvite),
+    membershipPurpose: nullableString(raw.membership_purpose ?? raw.membershipPurpose),
+    settingsJson: jsonStringValue(raw.settings ?? raw.settings_json ?? raw.settingsJson),
+    createdAt: nullableString(raw.created_at ?? raw.createdAt),
+    updatedAt: nullableString(raw.updated_at ?? raw.updatedAt),
+    leftAt: nullableString(raw.left_at ?? raw.leftAt),
+  };
+}
+
+export function conversationSuccessorConfigured(): boolean {
+  return config.enabled;
+}
+
 export async function listConversationSuccessorChannels(opts: ListChannelsOpts): Promise<Channel[]> {
   const q = buildQuery({ project_id: opts.projectId, kind: opts.kind, limit: opts.limit });
   const response = await getSuccessor<unknown>(`/channels${q}`);
@@ -303,6 +403,82 @@ export async function listConversationSuccessorChannels(opts: ListChannelsOpts):
     registerConversationSuccessorChannel(channel.id, channel.projectId);
   }
   return channels;
+}
+
+export async function getConversationSuccessorChannel(channelId: number): Promise<Channel> {
+  const response = await getSuccessor<unknown>(`/channels/${encodeURIComponent(String(channelId))}`);
+  const channel = normalizeConversationSuccessorChannel(objectRecord(response));
+  registerConversationSuccessorChannel(channel.id, channel.projectId);
+  return channel;
+}
+
+export async function putConversationSuccessorProjectDefaultChannel(
+  projectId: string,
+  request: EnsureProjectDefaultChannelRequest = {},
+): Promise<Channel> {
+  const response = await putSuccessor<unknown>(`/projects/${encodeURIComponent(projectId)}/default-channel`, {
+    slug: `${projectId}-default`,
+    display_name: request.displayName?.trim() || projectId,
+    created_by: request.createdBy ?? 'den-web',
+    settings: parseMetadataJson(request.settingsJson),
+  });
+  const channel = normalizeConversationSuccessorChannel(objectRecord(response));
+  registerConversationSuccessorChannel(channel.id, channel.projectId);
+  return channel;
+}
+
+export async function ensureConversationSuccessorAgentCommonsChannel(): Promise<Channel> {
+  const existing = (await listConversationSuccessorChannels({ limit: 100 }))
+    .find(channel => channel.slug === 'agent-commons' || channel.kind === 'system');
+  if (existing) return existing;
+  const response = await postSuccessor<unknown>('/channels', {
+    slug: 'agent-commons',
+    display_name: 'agent-commons',
+    kind: 'system',
+    created_by: 'den-web',
+    visibility: 'normal',
+    settings: {},
+  });
+  const channel = normalizeConversationSuccessorChannel(objectRecord(response));
+  registerConversationSuccessorChannel(channel.id, channel.projectId);
+  return channel;
+}
+
+export async function listConversationSuccessorMemberships(opts: ListConversationSuccessorMembershipsOpts = {}): Promise<ConversationSuccessorMembership[]> {
+  const q = buildQuery({
+    channel_id: opts.channelId,
+    project_id: opts.projectId,
+    include_left: opts.includeLeft,
+    limit: opts.limit,
+  });
+  const response = await getSuccessor<unknown>(`/memberships${q}`);
+  return arrayFromResponse(response, 'memberships').map(normalizeConversationSuccessorMembership);
+}
+
+export function putConversationSuccessorMembership(channelId: number, request: {
+  memberType: string;
+  memberIdentity: string;
+  profileIdentity?: string | null;
+  membershipStatus?: string;
+  wakePolicy?: string;
+  canSend?: boolean;
+  canReact?: boolean;
+  canInvite?: boolean;
+  membershipPurpose?: string;
+  settingsJson?: string | null;
+}): Promise<ConversationSuccessorMembership> {
+  return putSuccessor<unknown>(`/channels/${encodeURIComponent(String(channelId))}/memberships`, {
+    member_type: request.memberType,
+    member_identity: request.memberIdentity,
+    profile_identity: request.profileIdentity,
+    membership_status: request.membershipStatus ?? 'active',
+    wake_policy: request.wakePolicy ?? 'mentions_only',
+    can_send: request.canSend,
+    can_react: request.canReact,
+    can_invite: request.canInvite,
+    membership_purpose: request.membershipPurpose ?? 'normal',
+    settings: parseMetadataJson(request.settingsJson),
+  }).then(raw => normalizeConversationSuccessorMembership(objectRecord(raw)));
 }
 
 export async function listConversationSuccessorMessages(channelId: number, opts: ListChannelMessagesOpts): Promise<ChannelMessage[]> {

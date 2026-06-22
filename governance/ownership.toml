@@ -66,6 +66,10 @@ baseline_file = "governance/file-size-baseline.json"
 reason = "Gateway DTO contract mirrors external Channels/Gateway payloads; split by upstream contract or generated source when that boundary exists."
 max_lines = 650
 
+[guards.file_size.contract_exceptions."packages/api/src/channels/conversationSuccessor.ts"]
+reason = "Conversation successor DTOs, runtime allowlist state, and normalizers are intentionally centralized during den-channels retirement; split by endpoint family after the successor contract stabilizes."
+max_lines = 650
+
 [guards.function_size]
 warn_lines = 80
 error_lines = 120

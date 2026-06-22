@@ -48,3 +48,4 @@ same change. The complexity check fails if an entry clears but remains listed.
 | File | Rule | Rationale | Revisit trigger |
 | --- | --- | --- | --- |
 | `packages/api/src/gateway/types.ts` | 650-line exception ceiling | Gateway DTO contract mirrors external Channels/Gateway payloads. | Split by upstream contract or generated source when that boundary exists. |
+| `packages/api/src/channels/conversationSuccessor.ts` | 650-line exception ceiling | Conversation successor DTOs, runtime allowlist state, and normalizers are centralized during den-channels retirement. | Split by endpoint family after the successor contract stabilizes or before adding another successor surface. |

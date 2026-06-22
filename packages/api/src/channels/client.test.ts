@@ -18,20 +18,6 @@ import {
   reinitChannelsRuntime,
 } from './client';
 import { reinitTimelineSuccessor, timelineSuccessorEnabledForChannel } from '../timeline/client';
-import type {
-  DirectConversation,
-  DirectConversationEntriesResponse,
-  DirectConversationSendResponse,
-  ReadCursor,
-} from './types';
-
-function mockFetch(ok: boolean, data: unknown) {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-    ok,
-    json: () => Promise.resolve(data),
-    status: ok ? 200 : 500,
-  }));
-}
 
 describe('channels DM API client', () => {
   afterEach(() => {
@@ -69,7 +55,7 @@ describe('channels DM API client', () => {
   });
 
   describe('conversation successor read pilot', () => {
-    it('uses legacy channel reads when the successor flag is disabled', async () => {
+    it('returns an empty channel list when the successor flag is disabled', async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve([]),
@@ -84,12 +70,10 @@ describe('channels DM API client', () => {
         },
       });
 
-      await listChannels({ projectId: 'den-web', kind: 'project_default', limit: 2 });
+      const channels = await listChannels({ projectId: 'den-web', kind: 'project_default', limit: 2 });
 
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/legacy-api/channels?projectId=den-web&kind=project_default&limit=2',
-        { cache: 'no-store' },
-      );
+      expect(channels).toEqual([]);
+      expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('routes allowlisted channel reads through the successor canary path and normalizes snake_case DTOs', async () => {
@@ -194,7 +178,7 @@ describe('channels DM API client', () => {
       });
     });
 
-    it('leaves unallowlisted projects, undiscovered message channels, and unsupported linked routes on legacy', async () => {
+    it('degrades unallowlisted projects, undiscovered message channels, and unsupported linked routes without legacy calls', async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve([]),
@@ -209,13 +193,11 @@ describe('channels DM API client', () => {
         },
       });
 
-      await listChannels({ projectId: 'other-project', limit: 1 });
-      await listChannelMessages(999, { limit: 5 });
-      await listProjectLinkedChannels('pilot-project');
+      await expect(listChannels({ projectId: 'other-project', limit: 1 })).resolves.toEqual([]);
+      await expect(listChannelMessages(999, { limit: 5 })).resolves.toEqual([]);
+      await expect(listProjectLinkedChannels('pilot-project')).resolves.toEqual([]);
 
-      expect(fetchMock).toHaveBeenNthCalledWith(1, '/legacy-api/channels?projectId=other-project&limit=1', { cache: 'no-store' });
-      expect(fetchMock).toHaveBeenNthCalledWith(2, '/legacy-api/channels/999/messages?limit=5', { cache: 'no-store' });
-      expect(fetchMock).toHaveBeenNthCalledWith(3, '/legacy-api/projects/pilot-project/linked-channels', { cache: 'no-store' });
+      expect(fetchMock).not.toHaveBeenCalled();
       expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/api/v1/conversation/projects'), expect.anything());
     });
 
@@ -462,261 +444,55 @@ describe('channels DM API client', () => {
   });
 
   describe('listDirectConversations', () => {
-    it('calls GET /direct-conversations with humanIdentity', async () => {
-      const conversations: DirectConversation[] = [{
-        id: 1, humanIdentity: 'patch', agentIdentity: 'pi',
-        scopeProjectId: null,
-    displayTitle: null,
-    isArchived: false,
-    isMuted: false,
-    settingsJson: null, lastEntryAt: null, lastEntryPreview: null,
-        lastEntrySender: null, unreadCount: 0,
-        createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
-      }];
-      mockFetch(true, { conversations, nextCursor: null, hasMore: false });
+    it('returns an empty retired transcript list without legacy calls', async () => {
       const result = await listDirectConversations({ humanIdentity: 'patch', limit: 50 });
-      expect(result).toEqual(conversations);
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/direct-conversations?humanIdentity=patch&limit=50'),
-        expect.objectContaining({ cache: 'no-store' }),
-      );
+      expect(result).toEqual([]);
     });
   });
 
   describe('createDirectConversation', () => {
-    it('calls POST /direct-conversations', async () => {
-      const conv: DirectConversation = {
-        id: 2, humanIdentity: 'patch', agentIdentity: 'pi',
-        scopeProjectId: null,
-    displayTitle: null,
-    isArchived: false,
-    isMuted: false,
-    settingsJson: null, lastEntryAt: null, lastEntryPreview: null,
-        lastEntrySender: null, unreadCount: 0,
-        createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
-      };
-      mockFetch(true, conv);
-      const result = await createDirectConversation({ humanIdentity: 'patch', agentIdentity: 'pi' });
-      expect(result).toEqual(conv);
+    it('rejects legacy transcript creation', async () => {
+      await expect(createDirectConversation({ humanIdentity: 'patch', agentIdentity: 'pi' })).rejects.toThrow(/retired/);
     });
   });
 
   describe('getDirectConversation', () => {
-    it('calls GET /direct-conversations/:id', async () => {
-      const conv: DirectConversation = {
-        id: 3, humanIdentity: 'patch', agentIdentity: 'spawned-coder',
-        scopeProjectId: null,
-    displayTitle: null,
-    isArchived: false,
-    isMuted: false,
-    settingsJson: null, lastEntryAt: null, lastEntryPreview: null,
-        lastEntrySender: null, unreadCount: 0,
-        createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
-      };
-      mockFetch(true, conv);
-      const result = await getDirectConversation(3);
-      expect(result).toEqual(conv);
+    it('rejects legacy transcript readback', async () => {
+      await expect(getDirectConversation(3)).rejects.toThrow(/retired/);
     });
   });
 
   describe('listDirectConversationEntries', () => {
-    it('calls GET /direct-conversations/:id/entries', async () => {
-      const resp: DirectConversationEntriesResponse = {
-        entries: [{
-          id: 1, conversationId: 1, channelMessageId: null,
-          direction: 'human_to_agent', senderIdentity: 'patch',
-          recipientIdentity: 'agent', bodyPreview: 'Hello',
-          sourceChannelId: null, sourceProjectId: null,
-          sourceTaskId: null, sourceWorkerRunId: null,
-          sourceSessionOwnerId: null,
-          createdAt: '2026-01-01T00:00:00Z',
-        }],
-        nextCursor: null,
-        hasMore: false,
-      };
-      mockFetch(true, resp);
+    it('returns an empty retired entry list without legacy calls', async () => {
       const result = await listDirectConversationEntries(1, { limit: 100 });
-      expect(result).toEqual(resp);
+      expect(result).toEqual({ entries: [], nextCursor: null, hasMore: false });
     });
   });
 
   describe('sendDirectMessage', () => {
-    it('uses direct-conversation readback plus delivery successor for new wakes', async () => {
-      const fetchMock = vi.fn()
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({
-            id: 1,
-            humanIdentity: 'patch',
-            agentIdentity: 'pi',
-            scopeProjectId: 'den-web',
-            displayTitle: null,
-            isArchived: false,
-            isMuted: false,
-            settingsJson: null,
-            lastEntryAt: null,
-            lastEntryPreview: null,
-            lastEntrySender: null,
-            unreadCount: 0,
-            createdAt: '2026-01-01T00:00:00Z',
-            updatedAt: '2026-01-01T00:00:00Z',
-          }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve([{ id: 31, project_id: 'den-web', kind: 'project_default' }]),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({
-            id: 41,
-            channel_id: 31,
-          }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ runtime_instances: [{ instance_id: 'pi@live' }], activity_events: [] }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({
-            id: 42,
-            state: 'pending',
-            idempotency_key: 'direct-agent-message:den-web:pi:req',
-            created_at: '2026-01-01T00:00:00Z',
-            expires_at: '2026-01-01T00:05:00Z',
-          }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({
-            id: 42,
-            state: 'pending',
-            idempotency_key: 'direct-agent-message:den-web:pi:req',
-            created_at: '2026-01-01T00:00:00Z',
-            expires_at: '2026-01-01T00:05:00Z',
-          }),
-        });
-      vi.stubGlobal('fetch', fetchMock);
-      vi.stubGlobal('crypto', { randomUUID: () => 'req' });
-
-      const result = await sendDirectMessage(1, { senderIdentity: 'patch', body: 'Hi' });
-
-      expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/direct-conversations/1', { cache: 'no-store' });
-      expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/conversation/channels?project_id=den-web&kind=project_default&limit=5', {
-        cache: 'no-store',
-        headers: { 'X-Den-Migrated-Functions': 'true' },
-      });
-      expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/v1/conversation/channels/31/messages', expect.objectContaining({
-        method: 'POST',
-      }));
-      expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/v1/observation/agents/pi/overview', {
-        cache: 'no-store',
-        headers: { 'X-Den-Migrated-Functions': 'true' },
-      });
-      expect(fetchMock).toHaveBeenNthCalledWith(5, '/api/v1/delivery/intents', expect.objectContaining({
-        method: 'POST',
-      }));
-      expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/v1/delivery/intents/42', {
-        cache: 'no-store',
-        headers: { 'X-Den-Migrated-Functions': 'true' },
-      });
-      expect(JSON.parse(String(fetchMock.mock.calls[4][1]?.body))).toMatchObject({
-        target_identity: {
-          profile: 'pi',
-          instance_id: 'pi@live',
-        },
-        idempotency_key: 'direct-agent-message:den-web:pi:req',
-        channel_message_id: 41,
-      });
-      expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/direct-conversations/1/send'), expect.anything());
-      expect(result).toEqual({
-        status: 'pending',
-        eventId: 41,
-        channelId: 31,
-        conversationId: 1,
-        entryId: 0,
-        requestId: 'direct-agent-message:den-web:pi:req',
-        memberIdentity: 'pi',
-      } satisfies DirectConversationSendResponse);
+    it('rejects retired transcript sends instead of reading legacy conversations', async () => {
+      await expect(sendDirectMessage(1, { senderIdentity: 'patch', body: 'Hi' })).rejects.toThrow(/retired/);
     });
   });
 
   describe('updateReadCursor', () => {
-    it('calls PUT /direct-conversations/:id/read-cursor', async () => {
-      const cursor: ReadCursor = {
-        conversationId: 1,
-        readerIdentity: 'patch',
-        lastReadEntryId: 5,
-        unreadCount: 0,
-        updatedAt: '2026-01-01T00:00:00Z',
-      };
-      mockFetch(true, cursor);
+    it('returns a local retired read-cursor acknowledgement', async () => {
       const result = await updateReadCursor(1, { readerIdentity: 'patch', lastReadEntryId: 5 });
-      expect(result).toEqual(cursor);
+      expect(result).toMatchObject({ conversationId: 1, readerIdentity: 'patch', lastReadEntryId: 5 });
     });
   });
 
   describe('listAgentWorkEvents', () => {
-    it('normalizes canonical metadata fields for pi-crew lifecycle rows', async () => {
-      mockFetch(true, {
-        items: [{
-          id: 1,
-          channelId: 642,
-          projectId: 'pi-crew',
-          taskId: null,
-          agentIdentity: 'pi-crew-service',
-          eventType: 'heartbeat',
-          status: 'completed',
-          state: null,
-          workerRunId: null,
-          assignmentId: null,
-          deliveryRequestId: null,
-          sessionId: 'sess-parent',
-          evidenceLink: null,
-          summary: 'Tool completed',
-          createdAt: '2026-06-15T00:00:00Z',
-          metadata: {
-            source: 'pi-crew',
-            eventFamily: 'tool',
-            piCrewEventType: 'tool.completed',
-            toolName: 'list_assignments',
-            durationMs: 77,
-            isError: false,
-            tokensConsumed: 123,
-          },
-        }],
-        count: 1,
-        channelId: 642,
-        filters: {},
-      });
-
+    it('returns a degraded empty lifecycle projection without legacy calls', async () => {
       const result = await listAgentWorkEvents({ channelId: 642, limit: 10 });
-      expect(result.items[0]).toMatchObject({
-        state: 'completed',
-        source: 'pi-crew',
-        eventFamily: 'tool',
-        piCrewEventType: 'tool.completed',
-        toolName: 'list_assignments',
-        durationMs: 77,
-        isError: false,
-        tokensConsumed: 123,
-      });
+      expect(result).toEqual({ items: [], count: 0, channelId: 642, filters: {} });
     });
   });
 
   describe('getReadCursor', () => {
-    it('calls GET /direct-conversations/:id/read-cursor', async () => {
-      const cursor: ReadCursor = {
-        conversationId: 1,
-        readerIdentity: 'patch',
-        lastReadEntryId: 3,
-        unreadCount: 2,
-        updatedAt: '2026-01-01T00:00:00Z',
-      };
-      mockFetch(true, cursor);
+    it('returns an empty retired read-cursor projection', async () => {
       const result = await getReadCursor(1, 'patch');
-      expect(result).toEqual(cursor);
+      expect(result).toMatchObject({ conversationId: 1, readerIdentity: 'patch', lastReadEntryId: null });
     });
   });
 });

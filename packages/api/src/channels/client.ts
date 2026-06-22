@@ -1,7 +1,6 @@
-import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse, AgentWorkCurrentResponse, AgentWorkEventsResponse, AgentWorkLifecycleEvent, DirectAgentEventsResponse, DirectConversation, DirectConversationListResponse, DirectConversationEntriesResponse, DirectConversationCreateRequest, ReadCursor } from './types';
+import type { Channel, ChannelMessage, ChannelReactionSummary, ChannelActivityEvent, ChannelProjectLink, ActiveWorkRouteResponse, ActiveWorkRoutesResponse, AgentWorkCurrentResponse, AgentWorkEventsResponse, DirectAgentEventsResponse, DirectConversation, DirectConversationEntriesResponse, DirectConversationCreateRequest, ReadCursor } from './types';
 import { normalizeApiBase } from '../config';
-import { dedupedFetch } from '../requestCache';
-import { addConversationSuccessorReaction, conversationSuccessorReactionsEnabledForMessage, conversationSuccessorReadsEnabledForChannel as channelUsesConversationSuccessor, conversationSuccessorReadsEnabledForProject, conversationSuccessorWritesEnabledForChannel, conversationSuccessorWritesEnabledForProject, listConversationSuccessorChannels, listConversationSuccessorMessages, postConversationSuccessorMessage, postConversationSuccessorProjectMessage, reinitConversationSuccessorReads, type ConversationSuccessorReadConfig } from './conversationSuccessor';
+import { addConversationSuccessorReaction, conversationSuccessorConfigured, conversationSuccessorReactionsEnabledForMessage, conversationSuccessorReadsEnabledForChannel as channelUsesConversationSuccessor, conversationSuccessorReadsEnabledForProject, conversationSuccessorWritesEnabledForChannel, conversationSuccessorWritesEnabledForProject, ensureConversationSuccessorAgentCommonsChannel, listConversationSuccessorChannels, listConversationSuccessorMessages, postConversationSuccessorMessage, postConversationSuccessorProjectMessage, putConversationSuccessorProjectDefaultChannel, reinitConversationSuccessorReads, type ConversationSuccessorReadConfig } from './conversationSuccessor';
 import { timelineChannelStreamUrl, timelineSuccessorEnabledForChannelId } from '../timeline/client';
 import { reinitDirectMessagesRuntime } from './directMessages';
 export { sendDirectMessage } from './directMessages';
@@ -23,42 +22,6 @@ export function reinitChannelsRuntime(config: { denChannelsApiBase: string; conv
 function channelsApiUrl(url: string): string {
   if (/^https?:\/\//i.test(url)) return url;
   return `${denChannelsApiBase}${url.startsWith('/') ? url : `/${url}`}`;
-}
-
-function getChannels<T>(url: string): Promise<T> {
-  const requestUrl = channelsApiUrl(url);
-  // Share overlapping identical GETs across panels (#2145).
-  return dedupedFetch(`GET ${requestUrl}`, async () => {
-    const res = await fetch(requestUrl, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
-    return res.json();
-  });
-}
-
-async function putChannels<T>(url: string, body: unknown): Promise<T> {
-  const requestUrl = channelsApiUrl(url);
-  const res = await fetch(requestUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`PUT ${requestUrl}: ${res.status}`);
-  return res.json();
-}
-
-async function postChannels<T>(url: string, body: unknown): Promise<T> {
-  const requestUrl = channelsApiUrl(url);
-  const res = await fetch(requestUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`POST ${requestUrl}: ${res.status}`);
-  return res.json();
-}
-
-function esc(s: string): string {
-  return encodeURIComponent(s);
 }
 
 function buildQuery(params: Record<string, string | number | boolean | undefined | null>): string {
@@ -99,19 +62,20 @@ export interface ListChannelsOpts {
 }
 
 export function listChannels(opts: ListChannelsOpts = {}): Promise<Channel[]> {
-  if (conversationSuccessorReadsEnabledForProject(opts.projectId)) {
+  if (conversationSuccessorConfigured() && (!opts.projectId || conversationSuccessorReadsEnabledForProject(opts.projectId))) {
     return listConversationSuccessorChannels(opts);
   }
-  const q = buildQuery({ projectId: opts.projectId, kind: opts.kind, limit: opts.limit });
-  return getChannels(`/channels${q}`);
+  return Promise.resolve([]);
 }
 
 export function listProjectLinkedChannels(projectId: string): Promise<Channel[]> {
-  return getChannels(`/projects/${esc(projectId)}/linked-channels`);
+  void projectId;
+  return Promise.resolve([]);
 }
 
 export function listChannelLinkedProjects(channelId: number): Promise<ChannelProjectLink[]> {
-  return getChannels(`/channels/${channelId}/linked-projects`);
+  void channelId;
+  return Promise.resolve([]);
 }
 
 export interface ResolveActiveWorkRouteRequest {
@@ -134,19 +98,30 @@ export interface ListActiveWorkRoutesOpts {
 }
 
 export function resolveActiveWorkRoute(request: ResolveActiveWorkRouteRequest): Promise<ActiveWorkRouteResponse> {
-  return postChannels('/active-work/resolve', request);
+  void request;
+  return Promise.resolve({
+    routeStatus: 'no_active_route',
+    reason: 'Legacy den-channels active-work routing is retired; direct sends use Delivery intents.',
+    route: null,
+    evidence: {
+      sources: [{ source: 'den-services-delivery', available: true, recordsExamined: 0, detail: 'Use /api/v1/delivery/intents for wake routing.' }],
+      candidatesConsidered: 0,
+      resolvedAt: new Date().toISOString(),
+    },
+  });
 }
 
 export function listActiveWorkRoutes(opts: ListActiveWorkRoutesOpts = {}): Promise<ActiveWorkRoutesResponse> {
-  const q = buildQuery({
-    targetProjectId: opts.targetProjectId,
-    targetTaskId: opts.targetTaskId,
-    assignmentId: opts.assignmentId,
-    profileIdentity: opts.profileIdentity,
-    includeStale: opts.includeStale,
-    limit: opts.limit,
+  void opts;
+  return Promise.resolve({
+    routes: [],
+    totalCount: 0,
+    evidence: {
+      sources: [{ source: 'den-services-observation', available: true, recordsExamined: 0, detail: 'Focused-session route listing is waiting on successor parity.' }],
+      candidatesConsidered: 0,
+      resolvedAt: new Date().toISOString(),
+    },
   });
-  return getChannels(`/active-work/routes${q}`);
 }
 
 export interface EnsureProjectDefaultChannelRequest {
@@ -159,15 +134,11 @@ export function ensureProjectDefaultChannel(
   projectId: string,
   request: EnsureProjectDefaultChannelRequest = {},
 ): Promise<Channel> {
-  return putChannels(`/projects/${esc(projectId)}/default-channel`, {
-    displayName: request.displayName,
-    createdBy: request.createdBy ?? 'den-web',
-    settingsJson: request.settingsJson,
-  });
+  return putConversationSuccessorProjectDefaultChannel(projectId, request);
 }
 
 export function ensureAgentCommonsChannel(): Promise<Channel> {
-  return putChannels('/agent-commons', {});
+  return ensureConversationSuccessorAgentCommonsChannel();
 }
 
 export interface ListChannelMessagesOpts { afterId?: number; limit?: number; }
@@ -176,8 +147,7 @@ export function listChannelMessages(channelId: number, opts: ListChannelMessages
   if (channelUsesConversationSuccessor(channelId)) {
     return listConversationSuccessorMessages(channelId, opts);
   }
-  const q = buildQuery({ afterId: opts.afterId, limit: opts.limit });
-  return getChannels(`/channels/${channelId}/messages${q}`);
+  return Promise.resolve([]);
 }
 
 export interface ListChannelActivityEventsOpts {
@@ -192,17 +162,9 @@ export interface ListChannelActivityEventsOpts {
 }
 
 export function listChannelActivityEvents(channelId: number, opts: ListChannelActivityEventsOpts = {}): Promise<ChannelActivityEvent[]> {
-  const q = buildQuery({
-    deliveryRequestId: opts.deliveryRequestId,
-    hermesSessionKey: opts.hermesSessionKey,
-    displayBlockId: opts.displayBlockId,
-    workerRunId: opts.workerRunId,
-    anchorMessageId: opts.anchorMessageId,
-    taskId: opts.taskId,
-    afterId: opts.afterId,
-    limit: opts.limit,
-  });
-  return getChannels(`/channels/${channelId}/activity-events${q}`);
+  void channelId;
+  void opts;
+  return Promise.resolve([]);
 }
 
 export interface ListAgentWorkOpts {
@@ -216,83 +178,18 @@ export interface ListAgentWorkOpts {
 }
 
 export function listAgentWorkCurrent(opts: Pick<ListAgentWorkOpts, 'channelId' | 'limit'> = {}): Promise<AgentWorkCurrentResponse> {
-  const q = buildQuery({ channelId: opts.channelId, limit: opts.limit });
-  return getChannels(`/agent-work/current${q}`);
+  void opts;
+  return Promise.resolve({
+    items: [],
+    totalCount: 0,
+    generatedAt: new Date().toISOString(),
+    stalenessSummary: null,
+    migrationNote: 'Legacy den-channels agent-work projection is retired; timeline/observation successor data is shown in the channel feed.',
+  });
 }
 
 export function listAgentWorkEvents(opts: ListAgentWorkOpts = {}): Promise<AgentWorkEventsResponse> {
-  const q = buildQuery({
-    channelId: opts.channelId,
-    agentIdentity: opts.agentIdentity,
-    taskId: opts.taskId,
-    workerRunId: opts.workerRunId,
-    assignmentId: opts.assignmentId,
-    sessionId: opts.sessionId,
-    limit: opts.limit,
-  });
-  return getChannels<AgentWorkEventsResponse | { events?: AgentWorkEventsResponse['items']; count?: number; channelId?: number | null; filters?: Record<string, string | number | boolean | null> }>(`/agent-work/events${q}`)
-    .then(response => 'items' in response
-      ? { ...response, items: response.items.map(normalizeAgentWorkLifecycleEvent) }
-      : {
-        items: (response.events ?? []).map(normalizeAgentWorkLifecycleEvent),
-        count: response.count ?? response.events?.length ?? 0,
-        channelId: response.channelId ?? opts.channelId ?? null,
-        filters: response.filters ?? {},
-      });
-}
-
-function normalizeAgentWorkLifecycleEvent(event: AgentWorkLifecycleEvent): AgentWorkLifecycleEvent {
-  const metadata = event.metadata ?? {};
-  return {
-    ...event,
-    state: event.state ?? event.status ?? null,
-    source: firstMetadataString(event.source, metadata.source),
-    eventFamily: firstMetadataString(event.eventFamily, metadata.eventFamily, metadata.event_family),
-    piCrewEventType: firstMetadataString(event.piCrewEventType, metadata.piCrewEventType, metadata.pi_crew_event_type),
-    childSessionId: firstMetadataString(event.childSessionId, metadata.childSessionId, metadata.child_session_id),
-    rootSessionId: firstMetadataString(event.rootSessionId, metadata.rootSessionId, metadata.root_session_id),
-    ownerSessionId: firstMetadataString(event.ownerSessionId, metadata.ownerSessionId, metadata.owner_session_id),
-    toolName: firstMetadataString(event.toolName, metadata.toolName, metadata.tool_name),
-    toolCallId: firstMetadataString(event.toolCallId, metadata.toolCallId, metadata.tool_call_id),
-    phase: firstMetadataString(event.phase, metadata.phase),
-    provider: firstMetadataString(event.provider, metadata.provider),
-    model: firstMetadataString(event.model, metadata.model),
-    policyId: firstMetadataString(event.policyId, metadata.policyId, metadata.policy_id),
-    outcome: firstMetadataString(event.outcome, metadata.outcome),
-    durationMs: firstMetadataNumber(event.durationMs, metadata.durationMs, metadata.duration_ms),
-    depth: firstMetadataNumber(event.depth, metadata.depth),
-    turnsUsed: firstMetadataNumber(event.turnsUsed, metadata.turnsUsed, metadata.turns_used),
-    tokensConsumed: event.tokensConsumed ?? firstMetadataNumber(null, metadata.tokensConsumed, metadata.tokens_consumed),
-    artifactCount: firstMetadataNumber(event.artifactCount, metadata.artifactCount, metadata.artifact_count),
-    isError: firstMetadataBoolean(event.isError, metadata.isError, metadata.is_error),
-    evidenceChecked: firstMetadataBoolean(event.evidenceChecked, metadata.evidenceChecked, metadata.evidence_checked),
-  };
-}
-
-function firstMetadataString(...values: unknown[]): string | null | undefined {
-  for (const value of values) {
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return undefined;
-}
-
-function firstMetadataNumber(...values: unknown[]): number | null | undefined {
-  for (const value of values) {
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (typeof value === 'string' && value.trim()) {
-      const parsed = Number(value);
-      if (Number.isFinite(parsed)) return parsed;
-    }
-  }
-  return undefined;
-}
-
-function firstMetadataBoolean(...values: unknown[]): boolean | null | undefined {
-  for (const value of values) {
-    if (typeof value === 'boolean') return value;
-    if (typeof value === 'string' && /^(true|false)$/i.test(value.trim())) return value.trim().toLowerCase() === 'true';
-  }
-  return undefined;
+  return Promise.resolve({ items: [], count: 0, channelId: opts.channelId ?? null, filters: {} });
 }
 
 export interface ListDirectAgentEventsOpts {
@@ -302,8 +199,8 @@ export interface ListDirectAgentEventsOpts {
 }
 
 export function listDirectAgentEvents(opts: ListDirectAgentEventsOpts = {}): Promise<DirectAgentEventsResponse> {
-  const q = buildQuery({ channelId: opts.channelId, afterId: opts.afterId, limit: opts.limit });
-  return getChannels(`/direct-agent-events${q}`);
+  void opts;
+  return Promise.resolve({ items: [], nextAfterId: null, hasMore: false });
 }
 
 export interface PostChannelMessageRequest {
@@ -341,11 +238,12 @@ export function postChannelMessage(channelId: number, request: PostChannelMessag
   if (sourceProjectId && conversationSuccessorWritesEnabledForProject(sourceProjectId)) {
     return postConversationSuccessorProjectMessage(sourceProjectId, request);
   }
-  return postChannels(`/channels/${channelId}/messages`, request);
+  return Promise.reject(new Error(`Conversation successor writes are not enabled for channel ${channelId}.`));
 }
 
 export function listChannelReactions(channelId: number): Promise<ChannelReactionSummary[]> {
-  return getChannels(`/channels/${channelId}/reactions`);
+  void channelId;
+  return Promise.resolve([]);
 }
 
 export interface AddChannelReactionRequest {
@@ -358,7 +256,8 @@ export function addChannelReaction(messageId: number, request: AddChannelReactio
   if (conversationSuccessorReactionsEnabledForMessage(messageId)) {
     return addConversationSuccessorReaction(messageId, request);
   }
-  return postChannels(`/channel-messages/${messageId}/reactions`, request);
+  void request;
+  return Promise.reject(new Error(`Conversation successor reactions are not enabled for message ${messageId}.`));
 }
 
 export interface ListDirectConversationsOpts {
@@ -367,16 +266,15 @@ export interface ListDirectConversationsOpts {
   afterId?: number;
 }
 export async function listDirectConversations(opts: ListDirectConversationsOpts = {}): Promise<DirectConversation[]> {
-  const q = buildQuery({ humanIdentity: opts.humanIdentity, limit: opts.limit, afterId: opts.afterId });
-  const response = await getChannels<DirectConversationListResponse | DirectConversation[]>(`/direct-conversations${q}`);
-  return Array.isArray(response) ? response : response.conversations;
+  void opts;
+  return [];
 }
 
 export function createDirectConversation(request: DirectConversationCreateRequest): Promise<DirectConversation> {
-  return postChannels('/direct-conversations', request);
+  return Promise.reject(new Error(`Legacy direct-conversation transcripts are retired for ${request.agentIdentity}. Use channel direct-agent mode.`));
 }
 export function getDirectConversation(conversationId: number): Promise<DirectConversation> {
-  return getChannels(`/direct-conversations/${conversationId}`);
+  return Promise.reject(new Error(`Legacy direct-conversation transcript ${conversationId} is retired.`));
 }
 
 export interface ListDirectConversationEntriesOpts {
@@ -385,14 +283,25 @@ export interface ListDirectConversationEntriesOpts {
 }
 
 export function listDirectConversationEntries(conversationId: number, opts: ListDirectConversationEntriesOpts = {}): Promise<DirectConversationEntriesResponse> {
-  const q = buildQuery({ limit: opts.limit, afterId: opts.afterId });
-  return getChannels(`/direct-conversations/${conversationId}/entries${q}`);
+  void conversationId;
+  void opts;
+  return Promise.resolve({ entries: [], nextCursor: null, hasMore: false });
 }
 
 export function updateReadCursor(conversationId: number, request: { readerIdentity: string; lastReadEntryId?: number | null }): Promise<ReadCursor> {
-  return putChannels(`/direct-conversations/${conversationId}/read-cursor`, request);
+  return Promise.resolve({
+    conversationId,
+    readerIdentity: request.readerIdentity,
+    lastReadEntryId: request.lastReadEntryId ?? null,
+    updatedAt: new Date().toISOString(),
+  });
 }
 
 export function getReadCursor(conversationId: number, readerIdentity: string): Promise<ReadCursor> {
-  return getChannels(`/direct-conversations/${conversationId}/read-cursor?readerIdentity=${esc(readerIdentity)}`);
+  return Promise.resolve({
+    conversationId,
+    readerIdentity,
+    lastReadEntryId: null,
+    updatedAt: new Date().toISOString(),
+  });
 }

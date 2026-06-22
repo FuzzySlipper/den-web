@@ -38,12 +38,17 @@ const ALLOW_DIRTY = env.ALLOW_DIRTY === '1';
 const DRY_RUN = env.DRY_RUN === '1';
 const SYSTEMCTL = (env.SYSTEMCTL ?? 'systemctl').split(/\s+/).filter(Boolean);
 const SERVICE_READY_TIMEOUT_MS = Number.parseInt(env.SERVICE_READY_TIMEOUT_MS ?? '15000', 10);
+const DEFAULT_CONVERSATION_SUCCESSOR_ENABLED = 'true';
 const DEFAULT_TIMELINE_SUCCESSOR_ENABLED = 'true';
 const DEFAULT_TIMELINE_SUCCESSOR_PROJECT_IDS = 'den-web';
 const runtimeEnv = { ...readEnvFile(path.join(SHARED_DIR, 'gateway.env')), ...env };
 const timelineSuccessorProjectIds = runtimeEnv.TIMELINE_SUCCESSOR_PROJECT_IDS
   ?? runtimeEnv.CONVERSATION_SUCCESSOR_READ_PROJECT_IDS
   ?? DEFAULT_TIMELINE_SUCCESSOR_PROJECT_IDS;
+const conversationSuccessorReadProjectIds = runtimeEnv.CONVERSATION_SUCCESSOR_READ_PROJECT_IDS
+  ?? timelineSuccessorProjectIds;
+const conversationSuccessorWriteProjectIds = runtimeEnv.CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS
+  ?? conversationSuccessorReadProjectIds;
 
 function log(message) {
   console.log(`[deploy-den-web] ${message}`);
@@ -149,11 +154,11 @@ function buildRuntimeConfig() {
     denChannelsApiBase: runtimeEnv.DEN_CHANNELS_API_BASE ?? '/api',
     docPublishApiBase: runtimeEnv.DOC_PUBLISH_API_BASE ?? '/api/v1/blog/publications',
     piCrewAdminApiBase: runtimeEnv.PI_CREW_ADMIN_API_BASE ?? '/pi-crew-admin-api',
-    conversationSuccessorReadsEnabled: runtimeEnv.CONVERSATION_SUCCESSOR_READS_ENABLED === '1' || runtimeEnv.CONVERSATION_SUCCESSOR_READS_ENABLED === 'true',
-    conversationSuccessorWritesEnabled: runtimeEnv.CONVERSATION_SUCCESSOR_WRITES_ENABLED === '1' || runtimeEnv.CONVERSATION_SUCCESSOR_WRITES_ENABLED === 'true',
+    conversationSuccessorReadsEnabled: (runtimeEnv.CONVERSATION_SUCCESSOR_READS_ENABLED ?? DEFAULT_CONVERSATION_SUCCESSOR_ENABLED) === '1' || (runtimeEnv.CONVERSATION_SUCCESSOR_READS_ENABLED ?? DEFAULT_CONVERSATION_SUCCESSOR_ENABLED) === 'true',
+    conversationSuccessorWritesEnabled: (runtimeEnv.CONVERSATION_SUCCESSOR_WRITES_ENABLED ?? DEFAULT_CONVERSATION_SUCCESSOR_ENABLED) === '1' || (runtimeEnv.CONVERSATION_SUCCESSOR_WRITES_ENABLED ?? DEFAULT_CONVERSATION_SUCCESSOR_ENABLED) === 'true',
     conversationSuccessorApiBase: runtimeEnv.CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation',
-    conversationSuccessorReadProjectIds: (runtimeEnv.CONVERSATION_SUCCESSOR_READ_PROJECT_IDS ?? '').split(',').map(item => item.trim()).filter(Boolean),
-    conversationSuccessorWriteProjectIds: (runtimeEnv.CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS ?? '').split(',').map(item => item.trim()).filter(Boolean),
+    conversationSuccessorReadProjectIds: conversationSuccessorReadProjectIds.split(',').map(item => item.trim()).filter(Boolean),
+    conversationSuccessorWriteProjectIds: conversationSuccessorWriteProjectIds.split(',').map(item => item.trim()).filter(Boolean),
     timelineSuccessorEnabled: (runtimeEnv.TIMELINE_SUCCESSOR_ENABLED ?? DEFAULT_TIMELINE_SUCCESSOR_ENABLED) === '1' || (runtimeEnv.TIMELINE_SUCCESSOR_ENABLED ?? DEFAULT_TIMELINE_SUCCESSOR_ENABLED) === 'true',
     timelineSuccessorApiBase: runtimeEnv.TIMELINE_SUCCESSOR_API_BASE ?? '/api/v1/timeline',
     timelineSuccessorProjectIds: timelineSuccessorProjectIds.split(',').map(item => item.trim()).filter(Boolean),
@@ -294,7 +299,7 @@ function smoke(commit) {
       DEN_WEB_URL: PUBLIC_URL,
       EXPECTED_BUILD_COMMIT: commit,
       EXPECTED_ENV_NAME: runtimeEnv.ENVIRONMENT_NAME ?? 'den-srv',
-      EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED: runtimeEnv.CONVERSATION_SUCCESSOR_READS_ENABLED ?? 'false',
+      EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED: runtimeEnv.CONVERSATION_SUCCESSOR_READS_ENABLED ?? DEFAULT_CONVERSATION_SUCCESSOR_ENABLED,
       EXPECTED_CONVERSATION_SUCCESSOR_API_BASE: runtimeEnv.CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation',
       EXPECTED_TIMELINE_SUCCESSOR_ENABLED: runtimeEnv.TIMELINE_SUCCESSOR_ENABLED ?? DEFAULT_TIMELINE_SUCCESSOR_ENABLED,
       EXPECTED_TIMELINE_SUCCESSOR_API_BASE: runtimeEnv.TIMELINE_SUCCESSOR_API_BASE ?? '/api/v1/timeline',

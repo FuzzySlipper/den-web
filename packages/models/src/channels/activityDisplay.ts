@@ -120,7 +120,7 @@ function channelMessageRefLink(workRef: Record<string, unknown>, event: ChannelA
   const channelMessageId = firstPositiveInteger(workRef.channel_message_id, event.anchorMessageId);
   if (!channelMessageId) return null;
   const channelId = firstPositiveInteger(workRef.channel_id, event.channelId);
-  return { label: `channel message #${channelMessageId}`, href: channelId ? `/api/channels/${channelId}/messages?limit=80` : null };
+  return { label: `channel message #${channelMessageId}`, href: channelId ? `/api/v1/timeline/channels/${channelId}/items?limit=80` : null };
 }
 
 function documentRefLink(workRef: Record<string, unknown>, resultRef: Record<string, unknown>, event: ChannelActivityEvent): ActivityRefLink | null {

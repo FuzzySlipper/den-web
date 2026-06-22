@@ -134,7 +134,7 @@ function directAgentEventToRow(event: DirectAgentEvent): AgentWorkOpsRow {
     workerRole: event.workerRole,
     deliveryRequestId: event.deliveryRequestId ?? String(event.id),
     sessionId: event.sessionId,
-    evidenceLinks: [`/api/direct-agent-events/${event.id}`],
+    evidenceLinks: event.deliveryRequestId ? [`/api/v1/delivery/intents/${event.deliveryRequestId}`] : [],
     evidenceProvenance: ['direct_agent_event'],
     stalenessDiagnostic: 'recorded-only: no lifecycle/current-work row',
     flags: ['recorded_only', 'no_lifecycle'],
@@ -173,7 +173,7 @@ function activityEventToTimelineItem(event: ChannelActivityEvent): AgentWorkOpsT
     assignmentId: event.assignmentId ?? null,
     workerRunId: event.workerRunId,
     deliveryRequestId: event.deliveryRequestId,
-    evidenceLink: `/api/channels/${event.channelId}/activity-events?limit=10`,
+    evidenceLink: `/api/v1/timeline/channels/${event.channelId}/items?limit=10`,
   };
 }
 
@@ -191,7 +191,7 @@ function directAgentEventToTimelineItem(event: DirectAgentEvent): AgentWorkOpsTi
     assignmentId: event.assignmentId ?? null,
     workerRunId: event.workerRunId,
     deliveryRequestId: event.deliveryRequestId,
-    evidenceLink: `/api/direct-agent-events/${event.id}`,
+    evidenceLink: event.deliveryRequestId ? `/api/v1/delivery/intents/${event.deliveryRequestId}` : null,
   };
 }
 

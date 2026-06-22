@@ -1,7 +1,7 @@
 import type { ChannelActivityEvent, ChannelMessage } from '@den-web/api/types';
 
 /**
- * Pure model for the Den Channels SSE stream (#2146/#2147).
+ * Pure model for the channel SSE stream (#2146/#2147).
  *
  * The transport (EventSource) and React wiring live in
  * `useChannelEventStream`; everything here is pure and unit-tested:
@@ -10,9 +10,10 @@ import type { ChannelActivityEvent, ChannelMessage } from '@den-web/api/types';
  *  - the connection-status state machine (`streamConnectionReducer`),
  *  - the operator opt-out check (`isChannelStreamingDisabled`).
  *
- * Backend contract: GET /api/channels/{channelId}/events/stream emits
- * `stream_open`, `channel_message`, and `channel_activity_event` events with a
- * composite SSE id `messages={id};activity={id}`. Persisted channel data only.
+ * Current backend contract: GET /api/v1/timeline/channels/{channelId}/stream
+ * emits timeline events. The legacy parser shape remains here because the
+ * React hook still translates both stream generations into the same UI refresh
+ * signals.
  */
 
 export interface ChannelStreamCursor {

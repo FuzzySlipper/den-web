@@ -314,10 +314,11 @@ export interface WorkerPoolMemberPresence {
 }
 
 // =============================================================================
-// Raw Channels worker-pool lobby API shape
+// Retired Channels worker-pool lobby API shape, kept only for adapter/test
+// compatibility until successor lobby parity exists.
 // =============================================================================
 
-/** Raw member record from GET /api/worker-pool/lobby/presence. */
+/** Raw member record from the retired den-channels worker-pool lobby route. */
 export interface RawWorkerPoolMember {
   id?: number;
   channelId?: number;
@@ -340,7 +341,7 @@ export interface RawWorkerPoolMember {
   isQuarantined?: boolean;
 }
 
-/** Raw role grouping from GET /api/worker-pool/lobby/presence. */
+/** Raw role grouping from the retired den-channels worker-pool lobby route. */
 export interface RawWorkerPoolRoleGroup {
   role?: string | null;
   profile?: string | null;

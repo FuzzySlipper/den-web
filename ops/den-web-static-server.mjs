@@ -8,7 +8,7 @@
  * Serves the production build of Den Web (React/Vite SPA) from STATIC_ROOT,
  * proxies /den-core-api/* to Den Core (stripping the prefix), proxies
  * /pi-crew-admin-api/* to local Pi Crew admin diagnostics, and proxies
- * /api/* to Den Channels (preserving the prefix). Falls back to
+ * Gateway-owned /api/v1/* successor APIs. Falls back to
  * index.html for unknown paths (SPA routing). Serves /den-web-config.json
  * from a configurable path or from sensible defaults.
  *
@@ -17,10 +17,9 @@
  *   HOST                  - listen host (default: 0.0.0.0)
  *   STATIC_ROOT           - directory with built static assets (default: /data/services/den-web/wwwroot)
  *   DEN_CORE_TARGET       - Den Core backend URL (default: http://127.0.0.1:5299)
- *   DEN_CHANNELS_TARGET   - Den Channels backend URL (default: http://127.0.0.1:18081)
  *   DEN_GATEWAY_TARGET    - Den Gateway backend URL for Gateway-owned read APIs (default: http://127.0.0.1:8079)
  *   PI_CREW_ADMIN_TARGET  - Pi Crew admin diagnostics URL (default: http://127.0.0.1:9237)
- *   DEN_GATEWAY_SERVICE_TOKEN - Gateway service token for /api/* outbound proxy (default: empty, no auth)
+ *   DEN_GATEWAY_SERVICE_TOKEN - fallback Gateway token used as successor token default (default: empty, no auth)
  *   DEN_GATEWAY_DELIVERY_WRITE_TOKEN - Gateway caller token for /api/v1/delivery/* writes/reads (default: DEN_GATEWAY_SERVICE_TOKEN)
  *   DEN_GATEWAY_OBSERVATION_READ_TOKEN - Gateway caller token for /api/v1/observation/* reads (default: empty, no auth)
  *   DEN_GATEWAY_CONVERSATION_READ_TOKEN - Gateway caller token for /api/v1/conversation/* read pilot (default: empty, no auth)
@@ -78,7 +77,6 @@ const PORT             = parseInt(process.env.PORT ?? '18080', 10);
 const HOST             = process.env.HOST ?? '0.0.0.0';
 const STATIC_ROOT      = process.env.STATIC_ROOT ?? '/data/services/den-web/wwwroot';
 const DEN_CORE_TARGET  = process.env.DEN_CORE_TARGET ?? 'http://127.0.0.1:5299';
-const DEN_CHANNELS_TARGET = GATEWAY_ENV.DEN_CHANNELS_TARGET ?? process.env.DEN_CHANNELS_TARGET ?? 'http://127.0.0.1:18081';
 const DEN_GATEWAY_TARGET = GATEWAY_ENV.DEN_GATEWAY_TARGET ?? process.env.DEN_GATEWAY_TARGET ?? 'http://127.0.0.1:8079';
 const PI_CREW_ADMIN_TARGET = process.env.PI_CREW_ADMIN_TARGET ?? 'http://127.0.0.1:9237';
 const DEN_GATEWAY_SERVICE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_SERVICE_TOKEN ?? process.env.DEN_GATEWAY_SERVICE_TOKEN ?? '';
@@ -414,7 +412,7 @@ function handleRequest(req, res) {
     return;
   }
 
-  // ── Channels/Gateway/Agents API proxy ──
+  // ── Gateway-owned successor API proxy ──
   if (requestPath.startsWith('/api/')) {
     // Observation reads are owned by den-services Gateway. Keep the browser base
     // under /api for compatibility, but forward Gateway's internal /v1 path.
@@ -469,12 +467,16 @@ function handleRequest(req, res) {
       return proxyRequest(DEN_GATEWAY_TARGET, req, res, () => stripped + requestSearch);
     }
 
-    // Inject the Channels/Gateway compatibility token for the remaining /api/*
-    // traffic. Browsers must not receive the token, so it's added server-side.
-    if (DEN_GATEWAY_SERVICE_TOKEN) {
-      req.headers['authorization'] = `Bearer ${DEN_GATEWAY_SERVICE_TOKEN}`;
-    }
-    return proxyRequest(DEN_CHANNELS_TARGET, req, res, () => requestPath + requestSearch);
+    res.writeHead(410, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+    });
+    res.end(JSON.stringify({
+      error: 'legacy_den_channels_api_retired',
+      message: 'Legacy den-channels /api/* proxy is retired. Use /api/v1/conversation, /api/v1/timeline, /api/v1/observation, or /api/v1/delivery.',
+      path: requestPath,
+    }));
+    return;
   }
 
   // ── Static files ──
@@ -513,7 +515,6 @@ function startServer() {
     console.log(`[den-web-static-server] listening on ${HOST}:${PORT}`);
     console.log(`[den-web-static-server] static root: ${STATIC_ROOT}`);
     console.log(`[den-web-static-server] Den Core target: ${DEN_CORE_TARGET}`);
-    console.log(`[den-web-static-server] Den Channels target: ${DEN_CHANNELS_TARGET}`);
     console.log(`[den-web-static-server] Den Gateway target: ${DEN_GATEWAY_TARGET}`);
     console.log(`[den-web-static-server] Pi Crew admin target: ${PI_CREW_ADMIN_TARGET}`);
     if (configData) {

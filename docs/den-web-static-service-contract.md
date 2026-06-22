@@ -13,7 +13,7 @@ Accepted target contract for extracting Den Web from the embedded `den-channels`
 It does **not** own backend state:
 
 - Den Core owns spaces/projects/tasks/documents/task messages/review/worker state.
-- Den Channels owns channels, channel messages, channel activity events, memberships, reactions, and channel-local Gateway-facing APIs.
+- den-services Conversation/Timeline/Observation owns channel state, message display, memberships, reactions, and activity breadcrumbs for the Den Web client.
 - Den Gateway owns delivery/wake/binding/claim/session routing authority.
 - Den Host/FleetOps was retired from Den Web in task #3085; `/den-host-api/*` is not a live backend dependency for this service.
 
@@ -48,20 +48,20 @@ The browser app must use explicit configured API bases and must not infer backen
 | Backend | Owner | Browser base path | Health/smoke endpoint | Notes |
 | --- | --- | --- | --- | --- |
 | Den Core | `den-core` | `/den-core-api` | `/den-core-api/health`, `/den-core-api/api/projects` | Canonical tasks/docs/messages/workflow REST facade. Current live health returns commit/version metadata. |
-| Den Channels | `den-channels` | `/api` | `/api/channels?limit=1` | Channel/chat/membership/reaction/activity APIs. The current extracted app may temporarily keep this base for compatibility. |
+| Conversation | `den-services` Gateway route | `/api/v1/conversation` | `/api/v1/conversation/channels?project_id=den-web&limit=1` | Canonical channel/message/membership/write API. The static server injects conversation caller tokens; browser code must not call Conversation loopback directly. |
 | Observation | `den-services` Gateway route | `/api/v1/observation` | `/api/v1/observation/lane?limit=1` | Canonical display-only agent activity breadcrumbs. The static server injects `DEN_GATEWAY_OBSERVATION_READ_TOKEN` for read routes; browser code must not call Observation loopback directly. |
 | Delivery | `den-services` Gateway route | `/api/v1/delivery` | `/api/v1/delivery/intents` | Canonical executable direct-agent wake intent surface. The static server injects `DEN_GATEWAY_DELIVERY_WRITE_TOKEN` and the migrated route header; browser code must not create wakes through legacy den-channels routes. |
 | Timeline | `den-services` Gateway route | `/api/v1/timeline` | `/api/v1/timeline/channels/1/items?limit=1` | Composed human-facing conversation + observation timeline. The static server injects `DEN_GATEWAY_TIMELINE_READ_TOKEN`; browser code must not call Timeline loopback directly. |
-| Gateway-visible Channels helpers | `den-channels` | `/api/gateway` | `/api/gateway/memberships?projectId=den-web` | Direct-agent message, membership, test-wake, and delivery-observability helpers exposed through Channels. |
+| Retired den-channels compatibility API | none | `/api/*` except `/api/v1/*` successor paths | `/api/channels?limit=1` returns `410` | Legacy `den-channels` proxy is intentionally not a normal Den Web dependency. History/evidence links should use successor, Core, or explicit archive tooling. |
 | Retired Den Host FleetOps APIs | none | `/den-host-api` | `/den-host-api/fleet-ops` | Returns `410 den_host_api_retired`. Den Web no longer consumes Den Host/FleetOps. |
 | Agents overview | `den-services` Gateway route | `/api/v1/observation` | `/api/v1/observation/lane?limit=1` | Operator overview is derived from Observation successor reads. Membership/binding aggregates are visibly degraded until den-services exposes successor parity. |
 
 Current app code uses explicit Vite build-time variables for backend bases:
 
 - `VITE_DEN_CORE_API_BASE`, fallback `/den-core-api`;
-- `VITE_DEN_CHANNELS_API_BASE`, fallback `/api`.
+- `VITE_DEN_CHANNELS_API_BASE`, fallback `/api` for compatibility with older config records only; normal Den Web code uses successor bases.
 
-Channels helper routes under `/api/gateway/...` continue to use the Channels API base. FleetOps and `/den-host-api/*` were retired from Den Web in task #3085.
+FleetOps and `/den-host-api/*` were retired from Den Web in task #3085. Legacy den-channels `/api/*` routes were retired from the normal product path in task #3161.
 
 ## Runtime config strategy
 
@@ -78,16 +78,16 @@ Recommended runtime config keys:
 | Key | Recommended den-srv value | Meaning |
 | --- | --- | --- |
 | `denCoreApiBase` | `/den-core-api` | Core REST facade base path. |
-| `denChannelsApiBase` | `/api` | Channels API base path. |
+| `denChannelsApiBase` | `/api` | Compatibility key retained for older config consumers; `/api/*` legacy den-channels routes are not a live browser dependency. |
 | `docPublishApiBase` | `/api/v1/blog/publications` | Same-origin Den Web proxy base for the den-services document blog publisher. |
 | `conversationSuccessorReadsEnabled` | `true` on den-srv | Feature flag for Conversation successor channel/message reads. Keep aligned with write allowlists so posted messages are visible in the same UI. |
-| `conversationSuccessorWritesEnabled` | `false` | Feature flag for conversation successor message/reaction writes. |
+| `conversationSuccessorWritesEnabled` | `true` on den-srv | Feature flag for conversation successor message/reaction writes. |
 | `conversationSuccessorApiBase` | `/api/v1/conversation` | Same-origin Den Web proxy base for Gateway conversation canary reads. |
 | `conversationSuccessorReadProjectIds` | same as write allowlist on den-srv | Project allowlist for successor channel/message reads. Empty means no channel/message reads use successor. |
-| `conversationSuccessorWriteProjectIds` | `[]` | Project allowlist for successor conversation writes. Empty means all channel-message writes stay legacy. |
+| `conversationSuccessorWriteProjectIds` | conversation read allowlist on den-srv | Project allowlist for successor conversation writes. Empty means channel-message writes are disabled rather than routed to den-channels. |
 | `timelineSuccessorEnabled` | `true` on den-srv | Feature flag for the den-services composed timeline read/SSE surface. Set false to roll back to legacy message/activity reads. |
 | `timelineSuccessorApiBase` | `/api/v1/timeline` | Same-origin Den Web proxy base for Gateway timeline reads/streams. |
-| `timelineSuccessorProjectIds` | conversation read allowlist on den-srv | Project allowlist for timeline display composition. Empty means legacy message/activity reads and legacy SSE stay active. |
+| `timelineSuccessorProjectIds` | conversation read allowlist on den-srv | Project allowlist for timeline display composition. Empty disables timeline display rather than routing normal reads to den-channels. |
 | `appBasePath` | `/` | Static app base path. |
 | `environmentName` | `den-srv` | Human-readable deployment/environment label. |
 
@@ -98,7 +98,7 @@ The deploy artifact may encode these keys as JSON in `/den-web-config.json`, but
 `den-channels` currently serves the embedded ClientApp from its service root when `wwwroot/index.html` exists. After `den-web` is deployed and smoked:
 
 1. `http://192.168.1.10:18080/` should serve the `den-web` asset build.
-2. `den-channels` must continue serving backend `/api/...` routes.
+2. `den-channels` backend `/api/...` routes are no longer part of Den Web normal operation.
 3. Any old static asset path owned by `den-channels` should be removed, redirected, or replaced by an explicit moved-page that points to the canonical Den Web route.
 4. Do not leave two indistinguishable primary UIs live; if a temporary fallback remains, label it and create a cleanup/removal task.
 
@@ -126,11 +126,13 @@ After standalone deployment (#1707), smoke the public URL and API-backed UI path
 2. Core API reachability through the browser base:
    - `curl -fsS http://192.168.1.10:18080/den-core-api/health`.
    - `curl -fsS http://192.168.1.10:18080/den-core-api/api/projects`.
-3. Channels API reachability:
-   - `curl -fsS 'http://192.168.1.10:18080/api/channels?limit=1'`.
-   - For the Den Web project channel, `curl -fsS 'http://192.168.1.10:18080/api/gateway/memberships?projectId=den-web'` should return the project default channel and membership list, even if the member list is empty.
+3. Conversation, Observation, and Timeline reachability:
+   - `curl -fsS 'http://192.168.1.10:18080/api/v1/conversation/channels?project_id=den-web&limit=1'`.
+   - `curl -fsS 'http://192.168.1.10:18080/api/v1/conversation/memberships?project_id=den-web&limit=20'`.
    - `curl -fsS 'http://192.168.1.10:18080/api/v1/observation/lane?limit=1'` should return an Observation lane JSON object through Gateway.
    - `curl -fsS 'http://192.168.1.10:18080/api/v1/timeline/channels/1/items?limit=1'` should return a Timeline JSON object through Gateway.
+   - `curl -fsS -o /dev/null -w '%{http_code}' 'http://192.168.1.10:18080/api/channels?limit=1'` should return `410`.
+   - `curl -fsS -o /dev/null -w '%{http_code}' 'http://192.168.1.10:18080/api/gateway/memberships?projectId=den-web'` should return `410`.
 4. Agents overview and retired API reachability:
    - Operator overview renders from `/api/v1/observation/lane?limit=1` plus `/api/v1/observation/active-work`; `/api/agents/overview` is no longer a smoke requirement.
    - `curl -fsS -o /dev/null -w '%{http_code}' http://192.168.1.10:18080/den-host-api/fleet-ops` returns `410` or `404`, not a proxied Den Host response.
@@ -138,7 +140,7 @@ After standalone deployment (#1707), smoke the public URL and API-backed UI path
 5. Browser behavior smoke:
    - project/space list loads from Core;
    - document list/detail and discussion panel load without mixing comments into document body;
-   - project default channel and Agent Commons selection load from Channels;
+   - project default channel and Agent Commons selection load from Conversation;
    - agent overview renders with source-health warnings when Gateway data is degraded;
    - a visible asset/version marker confirms the standalone `den-web` build is being served, not stale `den-channels` assets.
 

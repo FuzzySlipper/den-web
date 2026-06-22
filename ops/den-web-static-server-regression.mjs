@@ -80,7 +80,6 @@ async function startStaticServer(targetUrl, t, envOverrides = {}) {
       STATIC_ROOT: staticRoot,
       DEN_WEB_CONFIG_PATH: path.join(staticRoot, 'den-web-config.json'),
       DEN_CORE_TARGET: targetUrl,
-      DEN_CHANNELS_TARGET: targetUrl,
       ...envOverrides,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -189,7 +188,7 @@ test('Den Host FleetOps proxy is retired without contacting upstream', async (t)
   assert.match(retiredResponse.body, /den_gateway_api_retired/);
 });
 
-test('Observation reads use the Gateway observation read token, not the default service token', async (t) => {
+test('Observation reads use the Gateway observation read token and legacy /api routes are retired', async (t) => {
   const gatewayObserved = [];
   const gateway = http.createServer((req, res) => {
     gatewayObserved.push({ url: req.url, authorization: req.headers.authorization ?? null });
@@ -199,16 +198,7 @@ test('Observation reads use the Gateway observation read token, not the default 
   const gatewayPort = await listen(gateway);
   t.after(() => new Promise(resolve => gateway.close(resolve)));
 
-  const channelsObserved = [];
-  const channels = http.createServer((req, res) => {
-    channelsObserved.push({ url: req.url, authorization: req.headers.authorization ?? null });
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify([]));
-  });
-  const channelsPort = await listen(channels);
-  t.after(() => new Promise(resolve => channels.close(resolve)));
-
-  const { baseUrl } = await startStaticServer(`http://127.0.0.1:${channelsPort}`, t, {
+  const { baseUrl } = await startStaticServer(`http://127.0.0.1:9`, t, {
     DEN_GATEWAY_TARGET: `http://127.0.0.1:${gatewayPort}`,
     DEN_GATEWAY_SERVICE_TOKEN: 'default-service-token',
     DEN_GATEWAY_OBSERVATION_READ_TOKEN: 'observation-read-token',
@@ -217,13 +207,11 @@ test('Observation reads use the Gateway observation read token, not the default 
   const observationResponse = await request(`${baseUrl}/api/v1/observation/lane?limit=1`);
   assert.equal(observationResponse.statusCode, 200);
   const channelsResponse = await request(`${baseUrl}/api/channels?limit=1`);
-  assert.equal(channelsResponse.statusCode, 200);
+  assert.equal(channelsResponse.statusCode, 410);
+  assert.match(channelsResponse.body, /legacy_den_channels_api_retired/);
 
   assert.deepEqual(gatewayObserved, [
     { url: '/v1/observation/lane?limit=1', authorization: 'Bearer observation-read-token' },
-  ]);
-  assert.deepEqual(channelsObserved, [
-    { url: '/api/channels?limit=1', authorization: 'Bearer default-service-token' },
   ]);
 });
 
@@ -241,16 +229,7 @@ test('Conversation successor reads use the Gateway conversation read token and c
   const gatewayPort = await listen(gateway);
   t.after(() => new Promise(resolve => gateway.close(resolve)));
 
-  const channelsObserved = [];
-  const channels = http.createServer((req, res) => {
-    channelsObserved.push({ url: req.url, authorization: req.headers.authorization ?? null });
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify([]));
-  });
-  const channelsPort = await listen(channels);
-  t.after(() => new Promise(resolve => channels.close(resolve)));
-
-  const { baseUrl } = await startStaticServer(`http://127.0.0.1:${channelsPort}`, t, {
+  const { baseUrl } = await startStaticServer(`http://127.0.0.1:9`, t, {
     DEN_GATEWAY_TARGET: `http://127.0.0.1:${gatewayPort}`,
     DEN_GATEWAY_SERVICE_TOKEN: 'default-service-token',
     DEN_GATEWAY_CONVERSATION_READ_TOKEN: 'conversation-read-token',
@@ -261,7 +240,8 @@ test('Conversation successor reads use the Gateway conversation read token and c
   });
   assert.equal(conversationResponse.statusCode, 200);
   const channelsResponse = await request(`${baseUrl}/api/channels?limit=1`);
-  assert.equal(channelsResponse.statusCode, 200);
+  assert.equal(channelsResponse.statusCode, 410);
+  assert.match(channelsResponse.body, /legacy_den_channels_api_retired/);
 
   assert.deepEqual(gatewayObserved, [
     {
@@ -269,9 +249,6 @@ test('Conversation successor reads use the Gateway conversation read token and c
       authorization: 'Bearer conversation-read-token',
       migrated: 'true',
     },
-  ]);
-  assert.deepEqual(channelsObserved, [
-    { url: '/api/channels?limit=1', authorization: 'Bearer default-service-token' },
   ]);
 });
 

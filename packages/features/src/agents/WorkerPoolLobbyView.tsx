@@ -58,8 +58,7 @@ export function WorkerPoolLobbyView({ onOpenAssignmentTrace }: Props) {
         <div className="wpool-error">
           Failed to load worker-pool lobby: {error.message}
           <div className="wpool-error-hint">
-            This requires the Channels /api/worker-pool/lobby/presence endpoint (#1771).
-            If unavailable, the UI gracefully shows this error.
+            Worker-pool lobby presence is waiting on successor parity; stale-worker diagnostics above remain available.
           </div>
         </div>
       )}

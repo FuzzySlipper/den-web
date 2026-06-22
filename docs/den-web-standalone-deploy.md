@@ -109,10 +109,10 @@ DEN_CORE_API_BASE=/den-core-api
 DEN_CHANNELS_API_BASE=/api
 PI_CREW_ADMIN_API_BASE=/pi-crew-admin-api
 CONVERSATION_SUCCESSOR_READS_ENABLED=true
-CONVERSATION_SUCCESSOR_WRITES_ENABLED=false
+CONVERSATION_SUCCESSOR_WRITES_ENABLED=true
 CONVERSATION_SUCCESSOR_API_BASE=/api/v1/conversation
 CONVERSATION_SUCCESSOR_READ_PROJECT_IDS=den-web
-CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS=
+CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS=den-web
 TIMELINE_SUCCESSOR_ENABLED=true
 TIMELINE_SUCCESSOR_API_BASE=/api/v1/timeline
 TIMELINE_SUCCESSOR_PROJECT_IDS=den-web
@@ -145,7 +145,6 @@ sudoedit /data/services/den-web/shared/gateway.env
 Example `gateway.env`:
 
 ```bash
-DEN_CHANNELS_TARGET=http://127.0.0.1:18081
 DEN_GATEWAY_TARGET=http://127.0.0.1:8079
 DEN_GATEWAY_SERVICE_TOKEN=<service-token>
 DEN_GATEWAY_DELIVERY_WRITE_TOKEN=<delivery-write-token-or-service-token>
@@ -179,7 +178,7 @@ Create `/etc/systemd/system/den-web.service`:
 [Unit]
 Description=Den Web static site service
 After=network.target
-Wants=den-core.service den-channels.service
+Wants=den-core.service den-gateway.service
 
 [Service]
 Type=simple
@@ -193,7 +192,6 @@ Environment=PORT=18080
 Environment=HOST=0.0.0.0
 Environment=STATIC_ROOT=/data/services/den-web/wwwroot
 Environment=DEN_CORE_TARGET=http://127.0.0.1:5299
-Environment=DEN_CHANNELS_TARGET=http://127.0.0.1:18081
 Environment=DEN_GATEWAY_TARGET=http://127.0.0.1:8079
 Environment=GATEWAY_ENV_PATH=/data/services/den-web/shared/gateway.env
 
@@ -248,8 +246,7 @@ with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 | `HOST` | `0.0.0.0` | Listen host |
 | `STATIC_ROOT` | `/data/services/den-web/wwwroot` | Static asset directory |
 | `DEN_CORE_TARGET` | `http://127.0.0.1:5299` | Den Core backend URL |
-| `DEN_CHANNELS_TARGET` | `http://127.0.0.1:18081` | Den Channels backend URL |
-| `DEN_GATEWAY_TARGET` | `http://127.0.0.1:8079` | Den Gateway backend URL for Gateway-owned read APIs such as Observation |
+| `DEN_GATEWAY_TARGET` | `http://127.0.0.1:8079` | Den Gateway backend URL for Gateway-owned successor APIs such as Conversation, Timeline, Observation, Delivery, and Doc Publish |
 | `GATEWAY_ENV_PATH` | sibling `gateway.env` next to the server script | Optional service-token/target override file |
 | `DEN_GATEWAY_DELIVERY_WRITE_TOKEN` | `DEN_GATEWAY_SERVICE_TOKEN` | Gateway caller token for `/v1/delivery/*`; injected server-side for `/api/v1/delivery/*` wake intent writes/reads. |
 | `DEN_GATEWAY_OBSERVATION_READ_TOKEN` | empty | Gateway caller token for `GET /v1/observation/*`; injected server-side for `/api/v1/observation/*` reads. |
@@ -264,12 +261,12 @@ with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 | `ENVIRONMENT_NAME` | `den-srv` | Environment name for config defaults |
 | `DEN_CORE_API_BASE` | `/den-core-api` | Core API base for config defaults |
 | `DEN_CHANNELS_API_BASE` | `/api` | Channels API base for config defaults |
-| `CONVERSATION_SUCCESSOR_READS_ENABLED` | `false` | Enables Conversation successor channel/message reads in browser config. On den-srv this should stay aligned with write allowlists so posted messages are visible in the same UI. |
-| `CONVERSATION_SUCCESSOR_WRITES_ENABLED` | `false` | Enables conversation successor message/reaction writes in browser config. |
+| `CONVERSATION_SUCCESSOR_READS_ENABLED` | `true` | Enables Conversation successor channel/message reads in browser config. On den-srv this should stay aligned with write allowlists so posted messages are visible in the same UI. |
+| `CONVERSATION_SUCCESSOR_WRITES_ENABLED` | `true` | Enables conversation successor message/reaction writes in browser config. |
 | `CONVERSATION_SUCCESSOR_API_BASE` | `/api/v1/conversation` | Same-origin Den Web proxy base for Gateway conversation canary reads. |
 | `CONVERSATION_SUCCESSOR_READ_PROJECT_IDS` | empty | Comma-separated project IDs allowed to use successor channel/message reads. Empty means route no projects. On den-srv, mirror the write allowlist during migration. |
-| `CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS` | empty | Comma-separated project IDs allowed to use successor message/reaction writes. Empty means route no projects. |
-| `TIMELINE_SUCCESSOR_ENABLED` | `true` | Enables den-services Timeline read/SSE display composition in browser config. Set to `false` to roll back to legacy message/activity reads. |
+| `CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS` | mirrors `CONVERSATION_SUCCESSOR_READ_PROJECT_IDS` | Comma-separated project IDs allowed to use successor message/reaction writes. Empty disables writes rather than falling back to den-channels. |
+| `TIMELINE_SUCCESSOR_ENABLED` | `true` | Enables den-services Timeline read/SSE display composition in browser config. Set to `false` only for explicit successor incident response. |
 | `TIMELINE_SUCCESSOR_API_BASE` | `/api/v1/timeline` | Same-origin Den Web proxy base for Gateway Timeline reads/streams. |
 | `TIMELINE_SUCCESSOR_PROJECT_IDS` | `den-web` | Comma-separated project IDs allowed to use Timeline display composition. Empty means route no projects. |
 

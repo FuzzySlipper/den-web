@@ -14,42 +14,21 @@ import type {
   ObservationActiveWorkResponse,
 } from './observationTypes';
 import {
+  getConversationSuccessorChannel,
+  listConversationSuccessorChannels,
+  listConversationSuccessorMemberships,
+  putConversationSuccessorMembership,
+  type ConversationSuccessorMembership,
+  type ListConversationSuccessorMembershipsOpts,
+} from '../channels/conversationSuccessor';
+import {
   degradedAgentDetail,
   degradedAssignmentTrace,
   observationAgentDetail,
   observationOverviewFromLane,
 } from './observationAdapters';
-import { normalizeApiBase } from '../config';
 import { dedupedFetch } from '../requestCache';
 export { postGatewayDirectAgentMessage } from './directAgentWake';
-
-const denChannelsApiBase = normalizeApiBase(import.meta.env.VITE_DEN_CHANNELS_API_BASE, '/api');
-
-function channelsApiUrl(url: string): string {
-  if (/^https?:\/\//i.test(url)) return url;
-  return `${denChannelsApiBase}${url.startsWith('/') ? url : `/${url}`}`;
-}
-
-async function putChannels<T>(url: string, body: unknown): Promise<T> {
-  const requestUrl = channelsApiUrl(url);
-  const res = await fetch(requestUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`PUT ${requestUrl}: ${res.status}`);
-  return res.json();
-}
-
-function getChannels<T>(url: string): Promise<T> {
-  const requestUrl = channelsApiUrl(url);
-  // Share overlapping identical GETs across panels (#2145).
-  return dedupedFetch(`GET ${requestUrl}`, async () => {
-    const res = await fetch(requestUrl, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
-    return res.json();
-  });
-}
 
 function buildQuery(params: Record<string, string | number | boolean | undefined | null>): string {
   const parts = Object.entries(params)
@@ -74,17 +53,86 @@ export interface UpsertChannelMembershipRequest {
 }
 
 export function upsertChannelMembership(channelId: number, request: UpsertChannelMembershipRequest): Promise<GatewayMemberships['members'][number]> {
-  return putChannels(`/channels/${channelId}/memberships`, request);
+  return putConversationSuccessorMembership(channelId, {
+    memberType: request.memberType,
+    memberIdentity: request.memberIdentity,
+    membershipStatus: request.membershipStatus,
+    wakePolicy: request.wakePolicy,
+    canSend: request.canSend,
+    canReact: request.canReact,
+    canInvite: request.canInvite,
+    settingsJson: request.settingsJson,
+  }).then(mapConversationMembership);
 }
 
 export function listGatewayMemberships(opts: { channelId?: number; projectId?: string; includeLeft?: boolean; leftGraceMinutes?: number }): Promise<GatewayMemberships> {
-  const q = buildQuery({
+  void opts.leftGraceMinutes;
+  return listConversationMembershipProjection({
     channelId: opts.channelId,
     projectId: opts.projectId,
     includeLeft: opts.includeLeft,
-    leftGraceMinutes: opts.leftGraceMinutes,
+    limit: 200,
   });
-  return getChannels(`/gateway/memberships${q}`);
+}
+
+async function listConversationMembershipProjection(opts: ListConversationSuccessorMembershipsOpts): Promise<GatewayMemberships> {
+  const [memberships, channel] = await Promise.all([
+    listConversationSuccessorMemberships(opts),
+    resolveMembershipChannel(opts),
+  ]);
+  return {
+    channelId: channel?.id ?? opts.channelId ?? memberships[0]?.channelId ?? 0,
+    channelSlug: channel?.slug ?? '',
+    channelKind: channel?.kind ?? '',
+    projectId: channel?.projectId ?? opts.projectId ?? null,
+    members: memberships.map(mapConversationMembership),
+  };
+}
+
+async function resolveMembershipChannel(opts: ListConversationSuccessorMembershipsOpts) {
+  if (opts.channelId) return getConversationSuccessorChannel(opts.channelId).catch(() => null);
+  if (!opts.projectId) return null;
+  const channels = await listConversationSuccessorChannels({ projectId: opts.projectId, kind: 'project_default', limit: 5 }).catch(() => []);
+  return channels.find(channel => channel.projectId === opts.projectId && channel.kind === 'project_default') ?? channels[0] ?? null;
+}
+
+function mapConversationMembership(member: ConversationSuccessorMembership): GatewayMemberships['members'][number] {
+  const settings = parseSettings(member.settingsJson);
+  return {
+    id: member.id,
+    memberType: member.memberType,
+    memberIdentity: member.memberIdentity,
+    membershipStatus: member.membershipStatus,
+    wakePolicy: member.wakePolicy,
+    canSend: member.canSend,
+    canReact: member.canReact,
+    canInvite: member.canInvite,
+    cooldownSeconds: numberSetting(settings.cooldownSeconds),
+    maxAutoRepliesPerWindow: numberSetting(settings.maxAutoRepliesPerWindow),
+    settingsLabel: stringSetting(settings.label),
+    membershipPurpose: member.membershipPurpose,
+    createdAt: member.createdAt,
+    updatedAt: member.updatedAt,
+    leftAt: member.leftAt,
+  };
+}
+
+function parseSettings(value: string | null): Record<string, unknown> {
+  if (!value) return {};
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
+}
+
+function numberSetting(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function stringSetting(value: unknown): string | null {
+  return typeof value === 'string' ? value : null;
 }
 
 // Agents Overview API (#1694 / #1695)
@@ -128,15 +176,23 @@ export function getAgentDetail(agentIdentity: string, opts: { projectId?: string
 
 export function listObservationLane(opts: { limit?: number } = {}): Promise<ObservationLaneResponse> {
   const q = buildQuery({ limit: opts.limit });
-  return getChannels(`/v1/observation/lane${q}`);
+  return getSameOrigin(`/api/v1/observation/lane${q}`);
 }
 
 export function getObservationAgentOverview(agentIdentity: string): Promise<ObservationAgentOverviewResponse> {
-  return getChannels(`/v1/observation/agents/${encodeURIComponent(agentIdentity)}/overview`);
+  return getSameOrigin(`/api/v1/observation/agents/${encodeURIComponent(agentIdentity)}/overview`);
 }
 
 export function listObservationActiveWork(): Promise<ObservationActiveWorkResponse> {
-  return getChannels('/v1/observation/active-work');
+  return getSameOrigin('/api/v1/observation/active-work');
+}
+
+function getSameOrigin<T>(url: string): Promise<T> {
+  return dedupedFetch(`GET ${url}`, async () => {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`GET ${url}: ${res.status}`);
+    return res.json();
+  });
 }
 
 // Worker-pool assignment trace (#1729 / #3076)
@@ -148,7 +204,8 @@ export function getAssignmentTrace(assignmentId: string, opts: { projectId?: str
 }
 
 // Worker-pool lobby presence (#1781)
-// GET /api/worker-pool/lobby/presence — proxied through static server to Channels
+// The den-channels lobby endpoint is retired. Return a stable empty projection
+// until den-services exposes successor lobby parity.
 
 function mapWorkerPoolAvailabilityState(status: string | null | undefined): WorkerPoolMemberPresence['availabilityState'] {
   switch (status) {
@@ -208,5 +265,5 @@ function mapWorkerPoolLobbyPresence(raw: RawWorkerPoolLobbyResponse): WorkerPool
 }
 
 export function getWorkerPoolLobbyPresence(): Promise<WorkerPoolLobbyPresence> {
-  return getChannels<RawWorkerPoolLobbyResponse>('/worker-pool/lobby/presence').then(mapWorkerPoolLobbyPresence);
+  return Promise.resolve(mapWorkerPoolLobbyPresence({ members: [], roleCounts: {}, observedAt: new Date().toISOString() }));
 }

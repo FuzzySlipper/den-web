@@ -16,7 +16,7 @@
  *   DEN_WEB_URL           - Base URL of the deployed Den Web (default: http://192.168.1.10:18080)
  *   EXPECTED_BUILD_COMMIT - If set, verify den-web-build.json contains this commit hash
  *   EXPECTED_ENV_NAME     - Expected environmentName value (default: den-srv)
- *   EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED - Expected read pilot flag (default: false)
+ *   EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED - Expected read pilot flag (default: true)
  *   EXPECTED_CONVERSATION_SUCCESSOR_API_BASE - Expected read pilot API base (default: /api/v1/conversation)
  *   EXPECTED_TIMELINE_SUCCESSOR_ENABLED - Expected timeline pilot flag (default: true)
  *   EXPECTED_TIMELINE_SUCCESSOR_API_BASE - Expected timeline API base (default: /api/v1/timeline)
@@ -32,7 +32,7 @@ import * as url from 'node:url';
 const DEN_WEB_URL       = process.env.DEN_WEB_URL ?? 'http://192.168.1.10:18080';
 const EXPECTED_BUILD_COMMIT = process.env.EXPECTED_BUILD_COMMIT ?? '';
 const EXPECTED_ENV_NAME = process.env.EXPECTED_ENV_NAME ?? 'den-srv';
-const EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED = (process.env.EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED ?? 'false').toLowerCase() === 'true';
+const EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED = (process.env.EXPECTED_CONVERSATION_SUCCESSOR_READS_ENABLED ?? 'true').toLowerCase() === 'true';
 const EXPECTED_CONVERSATION_SUCCESSOR_API_BASE = process.env.EXPECTED_CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation';
 const EXPECTED_TIMELINE_SUCCESSOR_ENABLED = (process.env.EXPECTED_TIMELINE_SUCCESSOR_ENABLED ?? 'true').toLowerCase() === 'true';
 const EXPECTED_TIMELINE_SUCCESSOR_API_BASE = process.env.EXPECTED_TIMELINE_SUCCESSOR_API_BASE ?? '/api/v1/timeline';
@@ -308,18 +308,22 @@ async function checkNotificationFeed() {
   }
 }
 
-async function checkChannelsApi() {
-  console.log('\n── Den Channels API (via /api/) ──');
+async function checkConversationApi() {
+  console.log('\n── Conversation API (via Gateway /api/v1/conversation/) ──');
 
-  const channels = await fetchUrl(fullUrl('/api/channels?limit=1'));
-  assertStatus('GET /api/channels?limit=1', channels);
-  assertJson('/api/channels?limit=1 returns JSON', channels);
+  const channels = await fetchUrl(fullUrl('/api/v1/conversation/channels?project_id=den-web&limit=1'));
+  assertStatus('GET /api/v1/conversation/channels?project_id=den-web&limit=1', channels);
+  assertJson('/api/v1/conversation/channels returns JSON', channels);
 
-  const memberships = await fetchUrl(fullUrl('/api/gateway/memberships?projectId=den-web'));
-  assertStatus('GET /api/gateway/memberships?projectId=den-web', memberships);
-  assertJson('/api/gateway/memberships returns JSON', memberships);
+  const memberships = await fetchUrl(fullUrl('/api/v1/conversation/memberships?project_id=den-web&limit=20'));
+  assertStatus('GET /api/v1/conversation/memberships?project_id=den-web&limit=20', memberships);
+  assertJson('/api/v1/conversation/memberships returns JSON', memberships);
 
-  pass('legacy /api/agents/overview is not a smoke requirement; operator overview reads Observation successor data');
+  const legacyChannels = await fetchUrl(fullUrl('/api/channels?limit=1'));
+  assertStatus('legacy GET /api/channels?limit=1 is retired', legacyChannels, 410);
+
+  const legacyMemberships = await fetchUrl(fullUrl('/api/gateway/memberships?projectId=den-web'));
+  assertStatus('legacy GET /api/gateway/memberships?projectId=den-web is retired', legacyMemberships, 410);
 }
 
 async function checkObservationApi() {
@@ -404,7 +408,7 @@ async function main() {
     await checkBuildSentinel();
     await checkCoreApi();
     await checkNotificationFeed();
-    await checkChannelsApi();
+    await checkConversationApi();
     await checkObservationApi();
     await checkTimelineApi();
   await checkRetiredApis();
