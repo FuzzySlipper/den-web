@@ -20,6 +20,7 @@ const QUICK_REACTIONS = ['✅', '👀', '👍', '🫡', '❓'];
 interface Props {
   projectId: string | null;
   spaceName?: string | null;
+  showDebugActivity?: boolean;
   panelSize: ChannelChatPanelSize;
   scrollResetKey?: string | null;
   onPanelSizeChange: (size: ChannelChatPanelSize) => void;
@@ -30,7 +31,7 @@ interface Props {
 
 export type ChannelChatPanelSize = 'small' | 'medium' | 'large';
 
-export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetKey, onPanelSizeChange, onOpenPreferences, onOpenAssignmentTrace, onOpenDmTranscript }: Props) {
+export function ChannelChatPanel({ projectId, spaceName, showDebugActivity = false, panelSize, scrollResetKey, onPanelSizeChange, onOpenPreferences, onOpenAssignmentTrace, onOpenDmTranscript }: Props) {
   const [senderIdentity, setSenderIdentity] = useState(readStoredSenderIdentity);
   const [selectedChannelId, setSelectedChannelId] = useState<number | null>(null);
   const [sendMode, setSendMode] = useState<ChannelSendMode>('channel');
@@ -99,6 +100,7 @@ export function ChannelChatPanel({ projectId, spaceName, panelSize, scrollResetK
     setTargetMemberIdentity,
     inviteIdentity,
     editingMemberIdentity,
+    showDebugActivity,
   });
 
   const { loading: messagesLoading, error: messagesError, refresh: refreshMessages } = messagesState;

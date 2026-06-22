@@ -93,6 +93,14 @@ function ChatSection({ value, onChange }: { value: ChatPreferences; onChange: (v
       <SliderRow label="Row gap (px)" min={0} max={16} step={1} value={value.rowGap} onChange={v => set('rowGap', v)} />
       <SliderRow label="Message padding (px)" min={0} max={16} step={1} value={value.messagePadding} onChange={v => set('messagePadding', v)} />
       <SliderRow label="Column gap (px)" min={2} max={24} step={1} value={value.columnGap} onChange={v => set('columnGap', v)} />
+      <label className="preferences-toggle">
+        <input
+          type="checkbox"
+          checked={value.showDebugActivity}
+          onChange={e => set('showDebugActivity', e.target.checked)}
+        />
+        Show debug activity breadcrumbs
+      </label>
       <p className="preferences-note">Timestamp / name / message spacing in the chat transcript.</p>
     </div>
   );

@@ -14,6 +14,7 @@ const STREAM_REFRESH_COALESCE_MS = 150;
 
 export interface UseChannelEventStreamParams {
   channelId: number | null;
+  includeDebug?: boolean;
   /** Refresh the message list (called coalesced when channel_message events arrive). */
   onMessage: () => void;
   /** Refresh activity/breadcrumbs (called coalesced when channel_activity_event events arrive). */
@@ -40,7 +41,7 @@ export interface ChannelEventStreamState {
  * Last-Event-ID.
  */
 export function useChannelEventStream(params: UseChannelEventStreamParams): ChannelEventStreamState {
-  const { channelId, onMessage, onActivity, onEvent, enabled = true } = params;
+  const { channelId, includeDebug = false, onMessage, onActivity, onEvent, enabled = true } = params;
   const [state, dispatch] = useReducer(streamConnectionReducer, INITIAL_STREAM_STATE);
   const timelineCursorRef = useRef<string | null>(null);
   const timelineCursorChannelRef = useRef<number | null>(null);
@@ -69,7 +70,7 @@ export function useChannelEventStream(params: UseChannelEventStreamParams): Chan
     }
 
     dispatch({ type: 'start' });
-    const source = new EventSource(channelEventStreamUrl(channelId, { afterTimelineCursor: timelineCursorRef.current }));
+    const source = new EventSource(channelEventStreamUrl(channelId, { afterTimelineCursor: timelineCursorRef.current, includeDebug }));
 
     let flushTimer: number | undefined;
     const pending = { message: false, activity: false };
@@ -137,7 +138,7 @@ export function useChannelEventStream(params: UseChannelEventStreamParams): Chan
       source.removeEventListener('error', handleError);
       source.close();
     };
-  }, [channelId, streamingDisabled]);
+  }, [channelId, includeDebug, streamingDisabled]);
 
   return { status: state.status };
 }

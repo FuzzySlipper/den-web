@@ -350,6 +350,7 @@ export default function App() {
       <ChannelChatPanel
         projectId={scopedProjectId}
         spaceName={activeSpace?.name ?? effectiveSpaceId}
+        showDebugActivity={prefs.chat.showDebugActivity}
         panelSize={channelPanelSize}
         scrollResetKey={effectiveSpaceId}
         onPanelSizeChange={setChannelPanelSize}

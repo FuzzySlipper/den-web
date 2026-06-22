@@ -46,6 +46,7 @@ describe('timeline successor client', () => {
       archivedAt: null,
     })).toBe(true);
     expect(timelineChannelStreamUrl(7, { after: 'cursor-1' })).toBe('/api/v1/timeline/channels/7/stream?after=cursor-1');
+    expect(timelineChannelStreamUrl(7, { after: 'cursor-1', includeDebug: true })).toBe('/api/v1/timeline/channels/7/stream?after=cursor-1&include_debug=true');
   });
 
   it('uses timeline for shared system channels when the successor is enabled', () => {
@@ -141,5 +142,23 @@ describe('timeline successor client', () => {
       summary: 'running tests',
       taskId: 3012,
     });
+  });
+
+  it('requests debug breadcrumbs when requested by channel display preferences', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        scope: { kind: 'channel', channel_id: 7, project_id: 'den-web' },
+        items: [],
+        next_cursor: null,
+        snapshot_at: null,
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    reinitTimelineSuccessor({ enabled: true, apiBase: '/api/v1/timeline', projectIds: ['den-web'] });
+
+    await listChannelTimelineItems(7, { limit: 160, includeDebug: true });
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/timeline/channels/7/items?limit=160&include_debug=true', { cache: 'no-store' });
   });
 });

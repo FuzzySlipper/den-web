@@ -49,6 +49,7 @@ export function useChannelMessageDerivations({
   messages,
   observationLane,
   reactions,
+  showDebugActivity = false,
 }: {
   activeChannel: Channel | null;
   activityEvents: ChannelActivityEvent[] | null | undefined;
@@ -60,6 +61,7 @@ export function useChannelMessageDerivations({
   messages: ChannelMessage[] | null | undefined;
   observationLane: ObservationLaneResponse | null | undefined;
   reactions: ChannelReactionSummary[] | null | undefined;
+  showDebugActivity?: boolean;
 }) {
   const sortedMessages = useMemo(() => {
     const channelMessages = activeChannel ? (messages ?? []).filter(message => message.channelId === activeChannel.id) : [];
@@ -82,10 +84,10 @@ export function useChannelMessageDerivations({
       ? observationEventsToChannelActivityEvents(observationLane?.events, {
         channelId: activeChannel.id,
         projectId: effectiveProjectAttributionFilter || activeChannel.projectId,
-        hideDebug: true,
+        hideDebug: !showDebugActivity,
       })
       : [],
-    [activeChannel, effectiveProjectAttributionFilter, observationLane],
+    [activeChannel, effectiveProjectAttributionFilter, observationLane, showDebugActivity],
   );
   const scopedDirectAgentEvents = useMemo(
     () => effectiveProjectAttributionFilter

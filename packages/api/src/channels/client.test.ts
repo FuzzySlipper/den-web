@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { clearRequestCache } from '../requestCache';
 import {
+  channelEventStreamUrl,
   listChannelMessages,
   listChannels,
   listDirectConversations,
@@ -16,6 +17,7 @@ import {
   postChannelMessage,
   reinitChannelsRuntime,
 } from './client';
+import { reinitTimelineSuccessor, timelineSuccessorEnabledForChannel } from '../timeline/client';
 import type {
   DirectConversation,
   DirectConversationEntriesResponse,
@@ -42,7 +44,28 @@ describe('channels DM API client', () => {
         projectIds: [],
       },
     });
+    reinitTimelineSuccessor({ enabled: false, apiBase: '/api/v1/timeline', projectIds: [] });
     vi.unstubAllGlobals();
+  });
+
+  it('passes debug preference through timeline successor stream URLs', () => {
+    reinitTimelineSuccessor({ enabled: true, apiBase: '/api/v1/timeline', projectIds: ['den-web'] });
+    timelineSuccessorEnabledForChannel({
+      id: 7,
+      slug: 'project-den-web',
+      displayName: 'Den Web',
+      kind: 'project_default',
+      projectId: 'den-web',
+      spaceId: null,
+      createdBy: 'test',
+      visibility: 'normal',
+      settingsJson: null,
+      createdAt: 't0',
+      updatedAt: 't0',
+      archivedAt: null,
+    });
+
+    expect(channelEventStreamUrl(7, { afterTimelineCursor: 'cursor-1', includeDebug: true })).toBe('/api/v1/timeline/channels/7/stream?after=cursor-1&include_debug=true');
   });
 
   describe('conversation successor read pilot', () => {

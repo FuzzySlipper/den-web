@@ -22,6 +22,8 @@ export interface ChatPreferences {
   messagePadding: number;
   /** Horizontal gap between time/sender/body columns (px) — only if grid layout */
   columnGap: number;
+  /** Include debug-visibility activity breadcrumbs in channel timelines */
+  showDebugActivity: boolean;
 }
 
 /** Layout controls */
@@ -136,6 +138,7 @@ export const DEFAULT_PREFERENCES: DenWebPreferences = {
     rowGap: 4,
     messagePadding: 0,
     columnGap: 8,
+    showDebugActivity: false,
   },
   layout: {
     chatFraction: 0.8,

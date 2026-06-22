@@ -72,6 +72,7 @@ export interface ChannelEventStreamCursor {
   afterMessageId?: number;
   afterActivityId?: number;
   afterTimelineCursor?: string | null;
+  includeDebug?: boolean;
 }
 
 /**
@@ -82,7 +83,7 @@ export interface ChannelEventStreamCursor {
  */
 export function channelEventStreamUrl(channelId: number, cursor: ChannelEventStreamCursor = {}): string {
   if (timelineSuccessorEnabledForChannelId(channelId)) {
-    return timelineChannelStreamUrl(channelId, { after: cursor.afterTimelineCursor ?? null });
+    return timelineChannelStreamUrl(channelId, { after: cursor.afterTimelineCursor ?? null, includeDebug: cursor.includeDebug });
   }
   const q = buildQuery({
     afterMessageId: cursor.afterMessageId,

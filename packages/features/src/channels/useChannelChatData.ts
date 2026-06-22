@@ -53,7 +53,7 @@ import { persistDirectTarget, readStoredDirectTarget } from './channelChatStorag
 
 const STREAM_SAFETY_POLL_MS = 20000;
 
-function useChannelLiveResources(activeChannel: Channel | null) {
+function useChannelLiveResources(activeChannel: Channel | null, showDebugActivity: boolean) {
   const refreshMessagesRef = useRef(() => {});
   const refreshActivityRef = useRef(() => {});
   const triggerMessageRefresh = useCallback(() => refreshMessagesRef.current(), []);
@@ -61,11 +61,12 @@ function useChannelLiveResources(activeChannel: Channel | null) {
   const timelineEnabled = timelineSuccessorEnabledForChannel(activeChannel);
   const channelStream = useChannelEventStream({
     channelId: activeChannel?.id ?? null,
+    includeDebug: showDebugActivity,
     onMessage: triggerMessageRefresh,
     onActivity: triggerActivityRefresh,
   });
   const liveListInterval = isStreamDelivering(channelStream.status) ? STREAM_SAFETY_POLL_MS : 4000;
-  const fetchTimeline = useCallback(() => activeChannel && timelineEnabled ? listChannelTimelineItems(activeChannel.id, { limit: 160 }) : Promise.resolve(null), [activeChannel, timelineEnabled]);
+  const fetchTimeline = useCallback(() => activeChannel && timelineEnabled ? listChannelTimelineItems(activeChannel.id, { limit: 160, includeDebug: showDebugActivity }) : Promise.resolve(null), [activeChannel, showDebugActivity, timelineEnabled]);
   const timelineState = useLiveData(fetchTimeline, { interval: liveListInterval });
   const fetchMessages = useCallback(() => activeChannel && !timelineEnabled ? listChannelMessages(activeChannel.id, { limit: 80 }) : Promise.resolve([]), [activeChannel, timelineEnabled]);
   const legacyMessagesState = useLiveData(fetchMessages, { interval: liveListInterval });
@@ -285,6 +286,7 @@ export function useChannelChatData({
   setTargetMemberIdentity,
   inviteIdentity,
   editingMemberIdentity,
+  showDebugActivity = false,
 }: {
   projectId: string | null;
   spaceName?: string | null;
@@ -298,6 +300,7 @@ export function useChannelChatData({
   setTargetMemberIdentity: (identity: string) => void;
   inviteIdentity: string;
   editingMemberIdentity: string | null;
+  showDebugActivity?: boolean;
 }) {
   const { activeChannel, availableChannels, channelError, channelLoading, refreshChannels } = useChannelSelection({
     normalizedSenderIdentity,
@@ -319,7 +322,7 @@ export function useChannelChatData({
     observationActiveWorkState,
     observationLaneState,
     reactionsState,
-  } = useChannelLiveResources(activeChannel);
+  } = useChannelLiveResources(activeChannel, showDebugActivity);
 
   const activeChannelScopeLabel = projectChannelScopeLabel(activeChannel);
   const workerPoolProjectFilter = projectId && isWorkerPoolChannel(activeChannel) ? projectId : '';
@@ -351,6 +354,7 @@ export function useChannelChatData({
     messages: messagesState.data,
     observationLane: observationLaneState.data,
     reactions: reactionsState.data,
+    showDebugActivity,
   });
 
   const {

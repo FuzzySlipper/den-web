@@ -86,7 +86,7 @@ describe('applyThemeVars', () => {
   it('sets chat density CSS custom properties', () => {
     const custom: DenWebPreferences = {
       ...DEFAULT_PREFERENCES,
-      chat: { rowGap: 10, messagePadding: 6, columnGap: 14 },
+      chat: { ...DEFAULT_PREFERENCES.chat, rowGap: 10, messagePadding: 6, columnGap: 14 },
     };
     applyThemeVars(custom);
 
