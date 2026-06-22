@@ -99,12 +99,6 @@ export function FilterBar({
           DM
         </button>
         <button
-          className={viewMode === 'pi-crew-diagnostics' ? 'active' : ''}
-          onClick={() => onViewModeChange('pi-crew-diagnostics')}
-        >
-          Pi Crew
-        </button>
-        <button
           className={viewMode === 'notifications' ? 'active' : ''}
           onClick={() => onViewModeChange('notifications')}
         >

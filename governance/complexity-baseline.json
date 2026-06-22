@@ -61,9 +61,6 @@
     "packages/features/src/notifications/NotificationHistoryPanel.tsx": {
       "max-lines-per-function": 1
     },
-    "packages/features/src/piCrewDiagnostics/PiCrewDiagnosticsPanel.tsx": {
-      "max-lines-per-function": 1
-    },
     "packages/features/src/preferences/hotkeyParse.ts": {
       "sonarjs/cognitive-complexity": 1
     },

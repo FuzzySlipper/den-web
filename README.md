@@ -42,7 +42,7 @@ npm run build
 
 ### Vite dev server proxy
 
-The Vite dev server proxies `/den-core-api` requests to Den Core. Den Web no longer proxies Den Host/FleetOps.
+The Vite dev server proxies `/den-core-api` requests to Den Core.
 Configure the Core target with `VITE_DEV_DEN_CORE_TARGET` (default: `http://localhost:5299`):
 
 ```bash

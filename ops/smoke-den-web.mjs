@@ -356,24 +356,6 @@ async function checkTimelineApi() {
   }
 }
 
-async function checkRetiredApis() {
-  console.log('\n── Retired API routes ──');
-
-  const host = await fetchUrl(fullUrl('/den-host-api/fleet-ops'));
-  if (host.status === 410 || host.status === 404) {
-    pass('retired /den-host-api/fleet-ops no longer proxies Den Host');
-  } else {
-    fail('/den-host-api/fleet-ops retired route', `expected 410/404, got ${host.status}`);
-  }
-
-  const retiredGateway = await fetchUrl(fullUrl('/den-gateway-api/fleet-ops'));
-  if (retiredGateway.status === 410 || retiredGateway.status === 404) {
-    pass('retired /den-gateway-api/fleet-ops no longer returns misleading 502');
-  } else {
-    fail('/den-gateway-api/fleet-ops retired route', `expected 410/404, got ${retiredGateway.status}`);
-  }
-}
-
 async function checkDocumentDiscussion() {
   console.log('\n── Document discussion API ──');
 
@@ -411,7 +393,6 @@ async function main() {
     await checkConversationApi();
     await checkObservationApi();
     await checkTimelineApi();
-  await checkRetiredApis();
     await checkDocumentDiscussion();
   } catch (err) {
     console.error(`\n  ERROR  Unhandled exception: ${err.message}`);

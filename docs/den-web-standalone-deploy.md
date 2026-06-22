@@ -12,18 +12,8 @@ services.
 |-----------|------|-------|-------------|
 | Den Web static service | `den-srv:18080` | `/` | SPA frontend, static assets, runtime config |
 | Den Core (backend) | `den-srv:5299` (127.0.0.1) | `/den-core-api/*` | Core REST facade (tasks, docs, messages) |
-| Den Channels (backend) | `den-srv:18081` | `/api/*` | Channels/Gateway/Agents API |
-| Den Gateway (backend) | `den-srv:8079` | `/api/v1/observation/*` → `/v1/observation/*` | Gateway-owned observation reads |
-| Retired Den Host FleetOps route | none | `/den-host-api/*` | Returns `410 den_host_api_retired`; Den Web no longer consumes Den Host. |
+| Den Gateway (backend) | `den-srv:8079` | `/api/v1/*` → `/v1/*` | Gateway-owned Conversation, Timeline, Observation, Delivery, and Doc Publish routes |
 | Public operator URL | `http://192.168.1.10:18080/` | — | Entry point for browser users |
-
-## Den Host/FleetOps retirement note
-
-After deploying a release that includes task #3085, Den Web no longer needs the
-den-k8 `/home/agents/local/den-host/bin/den-host serve` process. If no other
-consumer depends on that process, stop and disable its service on den-k8 after
-the Den Web smoke passes. The Den Web `/den-host-api/*` route intentionally
-returns `410 den_host_api_retired`.
 
 ## Deploy root
 
@@ -107,7 +97,6 @@ Runtime config values are generated from:
 ```bash
 DEN_CORE_API_BASE=/den-core-api
 DEN_CHANNELS_API_BASE=/api
-PI_CREW_ADMIN_API_BASE=/pi-crew-admin-api
 CONVERSATION_SUCCESSOR_READS_ENABLED=true
 CONVERSATION_SUCCESSOR_WRITES_ENABLED=true
 CONVERSATION_SUCCESSOR_API_BASE=/api/v1/conversation

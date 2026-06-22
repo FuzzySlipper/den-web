@@ -21,7 +21,6 @@ import { AgentsOverviewView } from '@den-web/features/agents/AgentsOverviewView'
 import { WorkerPoolLobbyView } from '@den-web/features/agents/WorkerPoolLobbyView';
 import { DmConversationList } from '@den-web/features/dm/DmConversationList';
 import { DmTranscriptView } from '@den-web/features/dm/DmTranscriptView';
-import { PiCrewDiagnosticsPanel } from '@den-web/features/piCrewDiagnostics/PiCrewDiagnosticsPanel';
 import { NotificationHistoryPanel } from '@den-web/features/notifications/NotificationHistoryPanel';
 import { LibrarianView } from '@den-web/features/librarian/LibrarianView';
 
@@ -210,8 +209,6 @@ export function MainPanel({
               scopeProjectId={scopedProjectId}
             />
           )
-        ) : viewMode === 'pi-crew-diagnostics' ? (
-          <PiCrewDiagnosticsPanel />
         ) : viewMode === 'notifications' ? (
           <NotificationHistoryPanel
             projectIds={notificationScopeProjectIds(effectiveSpaceId, spaces)}

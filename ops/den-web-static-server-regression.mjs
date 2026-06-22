@@ -166,26 +166,26 @@ test('static proxy returns bounded 502 before response headers are sent', async 
   assert.equal(child.exitCode, null, 'static server should remain alive after early proxy failure');
 });
 
-test('Den Host FleetOps proxy is retired without contacting upstream', async (t) => {
+test('legacy API prefixes are not proxied upstream', async (t) => {
   let upstreamHit = false;
   const upstream = http.createServer((req, res) => {
     upstreamHit = true;
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ service: 'den-host', actions: [] }));
+    res.end(JSON.stringify({ service: 'legacy', actions: [] }));
   });
   const upstreamPort = await listen(upstream);
   t.after(() => new Promise(resolve => upstream.close(resolve)));
 
   const { baseUrl } = await startStaticServer(`http://127.0.0.1:${upstreamPort}`, t);
 
-  const hostResponse = await request(`${baseUrl}/den-host-api/fleet-ops?dryRun=true`);
-  assert.equal(hostResponse.statusCode, 410);
+  const hostResponse = await request(`${baseUrl}/den-host-api/anything`);
+  assert.equal(hostResponse.statusCode, 404);
   assert.equal(upstreamHit, false);
-  assert.match(hostResponse.body, /den_host_api_retired/);
+  assert.match(hostResponse.body, /legacy_api_not_found/);
 
-  const retiredResponse = await request(`${baseUrl}/den-gateway-api/fleet-ops`);
-  assert.equal(retiredResponse.statusCode, 410);
-  assert.match(retiredResponse.body, /den_gateway_api_retired/);
+  const retiredResponse = await request(`${baseUrl}/den-gateway-api/anything`);
+  assert.equal(retiredResponse.statusCode, 404);
+  assert.match(retiredResponse.body, /legacy_api_not_found/);
 });
 
 test('Observation reads use the Gateway observation read token and legacy /api routes are retired', async (t) => {
