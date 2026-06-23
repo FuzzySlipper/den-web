@@ -19,6 +19,7 @@ interface Options {
   refreshMemberships: () => void;
   setEditingMembershipStatus: (status: string) => void;
   setEditingMemberIdentity: (identity: string | null) => void;
+  setEditingMemberId: (id: number | null) => void;
   setEditingWakePolicy: (wakePolicy: string) => void;
   setInviteIdentity: (identity: string) => void;
   setSendError: (error: Error | null) => void;
@@ -36,6 +37,7 @@ export function useChannelMembershipActions({
   refreshMemberships,
   setEditingMembershipStatus,
   setEditingMemberIdentity,
+  setEditingMemberId,
   setEditingWakePolicy,
   setInviteIdentity,
   setSendError,
@@ -74,9 +76,10 @@ export function useChannelMembershipActions({
 
   const handleEditMember = useCallback((member: GatewayMember) => {
     setEditingMemberIdentity(member.memberIdentity);
+    setEditingMemberId(member.id);
     setEditingWakePolicy(member.wakePolicy || DEFAULT_WAKE_POLICY);
     setEditingMembershipStatus(member.membershipStatus || 'active');
-  }, [setEditingMembershipStatus, setEditingMemberIdentity, setEditingWakePolicy]);
+  }, [setEditingMembershipStatus, setEditingMemberIdentity, setEditingMemberId, setEditingWakePolicy]);
 
   const handleSaveMemberSettings = useCallback(async () => {
     if (!activeChannel || !editingMember) return;
@@ -98,13 +101,14 @@ export function useChannelMembershipActions({
         maxAutoRepliesPerWindow: editingMember.maxAutoRepliesPerWindow,
       });
       setEditingMemberIdentity(null);
+      setEditingMemberId(null);
       refreshMemberships();
     } catch (error) {
       setSendError(error instanceof Error ? error : new Error(String(error)));
     } finally {
       setMemberSaving(false);
     }
-  }, [activeChannel, editingMember, editingMembershipStatus, editingWakePolicy, membershipChannelId, refreshMemberships, setEditingMemberIdentity, setSendError]);
+  }, [activeChannel, editingMember, editingMembershipStatus, editingWakePolicy, membershipChannelId, refreshMemberships, setEditingMemberIdentity, setEditingMemberId, setSendError]);
 
   return {
     handleEditMember,

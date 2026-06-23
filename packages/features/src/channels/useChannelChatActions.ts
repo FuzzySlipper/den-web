@@ -26,6 +26,7 @@ export function useChannelChatActions({
   sendMode,
   setEditingMembershipStatus,
   setEditingMemberIdentity,
+  setEditingMemberId,
   setEditingWakePolicy,
   setInviteIdentity,
   targetMemberIdentity,
@@ -50,6 +51,7 @@ export function useChannelChatActions({
   sendMode: ChannelSendMode;
   setEditingMembershipStatus: (status: string) => void;
   setEditingMemberIdentity: (identity: string | null) => void;
+  setEditingMemberId: (id: number | null) => void;
   setEditingWakePolicy: (wakePolicy: string) => void;
   setInviteIdentity: (identity: string) => void;
   targetMemberIdentity: string;
@@ -92,6 +94,7 @@ export function useChannelChatActions({
     refreshMemberships,
     setEditingMembershipStatus,
     setEditingMemberIdentity,
+    setEditingMemberId,
     setEditingWakePolicy,
     setInviteIdentity,
     setSendError,

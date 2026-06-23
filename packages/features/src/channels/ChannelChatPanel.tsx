@@ -48,6 +48,7 @@ export function ChannelChatPanel({ projectId, spaceName, showDebugActivity = fal
   const [inviteIdentity, setInviteIdentity] = useState('');
   const [inviteWakePolicy, setInviteWakePolicy] = useState(DEFAULT_WAKE_POLICY);
   const [editingMemberIdentity, setEditingMemberIdentity] = useState<string | null>(null);
+  const [editingMemberId, setEditingMemberId] = useState<number | null>(null);
   const [editingWakePolicy, setEditingWakePolicy] = useState(DEFAULT_WAKE_POLICY);
   const [editingMembershipStatus, setEditingMembershipStatus] = useState('active');
   const normalizedSenderIdentity = senderIdentity.trim();
@@ -100,6 +101,7 @@ export function ChannelChatPanel({ projectId, spaceName, showDebugActivity = fal
     setTargetMemberIdentity,
     inviteIdentity,
     editingMemberIdentity,
+    editingMemberId,
     showDebugActivity,
   });
 
@@ -169,6 +171,7 @@ export function ChannelChatPanel({ projectId, spaceName, showDebugActivity = fal
     sendMode,
     setEditingMembershipStatus,
     setEditingMemberIdentity,
+    setEditingMemberId,
     setEditingWakePolicy,
     setInviteIdentity,
     targetMemberIdentity,
@@ -306,7 +309,7 @@ export function ChannelChatPanel({ projectId, spaceName, showDebugActivity = fal
             onOpenDmTranscript={onOpenDmTranscript}
             onEditMember={handleEditMember}
             onSaveMemberSettings={handleSaveMemberSettings}
-            onCancelEdit={() => setEditingMemberIdentity(null)}
+            onCancelEdit={() => { setEditingMemberIdentity(null); setEditingMemberId(null); }}
             onEditingWakePolicyChange={setEditingWakePolicy}
             onEditingMembershipStatusChange={setEditingMembershipStatus}
             onInviteIdentityChange={setInviteIdentity}

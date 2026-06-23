@@ -131,6 +131,7 @@ function useChannelLiveResources(activeChannel: Channel | null, showDebugActivit
 function useChannelMemberDerivations({
   activeChannel,
   editingMemberIdentity,
+  editingMemberId,
   inviteIdentity,
   memberships,
   normalizedSenderIdentity,
@@ -138,7 +139,7 @@ function useChannelMemberDerivations({
   setTargetMemberIdentity,
   sortedMessages,
   targetMemberIdentity,
-}: { activeChannel: Channel | null; editingMemberIdentity: string | null; inviteIdentity: string; memberships: GatewayMemberships | null | undefined; normalizedSenderIdentity: string; observationActiveWork: ObservationActiveWorkResponse | null | undefined; setTargetMemberIdentity: (identity: string) => void; sortedMessages: ChannelMessage[]; targetMemberIdentity: string }) {
+}: { activeChannel: Channel | null; editingMemberIdentity: string | null; editingMemberId: number | null; inviteIdentity: string; memberships: GatewayMemberships | null | undefined; normalizedSenderIdentity: string; observationActiveWork: ObservationActiveWorkResponse | null | undefined; setTargetMemberIdentity: (identity: string) => void; sortedMessages: ChannelMessage[]; targetMemberIdentity: string }) {
   const previousChannelIdRef = useRef<number | null>(activeChannel?.id ?? null);
   const members = useMemo(() => (memberships?.members ?? []).filter(member => isVisibleNormalParticipant(member)), [memberships]);
   const memberActivityByIdentity = useMemo(() => new Map(members.map(member => [
@@ -149,8 +150,22 @@ function useChannelMemberDerivations({
   ] as const)), [members, observationActiveWork, sortedMessages]);
   const activeAgentMembers = members.filter(memberIsActiveAgent);
   const selectedTarget = activeAgentMembers.find(member => member.memberIdentity === targetMemberIdentity) ?? null;
-  const editingMember = members.find(member => member.memberIdentity === editingMemberIdentity && member.memberType === 'agent') ?? null;
-  const inviteExistingMember = members.find(member => member.memberType === 'agent' && member.memberIdentity === inviteIdentity.trim()) ?? null;
+  const editingMember = useMemo(() => {
+    if (editingMemberId != null) {
+      const byId = members.find(m => m.id === editingMemberId && m.memberType === 'agent');
+      if (byId) return byId;
+    }
+    return members.find(member => member.memberIdentity === editingMemberIdentity && member.memberType === 'agent') ?? null;
+  }, [members, editingMemberId, editingMemberIdentity]);
+  const inviteExistingMember = useMemo(() => {
+    const identity = inviteIdentity.trim();
+    if (!identity) return null;
+    const candidates = members.filter(m => m.memberType === 'agent' && m.memberIdentity === identity);
+    if (candidates.length === 0) return null;
+    // Prefer the active row when duplicates exist (e.g. ordinary/active + normal/left)
+    const active = candidates.find(c => c.membershipStatus === 'active');
+    return active ?? candidates[0];
+  }, [members, inviteIdentity]);
   const composer = useChannelComposer({ members, normalizedSenderIdentity });
 
   useEffect(() => {
@@ -286,6 +301,7 @@ export function useChannelChatData({
   setTargetMemberIdentity,
   inviteIdentity,
   editingMemberIdentity,
+  editingMemberId,
   showDebugActivity = false,
 }: {
   projectId: string | null;
@@ -300,6 +316,7 @@ export function useChannelChatData({
   setTargetMemberIdentity: (identity: string) => void;
   inviteIdentity: string;
   editingMemberIdentity: string | null;
+  editingMemberId: number | null;
   showDebugActivity?: boolean;
 }) {
   const { activeChannel, availableChannels, channelError, channelLoading, refreshChannels } = useChannelSelection({
@@ -368,6 +385,7 @@ export function useChannelChatData({
   } = useChannelMemberDerivations({
     activeChannel,
     editingMemberIdentity,
+    editingMemberId,
     inviteIdentity,
     memberships: membershipsState.data,
     normalizedSenderIdentity,
