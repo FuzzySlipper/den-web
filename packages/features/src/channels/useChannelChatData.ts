@@ -8,6 +8,7 @@ import type {
   ChannelProjectLink,
   ChannelReactionSummary,
   DirectAgentEventsResponse,
+  GatewayMember,
   GatewayMemberships,
   ObservationActiveWorkResponse,
   ObservationLaneResponse,
@@ -52,6 +53,50 @@ import { membershipLookupForChannel } from './channelMembershipLookup';
 import { persistDirectTarget, readStoredDirectTarget } from './channelChatStorage';
 
 const STREAM_SAFETY_POLL_MS = 20000;
+
+/**
+ * Resolve the editable membership row for the edit-member panel.
+ *
+ * When the user clicks an agent member row, the UI stores both the member's
+ * `id` and `memberIdentity`.  This function tries the membership-id lookup
+ * first, falling back to identity-only for backward compatibility.
+ *
+ * The id-first lookup is essential when duplicate-purpose rows exist for the
+ * same member identity (e.g. purpose=ordinary/status=active + purpose=normal/
+ * status=left): the id pinpoints the exact row the user clicked so that
+ * save/remove writes the correct membership_purpose.
+ */
+export function resolveEditingMemberForChannelMembers(
+  members: GatewayMember[],
+  editingMemberId: number | null,
+  editingMemberIdentity: string | null,
+): GatewayMember | null {
+  if (editingMemberId != null) {
+    const byId = members.find(m => m.id === editingMemberId && m.memberType === 'agent');
+    if (byId) return byId;
+  }
+  return members.find(member => member.memberIdentity === editingMemberIdentity && member.memberType === 'agent') ?? null;
+}
+
+/**
+ * Resolve the existing membership row for the invite/re-invite panel.
+ *
+ * When duplicate-purpose rows exist for the same member identity, the `active`
+ * membership is preferred so that re-invite preserves the original purpose
+ * rather than defaulting to `normal` for a stale `left` row.
+ */
+export function resolveInviteExistingMemberForChannelMembers(
+  members: GatewayMember[],
+  inviteIdentity: string,
+): GatewayMember | null {
+  const identity = inviteIdentity.trim();
+  if (!identity) return null;
+  const candidates = members.filter(m => m.memberType === 'agent' && m.memberIdentity === identity);
+  if (candidates.length === 0) return null;
+  // Prefer the active row when duplicates exist (e.g. ordinary/active + normal/left)
+  const active = candidates.find(c => c.membershipStatus === 'active');
+  return active ?? candidates[0];
+}
 
 function useChannelLiveResources(activeChannel: Channel | null, showDebugActivity: boolean) {
   const refreshMessagesRef = useRef(() => {});
@@ -150,22 +195,14 @@ function useChannelMemberDerivations({
   ] as const)), [members, observationActiveWork, sortedMessages]);
   const activeAgentMembers = members.filter(memberIsActiveAgent);
   const selectedTarget = activeAgentMembers.find(member => member.memberIdentity === targetMemberIdentity) ?? null;
-  const editingMember = useMemo(() => {
-    if (editingMemberId != null) {
-      const byId = members.find(m => m.id === editingMemberId && m.memberType === 'agent');
-      if (byId) return byId;
-    }
-    return members.find(member => member.memberIdentity === editingMemberIdentity && member.memberType === 'agent') ?? null;
-  }, [members, editingMemberId, editingMemberIdentity]);
-  const inviteExistingMember = useMemo(() => {
-    const identity = inviteIdentity.trim();
-    if (!identity) return null;
-    const candidates = members.filter(m => m.memberType === 'agent' && m.memberIdentity === identity);
-    if (candidates.length === 0) return null;
-    // Prefer the active row when duplicates exist (e.g. ordinary/active + normal/left)
-    const active = candidates.find(c => c.membershipStatus === 'active');
-    return active ?? candidates[0];
-  }, [members, inviteIdentity]);
+  const editingMember = useMemo(
+    () => resolveEditingMemberForChannelMembers(members, editingMemberId, editingMemberIdentity),
+    [members, editingMemberId, editingMemberIdentity],
+  );
+  const inviteExistingMember = useMemo(
+    () => resolveInviteExistingMemberForChannelMembers(members, inviteIdentity),
+    [members, inviteIdentity],
+  );
   const composer = useChannelComposer({ members, normalizedSenderIdentity });
 
   useEffect(() => {
