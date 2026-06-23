@@ -102,6 +102,7 @@ export interface UpsertChannelMembershipRequest {
   canSend?: boolean;
   canReact?: boolean;
   canInvite?: boolean;
+  membershipPurpose?: string | null;
   cooldownSeconds?: number;
   maxAutoRepliesPerWindow?: number;
   settingsJson?: string | null;

@@ -8,6 +8,7 @@ import {
   listObservationActiveWork,
   listObservationLane,
   postGatewayDirectAgentMessage,
+  upsertChannelMembership,
 } from './client';
 
 describe('postGatewayDirectAgentMessage', () => {
@@ -561,4 +562,102 @@ describe('Gateway polling client', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+});
+
+describe('upsertChannelMembership', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('preserves the existing membershipPurpose when editing a member instead of defaulting to normal', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        id: 128,
+        channel_id: 10,
+        member_type: 'agent',
+        member_identity: 'agora-prime',
+        membership_status: 'active',
+        membership_purpose: 'ordinary',
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await upsertChannelMembership(10, {
+      memberType: 'agent',
+      memberIdentity: 'agora-prime',
+      membershipStatus: 'active',
+      membershipPurpose: 'ordinary',
+    });
+
+    const putBody = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(putBody).toMatchObject({
+      member_type: 'agent',
+      member_identity: 'agora-prime',
+      membership_status: 'active',
+      membership_purpose: 'ordinary',
+    });
+    expect(putBody.membership_purpose).not.toBe('normal');
+    expect(result.membershipPurpose).toBe('ordinary');
+  });
+
+  it('forwards null membershipPurpose to the successor layer which defaults to normal', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        id: 45,
+        channel_id: 10,
+        member_type: 'agent',
+        member_identity: 'hermes-coder',
+        membership_status: 'left',
+        membership_purpose: null,
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await upsertChannelMembership(10, {
+      memberType: 'agent',
+      memberIdentity: 'hermes-coder',
+      membershipStatus: 'left',
+      membershipPurpose: null,
+    });
+
+    const putBody = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    // null passes through the gateway client to the successor layer,
+    // which applies ?? 'normal' — that's the intentional default for
+    // memberships where no purpose is explicitly provided.
+    expect(putBody.membership_purpose).toBe('normal');
+  });
+
+  it('updates an ordinary membership to left status while preserving ordinary purpose', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        id: 128,
+        channel_id: 10,
+        member_type: 'agent',
+        member_identity: 'agora-prime',
+        membership_status: 'left',
+        membership_purpose: 'ordinary',
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await upsertChannelMembership(10, {
+      memberType: 'agent',
+      memberIdentity: 'agora-prime',
+      membershipStatus: 'left',
+      membershipPurpose: 'ordinary',
+    });
+
+    const putBody = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(putBody).toMatchObject({
+      member_type: 'agent',
+      member_identity: 'agora-prime',
+      membership_status: 'left',
+      membership_purpose: 'ordinary',
+    });
+    expect(result.membershipStatus).toBe('left');
+    expect(result.membershipPurpose).toBe('ordinary');
+  });
 });

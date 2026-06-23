@@ -464,7 +464,7 @@ export function putConversationSuccessorMembership(channelId: number, request: {
   canSend?: boolean;
   canReact?: boolean;
   canInvite?: boolean;
-  membershipPurpose?: string;
+  membershipPurpose?: string | null;
   settingsJson?: string | null;
 }): Promise<ConversationSuccessorMembership> {
   return putSuccessor<unknown>(`/channels/${encodeURIComponent(String(channelId))}/memberships`, {

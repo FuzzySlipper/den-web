@@ -47,6 +47,7 @@ export interface UpsertChannelMembershipRequest {
   canSend?: boolean;
   canReact?: boolean;
   canInvite?: boolean;
+  membershipPurpose?: string | null;
   cooldownSeconds?: number;
   maxAutoRepliesPerWindow?: number;
   settingsJson?: string | null;
@@ -61,6 +62,7 @@ export function upsertChannelMembership(channelId: number, request: UpsertChanne
     canSend: request.canSend,
     canReact: request.canReact,
     canInvite: request.canInvite,
+    membershipPurpose: request.membershipPurpose,
     settingsJson: request.settingsJson,
   }).then(mapConversationMembership);
 }

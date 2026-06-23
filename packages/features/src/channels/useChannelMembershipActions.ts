@@ -59,6 +59,7 @@ export function useChannelMembershipActions({
         canSend: inviteExistingMember?.canSend ?? true,
         canReact: inviteExistingMember?.canReact ?? true,
         canInvite: inviteExistingMember?.canInvite ?? false,
+        membershipPurpose: inviteExistingMember?.membershipPurpose ?? null,
         cooldownSeconds: inviteExistingMember?.cooldownSeconds,
         maxAutoRepliesPerWindow: inviteExistingMember?.maxAutoRepliesPerWindow,
       });
@@ -92,6 +93,7 @@ export function useChannelMembershipActions({
         canSend: editingMember.canSend,
         canReact: editingMember.canReact,
         canInvite: editingMember.canInvite,
+        membershipPurpose: editingMember.membershipPurpose ?? null,
         cooldownSeconds: editingMember.cooldownSeconds,
         maxAutoRepliesPerWindow: editingMember.maxAutoRepliesPerWindow,
       });
