@@ -127,7 +127,7 @@ function emptyReviewWorkflow(): ReviewWorkflowSummary {
   };
 }
 
-function toTaskDetail(detail: SuccessorTaskDetail): TaskDetail {
+export function successorDetailToTaskDetail(detail: SuccessorTaskDetail): TaskDetail {
   return {
     task: toProjectTask(detail.task),
     dependencies: detail.dependencies,
@@ -175,7 +175,7 @@ export async function listSuccessorTasks(projectId: string, opts: ListSuccessorT
 
 export async function getSuccessorTask(projectId: string, taskId: number): Promise<TaskDetail> {
   const detail = await successorGet<SuccessorTaskDetail>(`/projects/${esc(projectId)}/tasks/${taskId}`);
-  return toTaskDetail(detail);
+  return successorDetailToTaskDetail(detail);
 }
 
 export async function getSuccessorTaskForMerge(projectId: string, taskId: number): Promise<SuccessorTaskDetail> {

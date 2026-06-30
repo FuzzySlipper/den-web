@@ -1,11 +1,11 @@
 import type { ProjectTask, ReviewPacketResult, TaskDetail, TaskSummary } from './types';
-import { buildQuery, esc, get, post, put } from './http';
+import { coreApiUrl, esc, post } from './http';
 import {
   getSuccessorNextTask,
-  getSuccessorTask,
   getSuccessorTaskForMerge,
   listSuccessorTasks,
   mergeTaskDetail,
+  successorDetailToTaskDetail,
   updateSuccessorTask,
 } from './tasksSuccessor';
 
@@ -19,30 +19,17 @@ export interface ListTasksOpts {
 }
 
 export function listTasks(projectId: string, opts: ListTasksOpts = {}): Promise<TaskSummary[]> {
-  return listSuccessorTasks(projectId, opts).catch(() => {
-    const q = buildQuery({
-      status: opts.status,
-      assignedTo: opts.assignedTo,
-      tags: opts.tags,
-      priority: opts.priority,
-      parentId: opts.parentId,
-      tree: opts.tree,
-    });
-    return get(`/api/projects/${esc(projectId)}/tasks${q}`);
-  });
+  return listSuccessorTasks(projectId, opts);
 }
 
 export async function getTask(projectId: string, taskId: number): Promise<TaskDetail> {
-  const coreDetail = await get<TaskDetail>(`/api/projects/${esc(projectId)}/tasks/${taskId}`).catch(() => null);
-  const successorDetail = await getSuccessorTaskForMerge(projectId, taskId).catch(() => null);
+  const successorDetail = await getSuccessorTaskForMerge(projectId, taskId);
+  const coreDetail = await fetchCoreTaskDetail(projectId, taskId).catch(() => null);
 
-  if (coreDetail && successorDetail) {
+  if (coreDetail) {
     return mergeTaskDetail(coreDetail, successorDetail);
   }
-  if (coreDetail) {
-    return coreDetail;
-  }
-  return getSuccessorTask(projectId, taskId);
+  return successorDetailToTaskDetail(successorDetail);
 }
 
 export function updateTask(
@@ -51,8 +38,7 @@ export function updateTask(
   agent: string,
   changes: Record<string, unknown>,
 ): Promise<ProjectTask> {
-  return updateSuccessorTask(projectId, taskId, agent, changes)
-    .catch(() => put(`/api/projects/${esc(projectId)}/tasks/${taskId}`, { agent, ...changes }));
+  return updateSuccessorTask(projectId, taskId, agent, changes);
 }
 
 export function requestReview(
@@ -72,9 +58,12 @@ export function postReviewFindings(
 }
 
 export function getNextTask(projectId: string, assignedTo?: string): Promise<ProjectTask | null> {
-  return getSuccessorNextTask(projectId, assignedTo).catch(() => {
-    const q = buildQuery({ assignedTo });
-    return get<ProjectTask | { message: string }>(`/api/projects/${esc(projectId)}/tasks/next${q}`)
-      .then(res => ('message' in res ? null : res));
-  });
+  return getSuccessorNextTask(projectId, assignedTo);
+}
+
+async function fetchCoreTaskDetail(projectId: string, taskId: number): Promise<TaskDetail> {
+  const requestUrl = coreApiUrl(`/api/projects/${esc(projectId)}/tasks/${taskId}`);
+  const res = await fetch(requestUrl, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
+  return res.json();
 }
