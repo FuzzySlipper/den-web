@@ -26,6 +26,67 @@ function successorDetail(status = 'review') {
   };
 }
 
+function successorMessages() {
+  return [
+    {
+      id: 17369,
+      project_id: 'den-services',
+      task_id: 3862,
+      thread_id: null,
+      sender: 'den-mcp-planner',
+      content: 'looks good',
+      intent: 'review_feedback',
+      metadata: { verdict: 'looks_good' },
+      created_at: '2026-06-30T13:00:44Z',
+    },
+  ];
+}
+
+function coreDetailWithMessage() {
+  return {
+    task: {
+      id: 3862,
+      project_id: 'den-services',
+      title: 'Core task',
+      description: null,
+      status: 'planned',
+      priority: 3,
+      assigned_to: null,
+      parent_id: null,
+      tags: null,
+      created_at: '2026-06-29T00:00:00Z',
+      updated_at: '2026-06-29T00:00:00Z',
+    },
+    dependencies: [],
+    subtasks: [],
+    recent_messages: [
+      {
+        id: 17360,
+        project_id: 'den-services',
+        task_id: 3862,
+        thread_id: null,
+        sender: 'core',
+        content: 'core context',
+        intent: 'note',
+        metadata: null,
+        created_at: '2026-06-30T12:00:00Z',
+      },
+    ],
+    review_rounds: [],
+    open_review_findings: [],
+    resolved_review_findings: [],
+    review_workflow: {
+      current_round: null,
+      current_verdict: null,
+      review_round_count: 0,
+      unresolved_finding_count: 0,
+      resolved_finding_count: 0,
+      addressed_finding_count: 0,
+      timeline: [],
+    },
+  };
+}
+
 describe('task successor cutover client', () => {
   it('does not fall back to Core listTasks when the successor read fails', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
@@ -84,6 +145,10 @@ describe('task successor cutover client', () => {
         json: () => Promise.resolve(successorDetail('review')),
       })
       .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(successorMessages()),
+      })
+      .mockResolvedValueOnce({
         ok: false,
         status: 404,
         json: () => Promise.resolve({ error: 'not found' }),
@@ -93,9 +158,33 @@ describe('task successor cutover client', () => {
     const detail = await getTask('den-services', 3862);
 
     expect(detail.task.status).toBe('review');
+    expect(detail.recent_messages.map(message => message.id)).toEqual([17369]);
     expect(detail.review_workflow.review_round_count).toBe(0);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v1/projects/den-services/tasks/3862');
-    expect(fetchMock.mock.calls[1]?.[0]).toBe('/den-core-api/api/projects/den-services/tasks/3862');
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/v1/projects/den-services/messages?task_id=3862&limit=10');
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('/den-core-api/api/projects/den-services/tasks/3862');
+  });
+
+  it('merges successor task-thread messages with Core-composed task context', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(successorDetail('review')),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(successorMessages()),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(coreDetailWithMessage()),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const detail = await getTask('den-services', 3862);
+
+    expect(detail.task.status).toBe('review');
+    expect(detail.recent_messages.map(message => message.id)).toEqual([17369, 17360]);
   });
 });

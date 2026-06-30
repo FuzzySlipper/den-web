@@ -13,17 +13,20 @@
 
 import { initClient as initCoreHttpClient, resetClient as resetCoreHttpClient } from './http';
 import { initTasksSuccessorClient, resetTasksSuccessorClient } from './tasksSuccessor';
+import { initMessagesSuccessorClient, resetMessagesSuccessorClient } from './messagesSuccessor';
 
 export { getApiBases } from './http';
 
 export async function initClient(): Promise<void> {
   await initCoreHttpClient();
   await initTasksSuccessorClient();
+  await initMessagesSuccessorClient();
 }
 
 export function resetClient(): void {
   resetCoreHttpClient();
   resetTasksSuccessorClient();
+  resetMessagesSuccessorClient();
 }
 
 export * from './spaces';

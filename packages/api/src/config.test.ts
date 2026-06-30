@@ -45,6 +45,7 @@ describe('getConfig - no runtime config (404)', () => {
     expect(config.denCoreApiBase).toBe('/den-core-api');
     expect(config.denChannelsApiBase).toBe('/api');
     expect(config.tasksSuccessorApiBase).toBe('/api/v1');
+    expect(config.messagesSuccessorApiBase).toBe('/api/v1');
     expect(config.docPublishApiBase).toBe('/api/v1/blog/publications');
     expect(config.conversationSuccessorReadsEnabled).toBe(false);
     expect(config.conversationSuccessorWritesEnabled).toBe(false);
@@ -62,6 +63,7 @@ describe('getConfig - no runtime config (404)', () => {
     vi.stubEnv('VITE_DEN_CORE_API_BASE', '/env-core-api/');
     vi.stubEnv('VITE_DEN_CHANNELS_API_BASE', '/env-channels-api/');
     vi.stubEnv('VITE_TASKS_SUCCESSOR_API_BASE', '/env-tasks/');
+    vi.stubEnv('VITE_MESSAGES_SUCCESSOR_API_BASE', '/env-messages/');
     vi.stubEnv('VITE_DOC_PUBLISH_API_BASE', '/env-blog-publications/');
     vi.stubEnv('VITE_CONVERSATION_SUCCESSOR_READS_ENABLED', 'true');
     vi.stubEnv('VITE_CONVERSATION_SUCCESSOR_WRITES_ENABLED', 'true');
@@ -77,6 +79,7 @@ describe('getConfig - no runtime config (404)', () => {
     expect(config.denCoreApiBase).toBe('/env-core-api');
     expect(config.denChannelsApiBase).toBe('/env-channels-api');
     expect(config.tasksSuccessorApiBase).toBe('/env-tasks');
+    expect(config.messagesSuccessorApiBase).toBe('/env-messages');
     expect(config.docPublishApiBase).toBe('/env-blog-publications');
     expect(config.conversationSuccessorReadsEnabled).toBe(true);
     expect(config.conversationSuccessorWritesEnabled).toBe(true);
@@ -112,6 +115,7 @@ describe('getConfig - with runtime config loaded', () => {
         denCoreApiBase: '/custom-core-api/',
         denChannelsApiBase: '/custom-channels-api',
         tasksSuccessorApiBase: '/custom-tasks/',
+        messagesSuccessorApiBase: '/custom-messages/',
         docPublishApiBase: '/custom-blog-publications/',
         conversationSuccessorReadsEnabled: true,
         conversationSuccessorWritesEnabled: true,
@@ -132,6 +136,7 @@ describe('getConfig - with runtime config loaded', () => {
     expect(config.denCoreApiBase).toBe('/custom-core-api');
     expect(config.denChannelsApiBase).toBe('/custom-channels-api');
     expect(config.tasksSuccessorApiBase).toBe('/custom-tasks');
+    expect(config.messagesSuccessorApiBase).toBe('/custom-messages');
     expect(config.docPublishApiBase).toBe('/custom-blog-publications');
     expect(config.conversationSuccessorReadsEnabled).toBe(true);
     expect(config.conversationSuccessorWritesEnabled).toBe(true);
@@ -194,6 +199,16 @@ describe('getConfig - malformed runtime config', () => {
     });
     const config = await getConfig();
     expect(config.tasksSuccessorApiBase).toBe('/api/v1');
+  });
+
+  it('falls back when messagesSuccessorApiBase is not a string', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ denCoreApiBase: '/api', messagesSuccessorApiBase: false }),
+    });
+    const config = await getConfig();
+    expect(config.messagesSuccessorApiBase).toBe('/api/v1');
   });
 
   it('falls back when denChannelsApiBase is not a string', async () => {

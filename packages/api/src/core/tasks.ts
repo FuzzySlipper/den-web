@@ -1,5 +1,6 @@
 import type { ProjectTask, ReviewPacketResult, TaskDetail, TaskSummary } from './types';
 import { coreApiUrl, esc, post } from './http';
+import { listSuccessorMessages } from './messagesSuccessor';
 import {
   getSuccessorNextTask,
   getSuccessorTaskForMerge,
@@ -24,12 +25,13 @@ export function listTasks(projectId: string, opts: ListTasksOpts = {}): Promise<
 
 export async function getTask(projectId: string, taskId: number): Promise<TaskDetail> {
   const successorDetail = await getSuccessorTaskForMerge(projectId, taskId);
+  const successorMessages = await listSuccessorMessages(projectId, { taskId, limit: 10 }).catch(() => []);
   const coreDetail = await fetchCoreTaskDetail(projectId, taskId).catch(() => null);
 
   if (coreDetail) {
-    return mergeTaskDetail(coreDetail, successorDetail);
+    return withRecentMessages(mergeTaskDetail(coreDetail, successorDetail), successorMessages);
   }
-  return successorDetailToTaskDetail(successorDetail);
+  return withRecentMessages(successorDetailToTaskDetail(successorDetail), successorMessages);
 }
 
 export function updateTask(
@@ -66,4 +68,23 @@ async function fetchCoreTaskDetail(projectId: string, taskId: number): Promise<T
   const res = await fetch(requestUrl, { cache: 'no-store' });
   if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
   return res.json();
+}
+
+function withRecentMessages(detail: TaskDetail, successorMessages: TaskDetail['recent_messages']): TaskDetail {
+  if (successorMessages.length === 0) return detail;
+
+  const seen = new Set<number>();
+  const recent_messages = [...successorMessages, ...detail.recent_messages]
+    .filter(message => {
+      if (seen.has(message.id)) return false;
+      seen.add(message.id);
+      return true;
+    })
+    .sort((a, b) => {
+      const byTime = Date.parse(b.created_at) - Date.parse(a.created_at);
+      return byTime !== 0 ? byTime : b.id - a.id;
+    })
+    .slice(0, 10);
+
+  return { ...detail, recent_messages };
 }

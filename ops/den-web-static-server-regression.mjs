@@ -402,6 +402,58 @@ test('Task successor requests use the Tasks service token and bypass Gateway/Cor
   assert.deepEqual(coreObserved, []);
 });
 
+test('Message successor task-thread reads use the Messages service token and bypass Gateway/Core', async (t) => {
+  const messageObserved = [];
+  const gatewayObserved = [];
+  const coreObserved = [];
+  const messages = http.createServer((req, res) => {
+    messageObserved.push({
+      url: req.url,
+      method: req.method,
+      authorization: req.headers.authorization ?? null,
+    });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify([{ id: 17369, project_id: 'den-services', task_id: 3862, thread_id: null, sender: 'den-mcp-planner', content: 'looks good', intent: 'review_feedback', created_at: '2026-06-30T13:00:44Z' }]));
+  });
+  const gateway = http.createServer((req, res) => {
+    gatewayObserved.push(req.url);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'unexpected gateway hit' }));
+  });
+  const core = http.createServer((req, res) => {
+    coreObserved.push(req.url);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'unexpected core hit' }));
+  });
+  const messagesPort = await listen(messages);
+  const gatewayPort = await listen(gateway);
+  const corePort = await listen(core);
+  t.after(() => Promise.all([
+    new Promise(resolve => messages.close(resolve)),
+    new Promise(resolve => gateway.close(resolve)),
+    new Promise(resolve => core.close(resolve)),
+  ]));
+
+  const { baseUrl } = await startStaticServer(`http://127.0.0.1:${corePort}`, t, {
+    DEN_MESSAGES_TARGET: `http://127.0.0.1:${messagesPort}`,
+    DEN_MESSAGES_SERVICE_TOKEN: 'messages-token',
+    DEN_GATEWAY_TARGET: `http://127.0.0.1:${gatewayPort}`,
+  });
+
+  const response = await request(`${baseUrl}/api/v1/projects/den-services/messages?task_id=3862&limit=10`);
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(messageObserved, [
+    {
+      url: '/v1/projects/den-services/messages?task_id=3862&limit=10',
+      method: 'GET',
+      authorization: 'Bearer messages-token',
+    },
+  ]);
+  assert.deepEqual(gatewayObserved, []);
+  assert.deepEqual(coreObserved, []);
+});
+
 test('Timeline reads and streams use the Gateway timeline read token', async (t) => {
   const gatewayObserved = [];
   const gateway = http.createServer((req, res) => {
