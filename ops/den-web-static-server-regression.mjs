@@ -332,6 +332,76 @@ test('Delivery successor writes use the Gateway delivery token and migrated rout
   }]);
 });
 
+test('Task successor requests use the Tasks service token and bypass Gateway/Core', async (t) => {
+  const taskObserved = [];
+  const gatewayObserved = [];
+  const coreObserved = [];
+  const tasks = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      taskObserved.push({
+        url: req.url,
+        method: req.method,
+        authorization: req.headers.authorization ?? null,
+        body,
+      });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify([]));
+    });
+  });
+  const gateway = http.createServer((req, res) => {
+    gatewayObserved.push(req.url);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'unexpected gateway hit' }));
+  });
+  const core = http.createServer((req, res) => {
+    coreObserved.push(req.url);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'unexpected core hit' }));
+  });
+  const tasksPort = await listen(tasks);
+  const gatewayPort = await listen(gateway);
+  const corePort = await listen(core);
+  t.after(() => Promise.all([
+    new Promise(resolve => tasks.close(resolve)),
+    new Promise(resolve => gateway.close(resolve)),
+    new Promise(resolve => core.close(resolve)),
+  ]));
+
+  const { baseUrl } = await startStaticServer(`http://127.0.0.1:${corePort}`, t, {
+    DEN_TASKS_TARGET: `http://127.0.0.1:${tasksPort}`,
+    DEN_TASKS_SERVICE_TOKEN: 'tasks-token',
+    DEN_GATEWAY_TARGET: `http://127.0.0.1:${gatewayPort}`,
+  });
+
+  const listResponse = await request(`${baseUrl}/api/v1/projects/den-services/tasks?status=in_progress`);
+  const updateResponse = await request(`${baseUrl}/api/v1/projects/den-services/tasks/3862`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ agent: 'web-ui', status: 'review' }),
+  });
+
+  assert.equal(listResponse.statusCode, 200);
+  assert.equal(updateResponse.statusCode, 200);
+  assert.deepEqual(taskObserved, [
+    {
+      url: '/v1/projects/den-services/tasks?status=in_progress',
+      method: 'GET',
+      authorization: 'Bearer tasks-token',
+      body: '',
+    },
+    {
+      url: '/v1/projects/den-services/tasks/3862',
+      method: 'PATCH',
+      authorization: 'Bearer tasks-token',
+      body: JSON.stringify({ agent: 'web-ui', status: 'review' }),
+    },
+  ]);
+  assert.deepEqual(gatewayObserved, []);
+  assert.deepEqual(coreObserved, []);
+});
+
 test('Timeline reads and streams use the Gateway timeline read token', async (t) => {
   const gatewayObserved = [];
   const gateway = http.createServer((req, res) => {

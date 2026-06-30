@@ -13,6 +13,7 @@
 export interface DenWebRuntimeConfig {
   denCoreApiBase: string;
   denChannelsApiBase: string;
+  tasksSuccessorApiBase: string;
   docPublishApiBase: string;
   conversationSuccessorReadsEnabled: boolean;
   conversationSuccessorWritesEnabled: boolean;
@@ -29,6 +30,7 @@ export interface DenWebRuntimeConfig {
 const DEFAULTS: DenWebRuntimeConfig = {
   denCoreApiBase: '/den-core-api',
   denChannelsApiBase: '/api',
+  tasksSuccessorApiBase: '/api/v1',
   docPublishApiBase: '/api/v1/blog/publications',
   conversationSuccessorReadsEnabled: false,
   conversationSuccessorWritesEnabled: false,
@@ -78,7 +80,7 @@ export function parseCommaList(value: unknown): string[] {
 }
 
 function runtimeStringFieldsAreValid(obj: Record<string, unknown>): boolean {
-  const fields = ['denCoreApiBase', 'denChannelsApiBase', 'docPublishApiBase', 'conversationSuccessorApiBase', 'timelineSuccessorApiBase'] as const;
+  const fields = ['denCoreApiBase', 'denChannelsApiBase', 'tasksSuccessorApiBase', 'docPublishApiBase', 'conversationSuccessorApiBase', 'timelineSuccessorApiBase'] as const;
   for (const key of fields) {
     if (obj[key] !== undefined && typeof obj[key] !== 'string') {
       console.error(`[den-web-config] key "${key}" must be a string (got ${typeof obj[key]}); falling back to env/defaults`);
@@ -118,6 +120,7 @@ function runtimeConfigFromRecord(obj: Record<string, unknown>): DenWebRuntimeCon
   return {
     denCoreApiBase: normalizeApiBase(obj.denCoreApiBase as string | undefined, DEFAULTS.denCoreApiBase),
     denChannelsApiBase: normalizeApiBase(obj.denChannelsApiBase as string | undefined, DEFAULTS.denChannelsApiBase),
+    tasksSuccessorApiBase: normalizeApiBase(obj.tasksSuccessorApiBase as string | undefined, DEFAULTS.tasksSuccessorApiBase),
     docPublishApiBase: normalizeApiBase(obj.docPublishApiBase as string | undefined, DEFAULTS.docPublishApiBase),
     conversationSuccessorReadsEnabled: parseBooleanFlag(obj.conversationSuccessorReadsEnabled, DEFAULTS.conversationSuccessorReadsEnabled),
     conversationSuccessorWritesEnabled: parseBooleanFlag(obj.conversationSuccessorWritesEnabled, DEFAULTS.conversationSuccessorWritesEnabled),
@@ -189,6 +192,7 @@ export async function getConfig(reload = false): Promise<DenWebRuntimeConfig> {
   // Use try/catch to handle non-Vite environments (e.g., tests without import.meta.env)
   let viteEnvViteCoreBase: string | undefined;
   let viteEnvChannelsBase: string | undefined;
+  let viteEnvTasksSuccessorApiBase: string | undefined;
   let viteEnvDocPublishApiBase: string | undefined;
   let viteEnvConversationSuccessorReadsEnabled: string | undefined;
   let viteEnvConversationSuccessorWritesEnabled: string | undefined;
@@ -201,6 +205,7 @@ export async function getConfig(reload = false): Promise<DenWebRuntimeConfig> {
   try {
     viteEnvViteCoreBase = import.meta.env?.VITE_DEN_CORE_API_BASE;
     viteEnvChannelsBase = import.meta.env?.VITE_DEN_CHANNELS_API_BASE;
+    viteEnvTasksSuccessorApiBase = import.meta.env?.VITE_TASKS_SUCCESSOR_API_BASE;
     viteEnvDocPublishApiBase = import.meta.env?.VITE_DOC_PUBLISH_API_BASE;
     viteEnvConversationSuccessorReadsEnabled = import.meta.env?.VITE_CONVERSATION_SUCCESSOR_READS_ENABLED;
     viteEnvConversationSuccessorWritesEnabled = import.meta.env?.VITE_CONVERSATION_SUCCESSOR_WRITES_ENABLED;
@@ -217,6 +222,7 @@ export async function getConfig(reload = false): Promise<DenWebRuntimeConfig> {
   const config: DenWebRuntimeConfig = {
     denCoreApiBase: normalizeApiBase(viteEnvViteCoreBase, DEFAULTS.denCoreApiBase),
     denChannelsApiBase: normalizeApiBase(viteEnvChannelsBase, DEFAULTS.denChannelsApiBase),
+    tasksSuccessorApiBase: normalizeApiBase(viteEnvTasksSuccessorApiBase, DEFAULTS.tasksSuccessorApiBase),
     docPublishApiBase: normalizeApiBase(viteEnvDocPublishApiBase, DEFAULTS.docPublishApiBase),
     conversationSuccessorReadsEnabled: parseBooleanFlag(viteEnvConversationSuccessorReadsEnabled, DEFAULTS.conversationSuccessorReadsEnabled),
     conversationSuccessorWritesEnabled: parseBooleanFlag(viteEnvConversationSuccessorWritesEnabled, DEFAULTS.conversationSuccessorWritesEnabled),

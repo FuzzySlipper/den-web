@@ -11,7 +11,20 @@
  * ownership, but is not required to.
  */
 
-export { initClient, resetClient, getApiBases } from './http';
+import { initClient as initCoreHttpClient, resetClient as resetCoreHttpClient } from './http';
+import { initTasksSuccessorClient, resetTasksSuccessorClient } from './tasksSuccessor';
+
+export { getApiBases } from './http';
+
+export async function initClient(): Promise<void> {
+  await initCoreHttpClient();
+  await initTasksSuccessorClient();
+}
+
+export function resetClient(): void {
+  resetCoreHttpClient();
+  resetTasksSuccessorClient();
+}
 
 export * from './spaces';
 export * from './tasks';

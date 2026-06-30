@@ -16,8 +16,10 @@
  *   HOST                  - listen host (default: 0.0.0.0)
  *   STATIC_ROOT           - directory with built static assets (default: /data/services/den-web/wwwroot)
  *   DEN_CORE_TARGET       - Den Core backend URL (default: http://127.0.0.1:5299)
+ *   DEN_TASKS_TARGET      - Tasks successor backend URL (default: http://127.0.0.1:8092)
  *   DEN_GATEWAY_TARGET    - Den Gateway backend URL for Gateway-owned read APIs (default: http://127.0.0.1:8079)
  *   DEN_GATEWAY_SERVICE_TOKEN - fallback Gateway token used as successor token default (default: empty, no auth)
+ *   DEN_TASKS_SERVICE_TOKEN - Tasks successor caller token for project task paths and /api/v1/tasks (default: DEN_GATEWAY_SERVICE_TOKEN)
  *   DEN_GATEWAY_DELIVERY_WRITE_TOKEN - Gateway caller token for /api/v1/delivery/* writes/reads (default: DEN_GATEWAY_SERVICE_TOKEN)
  *   DEN_GATEWAY_OBSERVATION_READ_TOKEN - Gateway caller token for /api/v1/observation/* reads (default: empty, no auth)
  *   DEN_GATEWAY_CONVERSATION_READ_TOKEN - Gateway caller token for /api/v1/conversation/* read pilot (default: empty, no auth)
@@ -30,6 +32,7 @@
  *   CACHE_HTML_SECONDS    - max-age for HTML and un-hashed files (default: 0)
  *   DEN_CORE_API_BASE     - runtime config Core API base (default: /den-core-api)
  *   DEN_CHANNELS_API_BASE - runtime config Channels API base (default: /api)
+ *   TASKS_SUCCESSOR_API_BASE - runtime config tasks successor browser proxy base (default: /api/v1)
  *   DOC_PUBLISH_API_BASE - runtime config document publishing API base (default: /api/v1/blog/publications)
  *   CONVERSATION_SUCCESSOR_READS_ENABLED - runtime config conversation successor read pilot flag (default: false)
  *   CONVERSATION_SUCCESSOR_API_BASE - runtime config conversation successor browser proxy base (default: /api/v1/conversation)
@@ -74,8 +77,10 @@ const PORT             = parseInt(process.env.PORT ?? '18080', 10);
 const HOST             = process.env.HOST ?? '0.0.0.0';
 const STATIC_ROOT      = process.env.STATIC_ROOT ?? '/data/services/den-web/wwwroot';
 const DEN_CORE_TARGET  = process.env.DEN_CORE_TARGET ?? 'http://127.0.0.1:5299';
+const DEN_TASKS_TARGET = GATEWAY_ENV.DEN_TASKS_TARGET ?? process.env.DEN_TASKS_TARGET ?? 'http://127.0.0.1:8092';
 const DEN_GATEWAY_TARGET = GATEWAY_ENV.DEN_GATEWAY_TARGET ?? process.env.DEN_GATEWAY_TARGET ?? 'http://127.0.0.1:8079';
 const DEN_GATEWAY_SERVICE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_SERVICE_TOKEN ?? process.env.DEN_GATEWAY_SERVICE_TOKEN ?? '';
+const DEN_TASKS_SERVICE_TOKEN = GATEWAY_ENV.DEN_TASKS_SERVICE_TOKEN ?? process.env.DEN_TASKS_SERVICE_TOKEN ?? DEN_GATEWAY_SERVICE_TOKEN;
 const DEN_GATEWAY_DELIVERY_WRITE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_DELIVERY_WRITE_TOKEN ?? process.env.DEN_GATEWAY_DELIVERY_WRITE_TOKEN ?? DEN_GATEWAY_SERVICE_TOKEN;
 const DEN_GATEWAY_OBSERVATION_READ_TOKEN = GATEWAY_ENV.DEN_GATEWAY_OBSERVATION_READ_TOKEN ?? process.env.DEN_GATEWAY_OBSERVATION_READ_TOKEN ?? '';
 const DEN_GATEWAY_CONVERSATION_READ_TOKEN = GATEWAY_ENV.DEN_GATEWAY_CONVERSATION_READ_TOKEN ?? process.env.DEN_GATEWAY_CONVERSATION_READ_TOKEN ?? '';
@@ -175,6 +180,7 @@ function loadConfig() {
   const defaults = {
     denCoreApiBase: process.env.DEN_CORE_API_BASE ?? '/den-core-api',
     denChannelsApiBase: process.env.DEN_CHANNELS_API_BASE ?? '/api',
+    tasksSuccessorApiBase: process.env.TASKS_SUCCESSOR_API_BASE ?? '/api/v1',
     docPublishApiBase: process.env.DOC_PUBLISH_API_BASE ?? '/api/v1/blog/publications',
     conversationSuccessorReadsEnabled: process.env.CONVERSATION_SUCCESSOR_READS_ENABLED === '1' || process.env.CONVERSATION_SUCCESSOR_READS_ENABLED === 'true',
     conversationSuccessorWritesEnabled: process.env.CONVERSATION_SUCCESSOR_WRITES_ENABLED === '1' || process.env.CONVERSATION_SUCCESSOR_WRITES_ENABLED === 'true',
@@ -206,6 +212,7 @@ function loadConfig() {
     configData = JSON.stringify({
       denCoreApiBase: typeof fileConfig.denCoreApiBase === 'string' ? fileConfig.denCoreApiBase : defaults.denCoreApiBase,
       denChannelsApiBase: typeof fileConfig.denChannelsApiBase === 'string' ? fileConfig.denChannelsApiBase : defaults.denChannelsApiBase,
+      tasksSuccessorApiBase: typeof fileConfig.tasksSuccessorApiBase === 'string' ? fileConfig.tasksSuccessorApiBase : defaults.tasksSuccessorApiBase,
       docPublishApiBase: typeof fileConfig.docPublishApiBase === 'string' ? fileConfig.docPublishApiBase : defaults.docPublishApiBase,
       conversationSuccessorReadsEnabled: typeof fileConfig.conversationSuccessorReadsEnabled === 'boolean' ? fileConfig.conversationSuccessorReadsEnabled : defaults.conversationSuccessorReadsEnabled,
       conversationSuccessorWritesEnabled: typeof fileConfig.conversationSuccessorWritesEnabled === 'boolean' ? fileConfig.conversationSuccessorWritesEnabled : defaults.conversationSuccessorWritesEnabled,
@@ -401,6 +408,16 @@ function handleRequest(req, res) {
 
   // ── Gateway-owned successor API proxy ──
   if (requestPath.startsWith('/api/')) {
+    if (requestPath === '/api/v1/tasks' ||
+        requestPath.startsWith('/api/v1/tasks/') ||
+        /^\/api\/v1\/projects\/[^/]+\/tasks(?:\/|$)/.test(requestPath)) {
+      if (DEN_TASKS_SERVICE_TOKEN) {
+        req.headers['authorization'] = `Bearer ${DEN_TASKS_SERVICE_TOKEN}`;
+      }
+      const stripped = requestPath.replace(/^\/api/, '') || '/';
+      return proxyRequest(DEN_TASKS_TARGET, req, res, () => stripped + requestSearch);
+    }
+
     // Observation reads are owned by den-services Gateway. Keep the browser base
     // under /api for compatibility, but forward Gateway's internal /v1 path.
     if (requestPath === '/api/v1/observation' || requestPath.startsWith('/api/v1/observation/')) {
@@ -502,6 +519,7 @@ function startServer() {
     console.log(`[den-web-static-server] listening on ${HOST}:${PORT}`);
     console.log(`[den-web-static-server] static root: ${STATIC_ROOT}`);
     console.log(`[den-web-static-server] Den Core target: ${DEN_CORE_TARGET}`);
+    console.log(`[den-web-static-server] Den Tasks target: ${DEN_TASKS_TARGET}`);
     console.log(`[den-web-static-server] Den Gateway target: ${DEN_GATEWAY_TARGET}`);
     if (configData) {
       console.log(`[den-web-static-server] config: ${CONFIG_PATH}`);
