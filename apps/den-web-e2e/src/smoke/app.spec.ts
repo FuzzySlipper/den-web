@@ -73,6 +73,10 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
 
   await page.getByRole('button', { name: 'Documents' }).click();
   await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Successor Brief' }).first()).toBeVisible();
+  await expect(async () => {
+    const box = await page.getByLabel('Document metadata').boundingBox();
+    expect(box?.height).toBeLessThan(220);
+  }).toPass();
   await expect(page.getByLabel('Document content').getByText('Document fixture loaded.')).toBeVisible();
   await expect(page.getByText('Discussion fixture loaded')).toBeVisible();
 

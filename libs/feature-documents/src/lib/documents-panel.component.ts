@@ -129,16 +129,23 @@ import { DOCUMENTS_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
       }
 
       .detail-body {
+        align-content: start;
         display: grid;
         gap: 14px;
+        grid-auto-rows: max-content;
         overflow: auto;
         padding: 18px;
       }
 
       .section {
+        align-content: start;
         display: grid;
         gap: 12px;
         padding: 14px;
+      }
+
+      .metadata-section {
+        gap: 10px;
       }
 
       .section-head {
@@ -149,14 +156,20 @@ import { DOCUMENTS_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
       }
 
       .meta-grid {
-        display: grid;
-        gap: 8px 16px;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        align-items: start;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
       }
 
       .meta-item {
+        border: 1px solid var(--den-border);
+        border-radius: 6px;
+        box-sizing: border-box;
         display: grid;
-        gap: 3px;
+        gap: 2px;
+        min-width: 118px;
+        padding: 7px 9px;
       }
 
       .label {
@@ -170,6 +183,10 @@ import { DOCUMENTS_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
         color: var(--den-text);
         font-size: var(--den-font-size-md);
         overflow-wrap: anywhere;
+      }
+
+      .tags-item {
+        max-width: 360px;
       }
 
       .comment {
@@ -262,9 +279,9 @@ import { DOCUMENTS_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
               </header>
 
               <div class="detail-body">
-                <section class="section" aria-label="Document metadata">
+                <section class="section metadata-section" aria-label="Document metadata">
                   <div class="meta-grid">
-                    <div class="meta-item">
+                    <div class="meta-item tags-item">
                       <span class="label">Type</span>
                       <span class="value">{{ doc.doc_type || 'document' }}</span>
                     </div>
