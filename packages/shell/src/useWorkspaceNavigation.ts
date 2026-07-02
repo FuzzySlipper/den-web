@@ -104,8 +104,7 @@ export function useWorkspaceNavigation(params: WorkspaceNavigationParams): Works
 
   const handleStreamSelect = useCallback((entry: AgentStreamEntry) => {
     selectStreamEntry(entry);
-    setViewMode('agent-stream');
-  }, [selectStreamEntry, setViewMode]);
+  }, [selectStreamEntry]);
 
   const handleSubagentRunSelect = useCallback((run: SubagentRunSummary) => {
     selectSubagentRun(run);

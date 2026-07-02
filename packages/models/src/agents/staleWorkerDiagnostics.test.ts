@@ -37,7 +37,7 @@ describe('buildStaleWorkerDiagnosticsModel', () => {
 
     const unavailable = buildStaleWorkerDiagnosticsModel(null, new Error('GET /api/worker-pool/stale: 503'));
     expect(unavailable.kind).toBe('source_unavailable');
-    expect(unavailable.summary).toContain('cannot prove worker state');
+    expect(unavailable.summary).toContain('Use Den MCP readback before assuming all is quiet');
   });
 
   it('surfaces stale assignment evidence identifiers and next action', () => {

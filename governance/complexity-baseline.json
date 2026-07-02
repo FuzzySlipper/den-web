@@ -69,9 +69,6 @@
     },
     "packages/features/src/sessions/SessionContextSidebar.tsx": {
       "max-lines-per-function": 1
-    },
-    "packages/features/src/tasks/TaskDetail.tsx": {
-      "max-lines-per-function": 1
     }
   }
 }

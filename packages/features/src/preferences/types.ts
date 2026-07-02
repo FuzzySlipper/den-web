@@ -110,7 +110,7 @@ export interface KeyboardPreferences {
   jumpToSessions: string;
   /** Direct jump to Librarian panel */
   jumpToLibrarian: string;
-  /** Direct jump to Agent Stream panel */
+  /** Retired Agent Stream panel binding retained only to preserve stored preference shape. */
   jumpToAgentStream: string;
 
   /**

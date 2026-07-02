@@ -1,7 +1,3 @@
-import { useCallback } from 'react';
-import type { StaleWorkerSweepResponse } from '@den-web/api/types';
-import { listStaleWorkerConditions } from '@den-web/api/client';
-import { useLiveData } from '@den-web/ui/hooks/useLiveData';
 import { formatTimeAgo } from '@den-web/shared';
 import { buildStaleWorkerDiagnosticsModel, type StaleWorkerDiagnosticRow } from '@den-web/models/agents/staleWorkerDiagnostics';
 
@@ -12,9 +8,7 @@ interface Props {
 }
 
 export function StaleWorkerDiagnosticsPanel({ projectId, compact = false, onOpenAssignmentTrace }: Props) {
-  const fetchStaleWorkers = useCallback(() => listStaleWorkerConditions({ projectId: projectId ?? undefined, limit: compact ? 5 : 20 }), [projectId, compact]);
-  const { data, loading, error, refresh } = useLiveData<StaleWorkerSweepResponse>(fetchStaleWorkers, { interval: 10000 });
-  const model = buildStaleWorkerDiagnosticsModel(data ?? null, error);
+  const model = buildStaleWorkerDiagnosticsModel(null, new Error('Legacy worker-pool diagnostics are disabled after the den-core cutover.'));
 
   return (
     <section className={`stale-worker-panel stale-worker-panel-${model.kind} ${compact ? 'stale-worker-panel-compact' : ''}`} aria-label="Stale worker diagnostics">
@@ -25,13 +19,10 @@ export function StaleWorkerDiagnosticsPanel({ projectId, compact = false, onOpen
         </div>
         <div className="stale-worker-actions">
           {model.sweptAt && <span title={model.sweptAt}>Swept {formatTimeAgo(model.sweptAt)}</span>}
-          <button type="button" onClick={refresh} disabled={loading} title="Refresh Core stale-worker projection">
-            Refresh
-          </button>
         </div>
       </div>
       <div className="stale-worker-summary">
-        {loading && !data && !error ? 'Loading Core stale-worker projection…' : model.summary}
+        {model.summary}
       </div>
       {model.rows.length > 0 && (
         <div className="stale-worker-list">

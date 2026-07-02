@@ -260,7 +260,6 @@ function KeyboardSection({ value, onChange }: { value: KeyboardPreferences; onCh
       <HotkeyInputRow label="Git" value={value.jumpToGit} onChange={v => set('jumpToGit', v)} placeholder="" />
       <HotkeyInputRow label="Sessions" value={value.jumpToSessions} onChange={v => set('jumpToSessions', v)} placeholder="" />
       <HotkeyInputRow label="Librarian" value={value.jumpToLibrarian} onChange={v => set('jumpToLibrarian', v)} placeholder="" />
-      <HotkeyInputRow label="Agent Stream" value={value.jumpToAgentStream} onChange={v => set('jumpToAgentStream', v)} placeholder="" />
     </div>
   );
 }

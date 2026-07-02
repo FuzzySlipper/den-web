@@ -24,15 +24,14 @@ describe('view metadata', () => {
 });
 
 describe('mainPanelCountLabel', () => {
-  const counts = { taskCount: 3, filterLabel: ' [Active]', sortLabel: ' ↕id', docCount: 7, streamCount: 12 };
+  const counts = { taskCount: 3, filterLabel: ' [Active]', sortLabel: ' ↕id', docCount: 7 };
 
   it('includes filter and sort labels for tasks', () => {
     expect(mainPanelCountLabel('tasks', counts)).toBe('(3 [Active] ↕id)');
   });
 
-  it('counts documents and stream entries', () => {
+  it('counts documents', () => {
     expect(mainPanelCountLabel('documents', counts)).toBe('(7)');
-    expect(mainPanelCountLabel('agent-stream', counts)).toBe('(12)');
   });
 
   it('returns null for views without a count', () => {

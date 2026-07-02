@@ -1,21 +1,17 @@
 import type {
-  AgentStreamEntry,
   DocumentSummary,
   Project,
   Space,
   TaskSummary,
 } from '@den-web/api/types';
 import { FilterBar } from './FilterBar';
-import { AgentStreamFilterBar } from './AgentStreamFilterBar';
 import { notificationScopeProjectIds } from './spaces';
 import type { WorkspaceState } from './useWorkspaceState';
-import type { StreamFilters } from './useStreamFilters';
 import type { WorkspaceNavigation } from './useWorkspaceNavigation';
 import { TaskTree } from '@den-web/features/tasks/TaskTree';
 import { MessagesInbox } from '@den-web/features/messages/MessagesInbox';
 import { DocumentList } from '@den-web/features/documents/DocumentList';
 import { GitView } from '@den-web/features/git/GitView';
-import { AgentStreamFeed } from '@den-web/features/agents/AgentStreamFeed';
 import { FocusedSessionView } from '@den-web/features/sessions/FocusedSessionView';
 import { AgentsOverviewView } from '@den-web/features/agents/AgentsOverviewView';
 import { WorkerPoolLobbyView } from '@den-web/features/agents/WorkerPoolLobbyView';
@@ -38,14 +34,11 @@ interface Props {
   taskSpaceNames: Map<string, string>;
   displayedTasks: TaskSummary[];
   sortedDocs: DocumentSummary[];
-  filteredAgentStream: AgentStreamEntry[];
-  streamEventOptions: string[];
   dependencyWaitingTaskCount: number;
   manualBlockedTaskCount: number;
   selectedTaskId: number | null;
   closePanelKey: string;
   workspace: WorkspaceState;
-  filters: StreamFilters;
   nav: WorkspaceNavigation;
 }
 
@@ -68,14 +61,11 @@ export function MainPanel({
   taskSpaceNames,
   displayedTasks,
   sortedDocs,
-  filteredAgentStream,
-  streamEventOptions,
   dependencyWaitingTaskCount,
   manualBlockedTaskCount,
   selectedTaskId,
   closePanelKey,
   workspace,
-  filters,
   nav,
 }: Props) {
   const { viewMode } = workspace;
@@ -109,13 +99,6 @@ export function MainPanel({
             {manualBlockedTaskCount} manual block{manualBlockedTaskCount === 1 ? '' : 's'}
           </span>
         </div>
-      )}
-      {viewMode === 'agent-stream' && (
-        <AgentStreamFilterBar
-          filters={filters}
-          isAggregateSpace={isAggregateSpace}
-          streamEventOptions={streamEventOptions}
-        />
       )}
       <div className="panel-body">
         {viewMode === 'tasks' ? (
@@ -151,15 +134,6 @@ export function MainPanel({
             scopeSupportsGit={activeSpaceSupportsGit}
             focus={nav.gitFocus}
             onClearFocus={nav.handleClearGitFocus}
-          />
-        ) : viewMode === 'agent-stream' ? (
-          <AgentStreamFeed
-            entries={filteredAgentStream}
-            isGlobal={isAggregateSpace}
-            onSelect={nav.handleStreamSelect}
-            onOpenTask={nav.handleTaskSelect}
-            onOpenThread={entry => void nav.handleStreamThreadOpen(entry)}
-            onOpenDispatch={dispatchId => void nav.handleDispatchSelect(dispatchId)}
           />
         ) : viewMode === 'sessions' ? (
           <FocusedSessionView

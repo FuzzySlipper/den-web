@@ -4,7 +4,6 @@ import {
   listProjects,
   listSpaces,
   listTasks,
-  listAgentStream,
   listDocuments,
 } from '@den-web/api/client';
 import { useLiveData } from '@den-web/ui/hooks/useLiveData';
@@ -15,7 +14,6 @@ import {
   taskMatchesStatusFilter,
 } from '@den-web/features/tasks/taskStatuses';
 import { isDependencyWaitingTask } from '@den-web/features/tasks/taskAvailability';
-import { agentStreamEntryVisibility } from '@den-web/models/agents/subagentRunsDisplay';
 import { usePreferences } from '@den-web/features/preferences/usePreferences';
 import { PreferencesDialog } from '@den-web/features/preferences/PreferencesDialog';
 import { ChannelChatPanel } from '@den-web/features/channels/ChannelChatPanel';
@@ -45,7 +43,6 @@ import {
   nextViewMode,
 } from './workspaceState';
 import { useWorkspaceState } from './useWorkspaceState';
-import { useStreamFilters } from './useStreamFilters';
 import { useDetailSelection } from './useDetailSelection';
 import { useNotificationBell } from './useNotificationBell';
 import { useWorkspaceNavigation } from './useWorkspaceNavigation';
@@ -77,7 +74,6 @@ export default function App() {
 
   const { prefs, updateSection, resetToDefaults } = usePreferences();
   const workspace = useWorkspaceState();
-  const streamFilters = useStreamFilters();
   const selection = useDetailSelection();
 
   // --- Data (polling lives here; #2140 introduces the useLiveData boundary) ---
@@ -151,29 +147,6 @@ export default function App() {
   }, [effectiveSpaceId, isAllSpaces, workspace.statusFilter, taskSpaces]);
   const { data: tasks } = useLiveData(fetchTasks, { interval: 5000 });
 
-  const fetchAgentStream = useCallback(
-    () => effectiveSpaceId
-      ? listAgentStream({
-        projectId: isAggregateSpace ? (streamFilters.streamProjectFilter.trim() || undefined) : effectiveSpaceId,
-        taskId: streamFilters.parsedStreamTaskId,
-        streamKind: streamFilters.streamKindFilter,
-        eventType: streamFilters.streamEventFilter || undefined,
-        sender: streamFilters.streamSenderFilter.trim() || undefined,
-        limit: 100,
-      })
-      : Promise.resolve([]),
-    [
-      effectiveSpaceId,
-      isAggregateSpace,
-      streamFilters.parsedStreamTaskId,
-      streamFilters.streamEventFilter,
-      streamFilters.streamKindFilter,
-      streamFilters.streamProjectFilter,
-      streamFilters.streamSenderFilter,
-    ],
-  );
-  const { data: agentStream } = useLiveData(fetchAgentStream, { interval: 5000 });
-
   const fetchDocs = useCallback(
     () => effectiveSpaceId
       ? listDocuments(isAllSpaces ? undefined : effectiveSpaceId)
@@ -186,33 +159,6 @@ export default function App() {
     () => documents ? [...documents].sort((a, b) => b.updated_at.localeCompare(a.updated_at)) : [],
     [documents],
   );
-  const filteredAgentStream = useMemo(() => {
-    const recipientFilter = streamFilters.streamRecipientFilter.trim().toLowerCase();
-    return (agentStream ?? []).filter(entry => {
-      if (!streamFilters.showRawSubagentWorkEvents && !streamFilters.streamEventFilter && agentStreamEntryVisibility(entry) === 'debug') {
-        return false;
-      }
-      if (!recipientFilter) {
-        return true;
-      }
-      const recipients = [
-        entry.recipient_agent,
-        entry.recipient_role,
-        entry.recipient_instance_id,
-      ]
-        .filter((value): value is string => Boolean(value))
-        .map(value => value.toLowerCase());
-      return recipients.some(value => value.includes(recipientFilter));
-    });
-  }, [agentStream, streamFilters.showRawSubagentWorkEvents, streamFilters.streamEventFilter, streamFilters.streamRecipientFilter]);
-  const streamEventOptions = useMemo(() => {
-    const options = new Set((agentStream ?? []).map(entry => entry.event_type));
-    if (streamFilters.streamEventFilter) {
-      options.add(streamFilters.streamEventFilter);
-    }
-    return Array.from(options).sort((left, right) => left.localeCompare(right));
-  }, [agentStream, streamFilters.streamEventFilter]);
-
   const displayedTasks = useMemo(() => {
     const currentTasks = tasks ?? [];
     return currentTasks.filter(task => taskMatchesStatusFilter(task, workspace.statusFilter));
@@ -266,7 +212,6 @@ export default function App() {
     filterLabel,
     sortLabel,
     docCount: sortedDocs.length,
-    streamCount: filteredAgentStream.length,
   });
   const selectedTaskId = selection.value?.kind === 'task' ? selection.value.taskId : null;
 
@@ -335,14 +280,11 @@ export default function App() {
           taskSpaceNames={taskSpaceNames}
           displayedTasks={displayedTasks}
           sortedDocs={sortedDocs}
-          filteredAgentStream={filteredAgentStream}
-          streamEventOptions={streamEventOptions}
           dependencyWaitingTaskCount={dependencyWaitingTaskCount}
           manualBlockedTaskCount={manualBlockedTaskCount}
           selectedTaskId={selectedTaskId}
           closePanelKey={prefs.keyboard.closePanel}
           workspace={workspace}
-          filters={streamFilters}
           nav={nav}
         />
       </div>

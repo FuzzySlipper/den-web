@@ -8,7 +8,6 @@ export const WORKSPACE_VIEW_LABELS: Record<WorkspaceViewMode, string> = {
   documents: 'Docs',
   git: 'Git',
   librarian: 'Librarian',
-  'agent-stream': 'Agent Stream',
   sessions: 'Sessions',
   agents: 'Agents',
   dm: 'DM',
@@ -22,7 +21,6 @@ export const WORKSPACE_VIEW_TITLES: Record<WorkspaceViewMode, string> = {
   documents: 'Documents',
   git: 'Git',
   librarian: 'Librarian',
-  'agent-stream': 'Agent Stream',
   sessions: 'Sessions',
   agents: 'Agents',
   dm: 'Direct Messages',
@@ -38,7 +36,6 @@ export interface MainPanelCounts {
   filterLabel: string;
   sortLabel: string;
   docCount: number;
-  streamCount: number;
 }
 
 /** Count badge shown next to the main panel title, or null when the view has no count. */
@@ -48,8 +45,6 @@ export function mainPanelCountLabel(viewMode: WorkspaceViewMode, counts: MainPan
       return `(${counts.taskCount}${counts.filterLabel}${counts.sortLabel})`;
     case 'documents':
       return `(${counts.docCount})`;
-    case 'agent-stream':
-      return `(${counts.streamCount})`;
     default:
       return null;
   }

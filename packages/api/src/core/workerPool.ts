@@ -1,5 +1,4 @@
 import type { StaleWorkerSweepResponse } from './types';
-import { buildQuery, get } from './http';
 
 // Worker-pool stale diagnostics
 
@@ -14,14 +13,6 @@ export interface ListStaleWorkerConditionsOpts {
 }
 
 export function listStaleWorkerConditions(opts: ListStaleWorkerConditionsOpts = {}): Promise<StaleWorkerSweepResponse> {
-  const q = buildQuery({
-    projectId: opts.projectId,
-    taskId: opts.taskId,
-    ackThresholdMinutes: opts.ackThresholdMinutes,
-    runningThresholdMinutes: opts.runningThresholdMinutes,
-    reviewerThresholdMinutes: opts.reviewerThresholdMinutes,
-    orchestratorThresholdMinutes: opts.orchestratorThresholdMinutes,
-    limit: opts.limit,
-  });
-  return get(`/api/worker-pool/stale${q}`);
+  void opts;
+  return Promise.reject(new Error('Legacy worker-pool stale diagnostics are disabled after the den-core cutover.'));
 }

@@ -44,7 +44,6 @@ const JUMP_BINDINGS: Array<{ key: keyof KeyboardPreferences; view: WorkspaceView
   { key: 'jumpToGit', view: 'git' },
   { key: 'jumpToSessions', view: 'sessions' },
   { key: 'jumpToLibrarian', view: 'librarian' },
-  { key: 'jumpToAgentStream', view: 'agent-stream' },
 ];
 
 /** Decide which close-panel target (if any) applies given the current overlay state. */

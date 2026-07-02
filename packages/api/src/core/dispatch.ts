@@ -1,5 +1,4 @@
 import type { DispatchEntry } from './types';
-import { buildQuery, get, post } from './http';
 
 // Legacy dispatch helpers.
 // The default dashboard intentionally does not import these; keep them available
@@ -12,22 +11,23 @@ export interface ListDispatchesOpts {
 }
 
 export function listDispatches(opts: ListDispatchesOpts = {}): Promise<DispatchEntry[]> {
-  const q = buildQuery({
-    projectId: opts.projectId,
-    targetAgent: opts.targetAgent,
-    status: opts.status,
-  });
-  return get(`/api/dispatch${q}`);
+  void opts;
+  return Promise.resolve([]);
 }
 
 export function getDispatch(dispatchId: number): Promise<DispatchEntry> {
-  return get(`/api/dispatch/${dispatchId}`);
+  void dispatchId;
+  return Promise.reject(new Error('Legacy dispatch detail is disabled after the den-core cutover.'));
 }
 
 export function approveDispatch(dispatchId: number, decidedBy: string): Promise<DispatchEntry> {
-  return post(`/api/dispatch/${dispatchId}/approve`, { decided_by: decidedBy });
+  void dispatchId;
+  void decidedBy;
+  return Promise.reject(new Error('Legacy dispatch approval is disabled after the den-core cutover.'));
 }
 
 export function rejectDispatch(dispatchId: number, decidedBy: string): Promise<DispatchEntry> {
-  return post(`/api/dispatch/${dispatchId}/reject`, { decided_by: decidedBy });
+  void dispatchId;
+  void decidedBy;
+  return Promise.reject(new Error('Legacy dispatch rejection is disabled after the den-core cutover.'));
 }

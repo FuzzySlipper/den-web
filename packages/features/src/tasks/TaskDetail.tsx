@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AgentWorkspace, GitStatusResponse, Message, SubagentRunSummary, TaskDetail as TaskDetailType } from '@den-web/api/types';
-import { getProjectGitStatus, getTask, getWorkspaceGitStatus, listProjectAgentWorkspaces, listSubagentRuns, updateTask } from '@den-web/api/client';
+import { getProjectGitStatus, getTask, getWorkspaceGitStatus, listProjectAgentWorkspaces, updateTask } from '@den-web/api/client';
 import type { GitFocus } from '../git/git';
 import { sendTaskStartWork, type StartWorkEvidence, type StartWorkPhase } from './startWork';
 import { selectRelevantWorkspace } from './taskDetailFormat';
@@ -19,12 +19,11 @@ interface Props {
 
 export function TaskDetail({ projectId, taskId, onSelectTask, onSelectMessage, onSelectRun, onOpenGit, onClose }: Props) {
   const [detail, setDetail] = useState<TaskDetailType | null>(null);
-  const [runs, setRuns] = useState<SubagentRunSummary[]>([]);
+  const [runs] = useState<SubagentRunSummary[]>([]);
   const [gitStatus, setGitStatus] = useState<GitStatusResponse | null>(null);
   const [gitWorkspace, setGitWorkspace] = useState<AgentWorkspace | null>(null);
   const [gitError, setGitError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [runsError, setRunsError] = useState<string | null>(null);
   const [startWorkPhase, setStartWorkPhase] = useState<StartWorkPhase>('idle');
   const [startWorkEvidence, setStartWorkEvidence] = useState<StartWorkEvidence | null>(null);
   const startWorkInFlight = useRef(false);
@@ -35,29 +34,6 @@ export function TaskDetail({ projectId, taskId, onSelectTask, onSelectMessage, o
       .then(d => { if (!cancelled) setDetail(d); })
       .catch(e => { if (!cancelled) setError(e.message); });
     return () => { cancelled = true; };
-  }, [projectId, taskId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    let timer: number | null = null;
-    const loadRuns = () => {
-      listSubagentRuns({ projectId, taskId, limit: 8 })
-        .then(result => {
-          if (!cancelled) {
-            setRuns(result);
-            setRunsError(null);
-          }
-        })
-        .catch(e => {
-          if (!cancelled) setRunsError(e instanceof Error ? e.message : String(e));
-        });
-    };
-    loadRuns();
-    timer = window.setInterval(loadRuns, 2000);
-    return () => {
-      cancelled = true;
-      if (timer != null) window.clearInterval(timer);
-    };
   }, [projectId, taskId]);
 
   useEffect(() => {
@@ -149,7 +125,7 @@ export function TaskDetail({ projectId, taskId, onSelectTask, onSelectMessage, o
       gitStatus={gitStatus}
       gitWorkspace={gitWorkspace}
       gitError={gitError}
-      runsError={runsError}
+      runsError={null}
       projectId={projectId}
       startWorkPhase={startWorkPhase}
       startWorkEvidence={startWorkEvidence}

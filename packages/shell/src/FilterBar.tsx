@@ -75,12 +75,6 @@ export function FilterBar({
           Librarian
         </button>
         <button
-          className={viewMode === 'agent-stream' ? 'active' : ''}
-          onClick={() => onViewModeChange('agent-stream')}
-        >
-          Agent Stream
-        </button>
-        <button
           className={viewMode === 'sessions' ? 'active' : ''}
           onClick={() => onViewModeChange('sessions')}
         >

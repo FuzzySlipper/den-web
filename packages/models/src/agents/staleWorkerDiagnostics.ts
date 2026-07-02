@@ -48,7 +48,7 @@ export function buildStaleWorkerDiagnosticsModel(
     return {
       kind: 'source_unavailable',
       title: 'Stale-worker projection unavailable',
-      summary: `Could not load Core /api/worker-pool/stale: ${error.message}. The UI cannot prove worker state; use Core or Den MCP readback before assuming all is quiet.`,
+      summary: `Legacy worker-pool diagnostics are unavailable: ${error.message}. Use Den MCP readback before assuming all is quiet.`,
       sweptAt: null,
       staleCount: 0,
       rows: [],

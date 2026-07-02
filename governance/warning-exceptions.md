@@ -36,7 +36,6 @@ same change. The complexity check fails if an entry clears but remains listed.
 | `packages/features/src/preferences/hotkeyParse.ts` | `sonarjs/cognitive-complexity` | parser function complexity 16 | Parser is just over threshold; refactor only with focused parser tests. |
 | `packages/features/src/sessions/FocusedSessionView.tsx` | `max-lines-per-function` | `FocusedSessionView`, 274 lines | Focused session transcript and context panels still coordinate in one feature view. |
 | `packages/features/src/sessions/SessionContextSidebar.tsx` | `max-lines-per-function` | `SessionContextSidebar`, 133 lines | Slightly above threshold; split sidebar sections on next session-context edit. |
-| `packages/features/src/tasks/TaskDetail.tsx` | `max-lines-per-function` | `TaskDetail`, 138 lines | Task detail still groups status, messages, and related panels. |
 | `packages/shell/src/App.tsx` | `max-lines-per-function` | `App`, 274 lines | Shell bootstrap owns top-level data loading, workspace state, and layout composition. |
 | `packages/shell/src/MainPanel.tsx` | `max-lines-per-function`, `sonarjs/cognitive-complexity` | `MainPanel`, 176 lines, complexity 108 | Central route switch remains intentionally explicit; replace with route table before adding views. |
 | `packages/shell/src/keyboardShortcuts.ts` | `sonarjs/cognitive-complexity` | shortcut handler complexity 17 | Shortcut dispatch is just above threshold; convert to command table when adding shortcuts. |

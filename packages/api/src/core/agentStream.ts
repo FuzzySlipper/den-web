@@ -1,5 +1,4 @@
 import type { AgentStreamEntry, AttentionItem, SubagentRunDetail, SubagentRunSummary } from './types';
-import { buildQuery, esc, get, post } from './http';
 
 // Attention
 
@@ -12,24 +11,14 @@ export interface ListAttentionOpts {
 }
 
 export function listAttention(opts: ListAttentionOpts = {}): Promise<AttentionItem[]> {
-  const q = buildQuery({
-    projectId: opts.projectId,
-    taskId: opts.taskId,
-    kind: opts.kind,
-    severity: opts.severity,
-    limit: opts.limit,
-  });
-  return get(`/api/attention${q}`);
+  void opts;
+  return Promise.resolve([]);
 }
 
 export function listProjectAttention(projectId: string, opts: Omit<ListAttentionOpts, 'projectId'> = {}): Promise<AttentionItem[]> {
-  const q = buildQuery({
-    taskId: opts.taskId,
-    kind: opts.kind,
-    severity: opts.severity,
-    limit: opts.limit,
-  });
-  return get(`/api/projects/${esc(projectId)}/attention${q}`);
+  void projectId;
+  void opts;
+  return Promise.resolve([]);
 }
 
 // Agent stream
@@ -50,21 +39,8 @@ export interface ListAgentStreamOpts {
 }
 
 export function listAgentStream(opts: ListAgentStreamOpts = {}): Promise<AgentStreamEntry[]> {
-  const q = buildQuery({
-    projectId: opts.projectId,
-    taskId: opts.taskId,
-    dispatchId: opts.dispatchId,
-    streamKind: opts.streamKind,
-    eventType: opts.eventType,
-    sender: opts.sender,
-    senderInstanceId: opts.senderInstanceId,
-    recipientAgent: opts.recipientAgent,
-    recipientRole: opts.recipientRole,
-    recipientInstanceId: opts.recipientInstanceId,
-    metadataRunId: opts.metadataRunId,
-    limit: opts.limit,
-  });
-  return get(`/api/agent-stream${q}`);
+  void opts;
+  return Promise.resolve([]);
 }
 
 export interface ListSubagentRunsOpts {
@@ -75,21 +51,14 @@ export interface ListSubagentRunsOpts {
 }
 
 export function listSubagentRuns(opts: ListSubagentRunsOpts = {}): Promise<SubagentRunSummary[]> {
-  const q = buildQuery({
-    projectId: opts.projectId,
-    taskId: opts.taskId,
-    state: opts.state,
-    limit: opts.limit,
-  });
-  return get(`/api/subagent-runs${q}`);
+  void opts;
+  return Promise.resolve([]);
 }
 
 export function getSubagentRun(runId: string, opts: Omit<ListSubagentRunsOpts, 'limit'> = {}): Promise<SubagentRunDetail> {
-  const q = buildQuery({
-    projectId: opts.projectId,
-    taskId: opts.taskId,
-  });
-  return get(`/api/subagent-runs/${esc(runId)}${q}`);
+  void runId;
+  void opts;
+  return Promise.reject(new Error('Subagent run detail is disabled after the den-core cutover.'));
 }
 
 export type SubagentRunControlAction = 'abort' | 'rerun';
@@ -101,13 +70,7 @@ export interface ControlSubagentRunOpts extends Omit<ListSubagentRunsOpts, 'stat
 }
 
 export function controlSubagentRun(runId: string, opts: ControlSubagentRunOpts): Promise<AgentStreamEntry> {
-  const q = buildQuery({
-    projectId: opts.projectId,
-    taskId: opts.taskId,
-  });
-  return post(`/api/subagent-runs/${esc(runId)}/control${q}`, {
-    action: opts.action,
-    requested_by: opts.requestedBy ?? 'web-ui',
-    reason: opts.reason,
-  });
+  void runId;
+  void opts;
+  return Promise.reject(new Error('Subagent run control is disabled after the den-core cutover.'));
 }

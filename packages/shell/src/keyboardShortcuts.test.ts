@@ -130,7 +130,7 @@ describe('navigation shortcuts', () => {
   it('jumps directly to views by number key', () => {
     expect(resolveKeyboardAction(fakeKeyEvent({ key: '1' }), KEYBOARD, context())?.action).toEqual({ type: 'jump', view: 'tasks' });
     expect(resolveKeyboardAction(fakeKeyEvent({ key: '5' }), KEYBOARD, context())?.action).toEqual({ type: 'jump', view: 'git' });
-    expect(resolveKeyboardAction(fakeKeyEvent({ key: '8' }), KEYBOARD, context())?.action).toEqual({ type: 'jump', view: 'agent-stream' });
+    expect(resolveKeyboardAction(fakeKeyEvent({ key: '8' }), KEYBOARD, context())).toBeNull();
   });
 
   it('returns null for unbound keys', () => {
