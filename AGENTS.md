@@ -1,60 +1,53 @@
 # Den Web Agent Guide
 
-## Layer Quick Reference
+This frontend is built as layered Angular/Nx infrastructure. Architecture is
+fixed unless the task explicitly says otherwise.
 
-| Layer | Current Phase 1 Path | Target Package | May Import | May Not Import | React |
-| --- | --- | --- | --- | --- | --- |
-| Foundation | `src/shared/`, generic parts of `src/utils.ts` | `packages/shared/` | external utilities only | internal packages | No |
-| Browser foundation | `src/hooks/` | shell hooks or future browser foundation | shared | api/models/features/shell unless deliberately promoted | Yes |
-| Data | `src/api/` | `packages/api/` | shared | models, ui, features, shell | No |
-| Transform | current `*Model.ts` / `*Display.ts` files, target `src/models/` | `packages/models/` | api, shared | ui, features, shell | No |
-| Presentation | target only in Phase 1 | `packages/ui/` | shared | api, models, features, shell | Yes |
-| Composition | `src/features/` | `packages/features/` | api, models, shared, ui, sibling features if acyclic | shell | Yes |
-| Bootstrap | `src/app-shell/`, app wiring | `packages/shell/` | everything | - | Yes |
+## Current Shape
 
-## Where Things Go
+The root workspace is the successor implementation. The old React/Vite app lives
+under `local/` as predecessor evidence only. Do not import or port code from it.
+Carry forward selected behavior, tests, and operational lessons.
 
-- Backend types and HTTP clients -> `api`.
-- Transforming backend data into display shapes -> `models`.
-- Generic utilities such as JSON record parsing and formatters -> `shared`.
-- Domain-blind reusable UI components -> `ui`.
-- Feature views that compose models and UI into product surfaces -> `features`.
-- App routing, layout, global state coordination, and app wiring -> `shell`.
+## Layer Rules
 
-## Feature Dependencies
+```text
+protocol -> transport -> domain -> store -> renderer/components -> feature-* -> shell
+             platform ----^
+```
 
-Features may import sibling features when that reflects real composition. For example, tasks can compose agent, git, and message views; sessions can compose channel chat. The rule is no cycles. If feature A imports feature B, feature B must not import feature A.
+- `libs/protocol`: generated or aliased wire contracts and classified errors.
+- `libs/platform`: browser/host ports and test fakes.
+- `libs/transport`: HTTP/SSE/WebSocket communication and error normalization.
+- `libs/domain`: pure projections, reducers, validation, navigation semantics.
+- `libs/store`: Angular signals stores with `AsyncState<T>`.
+- `libs/renderer`: high-scale rendering surfaces.
+- `libs/components`: domain-blind presentational primitives.
+- `libs/feature-*`: one user-facing workflow per library.
+- `libs/shell`: root routes, providers, and feature composition only.
 
-## File Discipline
+## Hard Rules
 
-- Phase 1 file-size checks are baseline-aware: existing large files warn, new growth fails.
-- Target steady state: warn at 400 lines, fail at 600 lines.
-- Functions fail at 120 lines and warn conceptually at 80 lines.
-- Cognitive complexity limit is 15.
-- If a change pushes a file past the warning threshold, split into a sibling file in the same layer.
+- Use workspace generators or existing layer templates for new libs, features,
+  stores, and live scenarios.
+- Do not duplicate backend protocol types; use protocol exports only.
+- Do not import another library's internals; public entrypoints only.
+- Do not bypass transport for backend communication.
+- Do not bypass platform ports for browser APIs.
+- Do not bypass stores for application state mutation.
+- Do not put domain logic in components.
+- Do not put feature logic in shell.
+- Expose async state as `AsyncState<T>`.
+- Map all transport failures to classified errors.
+- Do not add global CSS except through approved theme files or app reset.
+- Do not use `any`, non-null assertions, unsafe casts, or lint disables.
+- Do not add direct `den-channels`, worker, Hermes, or pi-crew product paths.
 
-## Task Closeout
+## Evidence
 
-- When a completed task changes shipped frontend behavior, config, or deploy scripts, deploy `main` with `npm run deploy:den-srv` after commit/push unless the user asks not to or the change is intentionally local-only.
-- Use the durable `den-srv` deploy path from `docs/den-web-standalone-deploy.md`; it runs checks, builds, restarts `den-web.service`, smokes the live URL, and rolls back on smoke failure.
-- Record the deployed commit and smoke result in the relevant Den task thread so stale deployments are not mistaken for fresh bugs.
+Do not close a user-deliverable UI task on deterministic evidence alone. Run the
+live scenario, inspect the rendered artifacts, and report what the UI did,
+including non-claims. See `docs/live-testing.md`.
 
-## Training-Bias Correction
-
-These patterns are forbidden in this codebase:
-
-1. God-components that combine fetching, state management, event handling, model construction, and rendering.
-2. Putting backend-to-display transforms in feature view files because they are convenient today.
-3. Parallel constructors that hand-copy the same target shape in multiple functions.
-4. Moving all feature composition into `App.tsx` or one shell file to avoid sibling feature imports.
-5. Deep cross-layer relative imports when a package/workspace import exists.
-6. Domain-specific components in `ui`; keep them in features unless they are genuinely domain-blind.
-7. Treating Phase 1 warnings as permanent. The baseline must be cleared by the model extraction and large-file decomposition phases.
-
-Reviewer prompt checklists live under `governance/reviewer-prompts/` for patterns that CI cannot fully mechanize:
-
-- `governance/reviewer-prompts/models-boundary-reviewer.md` for changes under `packages/models/src/**`.
-- `governance/reviewer-prompts/api-boundary-reviewer.md` for changes under `packages/api/src/**`.
-- `governance/reviewer-prompts/channel-render-reviewer.md` for channel render and activity model changes.
-
-When in doubt, write the boring version: one responsibility, in the right layer, with the dependency direction obvious.
+When a task seems to require breaking a boundary, stop and request planner
+review.

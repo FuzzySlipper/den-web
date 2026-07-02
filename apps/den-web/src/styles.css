@@ -1,0 +1,11 @@
+@import '../../../libs/theme/src/tokens.css';
+
+body {
+  margin: 0;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}

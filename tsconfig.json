@@ -1,14 +1,28 @@
 {
+  "extends": "./tsconfig.base.json",
   "files": [],
   "references": [
-    { "path": "./packages/shared" },
-    { "path": "./packages/api" },
-    { "path": "./packages/models" },
-    { "path": "./packages/ui" },
-    { "path": "./packages/features" },
-    { "path": "./packages/shell" },
-    { "path": "./apps/web" },
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
+    { "path": "apps/den-web/tsconfig.app.json" },
+    { "path": "apps/den-web-e2e/tsconfig.json" },
+    { "path": "libs/components/tsconfig.lib.json" },
+    { "path": "libs/domain/tsconfig.lib.json" },
+    { "path": "libs/platform/tsconfig.lib.json" },
+    { "path": "libs/protocol/tsconfig.lib.json" },
+    { "path": "libs/renderer/tsconfig.lib.json" },
+    { "path": "libs/shell/tsconfig.lib.json" },
+    { "path": "libs/store/tsconfig.lib.json" },
+    { "path": "libs/testing-fixtures/tsconfig.lib.json" },
+    { "path": "libs/theme/tsconfig.lib.json" },
+    { "path": "libs/transport/tsconfig.lib.json" },
+    { "path": "libs/feature-agents/tsconfig.lib.json" },
+    { "path": "libs/feature-conversation/tsconfig.lib.json" },
+    { "path": "libs/feature-documents/tsconfig.lib.json" },
+    { "path": "libs/feature-librarian/tsconfig.lib.json" },
+    { "path": "libs/feature-messages/tsconfig.lib.json" },
+    { "path": "libs/feature-notifications/tsconfig.lib.json" },
+    { "path": "libs/feature-preferences/tsconfig.lib.json" },
+    { "path": "libs/feature-projects/tsconfig.lib.json" },
+    { "path": "libs/feature-tasks/tsconfig.lib.json" }
   ]
 }
+

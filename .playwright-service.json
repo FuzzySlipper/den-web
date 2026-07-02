@@ -1,0 +1,11 @@
+{
+  "project": "den-web",
+  "serveCommand": "npm run dev -- --port {port}",
+  "healthUrl": "http://127.0.0.1:{port}/",
+  "identityText": "Den Web Successor",
+  "playwrightConfig": "apps/den-web-e2e/playwright.config.mts",
+  "artifactPolicy": {
+    "root": "test-results/live",
+    "retain": "latest"
+  }
+}

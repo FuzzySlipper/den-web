@@ -1,0 +1,83 @@
+{
+  "name": "den-web",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "den",
+  "sourceRoot": "apps/den-web/src",
+  "tags": ["type:app", "scope:shell"],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/den-web",
+        "browser": "apps/den-web/src/main.ts",
+        "index": "apps/den-web/src/index.html",
+        "tsConfig": "apps/den-web/tsconfig.app.json",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/den-web/public"
+          }
+        ],
+        "styles": ["apps/den-web/src/styles.css"]
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "6kb",
+              "maximumError": "10kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@angular/build:dev-server",
+      "defaultConfiguration": "development",
+      "configurations": {
+        "production": {
+          "buildTarget": "den-web:build:production"
+        },
+        "development": {
+          "buildTarget": "den-web:build:development"
+        }
+      }
+    },
+    "serve-static": {
+      "continuous": true,
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "den-web:build",
+        "port": 4200,
+        "staticFilePath": "dist/apps/den-web/browser",
+        "spa": true
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -p apps/den-web/tsconfig.app.json --noEmit"
+      }
+    }
+  }
+}
+

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Den Web">
+  <rect width="64" height="64" rx="12" fill="#10231f"/>
+  <path d="M14 39V16h12c7 0 12 5 12 11.5S33 39 26 39H14Zm8-7h4c3 0 5-2 5-4.5S29 23 26 23h-4v9Z" fill="#f4f0df"/>
+  <path d="M40 48c-8 0-14-5-14-12h8c0 3 2 5 6 5s6-2 6-5h8c0 7-6 12-14 12Z" fill="#77c8a6"/>
+</svg>
+

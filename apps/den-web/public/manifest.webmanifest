@@ -1,0 +1,16 @@
+{
+  "name": "Den Web",
+  "short_name": "Den Web",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f5ed",
+  "theme_color": "#10231f",
+  "icons": [
+    {
+      "src": "den-web-icon.svg",
+      "sizes": "64x64",
+      "type": "image/svg+xml"
+    }
+  ]
+}
+

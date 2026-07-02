@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "outDir": "../../dist/out-tsc/den-web-e2e",
+    "sourceMap": false,
+    "module": "preserve",
+    "strict": true,
+    "types": ["node", "@playwright/test"]
+  },
+  "include": [
+    "playwright.config.mts",
+    "src/**/*.ts",
+    "src/**/*.js",
+    "src/**/*.d.ts"
+  ]
+}

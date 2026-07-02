@@ -1,0 +1,2 @@
+{"extends":"../../tsconfig.base.json","compilerOptions":{"outDir":"../../dist/out-tsc/libs/feature-notifications"},"include":["src/**/*.ts"],"exclude":["src/**/*.spec.ts","src/**/*.test.ts"]}
+

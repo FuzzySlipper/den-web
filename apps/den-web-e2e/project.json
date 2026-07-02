@@ -1,0 +1,20 @@
+{
+  "name": "den-web-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/den-web-e2e/src",
+  "implicitDependencies": ["den-web"],
+  "tags": ["type:testing", "scope:testing-fixtures"],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -p apps/den-web-e2e/tsconfig.json --noEmit"
+      }
+    }
+  }
+}
+

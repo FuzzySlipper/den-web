@@ -1,0 +1,32 @@
+import { defineConfig, devices, type PlaywrightTestConfig } from '@playwright/test';
+import { nxE2EPreset } from '@nx/playwright/preset';
+import { workspaceRoot } from '@nx/devkit';
+
+const localPort = process.env['E2E_PORT'] ?? '4317';
+const localBaseUrl = `http://127.0.0.1:${localPort}`;
+const baseURL = process.env['BASE_URL'] ?? localBaseUrl;
+
+const config: PlaywrightTestConfig = {
+  ...nxE2EPreset(import.meta.dirname, { testDir: './src' }),
+  use: {
+    baseURL,
+    trace: 'on-first-retry',
+  },
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
+};
+
+if (!process.env['BASE_URL']) {
+  config.webServer = {
+    command: `npx nx run den-web:serve --host 127.0.0.1 --port ${localPort}`,
+    url: localBaseUrl,
+    reuseExistingServer: false,
+    cwd: workspaceRoot,
+  };
+}
+
+export default defineConfig(config);

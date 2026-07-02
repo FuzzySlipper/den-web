@@ -1,0 +1,31 @@
+:root {
+  --den-bg: #f4f6f8;
+  --den-panel: #ffffff;
+  --den-surface: #eef2f6;
+  --den-hover: #edf7f4;
+  --den-selected: #dff3ec;
+  --den-input: #fbfcfd;
+  --den-text: #17212b;
+  --den-muted: #5d6975;
+  --den-accent: #168365;
+  --den-danger: #ba2f45;
+  --den-warning: #9a6514;
+  --den-warning-border: #d8a642;
+  --den-border: #d7dee7;
+  --den-border-strong: #aeb9c7;
+}
+
+:root.den-compact {
+  font-size: 14px;
+}
+
+:root.den-high-contrast {
+  --den-bg: #f8fbff;
+  --den-panel: #ffffff;
+  --den-surface: #e8eef7;
+  --den-text: #071421;
+  --den-muted: #354353;
+  --den-border: #8d9bad;
+  --den-border-strong: #506176;
+  --den-selected: #c8f1df;
+}

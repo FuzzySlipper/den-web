@@ -1,0 +1,14 @@
+{
+  "template": "ui-pattern-bootstrap",
+  "templateVersion": "2.0.0",
+  "templateCommit": "den:patch/ui-pattern-bootstrap-template",
+  "patternDoc": "den:patch/rusty-view-ui-architecture-pattern",
+  "copiedAt": "2026-07-02",
+  "localDeviations": [
+    {
+      "adr": "docs/successor-brief.md",
+      "summary": "Den Web keeps the predecessor under local/ as evidence while instantiating the successor in the repository root."
+    }
+  ]
+}
+

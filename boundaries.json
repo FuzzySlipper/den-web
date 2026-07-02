@@ -1,0 +1,30 @@
+{
+  "scopes": [
+    "protocol",
+    "platform",
+    "transport",
+    "domain",
+    "store",
+    "renderer",
+    "components",
+    "feature",
+    "shell",
+    "theme",
+    "testing-fixtures"
+  ],
+  "types": ["app", "lib", "feature", "testing"],
+  "allowedScopes": {
+    "protocol": [],
+    "platform": [],
+    "transport": ["protocol"],
+    "domain": ["protocol"],
+    "store": ["protocol", "platform", "transport", "domain"],
+    "renderer": ["domain", "components", "theme"],
+    "components": ["theme"],
+    "feature": ["protocol", "platform", "domain", "store", "renderer", "components", "theme"],
+    "shell": ["feature", "platform", "store", "theme"],
+    "theme": [],
+    "testing-fixtures": ["protocol", "platform", "transport", "domain", "store", "renderer", "components", "feature", "shell", "theme"]
+  }
+}
+
