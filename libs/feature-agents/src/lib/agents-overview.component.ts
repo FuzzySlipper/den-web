@@ -7,9 +7,9 @@ import { AGENTS_STORE, stateValue } from '@den-web/store';
   standalone: true,
   styles: [`
     .surface { display: grid; gap: 14px; padding: 20px; }
-    h2 { margin: 0; font-size: 20px; }
+    h2 { margin: 0; font-size: var(--den-font-size-xl); }
     .item { background: var(--den-panel); border: 1px solid var(--den-border); border-radius: 8px; padding: 12px; display: grid; gap: 6px; }
-    .muted, .state { color: var(--den-muted); font-size: 13px; }
+    .muted, .state { color: var(--den-muted); font-size: var(--den-font-size-md); }
     .error { color: var(--den-danger); }
   `],
   template: `

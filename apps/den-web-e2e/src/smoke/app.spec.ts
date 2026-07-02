@@ -59,7 +59,9 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
 
   await page.getByRole('button', { name: 'Preferences' }).click();
   await page.getByLabel('Density').selectOption('compact');
+  await page.getByLabel('Dark mode').check();
   await page.getByLabel('High contrast').check();
   await expect(page.locator('html')).toHaveClass(/den-compact/);
+  await expect(page.locator('html')).toHaveClass(/den-dark/);
   await expect(page.locator('html')).toHaveClass(/den-high-contrast/);
 });

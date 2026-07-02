@@ -58,20 +58,20 @@ const filterOptions: readonly FilterOption[] = [
       }
 
       h2 {
-        font-size: 20px;
-        line-height: 1.2;
+        font-size: var(--den-font-size-xl);
+        line-height: var(--den-line-height-tight);
       }
 
       h3 {
-        font-size: 18px;
-        line-height: 1.25;
+        font-size: var(--den-font-size-lg);
+        line-height: var(--den-line-height-snug);
       }
 
       .subtle,
       .meta,
       .state {
         color: var(--den-muted);
-        font-size: 13px;
+        font-size: var(--den-font-size-md);
       }
 
       .toolbar {
@@ -100,7 +100,7 @@ const filterOptions: readonly FilterOption[] = [
         align-items: center;
         color: var(--den-muted);
         display: inline-flex;
-        font-size: 13px;
+        font-size: var(--den-font-size-md);
         gap: 7px;
         white-space: nowrap;
       }
@@ -156,7 +156,7 @@ const filterOptions: readonly FilterOption[] = [
         border-radius: 999px;
         color: var(--den-muted);
         flex: 0 0 auto;
-        font-size: 11px;
+        font-size: var(--den-font-size-xs);
         padding: 2px 7px;
       }
 
@@ -194,7 +194,7 @@ const filterOptions: readonly FilterOption[] = [
       .section-title {
         color: var(--den-muted);
         display: block;
-        font-size: 11px;
+        font-size: var(--den-font-size-xs);
         font-weight: 700;
         margin-bottom: 6px;
         text-transform: uppercase;
@@ -202,7 +202,7 @@ const filterOptions: readonly FilterOption[] = [
 
       .metric strong {
         display: block;
-        font-size: 14px;
+        font-size: var(--den-font-size-base);
       }
 
       .section ul {
@@ -215,7 +215,7 @@ const filterOptions: readonly FilterOption[] = [
 
       .section li {
         color: var(--den-text);
-        font-size: 13px;
+        font-size: var(--den-font-size-md);
       }
 
       .error {

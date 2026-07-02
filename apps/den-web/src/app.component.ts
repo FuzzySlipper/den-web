@@ -49,7 +49,9 @@ const tabs: readonly TabItem[] = [
         min-height: 100vh;
         background: var(--den-bg);
         color: var(--den-text);
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-family: var(--den-font-family);
+        font-size: var(--den-font-size-base);
+        line-height: var(--den-line-height-base);
       }
 
       .app {
@@ -70,8 +72,8 @@ const tabs: readonly TabItem[] = [
       }
 
       h1 {
-        font-size: 18px;
-        line-height: 1.2;
+        font-size: var(--den-font-size-lg);
+        line-height: var(--den-line-height-tight);
         margin: 0;
       }
 
@@ -89,7 +91,7 @@ const tabs: readonly TabItem[] = [
         background: transparent;
         color: var(--den-muted);
         cursor: pointer;
-        font-size: 13px;
+        font-size: var(--den-font-size-md);
         min-height: 32px;
         padding: 6px 9px;
       }

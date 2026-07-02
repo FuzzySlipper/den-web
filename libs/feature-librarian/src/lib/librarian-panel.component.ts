@@ -6,11 +6,11 @@ import { LIBRARIAN_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
   standalone: true,
   styles: [`
     .surface { display: grid; gap: 14px; padding: 20px; }
-    h2 { margin: 0; font-size: 20px; }
+    h2 { margin: 0; font-size: var(--den-font-size-xl); }
     .panel { background: var(--den-panel); border: 1px solid var(--den-border); border-radius: 8px; padding: 12px; display: grid; gap: 10px; }
     input { min-height: 38px; border: 1px solid var(--den-border); border-radius: 6px; padding: 0 10px; font: inherit; }
     button { border: 1px solid var(--den-border); border-radius: 6px; background: var(--den-input); min-height: 36px; padding: 0 10px; justify-self: start; }
-    .muted, .state { color: var(--den-muted); font-size: 13px; }
+    .muted, .state { color: var(--den-muted); font-size: var(--den-font-size-md); }
     .error { color: var(--den-danger); }
   `],
   template: `

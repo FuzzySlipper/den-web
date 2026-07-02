@@ -11,7 +11,9 @@ import { RouterOutlet } from '@angular/router';
         min-height: 100vh;
         background: var(--den-bg);
         color: var(--den-text);
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-family: var(--den-font-family);
+        font-size: var(--den-font-size-base);
+        line-height: var(--den-line-height-base);
       }
 
       .app {
@@ -23,8 +25,8 @@ import { RouterOutlet } from '@angular/router';
       }
 
       h1 {
-        font-size: 18px;
-        line-height: 1.2;
+        font-size: var(--den-font-size-lg);
+        line-height: var(--den-line-height-tight);
         margin: 0;
       }
     `,

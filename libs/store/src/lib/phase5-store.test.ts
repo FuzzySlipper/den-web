@@ -50,11 +50,13 @@ describe('phase 5 stores', () => {
     const store = createPreferencesStore(storage, effects);
 
     store.setDensity('compact');
+    store.setTheme('dark');
     store.setHighContrast(true);
 
-    expect(store.preferences()).toEqual({ density: 'compact', highContrast: true });
+    expect(store.preferences()).toEqual({ density: 'compact', theme: 'dark', highContrast: true });
     expect(storage.getItem('den-web.preferences.v2')).toContain('compact');
     expect(classes.has('den-compact')).toBe(true);
+    expect(classes.has('den-dark')).toBe(true);
     expect(classes.has('den-high-contrast')).toBe(true);
     expect(title).toBe('Den Web');
   });

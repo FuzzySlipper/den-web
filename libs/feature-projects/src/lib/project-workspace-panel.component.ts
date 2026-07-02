@@ -26,14 +26,14 @@ import { stateValue, WORKSPACE_STORE } from '@den-web/store';
       }
 
       h2 {
-        font-size: 18px;
-        line-height: 1.2;
+        font-size: var(--den-font-size-lg);
+        line-height: var(--den-line-height-tight);
         margin: 0;
       }
 
       .meta {
         color: var(--den-muted);
-        font-size: 12px;
+        font-size: var(--den-font-size-sm);
         margin-top: 6px;
       }
 
@@ -46,7 +46,7 @@ import { stateValue, WORKSPACE_STORE } from '@den-web/store';
 
       .section-title {
         color: var(--den-muted);
-        font-size: 11px;
+        font-size: var(--den-font-size-xs);
         font-weight: 700;
         letter-spacing: 0;
         margin: 0 0 8px;
@@ -86,7 +86,7 @@ import { stateValue, WORKSPACE_STORE } from '@den-web/store';
       }
 
       strong {
-        font-size: 13px;
+        font-size: var(--den-font-size-md);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -94,12 +94,12 @@ import { stateValue, WORKSPACE_STORE } from '@den-web/store';
 
       span {
         color: var(--den-muted);
-        font-size: 12px;
+        font-size: var(--den-font-size-sm);
       }
 
       .state {
         color: var(--den-muted);
-        font-size: 13px;
+        font-size: var(--den-font-size-md);
         padding: 10px;
       }
 

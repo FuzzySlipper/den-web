@@ -9,7 +9,7 @@ import { CONVERSATION_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store'
     :host { display: block; min-width: 0; }
     .surface { display: grid; gap: 14px; padding: 20px; }
     header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    h2 { font-size: 20px; margin: 0; }
+    h2 { font-size: var(--den-font-size-xl); margin: 0; }
     .grid { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 14px; }
     .panel { border: 1px solid var(--den-border); border-radius: 8px; background: var(--den-panel); min-width: 0; }
     .panel-inner { display: grid; gap: 10px; padding: 12px; }
@@ -17,7 +17,7 @@ import { CONVERSATION_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store'
     button { border: 1px solid var(--den-border); border-radius: 6px; background: var(--den-input); color: var(--den-text); min-height: 36px; padding: 0 10px; text-align: left; }
     button[aria-pressed='true'] { background: var(--den-selected); border-color: var(--den-accent); }
     textarea { min-height: 76px; resize: vertical; border: 1px solid var(--den-border); border-radius: 6px; padding: 10px; }
-    .muted, .state { color: var(--den-muted); font-size: 13px; }
+    .muted, .state { color: var(--den-muted); font-size: var(--den-font-size-md); }
     .error { color: var(--den-danger); }
     .message, .timeline { border-top: 1px solid var(--den-border); padding-top: 10px; }
     strong { display: block; }
