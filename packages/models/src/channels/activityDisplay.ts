@@ -113,7 +113,7 @@ function taskRefLink(workRef: Record<string, unknown>, event: ChannelActivityEve
   const taskId = firstPositiveInteger(workRef.task_id, event.taskId);
   if (!taskId) return null;
   const projectId = firstString(workRef.project_id, event.projectId);
-  return { label: `task #${taskId}`, href: projectId ? `/den-core-api/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}` : null };
+  return { label: `task #${taskId}`, href: projectId ? `/api/v1/projects/${encodeURIComponent(projectId)}/tasks/${taskId}` : null };
 }
 
 function channelMessageRefLink(workRef: Record<string, unknown>, event: ChannelActivityEvent): ActivityRefLink | null {
@@ -127,7 +127,7 @@ function documentRefLink(workRef: Record<string, unknown>, resultRef: Record<str
   const documentSlug = firstString(resultRef.document_slug);
   if (!documentSlug) return null;
   const projectId = firstString(workRef.project_id, event.projectId);
-  return { label: `doc ${documentSlug}`, href: projectId ? `/den-core-api/api/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(documentSlug)}` : null };
+  return { label: `doc ${documentSlug}`, href: projectId ? `/api/v1/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(documentSlug)}` : null };
 }
 
 function reviewRefLink(workRef: Record<string, unknown>): ActivityRefLink | null {

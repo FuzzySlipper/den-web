@@ -1,5 +1,5 @@
 /**
- * Canonical notification feed item from Core user-notification API (#1789).
+ * Canonical notification feed item from the Messages successor API.
  */
 export interface NotificationFeedItem {
   id: number;

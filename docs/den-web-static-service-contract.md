@@ -12,7 +12,7 @@ Accepted target contract for extracting Den Web from the embedded `den-channels`
 
 It does **not** own backend state:
 
-- Den Core owns spaces/projects/tasks/documents/task messages/review/worker state.
+- den-services Projects/Tasks/Messages/Documents/Review/Librarian owns spaces/projects/tasks/task messages/notifications/documents/review/retrieval state.
 - den-services Conversation/Timeline/Observation owns channel state, message display, memberships, reactions, and activity breadcrumbs for the Den Web client.
 - Den Gateway owns delivery/wake/binding/claim/session routing authority.
 
@@ -46,7 +46,7 @@ The browser app must use explicit configured API bases and must not infer backen
 
 | Backend | Owner | Browser base path | Health/smoke endpoint | Notes |
 | --- | --- | --- | --- | --- |
-| Den Core | `den-core` | `/den-core-api` | `/den-core-api/health`, `/den-core-api/api/projects` | Canonical tasks/docs/messages/workflow REST facade. Current live health returns commit/version metadata. |
+| Projects/Tasks/Messages/Documents/Review/Librarian | `den-services` service owners | `/api/v1` | `/api/v1/projects`, `/api/v1/projects/den-web/tasks?limit=1`, `/api/v1/user-notifications?read_for_agent=web-ui&limit=5` | Canonical project, task, document, notification, review, and retrieval REST surfaces. The static server injects service tokens and routes to owning services. |
 | Conversation | `den-services` Gateway route | `/api/v1/conversation` | `/api/v1/conversation/channels?project_id=den-web&limit=1` | Canonical channel/message/membership/write API. The static server injects conversation caller tokens; browser code must not call Conversation loopback directly. |
 | Observation | `den-services` Gateway route | `/api/v1/observation` | `/api/v1/observation/lane?limit=1` | Canonical display-only agent activity breadcrumbs. The static server injects `DEN_GATEWAY_OBSERVATION_READ_TOKEN` for read routes; browser code must not call Observation loopback directly. |
 | Delivery | `den-services` Gateway route | `/api/v1/delivery` | `/api/v1/delivery/intents` | Canonical executable direct-agent wake intent surface. The static server injects `DEN_GATEWAY_DELIVERY_WRITE_TOKEN` and the migrated route header; browser code must not create wakes through legacy den-channels routes. |
@@ -56,8 +56,9 @@ The browser app must use explicit configured API bases and must not infer backen
 
 Current app code uses explicit Vite build-time variables for backend bases:
 
-- `VITE_DEN_CORE_API_BASE`, fallback `/den-core-api`;
-- `VITE_DEN_CHANNELS_API_BASE`, fallback `/api` for compatibility with older config records only; normal Den Web code uses successor bases.
+- `VITE_TASKS_SUCCESSOR_API_BASE`, fallback `/api/v1`;
+- `VITE_MESSAGES_SUCCESSOR_API_BASE`, fallback `/api/v1`;
+- `VITE_DEN_CORE_API_BASE` and `VITE_DEN_CHANNELS_API_BASE` remain compatibility keys for old config records and diagnostic routes only.
 
 Legacy den-channels `/api/*` routes were retired from the normal product path in task #3161.
 
@@ -69,7 +70,7 @@ Required precedence for the extracted app:
 
 1. Runtime config loaded from `/den-web-config.json` when present.
 2. Vite build-time env values (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, and disabled conversation successor pilot flags) as fallback.
-3. Safe local defaults: `/den-core-api`, `/api`, and conversation successor reads disabled.
+3. Safe local defaults: `/api/v1`, `/api`, and conversation successor reads disabled.
 
 Recommended runtime config keys:
 
@@ -77,6 +78,8 @@ Recommended runtime config keys:
 | --- | --- | --- |
 | `denCoreApiBase` | `/den-core-api` | Core REST facade base path. |
 | `denChannelsApiBase` | `/api` | Compatibility key retained for older config consumers; `/api/*` legacy den-channels routes are not a live browser dependency. |
+| `tasksSuccessorApiBase` | `/api/v1` | Same-origin Den Web proxy base for project/task/document/review/librarian successor routes. |
+| `messagesSuccessorApiBase` | `/api/v1` | Same-origin Den Web proxy base for messages and notifications successor routes. |
 | `docPublishApiBase` | `/api/v1/blog/publications` | Same-origin Den Web proxy base for the den-services document blog publisher. |
 | `conversationSuccessorReadsEnabled` | `true` on den-srv | Feature flag for Conversation successor channel/message reads. Keep aligned with write allowlists so posted messages are visible in the same UI. |
 | `conversationSuccessorWritesEnabled` | `true` on den-srv | Feature flag for conversation successor message/reaction writes. |
@@ -121,9 +124,10 @@ After standalone deployment (#1707), smoke the public URL and API-backed UI path
    - `curl -fsS -I http://192.168.1.10:18080/` returns `200` and `text/html` for the Den Web app.
    - The HTML references the freshly built asset hash/sentinel from the `den-web` build.
    - `/den-web-config.json` returns valid config or intentionally returns 404 only if build-time env is the documented active mode.
-2. Core API reachability through the browser base:
-   - `curl -fsS http://192.168.1.10:18080/den-core-api/health`.
-   - `curl -fsS http://192.168.1.10:18080/den-core-api/api/projects`.
+2. Successor API reachability through the browser base:
+   - `curl -fsS http://192.168.1.10:18080/api/v1/projects`.
+   - `curl -fsS 'http://192.168.1.10:18080/api/v1/projects/den-web/tasks?limit=1'`.
+   - `curl -fsS 'http://192.168.1.10:18080/api/v1/user-notifications?read_for_agent=web-ui&limit=5'`.
 3. Conversation, Observation, and Timeline reachability:
    - `curl -fsS 'http://192.168.1.10:18080/api/v1/conversation/channels?project_id=den-web&limit=1'`.
    - `curl -fsS 'http://192.168.1.10:18080/api/v1/conversation/memberships?project_id=den-web&limit=20'`.
@@ -134,7 +138,7 @@ After standalone deployment (#1707), smoke the public URL and API-backed UI path
 4. Agents overview:
    - Operator overview renders from `/api/v1/observation/lane?limit=1` plus `/api/v1/observation/active-work`; `/api/agents/overview` is no longer a smoke requirement.
 5. Browser behavior smoke:
-   - project/space list loads from Core;
+   - project/space list loads from den-services Projects;
    - document list/detail and discussion panel load without mixing comments into document body;
    - project default channel and Agent Commons selection load from Conversation;
    - agent overview renders with source-health warnings when Gateway data is degraded;

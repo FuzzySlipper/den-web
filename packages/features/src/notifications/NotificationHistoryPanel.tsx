@@ -2,10 +2,10 @@
  * Notification History Panel
  *
  * A separate-window notification history panel for Den Web that renders a
- * scrollable feed of notifications from the canonical Core notification feed.
+ * scrollable feed of notifications from the canonical successor notification feed.
  *
- * Source of truth: Core `GET /api/user-notifications` (#1789).
- * Read state: Server-backed via `POST /api/user-notifications/mark-read`.
+ * Source of truth: Messages successor `GET /api/v1/user-notifications`.
+ * Read state: Server-backed via `POST /api/v1/user-notifications/read`.
  * Local cache: LocalStorage is an optimistic UI cache only, labeled "cache".
  *
  * Window management: The first open requires a user gesture (button click)

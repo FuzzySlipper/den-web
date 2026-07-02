@@ -122,9 +122,9 @@ export function SessionContextSidebar({
           Copy follows the accepted session-owner policy; source channels are metadata, while concrete agent instances or assignment runs own active work.
         </p>
         <div className="focused-session-ref-list">
-          <a href="/den-core-api/api/projects/_global/documents/agent-session-boundary-policy" target="_blank" rel="noreferrer">_global/agent-session-boundary-policy</a>
-          <a href="/den-core-api/api/projects/den-channels/tasks/1873" target="_blank" rel="noreferrer">den-channels #1873 active-work routing</a>
-          <a href="/den-core-api/api/projects/den-hermes-bridge/tasks/1890" target="_blank" rel="noreferrer">den-hermes-bridge #1890 Hermes session behavior</a>
+          <a href="/api/v1/projects/_global/documents/agent-session-boundary-policy" target="_blank" rel="noreferrer">_global/agent-session-boundary-policy</a>
+          <a href="/api/v1/projects/den-channels/tasks/1873" target="_blank" rel="noreferrer">den-channels #1873 active-work routing</a>
+          <a href="/api/v1/projects/den-hermes-bridge/tasks/1890" target="_blank" rel="noreferrer">den-hermes-bridge #1890 Hermes session behavior</a>
         </div>
       </section>
 

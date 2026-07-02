@@ -6,8 +6,8 @@
  * Zero-dependency Node.js static file server + reverse proxy for Den Web.
  *
  * Serves the production build of Den Web (React/Vite SPA) from STATIC_ROOT,
- * proxies /den-core-api/* to Den Core (stripping the prefix), proxies
- * Gateway-owned /api/v1/* successor APIs. Falls back to
+ * proxies /den-core-api/* to Den Core for legacy diagnostics (stripping the
+ * prefix), proxies /api/v1/* successor APIs to owning den-services. Falls back to
  * index.html for unknown paths (SPA routing). Serves /den-web-config.json
  * from a configurable path or from sensible defaults.
  *
@@ -16,12 +16,20 @@
  *   HOST                  - listen host (default: 0.0.0.0)
  *   STATIC_ROOT           - directory with built static assets (default: /data/services/den-web/wwwroot)
  *   DEN_CORE_TARGET       - Den Core backend URL (default: http://127.0.0.1:5299)
+ *   DEN_PROJECTS_TARGET   - Projects successor backend URL (default: http://127.0.0.1:8091)
  *   DEN_TASKS_TARGET      - Tasks successor backend URL (default: http://127.0.0.1:8092)
  *   DEN_MESSAGES_TARGET   - Messages successor backend URL (default: http://127.0.0.1:8093)
+ *   DEN_DOCUMENTS_TARGET  - Documents successor backend URL (default: http://127.0.0.1:8094)
+ *   DEN_REVIEW_TARGET     - Review successor backend URL (default: http://127.0.0.1:8096)
+ *   DEN_LIBRARIAN_TARGET  - Librarian successor backend URL (default: http://127.0.0.1:8098)
  *   DEN_GATEWAY_TARGET    - Den Gateway backend URL for Gateway-owned read APIs (default: http://127.0.0.1:8079)
  *   DEN_GATEWAY_SERVICE_TOKEN - fallback Gateway token used as successor token default (default: empty, no auth)
+ *   DEN_PROJECTS_SERVICE_TOKEN - Projects successor caller token (default: DEN_GATEWAY_SERVICE_TOKEN)
  *   DEN_TASKS_SERVICE_TOKEN - Tasks successor caller token for project task paths and /api/v1/tasks (default: DEN_GATEWAY_SERVICE_TOKEN)
  *   DEN_MESSAGES_SERVICE_TOKEN - Messages successor caller token for project message paths (default: DEN_GATEWAY_SERVICE_TOKEN)
+ *   DEN_DOCUMENTS_SERVICE_TOKEN - Documents successor caller token (default: DEN_GATEWAY_SERVICE_TOKEN)
+ *   DEN_REVIEW_SERVICE_TOKEN - Review successor caller token (default: DEN_GATEWAY_SERVICE_TOKEN)
+ *   DEN_LIBRARIAN_SERVICE_TOKEN - Librarian successor caller token (default: DEN_GATEWAY_SERVICE_TOKEN)
  *   DEN_GATEWAY_DELIVERY_WRITE_TOKEN - Gateway caller token for /api/v1/delivery/* writes/reads (default: DEN_GATEWAY_SERVICE_TOKEN)
  *   DEN_GATEWAY_OBSERVATION_READ_TOKEN - Gateway caller token for /api/v1/observation/* reads (default: empty, no auth)
  *   DEN_GATEWAY_CONVERSATION_READ_TOKEN - Gateway caller token for /api/v1/conversation/* read pilot (default: empty, no auth)
@@ -80,12 +88,20 @@ const PORT             = parseInt(process.env.PORT ?? '18080', 10);
 const HOST             = process.env.HOST ?? '0.0.0.0';
 const STATIC_ROOT      = process.env.STATIC_ROOT ?? '/data/services/den-web/wwwroot';
 const DEN_CORE_TARGET  = process.env.DEN_CORE_TARGET ?? 'http://127.0.0.1:5299';
+const DEN_PROJECTS_TARGET = GATEWAY_ENV.DEN_PROJECTS_TARGET ?? process.env.DEN_PROJECTS_TARGET ?? 'http://127.0.0.1:8091';
 const DEN_TASKS_TARGET = GATEWAY_ENV.DEN_TASKS_TARGET ?? process.env.DEN_TASKS_TARGET ?? 'http://127.0.0.1:8092';
 const DEN_MESSAGES_TARGET = GATEWAY_ENV.DEN_MESSAGES_TARGET ?? process.env.DEN_MESSAGES_TARGET ?? 'http://127.0.0.1:8093';
+const DEN_DOCUMENTS_TARGET = GATEWAY_ENV.DEN_DOCUMENTS_TARGET ?? process.env.DEN_DOCUMENTS_TARGET ?? 'http://127.0.0.1:8094';
+const DEN_REVIEW_TARGET = GATEWAY_ENV.DEN_REVIEW_TARGET ?? process.env.DEN_REVIEW_TARGET ?? 'http://127.0.0.1:8096';
+const DEN_LIBRARIAN_TARGET = GATEWAY_ENV.DEN_LIBRARIAN_TARGET ?? process.env.DEN_LIBRARIAN_TARGET ?? 'http://127.0.0.1:8098';
 const DEN_GATEWAY_TARGET = GATEWAY_ENV.DEN_GATEWAY_TARGET ?? process.env.DEN_GATEWAY_TARGET ?? 'http://127.0.0.1:8079';
 const DEN_GATEWAY_SERVICE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_SERVICE_TOKEN ?? process.env.DEN_GATEWAY_SERVICE_TOKEN ?? '';
+const DEN_PROJECTS_SERVICE_TOKEN = GATEWAY_ENV.DEN_PROJECTS_SERVICE_TOKEN ?? process.env.DEN_PROJECTS_SERVICE_TOKEN ?? DEN_GATEWAY_SERVICE_TOKEN;
 const DEN_TASKS_SERVICE_TOKEN = GATEWAY_ENV.DEN_TASKS_SERVICE_TOKEN ?? process.env.DEN_TASKS_SERVICE_TOKEN ?? DEN_GATEWAY_SERVICE_TOKEN;
 const DEN_MESSAGES_SERVICE_TOKEN = GATEWAY_ENV.DEN_MESSAGES_SERVICE_TOKEN ?? process.env.DEN_MESSAGES_SERVICE_TOKEN ?? DEN_GATEWAY_SERVICE_TOKEN;
+const DEN_DOCUMENTS_SERVICE_TOKEN = GATEWAY_ENV.DEN_DOCUMENTS_SERVICE_TOKEN ?? process.env.DEN_DOCUMENTS_SERVICE_TOKEN ?? DEN_GATEWAY_SERVICE_TOKEN;
+const DEN_REVIEW_SERVICE_TOKEN = GATEWAY_ENV.DEN_REVIEW_SERVICE_TOKEN ?? process.env.DEN_REVIEW_SERVICE_TOKEN ?? DEN_GATEWAY_SERVICE_TOKEN;
+const DEN_LIBRARIAN_SERVICE_TOKEN = GATEWAY_ENV.DEN_LIBRARIAN_SERVICE_TOKEN ?? process.env.DEN_LIBRARIAN_SERVICE_TOKEN ?? DEN_GATEWAY_SERVICE_TOKEN;
 const DEN_GATEWAY_DELIVERY_WRITE_TOKEN = GATEWAY_ENV.DEN_GATEWAY_DELIVERY_WRITE_TOKEN ?? process.env.DEN_GATEWAY_DELIVERY_WRITE_TOKEN ?? DEN_GATEWAY_SERVICE_TOKEN;
 const DEN_GATEWAY_OBSERVATION_READ_TOKEN = GATEWAY_ENV.DEN_GATEWAY_OBSERVATION_READ_TOKEN ?? process.env.DEN_GATEWAY_OBSERVATION_READ_TOKEN ?? '';
 const DEN_GATEWAY_CONVERSATION_READ_TOKEN = GATEWAY_ENV.DEN_GATEWAY_CONVERSATION_READ_TOKEN ?? process.env.DEN_GATEWAY_CONVERSATION_READ_TOKEN ?? '';
@@ -334,6 +350,14 @@ function proxyRequest(targetBase, req, res, pathRewrite) {
   req.pipe(proxyReq);
 }
 
+function proxySuccessor(req, res, requestPath, requestSearch, target, token) {
+  if (token) {
+    req.headers['authorization'] = `Bearer ${token}`;
+  }
+  const stripped = requestPath.replace(/^\/api/, '') || '/';
+  return proxyRequest(target, req, res, () => stripped + requestSearch);
+}
+
 // ── Request handler ────────────────────────────────────────────────────────────
 
 function handleRequest(req, res) {
@@ -415,22 +439,44 @@ function handleRequest(req, res) {
 
   // ── Gateway-owned successor API proxy ──
   if (requestPath.startsWith('/api/')) {
+    if (requestPath === '/api/v1/projects' ||
+        requestPath === '/api/v1/spaces' ||
+        requestPath.startsWith('/api/v1/spaces/') ||
+        /^\/api\/v1\/projects\/[^/]+$/.test(requestPath)) {
+      return proxySuccessor(req, res, requestPath, requestSearch, DEN_PROJECTS_TARGET, DEN_PROJECTS_SERVICE_TOKEN);
+    }
+
+    if (requestPath.startsWith('/api/v1/review/') ||
+        /^\/api\/v1\/projects\/[^/]+\/tasks\/[0-9]+\/review(?:\/|$)/.test(requestPath) ||
+        /^\/api\/v1\/tasks\/[0-9]+\/review(?:\/|$)/.test(requestPath)) {
+      return proxySuccessor(req, res, requestPath, requestSearch, DEN_REVIEW_TARGET, DEN_REVIEW_SERVICE_TOKEN);
+    }
+
     if (requestPath === '/api/v1/tasks' ||
         requestPath.startsWith('/api/v1/tasks/') ||
         /^\/api\/v1\/projects\/[^/]+\/tasks(?:\/|$)/.test(requestPath)) {
-      if (DEN_TASKS_SERVICE_TOKEN) {
-        req.headers['authorization'] = `Bearer ${DEN_TASKS_SERVICE_TOKEN}`;
-      }
-      const stripped = requestPath.replace(/^\/api/, '') || '/';
-      return proxyRequest(DEN_TASKS_TARGET, req, res, () => stripped + requestSearch);
+      return proxySuccessor(req, res, requestPath, requestSearch, DEN_TASKS_TARGET, DEN_TASKS_SERVICE_TOKEN);
     }
 
-    if (/^\/api\/v1\/projects\/[^/]+\/messages(?:\/|$)/.test(requestPath)) {
-      if (DEN_MESSAGES_SERVICE_TOKEN) {
-        req.headers['authorization'] = `Bearer ${DEN_MESSAGES_SERVICE_TOKEN}`;
-      }
-      const stripped = requestPath.replace(/^\/api/, '') || '/';
-      return proxyRequest(DEN_MESSAGES_TARGET, req, res, () => stripped + requestSearch);
+    if (requestPath === '/api/v1/messages/read' ||
+        requestPath === '/api/v1/user-notifications' ||
+        requestPath === '/api/v1/user-notifications/read' ||
+        requestPath.startsWith('/api/v1/messages/') ||
+        requestPath.startsWith('/api/v1/threads/') ||
+        /^\/api\/v1\/projects\/[^/]+\/(?:messages|user-notifications)(?:\/|$)/.test(requestPath)) {
+      return proxySuccessor(req, res, requestPath, requestSearch, DEN_MESSAGES_TARGET, DEN_MESSAGES_SERVICE_TOKEN);
+    }
+
+    if (requestPath === '/api/v1/documents' ||
+        requestPath.startsWith('/api/v1/documents/') ||
+        requestPath.startsWith('/api/v1/discussion-threads') ||
+        /^\/api\/v1\/projects\/[^/]+\/documents(?:\/|$)/.test(requestPath)) {
+      return proxySuccessor(req, res, requestPath, requestSearch, DEN_DOCUMENTS_TARGET, DEN_DOCUMENTS_SERVICE_TOKEN);
+    }
+
+    if (requestPath === '/api/v1/librarian/query' ||
+        /^\/api\/v1\/projects\/[^/]+\/librarian\/query$/.test(requestPath)) {
+      return proxySuccessor(req, res, requestPath, requestSearch, DEN_LIBRARIAN_TARGET, DEN_LIBRARIAN_SERVICE_TOKEN);
     }
 
     // Observation reads are owned by den-services Gateway. Keep the browser base
@@ -534,8 +580,12 @@ function startServer() {
     console.log(`[den-web-static-server] listening on ${HOST}:${PORT}`);
     console.log(`[den-web-static-server] static root: ${STATIC_ROOT}`);
     console.log(`[den-web-static-server] Den Core target: ${DEN_CORE_TARGET}`);
+    console.log(`[den-web-static-server] Den Projects target: ${DEN_PROJECTS_TARGET}`);
     console.log(`[den-web-static-server] Den Tasks target: ${DEN_TASKS_TARGET}`);
     console.log(`[den-web-static-server] Den Messages target: ${DEN_MESSAGES_TARGET}`);
+    console.log(`[den-web-static-server] Den Documents target: ${DEN_DOCUMENTS_TARGET}`);
+    console.log(`[den-web-static-server] Den Review target: ${DEN_REVIEW_TARGET}`);
+    console.log(`[den-web-static-server] Den Librarian target: ${DEN_LIBRARIAN_TARGET}`);
     console.log(`[den-web-static-server] Den Gateway target: ${DEN_GATEWAY_TARGET}`);
     if (configData) {
       console.log(`[den-web-static-server] config: ${CONFIG_PATH}`);

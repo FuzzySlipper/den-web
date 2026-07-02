@@ -1,14 +1,13 @@
 import type { ProjectTask, ReviewPacketResult, TaskDetail, TaskSummary } from './types';
-import { coreApiUrl, esc, post } from './http';
+import { esc } from './http';
 import { listSuccessorMessages } from './messagesSuccessor';
 import {
   getSuccessorNextTask,
-  getSuccessorTaskForMerge,
   listSuccessorTasks,
-  mergeTaskDetail,
-  successorDetailToTaskDetail,
+  getSuccessorTask,
   updateSuccessorTask,
 } from './tasksSuccessor';
+import { successorPost } from './successorHttp';
 
 export interface ListTasksOpts {
   status?: string;
@@ -24,14 +23,9 @@ export function listTasks(projectId: string, opts: ListTasksOpts = {}): Promise<
 }
 
 export async function getTask(projectId: string, taskId: number): Promise<TaskDetail> {
-  const successorDetail = await getSuccessorTaskForMerge(projectId, taskId);
+  const detail = await getSuccessorTask(projectId, taskId);
   const successorMessages = await listSuccessorMessages(projectId, { taskId, limit: 10 }).catch(() => []);
-  const coreDetail = await fetchCoreTaskDetail(projectId, taskId).catch(() => null);
-
-  if (coreDetail) {
-    return withRecentMessages(mergeTaskDetail(coreDetail, successorDetail), successorMessages);
-  }
-  return withRecentMessages(successorDetailToTaskDetail(successorDetail), successorMessages);
+  return withRecentMessages(detail, successorMessages);
 }
 
 export function updateTask(
@@ -48,7 +42,7 @@ export function requestReview(
   taskId: number,
   body: Record<string, unknown>,
 ): Promise<ReviewPacketResult> {
-  return post(`/api/projects/${esc(projectId)}/tasks/${taskId}/review/request`, body);
+  return successorPost(`/projects/${esc(projectId)}/tasks/${taskId}/review/request`, body);
 }
 
 export function postReviewFindings(
@@ -56,18 +50,11 @@ export function postReviewFindings(
   taskId: number,
   body: Record<string, unknown>,
 ): Promise<ReviewPacketResult> {
-  return post(`/api/projects/${esc(projectId)}/tasks/${taskId}/review/findings/post`, body);
+  return successorPost(`/projects/${esc(projectId)}/tasks/${taskId}/review/findings/post`, body);
 }
 
 export function getNextTask(projectId: string, assignedTo?: string): Promise<ProjectTask | null> {
   return getSuccessorNextTask(projectId, assignedTo);
-}
-
-async function fetchCoreTaskDetail(projectId: string, taskId: number): Promise<TaskDetail> {
-  const requestUrl = coreApiUrl(`/api/projects/${esc(projectId)}/tasks/${taskId}`);
-  const res = await fetch(requestUrl, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`GET ${requestUrl}: ${res.status}`);
-  return res.json();
 }
 
 function withRecentMessages(detail: TaskDetail, successorMessages: TaskDetail['recent_messages']): TaskDetail {

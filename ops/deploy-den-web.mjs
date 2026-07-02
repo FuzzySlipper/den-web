@@ -152,6 +152,8 @@ function buildRuntimeConfig() {
   return {
     denCoreApiBase: runtimeEnv.DEN_CORE_API_BASE ?? '/den-core-api',
     denChannelsApiBase: runtimeEnv.DEN_CHANNELS_API_BASE ?? '/api',
+    tasksSuccessorApiBase: runtimeEnv.TASKS_SUCCESSOR_API_BASE ?? '/api/v1',
+    messagesSuccessorApiBase: runtimeEnv.MESSAGES_SUCCESSOR_API_BASE ?? '/api/v1',
     docPublishApiBase: runtimeEnv.DOC_PUBLISH_API_BASE ?? '/api/v1/blog/publications',
     conversationSuccessorReadsEnabled: (runtimeEnv.CONVERSATION_SUCCESSOR_READS_ENABLED ?? DEFAULT_CONVERSATION_SUCCESSOR_ENABLED) === '1' || (runtimeEnv.CONVERSATION_SUCCESSOR_READS_ENABLED ?? DEFAULT_CONVERSATION_SUCCESSOR_ENABLED) === 'true',
     conversationSuccessorWritesEnabled: (runtimeEnv.CONVERSATION_SUCCESSOR_WRITES_ENABLED ?? DEFAULT_CONVERSATION_SUCCESSOR_ENABLED) === '1' || (runtimeEnv.CONVERSATION_SUCCESSOR_WRITES_ENABLED ?? DEFAULT_CONVERSATION_SUCCESSOR_ENABLED) === 'true',

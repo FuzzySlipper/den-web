@@ -2,7 +2,7 @@
  * Tests for the notification feed adapter and panel utilities.
  *
  * Tests cover:
- *   - Feed adapter: canonical Core feed mapping, deduplication, sorting
+ *   - Feed adapter: canonical successor feed mapping, deduplication, sorting
  *   - Filtering: type, severity, search, project, showRead, agent_work_complete
  *   - Mark read: server-backed mark-read with explicit IDs and scoped mark-all
  *   - Window management: open/focus behavior, route detection
@@ -44,7 +44,7 @@ import {
 // Helpers / mock data
 // ---------------------------------------------------------------------------
 
-/** Build a mock NotificationFeedItem from Core API shape. */
+/** Build a mock NotificationFeedItem from successor API shape. */
 function mockFeedItem(overrides: Partial<{
   id: number;
   project_id: string;
@@ -131,8 +131,8 @@ describe('notificationFeed adapter', () => {
     vi.unstubAllGlobals();
   });
 
-  describe('fetchNotificationFeed — canonical Core feed', () => {
-    it('fetches from /api/user-notifications and maps items', async () => {
+  describe('fetchNotificationFeed — canonical successor feed', () => {
+    it('fetches from /api/v1/user-notifications and maps items', async () => {
       const mockItems = [
         mockAgentWorkComplete(),
         mockFeedItem({ id: 2, content: 'Simple notification', metadata: { type: 'other' } }),
@@ -148,8 +148,8 @@ describe('notificationFeed adapter', () => {
       expect(result.error).toBeNull();
 
       const firstFetchUrl = String((globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0]);
-      expect(firstFetchUrl).toContain('/api/user-notifications?');
-      expect(firstFetchUrl).toContain('readFor=web-ui');
+      expect(firstFetchUrl).toContain('/api/v1/user-notifications?');
+      expect(firstFetchUrl).toContain('read_for_agent=web-ui');
       expect(firstFetchUrl).toContain('limit=50');
       expect(firstFetchUrl).not.toContain('projectId=');
       // First item should be agent_work_complete
@@ -416,8 +416,8 @@ describe('notificationFeed adapter', () => {
       expect(call).toBeDefined();
       const body = JSON.parse((call![1] as RequestInit).body as string);
       expect(body.mark_all).toBe(true);
-      expect(body.scope.project_id).toBe('den-core');
-      expect(body.scope.task_id).toBe(123);
+      expect(body.scope_project_id).toBe('den-core');
+      expect(body.scope_task_id).toBe(123);
     });
 
     it('clears local cache without affecting server', () => {
@@ -676,14 +676,14 @@ describe('notificationHistoryPanel source invariants', () => {
     expect(panelSource).toContain('feed?.error');
   });
 
-  it('uses canonical Core feed, not heuristic aggregator', () => {
+  it('uses canonical successor feed, not heuristic aggregator', () => {
     // Feed adapter should NOT contain the old "Backend gap" text
     expect(feedSource).not.toContain('Backend gap');
-    // Feed adapter should call the Core API
+    // Feed adapter should call the successor API
     expect(feedSource).toContain('getUserNotifications');
     expect(feedSource).toContain('markNotificationsRead');
     // Feed adapter should document the canonical feed source
-    expect(feedSource).toContain('Core user-notification feed');
+    expect(feedSource).toContain('den-services user-notification feed');
   });
 
   it('uses server-backed read state, not LocalStorage source of truth', () => {

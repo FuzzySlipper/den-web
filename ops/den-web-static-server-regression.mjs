@@ -79,6 +79,7 @@ async function startStaticServer(targetUrl, t, envOverrides = {}) {
       PORT: String(port),
       STATIC_ROOT: staticRoot,
       DEN_WEB_CONFIG_PATH: path.join(staticRoot, 'den-web-config.json'),
+      GATEWAY_ENV_PATH: path.join(staticRoot, 'missing-gateway.env'),
       DEN_CORE_TARGET: targetUrl,
       ...envOverrides,
     },
@@ -452,6 +453,146 @@ test('Message successor task-thread reads use the Messages service token and byp
   ]);
   assert.deepEqual(gatewayObserved, []);
   assert.deepEqual(coreObserved, []);
+});
+
+test('Core-replacement successor routes proxy to owning services and bypass Gateway/Core', async (t) => {
+  const observed = {
+    projects: [],
+    documents: [],
+    review: [],
+    librarian: [],
+    messages: [],
+    gateway: [],
+    core: [],
+  };
+
+  function serviceServer(key, responseBody = { ok: true }) {
+    return http.createServer((req, res) => {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', () => {
+        observed[key].push({
+          url: req.url,
+          method: req.method,
+          authorization: req.headers.authorization ?? null,
+          body,
+        });
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(responseBody));
+      });
+    });
+  }
+
+  const projects = serviceServer('projects', []);
+  const documents = serviceServer('documents', { document_id: 1, threads: [], comments: [] });
+  const review = serviceServer('review', { message: 'review queued' });
+  const librarian = serviceServer('librarian', { answer: 'bounded', citations: [] });
+  const messages = serviceServer('messages', []);
+  const gateway = serviceServer('gateway', { error: 'unexpected gateway hit' });
+  const core = serviceServer('core', { error: 'unexpected core hit' });
+
+  const [
+    projectsPort,
+    documentsPort,
+    reviewPort,
+    librarianPort,
+    messagesPort,
+    gatewayPort,
+    corePort,
+  ] = await Promise.all([
+    listen(projects),
+    listen(documents),
+    listen(review),
+    listen(librarian),
+    listen(messages),
+    listen(gateway),
+    listen(core),
+  ]);
+  t.after(() => Promise.all([
+    new Promise(resolve => projects.close(resolve)),
+    new Promise(resolve => documents.close(resolve)),
+    new Promise(resolve => review.close(resolve)),
+    new Promise(resolve => librarian.close(resolve)),
+    new Promise(resolve => messages.close(resolve)),
+    new Promise(resolve => gateway.close(resolve)),
+    new Promise(resolve => core.close(resolve)),
+  ]));
+
+  const { baseUrl } = await startStaticServer(`http://127.0.0.1:${corePort}`, t, {
+    DEN_PROJECTS_TARGET: `http://127.0.0.1:${projectsPort}`,
+    DEN_PROJECTS_SERVICE_TOKEN: 'projects-token',
+    DEN_DOCUMENTS_TARGET: `http://127.0.0.1:${documentsPort}`,
+    DEN_DOCUMENTS_SERVICE_TOKEN: 'documents-token',
+    DEN_REVIEW_TARGET: `http://127.0.0.1:${reviewPort}`,
+    DEN_REVIEW_SERVICE_TOKEN: 'review-token',
+    DEN_LIBRARIAN_TARGET: `http://127.0.0.1:${librarianPort}`,
+    DEN_LIBRARIAN_SERVICE_TOKEN: 'librarian-token',
+    DEN_MESSAGES_TARGET: `http://127.0.0.1:${messagesPort}`,
+    DEN_MESSAGES_SERVICE_TOKEN: 'messages-token',
+    DEN_GATEWAY_TARGET: `http://127.0.0.1:${gatewayPort}`,
+  });
+
+  const documentCommentBody = JSON.stringify({ author_identity: 'web-ui', body_markdown: 'ship it' });
+  const reviewBody = JSON.stringify({ agent: 'web-ui' });
+  const librarianBody = JSON.stringify({ query: 'where is guidance?' });
+
+  const requests = [
+    ['projects', request(`${baseUrl}/api/v1/projects?include_hidden=true`)],
+    ['documents', request(`${baseUrl}/api/v1/projects/den-web/documents/contract/discussion/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: documentCommentBody,
+    })],
+    ['review', request(`${baseUrl}/api/v1/projects/den-web/tasks/3980/review/request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: reviewBody,
+    })],
+    ['librarian', request(`${baseUrl}/api/v1/projects/den-web/librarian/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: librarianBody,
+    })],
+    ['notifications', request(`${baseUrl}/api/v1/user-notifications?read_for_agent=web-ui&limit=5`)],
+  ];
+  const responses = await Promise.all(requests.map(async ([label, responsePromise]) => [label, await responsePromise]));
+
+  for (const [label, response] of responses) {
+    assert.equal(response.statusCode, 200, `${label} response: ${response.body}`);
+  }
+
+  assert.deepEqual(observed.projects, [{
+    url: '/v1/projects?include_hidden=true',
+    method: 'GET',
+    authorization: 'Bearer projects-token',
+    body: '',
+  }]);
+  assert.deepEqual(observed.documents, [{
+    url: '/v1/projects/den-web/documents/contract/discussion/comments',
+    method: 'POST',
+    authorization: 'Bearer documents-token',
+    body: documentCommentBody,
+  }]);
+  assert.deepEqual(observed.review, [{
+    url: '/v1/projects/den-web/tasks/3980/review/request',
+    method: 'POST',
+    authorization: 'Bearer review-token',
+    body: reviewBody,
+  }]);
+  assert.deepEqual(observed.librarian, [{
+    url: '/v1/projects/den-web/librarian/query',
+    method: 'POST',
+    authorization: 'Bearer librarian-token',
+    body: librarianBody,
+  }]);
+  assert.deepEqual(observed.messages, [{
+    url: '/v1/user-notifications?read_for_agent=web-ui&limit=5',
+    method: 'GET',
+    authorization: 'Bearer messages-token',
+    body: '',
+  }]);
+  assert.deepEqual(observed.gateway, []);
+  assert.deepEqual(observed.core, []);
 });
 
 test('Timeline reads and streams use the Gateway timeline read token', async (t) => {

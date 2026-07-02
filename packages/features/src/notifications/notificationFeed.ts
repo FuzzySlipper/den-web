@@ -1,18 +1,18 @@
 /**
- * Den Web notification feed adapter — canonical Core feed.
+ * Den Web notification feed adapter — canonical successor feed.
  *
- * Consumes the Core user-notification feed API from den-core #1789.
+ * Consumes the den-services user-notification feed API.
  * The feed is the authoritative source for notification items and read state.
  *
  * ## Read state
  *
- * Server-backed: `is_read` from Core is authoritative. Mark-read calls go to
- * `POST /api/user-notifications/mark-read`. LocalStorage is used only as a
+ * Server-backed: `is_read` from the Messages service is authoritative. Mark-read calls go to
+ * `POST /api/v1/user-notifications/read`. LocalStorage is used only as a
  * labeled UI cache for optimistic updates — it is NOT the source of truth.
  *
  * ## Feed source
  *
- * All items come from `GET /api/user-notifications` which returns
+ * All items come from `GET /api/v1/user-notifications` which returns
  * `NotificationFeedItem[]`. The old heuristic aggregator over multiple
  * backend surfaces has been replaced.
  */
@@ -26,13 +26,13 @@ import { getUserNotifications, markNotificationsRead } from '@den-web/api/client
 
 export type NotificationSourceKind =
   | 'agent_work_complete'   // Agent/orchestrator work-drain complete notification
-  | 'user_directed_message' // Direct operator/user-directed message surfaced through Core notifications
-  | 'user_notification';    // General user notification from Core
+  | 'user_directed_message' // Direct operator/user-directed message surfaced through notifications
+  | 'user_notification';    // General user notification
 
 export type NotificationSeverity = 'info' | 'success' | 'warning' | 'error';
 
 export interface NotificationItem {
-  /** Stable id derived from Core notification id. */
+  /** Stable id derived from backend notification id. */
   id: string;
   /** Source classification. */
   type: NotificationSourceKind;
@@ -139,7 +139,7 @@ function buildCoreItemId(coreId: number): string {
 }
 
 /**
- * Extract a stable integer Core notification ID from the composite string id.
+ * Extract a stable integer notification ID from the composite string id.
  * Returns null if the format is unexpected.
  */
 export function parseCoreNotificationId(compositeId: string): number | null {
@@ -199,7 +199,7 @@ function mapFeedItem(item: NotificationFeedItem): NotificationItem {
 // ---------------------------------------------------------------------------
 
 /**
- * Fetch the notification feed from the canonical Core API.
+ * Fetch the notification feed from the canonical successor API.
  *
  * @param projectIds Project/space IDs are intentionally ignored. Kept for
  *   backward-compatible call sites while the panel remains a global feed.

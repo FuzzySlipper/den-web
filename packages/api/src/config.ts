@@ -3,8 +3,8 @@
  *
  * Precedence (highest to lowest):
  * 1. Runtime config fetched from `/den-web-config.json` (deploy-time JSON file)
- * 2. Vite build-time env variables (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, successor pilot flags)
- * 3. Safe local defaults (`/den-core-api`, `/api`, successor flags disabled)
+ * 2. Vite build-time env variables (`VITE_TASKS_SUCCESSOR_API_BASE`, `VITE_MESSAGES_SUCCESSOR_API_BASE`, successor pilot flags)
+ * 3. Safe local defaults (`/api/v1`, `/api`, successor flags disabled)
  *
  * Malformed or inaccessible config triggers a console diagnostic and falls back
  * gracefully — it never silently points at wrong API endpoints.

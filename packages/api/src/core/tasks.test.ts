@@ -42,51 +42,6 @@ function successorMessages() {
   ];
 }
 
-function coreDetailWithMessage() {
-  return {
-    task: {
-      id: 3862,
-      project_id: 'den-services',
-      title: 'Core task',
-      description: null,
-      status: 'planned',
-      priority: 3,
-      assigned_to: null,
-      parent_id: null,
-      tags: null,
-      created_at: '2026-06-29T00:00:00Z',
-      updated_at: '2026-06-29T00:00:00Z',
-    },
-    dependencies: [],
-    subtasks: [],
-    recent_messages: [
-      {
-        id: 17360,
-        project_id: 'den-services',
-        task_id: 3862,
-        thread_id: null,
-        sender: 'core',
-        content: 'core context',
-        intent: 'note',
-        metadata: null,
-        created_at: '2026-06-30T12:00:00Z',
-      },
-    ],
-    review_rounds: [],
-    open_review_findings: [],
-    resolved_review_findings: [],
-    review_workflow: {
-      current_round: null,
-      current_verdict: null,
-      review_round_count: 0,
-      unresolved_finding_count: 0,
-      resolved_finding_count: 0,
-      addressed_finding_count: 0,
-      timeline: [],
-    },
-  };
-}
-
 describe('task successor cutover client', () => {
   it('does not fall back to Core listTasks when the successor read fails', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
@@ -122,7 +77,7 @@ describe('task successor cutover client', () => {
     });
   });
 
-  it('requires successor detail before optionally composing Core context', async () => {
+  it('requires successor detail and does not consult Core when it fails', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({
         ok: false,
@@ -138,7 +93,7 @@ describe('task successor cutover client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('uses successor detail when Core composition does not have the task', async () => {
+  it('uses successor detail without consulting Core composition', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
@@ -147,11 +102,6 @@ describe('task successor cutover client', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(successorMessages()),
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        json: () => Promise.resolve({ error: 'not found' }),
       });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -160,13 +110,12 @@ describe('task successor cutover client', () => {
     expect(detail.task.status).toBe('review');
     expect(detail.recent_messages.map(message => message.id)).toEqual([17369]);
     expect(detail.review_workflow.review_round_count).toBe(0);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v1/projects/den-services/tasks/3862');
     expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/v1/projects/den-services/messages?task_id=3862&limit=10');
-    expect(fetchMock.mock.calls[2]?.[0]).toBe('/den-core-api/api/projects/den-services/tasks/3862');
   });
 
-  it('merges successor task-thread messages with Core-composed task context', async () => {
+  it('ignores any queued Core-shaped response after successor task-thread composition', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
@@ -175,16 +124,13 @@ describe('task successor cutover client', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(successorMessages()),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(coreDetailWithMessage()),
       });
     vi.stubGlobal('fetch', fetchMock);
 
     const detail = await getTask('den-services', 3862);
 
     expect(detail.task.status).toBe('review');
-    expect(detail.recent_messages.map(message => message.id)).toEqual([17369, 17360]);
+    expect(detail.recent_messages.map(message => message.id)).toEqual([17369]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

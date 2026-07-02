@@ -21,7 +21,7 @@
  *   EXPECTED_TIMELINE_SUCCESSOR_ENABLED - Expected timeline pilot flag (default: true)
  *   EXPECTED_TIMELINE_SUCCESSOR_API_BASE - Expected timeline API base (default: /api/v1/timeline)
  *   REQUIRE_AGENT_WORK_COMPLETE_NOTIFICATION - If set to 1, require at least one
- *                         agent_work_complete row in the Core notification feed
+ *                         agent_work_complete row in the notification feed
  */
 
 import * as http from 'node:http';
@@ -178,10 +178,22 @@ async function checkConfig() {
   assertJson('den-web-config.json is valid JSON', result);
 
   const config = JSON.parse(result.body);
-  if (config.denCoreApiBase === '/den-core-api') {
-    pass('config.denCoreApiBase == "/den-core-api"');
+  if (typeof config.denCoreApiBase === 'string') {
+    pass(`config.denCoreApiBase is present: "${config.denCoreApiBase}"`);
   } else {
-    fail('config.denCoreApiBase', `expected "/den-core-api", got "${config.denCoreApiBase}"`);
+    fail('config.denCoreApiBase', `expected string, got ${JSON.stringify(config.denCoreApiBase)}`);
+  }
+
+  if (config.tasksSuccessorApiBase === '/api/v1') {
+    pass('config.tasksSuccessorApiBase == "/api/v1"');
+  } else {
+    fail('config.tasksSuccessorApiBase', `expected "/api/v1", got "${config.tasksSuccessorApiBase}"`);
+  }
+
+  if (config.messagesSuccessorApiBase === '/api/v1') {
+    pass('config.messagesSuccessorApiBase == "/api/v1"');
+  } else {
+    fail('config.messagesSuccessorApiBase', `expected "/api/v1", got "${config.messagesSuccessorApiBase}"`);
   }
 
   if (config.denChannelsApiBase === '/api') {
@@ -261,30 +273,35 @@ async function checkBuildSentinel() {
   }
 }
 
-async function checkCoreApi() {
-  console.log('\n── Den Core API (via /den-core-api/) ──');
+async function checkSuccessorApis() {
+  console.log('\n── Successor APIs (via /api/v1/) ──');
 
-  // Health endpoint
-  const health = await fetchUrl(fullUrl('/den-core-api/health'));
-  assertStatus('GET /den-core-api/health', health);
-  assertJson('/den-core-api/health returns JSON', health);
+  const projects = await fetchUrl(fullUrl('/api/v1/projects'));
+  assertStatus('GET /api/v1/projects', projects);
+  assertJson('/api/v1/projects returns JSON', projects);
 
-  // Projects list
-  const projects = await fetchUrl(fullUrl('/den-core-api/api/projects'));
-  assertStatus('GET /den-core-api/api/projects', projects);
-  assertJson('/den-core-api/api/projects returns JSON', projects);
+  const projectsBody = parseJsonBody('/api/v1/projects shape', projects);
+  if (Array.isArray(projectsBody)) {
+    pass('/api/v1/projects returns an array');
+  } else if (projectsBody !== null) {
+    fail('/api/v1/projects shape', 'expected JSON array');
+  }
+
+  const tasks = await fetchUrl(fullUrl('/api/v1/projects/den-web/tasks?limit=1'));
+  assertStatus('GET /api/v1/projects/den-web/tasks?limit=1', tasks);
+  assertJson('/api/v1/projects/den-web/tasks returns JSON', tasks);
 }
 
 async function checkNotificationFeed() {
-  console.log('\n── Operator notification feed (via /den-core-api/) ──');
+  console.log('\n── Operator notification feed (via /api/v1/) ──');
 
-  const feed = await fetchUrl(fullUrl('/den-core-api/api/user-notifications?readFor=web-ui&limit=5'));
-  assertStatus('GET /den-core-api/api/user-notifications', feed);
-  assertJson('/den-core-api/api/user-notifications returns JSON', feed);
+  const feed = await fetchUrl(fullUrl('/api/v1/user-notifications?read_for_agent=web-ui&limit=5'));
+  assertStatus('GET /api/v1/user-notifications', feed);
+  assertJson('/api/v1/user-notifications returns JSON', feed);
 
-  const feedItems = parseJsonBody('/den-core-api/api/user-notifications shape', feed);
+  const feedItems = parseJsonBody('/api/v1/user-notifications shape', feed);
   if (Array.isArray(feedItems)) {
-    pass('notification feed returns an array of Core notification rows');
+    pass('notification feed returns an array of notification rows');
     if (feedItems.length > 0 && Object.prototype.hasOwnProperty.call(feedItems[0], 'is_read')) {
       pass('notification feed includes server-backed read state');
     } else if (feedItems.length === 0) {
@@ -296,8 +313,8 @@ async function checkNotificationFeed() {
     fail('notification feed shape', 'expected JSON array');
   }
 
-  const agentDone = await fetchUrl(fullUrl('/den-core-api/api/user-notifications?readFor=web-ui&limit=5&metadataType=agent_work_complete'));
-  assertStatus('GET /den-core-api/api/user-notifications?metadataType=agent_work_complete', agentDone);
+  const agentDone = await fetchUrl(fullUrl('/api/v1/user-notifications?read_for_agent=web-ui&limit=5&metadata_type=agent_work_complete'));
+  assertStatus('GET /api/v1/user-notifications?metadata_type=agent_work_complete', agentDone);
   const agentDoneItems = parseJsonBody('agent_work_complete notification feed shape', agentDone);
   if (Array.isArray(agentDoneItems) && agentDoneItems.length > 0) {
     pass('agent_work_complete notification sample is available for rendering');
@@ -360,7 +377,7 @@ async function checkDocumentDiscussion() {
   console.log('\n── Document discussion API ──');
 
   const result = await fetchUrl(fullUrl(
-    '/den-core-api/api/projects/den-web/documents/den-web-static-service-contract/discussion'
+    '/api/v1/projects/den-web/documents/den-web-static-service-contract/discussion'
   ));
 
   // Accept 200 with JSON, or 404/null-style response (returns JSON null or body that parses)
@@ -388,7 +405,7 @@ async function main() {
     await checkRoot();
     await checkConfig();
     await checkBuildSentinel();
-    await checkCoreApi();
+    await checkSuccessorApis();
     await checkNotificationFeed();
     await checkConversationApi();
     await checkObservationApi();

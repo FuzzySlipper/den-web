@@ -11,7 +11,7 @@ services.
 | Component | Host | Route | Description |
 |-----------|------|-------|-------------|
 | Den Web static service | `den-srv:18080` | `/` | SPA frontend, static assets, runtime config |
-| Den Core (backend) | `den-srv:5299` (127.0.0.1) | `/den-core-api/*` | Core REST facade (tasks, docs, messages) |
+| den-services owners | `den-srv:8091-8098` | `/api/v1/*` -> `/v1/*` | Projects, Tasks, Messages, Documents, Review, and Librarian successor APIs |
 | Den Gateway (backend) | `den-srv:8079` | `/api/v1/*` → `/v1/*` | Gateway-owned Conversation, Timeline, Observation, Delivery, and Doc Publish routes |
 | Public operator URL | `http://192.168.1.10:18080/` | — | Entry point for browser users |
 
@@ -97,6 +97,8 @@ Runtime config values are generated from:
 ```bash
 DEN_CORE_API_BASE=/den-core-api
 DEN_CHANNELS_API_BASE=/api
+TASKS_SUCCESSOR_API_BASE=/api/v1
+MESSAGES_SUCCESSOR_API_BASE=/api/v1
 CONVERSATION_SUCCESSOR_READS_ENABLED=true
 CONVERSATION_SUCCESSOR_WRITES_ENABLED=true
 CONVERSATION_SUCCESSOR_API_BASE=/api/v1/conversation
@@ -136,6 +138,12 @@ Example `gateway.env`:
 ```bash
 DEN_GATEWAY_TARGET=http://127.0.0.1:8079
 DEN_GATEWAY_SERVICE_TOKEN=<service-token>
+DEN_PROJECTS_TARGET=http://127.0.0.1:8091
+DEN_TASKS_TARGET=http://127.0.0.1:8092
+DEN_MESSAGES_TARGET=http://127.0.0.1:8093
+DEN_DOCUMENTS_TARGET=http://127.0.0.1:8094
+DEN_REVIEW_TARGET=http://127.0.0.1:8096
+DEN_LIBRARIAN_TARGET=http://127.0.0.1:8098
 DEN_GATEWAY_DELIVERY_WRITE_TOKEN=<delivery-write-token-or-service-token>
 DEN_GATEWAY_DOC_PUBLISH_CALLER_TOKEN=<doc-publish-caller-token>
 DEN_GATEWAY_OBSERVATION_READ_TOKEN=<observation-read-token>
@@ -167,7 +175,7 @@ Create `/etc/systemd/system/den-web.service`:
 [Unit]
 Description=Den Web static site service
 After=network.target
-Wants=den-core.service den-gateway.service
+Wants=den-gateway.service den-projects.service den-tasks.service den-messages.service den-documents.service den-review.service den-librarian.service
 
 [Service]
 Type=simple
@@ -234,7 +242,13 @@ with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 | `PORT` | `18080` | Listen port |
 | `HOST` | `0.0.0.0` | Listen host |
 | `STATIC_ROOT` | `/data/services/den-web/wwwroot` | Static asset directory |
-| `DEN_CORE_TARGET` | `http://127.0.0.1:5299` | Den Core backend URL |
+| `DEN_CORE_TARGET` | `http://127.0.0.1:5299` | Legacy Den Core backend URL for rollback/diagnostic `/den-core-api` proxy |
+| `DEN_PROJECTS_TARGET` | `http://127.0.0.1:8091` | Projects successor backend URL |
+| `DEN_TASKS_TARGET` | `http://127.0.0.1:8092` | Tasks successor backend URL |
+| `DEN_MESSAGES_TARGET` | `http://127.0.0.1:8093` | Messages/notifications successor backend URL |
+| `DEN_DOCUMENTS_TARGET` | `http://127.0.0.1:8094` | Documents/discussions successor backend URL |
+| `DEN_REVIEW_TARGET` | `http://127.0.0.1:8096` | Review successor backend URL |
+| `DEN_LIBRARIAN_TARGET` | `http://127.0.0.1:8098` | Librarian successor backend URL |
 | `DEN_GATEWAY_TARGET` | `http://127.0.0.1:8079` | Den Gateway backend URL for Gateway-owned successor APIs such as Conversation, Timeline, Observation, Delivery, and Doc Publish |
 | `GATEWAY_ENV_PATH` | sibling `gateway.env` next to the server script | Optional service-token/target override file |
 | `DEN_GATEWAY_DELIVERY_WRITE_TOKEN` | `DEN_GATEWAY_SERVICE_TOKEN` | Gateway caller token for `/v1/delivery/*`; injected server-side for `/api/v1/delivery/*` wake intent writes/reads. |
@@ -250,6 +264,8 @@ with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 | `ENVIRONMENT_NAME` | `den-srv` | Environment name for config defaults |
 | `DEN_CORE_API_BASE` | `/den-core-api` | Core API base for config defaults |
 | `DEN_CHANNELS_API_BASE` | `/api` | Channels API base for config defaults |
+| `TASKS_SUCCESSOR_API_BASE` | `/api/v1` | Browser proxy base for tasks and other successor owner APIs |
+| `MESSAGES_SUCCESSOR_API_BASE` | `/api/v1` | Browser proxy base for messages and notifications successor APIs |
 | `CONVERSATION_SUCCESSOR_READS_ENABLED` | `true` | Enables Conversation successor channel/message reads in browser config. On den-srv this should stay aligned with write allowlists so posted messages are visible in the same UI. |
 | `CONVERSATION_SUCCESSOR_WRITES_ENABLED` | `true` | Enables conversation successor message/reaction writes in browser config. |
 | `CONVERSATION_SUCCESSOR_API_BASE` | `/api/v1/conversation` | Same-origin Den Web proxy base for Gateway conversation canary reads. |

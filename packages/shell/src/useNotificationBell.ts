@@ -32,7 +32,7 @@ const INITIAL_BELL: NotificationBellState = {
 };
 
 /**
- * Derives the sidebar notification-bell cue from the polled Core feed.
+ * Derives the sidebar notification-bell cue from the polled notification feed.
  *
  * The bell mirrors an external polled feed, so the effect is the sync point
  * between feed updates and the bell's unread/new/cue state.

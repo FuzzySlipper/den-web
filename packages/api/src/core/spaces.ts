@@ -1,5 +1,6 @@
 import type { Project, Space } from './types';
-import { buildQuery, esc, get } from './http';
+import { buildQuery, esc } from './http';
+import { successorGet } from './successorHttp';
 
 export interface ListSpacesOpts {
   kind?: string;
@@ -10,17 +11,17 @@ export interface ListSpacesOpts {
 export function listSpaces(opts: ListSpacesOpts = {}): Promise<Space[]> {
   const q = buildQuery({
     kind: opts.kind,
-    includeHidden: opts.includeHidden,
-    includeArchived: opts.includeArchived,
+    include_hidden: opts.includeHidden,
+    include_archived: opts.includeArchived,
   });
-  return get(`/api/spaces${q}`);
+  return successorGet(`/spaces${q}`);
 }
 
 export function listProjects(): Promise<Project[]> {
-  return get('/api/projects');
+  return successorGet('/projects');
 }
 
 export function getProject(id: string, agent?: string): Promise<Project> {
   const q = buildQuery({ agent });
-  return get(`/api/projects/${esc(id)}${q}`);
+  return successorGet(`/projects/${esc(id)}${q}`);
 }

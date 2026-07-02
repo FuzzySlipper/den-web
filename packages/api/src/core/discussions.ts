@@ -1,10 +1,11 @@
 import type { DiscussionComment, DocumentDiscussion } from './types';
-import { coreApiUrl, esc, post } from './http';
+import { esc } from './http';
+import { successorApiUrl, successorPost } from './successorHttp';
 
 // Document Discussion (#1680)
 
 export function getDocumentDiscussion(projectId: string, slug: string): Promise<DocumentDiscussion | null> {
-  return fetch(coreApiUrl(`/api/projects/${esc(projectId)}/documents/${esc(slug)}/discussion`), { cache: 'no-store' })
+  return fetch(successorApiUrl(`/projects/${esc(projectId)}/documents/${esc(slug)}/discussion`), { cache: 'no-store' })
     .then(res => {
       if (res.status === 404) return null;
       if (!res.ok) throw new Error(`GET discussion: ${res.status}`);
@@ -37,5 +38,5 @@ export function postDocumentDiscussionComment(
   slug: string,
   request: PostDiscussionCommentRequest,
 ): Promise<DiscussionComment> {
-  return post(`/api/projects/${esc(projectId)}/documents/${esc(slug)}/discussion/comments`, request);
+  return successorPost(`/projects/${esc(projectId)}/documents/${esc(slug)}/discussion/comments`, request);
 }

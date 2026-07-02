@@ -1,8 +1,9 @@
 import type { NotificationFeedItem } from './types';
-import { buildQuery, esc, get, post } from './http';
+import { buildQuery, esc } from './http';
+import { successorGet, successorPost } from './successorHttp';
 
 // ---------------------------------------------------------------------------
-// User Notifications (Core #1789 canonical feed)
+// User Notifications canonical successor feed
 // ---------------------------------------------------------------------------
 
 export interface GetUserNotificationsOpts {
@@ -12,7 +13,7 @@ export interface GetUserNotificationsOpts {
   metadataType?: string;
   urgency?: string;
   isRead?: boolean;
-  /** Operator/agent identity. Required when isRead is specified by Core API contract. */
+  /** Operator/agent identity. Required when isRead is specified by the Messages API contract. */
   readFor?: string;
   limit?: number;
   offset?: number;
@@ -20,17 +21,17 @@ export interface GetUserNotificationsOpts {
 
 export function getUserNotifications(opts: GetUserNotificationsOpts = {}): Promise<NotificationFeedItem[]> {
   const q = buildQuery({
-    projectId: opts.projectId,
-    taskId: opts.taskId,
+    project_id: opts.projectId,
+    task_id: opts.taskId,
     sender: opts.sender,
-    metadataType: opts.metadataType,
+    metadata_type: opts.metadataType,
     urgency: opts.urgency,
-    isRead: opts.isRead,
-    readFor: opts.readFor,
+    is_read: opts.isRead,
+    read_for_agent: opts.readFor,
     limit: opts.limit,
     offset: opts.offset,
   });
-  return get(`/api/user-notifications${q}`);
+  return successorGet(`/user-notifications${q}`);
 }
 
 export function getProjectUserNotifications(
@@ -38,16 +39,16 @@ export function getProjectUserNotifications(
   opts: Omit<GetUserNotificationsOpts, 'projectId'> = {},
 ): Promise<NotificationFeedItem[]> {
   const q = buildQuery({
-    taskId: opts.taskId,
+    task_id: opts.taskId,
     sender: opts.sender,
-    metadataType: opts.metadataType,
+    metadata_type: opts.metadataType,
     urgency: opts.urgency,
-    isRead: opts.isRead,
-    readFor: opts.readFor,
+    is_read: opts.isRead,
+    read_for_agent: opts.readFor,
     limit: opts.limit,
     offset: opts.offset,
   });
-  return get(`/api/projects/${esc(projectId)}/user-notifications${q}`);
+  return successorGet(`/projects/${esc(projectId)}/user-notifications${q}`);
 }
 
 export interface MarkNotificationsReadBody {
@@ -57,6 +58,16 @@ export interface MarkNotificationsReadBody {
   scope?: { project_id: string; task_id?: number };
 }
 
-export function markNotificationsRead(body: MarkNotificationsReadBody): Promise<{ marked: number }> {
-  return post('/api/user-notifications/mark-read', body);
+export async function markNotificationsRead(body: MarkNotificationsReadBody): Promise<{ marked: number }> {
+  const response = await successorPost<{ marked?: unknown }>('/user-notifications/read', {
+    agent: body.agent,
+    notification_ids: body.notification_ids,
+    mark_all: body.mark_all,
+    scope_project_id: body.scope?.project_id,
+    scope_task_id: body.scope?.task_id,
+  });
+  if (typeof response.marked === 'number') {
+    return { marked: response.marked };
+  }
+  return { marked: body.notification_ids?.length ?? 0 };
 }

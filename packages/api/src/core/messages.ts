@@ -1,5 +1,6 @@
 import type { Message, Thread } from './types';
-import { buildQuery, coreApiUrl, esc, get } from './http';
+import { buildQuery, esc } from './http';
+import { successorApiUrl, successorGet } from './successorHttp';
 
 export interface GetMessagesOpts {
   taskId?: number;
@@ -10,7 +11,8 @@ export interface GetMessagesOpts {
 }
 
 export function getMessage(projectId: string, messageId: number): Promise<Message | null> {
-  return fetch(coreApiUrl(`/api/projects/${esc(projectId)}/messages/${messageId}`), { cache: 'no-store' })
+  void projectId;
+  return fetch(successorApiUrl(`/messages/${messageId}`), { cache: 'no-store' })
     .then(res => {
       if (res.status === 404) return null;
       if (!res.ok) throw new Error(`GET message: ${res.status}`);
@@ -20,15 +22,15 @@ export function getMessage(projectId: string, messageId: number): Promise<Messag
 
 export function getMessages(projectId: string, opts: GetMessagesOpts = {}): Promise<Message[]> {
   const q = buildQuery({
-    taskId: opts.taskId,
+    task_id: opts.taskId,
     since: opts.since,
-    unreadFor: opts.unreadFor,
+    unread_for: opts.unreadFor,
     limit: opts.limit,
     intent: opts.intent,
   });
-  return get(`/api/projects/${esc(projectId)}/messages${q}`);
+  return successorGet(`/projects/${esc(projectId)}/messages${q}`);
 }
 
 export function getThread(projectId: string, threadId: number): Promise<Thread> {
-  return get(`/api/projects/${esc(projectId)}/messages/thread/${threadId}`);
+  return successorGet(`/projects/${esc(projectId)}/messages/threads/${threadId}`);
 }
