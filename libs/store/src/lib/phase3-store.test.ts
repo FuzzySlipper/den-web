@@ -130,6 +130,7 @@ describe('successor signal stores', () => {
     const store = createDocumentsStore({
       listDocuments: async () => ok([current, next]),
       getDocument: async (_projectId, slug) => ok(documentDetailFixture({ slug })),
+      updateDocument: async () => ok(undefined),
       getDiscussion: async () => ok(discussionFixture()),
     });
 
@@ -146,6 +147,7 @@ describe('successor signal stores', () => {
     const store = createDocumentsStore({
       listDocuments: async (projectId) => ok([documentSummaryFixture({ project_id: projectId, slug: `${projectId}-doc` })]),
       getDocument: async (projectId, slug) => ok(documentDetailFixture({ project_id: projectId, slug })),
+      updateDocument: async () => ok(undefined),
       getDiscussion: async () => ok(discussionFixture()),
     });
 
@@ -156,6 +158,27 @@ describe('successor signal stores', () => {
     expect(store.selected()).toBeNull();
     expect(store.detail().kind).toBe('idle');
     expect(store.dirty()).toBe(false);
+  });
+
+  it('updates document content with the web UI actor', async () => {
+    const patches: unknown[] = [];
+    const store = createDocumentsStore({
+      listDocuments: async () => ok([documentSummaryFixture()]),
+      getDocument: async (_projectId, slug) => ok(documentDetailFixture({ slug, content_markdown: 'old' })),
+      updateDocument: async (_projectId, _slug, patch) => {
+        patches.push(patch);
+        return ok({ ...documentDetailFixture({ content_markdown: patch.content_markdown }) });
+      },
+      getDiscussion: async () => ok(discussionFixture()),
+    });
+
+    await store.refresh('den-web');
+    await store.select(documentSummaryFixture());
+    await store.updateDocumentContent('den-web', 'successor-brief', '# New body');
+
+    expect(stateValue(store.detail())?.content_markdown).toBe('# New body');
+    expect(stateValue(store.documents())?.[0]?.title).toBe('Successor Brief');
+    expect(patches).toEqual([{ agent: 'web-ui', content_markdown: '# New body' }]);
   });
 
   it('persists optimistic notification read state through the storage port', async () => {

@@ -7,6 +7,7 @@ import type {
   DenDocPublishResponse,
   DenDocumentDetail,
   DenDocumentSummary,
+  DenDocumentUpdateRequest,
   DenLibrarianQueryRequest,
   DenLibrarianQueryResponse,
   DenMessage,
@@ -124,6 +125,13 @@ export class DocumentsTransport {
 
   getDocument(projectId: string, slug: string): Promise<DenResult<DenDocumentDetail>> {
     return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(slug)}`));
+  }
+
+  updateDocument(projectId: string, slug: string, body: DenDocumentUpdateRequest): Promise<DenResult<DenDocumentDetail | DenDocumentSummary | undefined>> {
+    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(slug)}`), {
+      method: 'PATCH',
+      body,
+    });
   }
 
   getDiscussion(projectId: string, slug: string): Promise<DenResult<DenDiscussion>> {

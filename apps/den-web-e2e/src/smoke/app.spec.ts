@@ -48,7 +48,8 @@ test('searches nested task results and preserves parent context in flat mode', a
   await expect(page.getByRole('button', { name: /#4001 Nested fixture task/ })).toBeVisible();
 
   await page.getByLabel('Flat').check();
-  await expect(page.getByRole('button', { name: /#4001 Nested fixture task/ })).toContainText('parent #3993');
+  await expect(page.getByRole('button', { name: /#4001 Nested fixture task/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /#4001 Nested fixture task/ })).not.toContainText('parent #3993');
 });
 
 test('updates task status with the web UI actor', async ({ page }) => {
@@ -99,6 +100,21 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   }).toPass();
   await expect(page.getByLabel('Document content').getByText('Document fixture loaded.')).toBeVisible();
   await expect(page.getByText('Discussion fixture loaded')).toBeVisible();
+
+  let documentPatchBody: unknown = null;
+  page.on('request', (request) => {
+    if (request.method() === 'PATCH' && request.url().includes('/api/v1/projects/den-web/documents/successor-brief')) {
+      documentPatchBody = request.postDataJSON();
+    }
+  });
+  await page.getByLabel('Document content').getByRole('button', { name: 'Edit' }).click();
+  await page.getByLabel('Markdown editor').fill('# Successor Brief\n\nEdited document fixture.');
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect.poll(() => documentPatchBody).toEqual({
+    agent: 'web-ui',
+    content_markdown: '# Successor Brief\n\nEdited document fixture.',
+  });
+  await expect(page.getByLabel('Document content').getByText('Edited document fixture.')).toBeVisible();
 
   await page.getByRole('button', { name: 'Librarian' }).click();
   await page.getByLabel('Librarian query').fill('phase 5');

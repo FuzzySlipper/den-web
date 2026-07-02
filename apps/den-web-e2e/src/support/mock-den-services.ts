@@ -118,7 +118,14 @@ export async function mockDenServices(page: Page): Promise<void> {
   await page.route('**/api/v1/projects/den-web/messages?**', (route) => json(route, messages));
   await page.route('**/api/v1/projects/den-web/messages/threads/1', (route) => json(route, messages));
   await page.route('**/api/v1/projects/den-web/documents', (route) => json(route, documents));
-  await page.route('**/api/v1/projects/den-web/documents/successor-brief', (route) => json(route, documentDetail));
+  await page.route('**/api/v1/projects/den-web/documents/successor-brief', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      const body = route.request().postDataJSON() as { readonly content_markdown?: string };
+      await json(route, { ...documentDetail, content_markdown: body.content_markdown ?? documentDetail.content_markdown });
+      return;
+    }
+    await json(route, documentDetail);
+  });
   await page.route('**/api/v1/projects/den-web/documents/a-very-long-document-slug-used-to-keep-the-list-row-height-stable', (route) => json(route, longDocumentDetail));
   await page.route('**/api/v1/projects/den-web/documents/successor-brief/discussion', (route) => json(route, discussion));
   await page.route('**/api/v1/projects/den-web/documents/a-very-long-document-slug-used-to-keep-the-list-row-height-stable/discussion', (route) => json(route, discussion));

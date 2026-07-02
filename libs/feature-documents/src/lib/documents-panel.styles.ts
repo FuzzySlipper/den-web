@@ -163,6 +163,31 @@ export const documentsPanelStyles = `
     justify-content: space-between;
   }
 
+  .section-actions {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+  }
+
+  .edit-button {
+    appearance: none;
+    background: var(--den-input);
+    border: 1px solid var(--den-border);
+    border-radius: 6px;
+    color: var(--den-text);
+    cursor: pointer;
+    font: inherit;
+    min-height: 30px;
+    padding: 0 10px;
+  }
+
+  .edit-button:hover,
+  .edit-button:focus-visible {
+    background: var(--den-hover);
+    border-color: var(--den-border-strong);
+    outline: none;
+  }
+
   .meta-grid {
     align-items: start;
     display: flex;

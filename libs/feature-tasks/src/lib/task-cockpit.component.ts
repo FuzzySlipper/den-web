@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { MarkdownEditorDialogComponent } from '@den-web/components';
-import { taskAvailabilityLabel, type TaskStatusFilter } from '@den-web/domain';
+import type { TaskStatusFilter } from '@den-web/domain';
 import type { DenMessage, DenTaskDetail, DenTaskSummary } from '@den-web/protocol';
 import { stateValue, TASKS_STORE, WORKSPACE_STORE } from '@den-web/store';
 
@@ -122,10 +122,9 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
         color: var(--den-text);
         cursor: pointer;
         display: grid;
-        gap: 6px;
         margin: 0;
-        min-height: 62px;
-        padding: 10px 12px;
+        min-height: 42px;
+        padding: 7px 10px;
         text-align: left;
         width: 100%;
       }
@@ -150,6 +149,8 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
       }
 
       .row-title strong {
+        font-size: var(--den-font-size-sm);
+        line-height: var(--den-line-height-snug);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -334,15 +335,6 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
                       <span class="row-title">
                         <span class="badge">#{{ row.task.id }}</span>
                         <strong>{{ row.task.title || 'Untitled task' }}</strong>
-                      </span>
-                      <span class="meta">
-                        {{ row.task.status || 'unknown' }}
-                        @if (row.parent) {
-                          · parent #{{ row.parent.id }}
-                        }
-                        @if (isWaiting(row.task)) {
-                          · waiting on dependencies
-                        }
                       </span>
                     </button>
                   }
@@ -565,10 +557,6 @@ export class TaskCockpitComponent {
       this.editError.set(result.ok ? null : this.errorText(result.error));
       if (result.ok) this.descriptionEditorOpen.set(false);
     });
-  }
-
-  protected isWaiting(task: DenTaskSummary): boolean {
-    return taskAvailabilityLabel(task) === 'waiting on dependencies';
   }
 
   protected statusLabel(status: string): string {

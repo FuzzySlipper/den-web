@@ -22,6 +22,7 @@ describe('Den transport clients', () => {
     await clients.tasks.updateTask('den-web', 3991, { status: 'in_progress' });
     await clients.messages.listMessages('den-web', { taskId: 3991, limit: 10 });
     await clients.notifications.listUserNotifications({ readForAgent: 'web-ui', limit: 5 });
+    await clients.documents.updateDocument('den-web', 'successor-brief', { content_markdown: '# Updated' });
     await clients.documents.getDiscussion('den-web', 'successor-brief');
     await clients.librarian.query('den-web', { query: 'successor' });
     await clients.conversation.listChannels('den-web', { limit: 1 });
@@ -42,6 +43,7 @@ describe('Den transport clients', () => {
       '/api/v1/projects/den-web/tasks/3991',
       '/api/v1/projects/den-web/messages?task_id=3991&limit=10',
       '/api/v1/user-notifications?read_for_agent=web-ui&limit=5',
+      '/api/v1/projects/den-web/documents/successor-brief',
       '/api/v1/projects/den-web/documents/successor-brief/discussion',
       '/api/v1/projects/den-web/librarian/query',
       '/api/v1/conversation/channels?project_id=den-web&limit=1',

@@ -82,7 +82,12 @@ export interface DenDocumentSummary {
 export interface DenDocumentDetail extends DenDocumentSummary {
   readonly content?: string;
   readonly content_markdown?: string;
-  readonly tags?: readonly string[];
+  readonly tags?: readonly string[] | null;
+}
+
+export interface DenDocumentUpdateRequest {
+  readonly agent?: string;
+  readonly content_markdown?: string;
 }
 
 export interface DenDiscussion {

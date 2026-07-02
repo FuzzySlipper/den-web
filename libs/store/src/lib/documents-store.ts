@@ -1,11 +1,14 @@
 import { signal, type Signal } from '@angular/core';
 import { documentSelectionAction, type DocumentSelectionAction } from '@den-web/domain';
-import type { DenDiscussion, DenDocumentDetail, DenDocumentSummary, DenResult } from '@den-web/protocol';
+import type { DenDiscussion, DenDocumentDetail, DenDocumentSummary, DenDocumentUpdateRequest, DenResult } from '@den-web/protocol';
 import { errorState, idleState, loadingState, resultState, stateValue, type AsyncState, unknownStoreError } from './async-state';
+
+const documentUpdateAgent = 'web-ui';
 
 export interface DocumentsTransportPort {
   readonly listDocuments: (projectId: string) => Promise<DenResult<readonly DenDocumentSummary[]>>;
   readonly getDocument: (projectId: string, slug: string) => Promise<DenResult<DenDocumentDetail>>;
+  readonly updateDocument: (projectId: string, slug: string, patch: DenDocumentUpdateRequest) => Promise<DenResult<DenDocumentDetail | DenDocumentSummary | undefined>>;
   readonly getDiscussion: (projectId: string, slug: string) => Promise<DenResult<DenDiscussion>>;
 }
 
@@ -18,6 +21,7 @@ export interface DocumentsStore {
   readonly refresh: (projectId: string) => Promise<void>;
   readonly select: (document: DenDocumentSummary) => Promise<DocumentSelectionAction>;
   readonly confirmSelect: (document: DenDocumentSummary) => Promise<void>;
+  readonly updateDocumentContent: (projectId: string, slug: string, contentMarkdown: string) => Promise<DenResult<DenDocumentDetail>>;
   readonly setDirty: (dirty: boolean) => void;
 }
 
@@ -76,6 +80,69 @@ export function createDocumentsStore(transport: DocumentsTransportPort): Documen
       return action;
     },
     confirmSelect: loadSelected,
+    updateDocumentContent: async (projectId, slug, contentMarkdown) => {
+      const previousDetail = stateValue(detail());
+      try {
+        const result = await transport.updateDocument(projectId, slug, {
+          agent: documentUpdateAgent,
+          content_markdown: contentMarkdown,
+        });
+        if (!result.ok) {
+          detail.set(errorState(result.error, previousDetail));
+          return result;
+        }
+        const nextDetail = reconcileDocumentDetail(projectId, slug, result.value, previousDetail, contentMarkdown);
+        detail.set(resultState({ ok: true, value: nextDetail }, previousDetail));
+        documents.set(reconcileDocumentList(documents(), nextDetail));
+        selected.set(toDocumentSummary(nextDetail));
+        dirty.set(false);
+        return { ok: true, value: nextDetail };
+      } catch (error) {
+        const classified = unknownStoreError(error);
+        detail.set(errorState(classified, previousDetail));
+        return { ok: false, error: classified };
+      }
+    },
     setDirty: (nextDirty) => dirty.set(nextDirty),
   };
+}
+
+function reconcileDocumentDetail(
+  projectId: string,
+  slug: string,
+  value: DenDocumentDetail | DenDocumentSummary | undefined,
+  previous: DenDocumentDetail | undefined,
+  contentMarkdown: string,
+): DenDocumentDetail {
+  const base = previous?.project_id === projectId && previous.slug === slug
+    ? previous
+    : { project_id: projectId, slug, title: slug };
+  return {
+    ...base,
+    ...(isDocumentSummary(value) ? value : {}),
+    content_markdown: isDocumentDetail(value) ? value.content_markdown ?? contentMarkdown : contentMarkdown,
+  };
+}
+
+function reconcileDocumentList(state: AsyncState<readonly DenDocumentSummary[]>, detailValue: DenDocumentDetail): AsyncState<readonly DenDocumentSummary[]> {
+  const previous = stateValue(state);
+  if (!previous) return state;
+  return resultState({
+    ok: true,
+    value: previous.map((document) => document.project_id === detailValue.project_id && document.slug === detailValue.slug
+      ? { ...document, ...toDocumentSummary(detailValue) }
+      : document),
+  }, previous);
+}
+
+function toDocumentSummary(document: DenDocumentDetail): DenDocumentSummary {
+  return document;
+}
+
+function isDocumentSummary(value: DenDocumentDetail | DenDocumentSummary | undefined): value is DenDocumentSummary {
+  return typeof value === 'object' && value !== null && 'slug' in value;
+}
+
+function isDocumentDetail(value: DenDocumentDetail | DenDocumentSummary | undefined): value is DenDocumentDetail {
+  return isDocumentSummary(value) && ('content_markdown' in value || 'content' in value);
 }

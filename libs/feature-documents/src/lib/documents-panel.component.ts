@@ -1,5 +1,5 @@
-import { Component, computed, effect, inject } from '@angular/core';
-import { MarkdownViewComponent } from '@den-web/components';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { MarkdownEditorDialogComponent, MarkdownViewComponent } from '@den-web/components';
 import { discussionAuthor, discussionBody, discussionThreads, documentMarkdownBody } from '@den-web/domain';
 import type { DenDocumentSummary } from '@den-web/protocol';
 import { DOCUMENTS_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
@@ -8,7 +8,7 @@ import { documentsPanelStyles } from './documents-panel.styles';
 @Component({
   selector: 'den-documents-panel',
   standalone: true,
-  imports: [MarkdownViewComponent],
+  imports: [MarkdownEditorDialogComponent, MarkdownViewComponent],
   styles: [documentsPanelStyles],
   template: `
     <section class="documents" aria-label="Documents">
@@ -93,8 +93,14 @@ import { documentsPanelStyles } from './documents-panel.styles';
                 <section class="section" aria-label="Document content">
                   <div class="section-head">
                     <h3>Content</h3>
-                    <span class="muted">{{ body().length }} chars</span>
+                    <div class="section-actions">
+                      <span class="muted">{{ body().length }} chars</span>
+                      <button type="button" class="edit-button" (click)="openContentEditor()">Edit</button>
+                    </div>
                   </div>
+                  @if (editError()) {
+                    <p class="state error">{{ editError() }}</p>
+                  }
                   <den-markdown-view [content]="body()" />
                 </section>
 
@@ -135,6 +141,14 @@ import { documentsPanelStyles } from './documents-panel.styles';
           }
         }
       </article>
+
+      <den-markdown-editor-dialog
+        title="Edit Document"
+        [open]="contentEditorOpen()"
+        [value]="contentDraft()"
+        (cancel)="closeContentEditor()"
+        (done)="saveContent($event)"
+      />
     </section>
   `,
 })
@@ -148,6 +162,9 @@ export class DocumentsPanelComponent {
   protected readonly discussion = this.store.discussion;
   protected readonly selected = this.store.selected;
   protected readonly selectedProjectId = this.workspace.selectedProjectId;
+  protected readonly contentEditorOpen = signal(false);
+  protected readonly contentDraft = signal('');
+  protected readonly editError = signal<string | null>(null);
   protected readonly documentItems = computed(() => stateValue(this.documents()) ?? []);
   protected readonly detailValue = computed(() => stateValue(this.detail()) ?? null);
   protected readonly body = computed(() => {
@@ -179,6 +196,27 @@ export class DocumentsPanelComponent {
 
   protected select(document: DenDocumentSummary): void {
     void this.store.select(document);
+  }
+
+  protected openContentEditor(): void {
+    this.contentDraft.set(this.body());
+    this.editError.set(null);
+    this.store.setDirty(true);
+    this.contentEditorOpen.set(true);
+  }
+
+  protected closeContentEditor(): void {
+    this.contentEditorOpen.set(false);
+    this.store.setDirty(false);
+  }
+
+  protected saveContent(contentMarkdown: string): void {
+    const document = this.detailValue();
+    if (!document) return;
+    void this.store.updateDocumentContent(document.project_id, document.slug, contentMarkdown).then((result) => {
+      this.editError.set(result.ok ? null : this.errorText(result.error));
+      if (result.ok) this.contentEditorOpen.set(false);
+    });
   }
 
   protected documentIdentity(document: DenDocumentSummary): string {
