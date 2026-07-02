@@ -7,6 +7,7 @@ import * as url from 'node:url';
 
 const envFile = readEnvFile(process.env.GATEWAY_ENV_PATH ?? path.join(path.dirname(url.fileURLToPath(import.meta.url)), 'gateway.env'));
 const setting = (key, fallback = '') => envFile[key] ?? process.env[key] ?? fallback;
+const publicSetting = (key, fallback = '') => process.env[key] ?? fallback;
 
 const port = Number.parseInt(process.env.PORT ?? '18080', 10);
 const host = process.env.HOST ?? '0.0.0.0';
@@ -74,35 +75,35 @@ function readEnvFile(filePath) {
 }
 
 function boolEnv(name, fallback) {
-  const raw = setting(name, fallback);
+  const raw = publicSetting(name, fallback);
   return raw === '1' || raw.toLowerCase() === 'true';
 }
 
 function listEnv(name, fallback = '') {
-  return setting(name, fallback).split(',').map(item => item.trim()).filter(Boolean);
+  return publicSetting(name, fallback).split(',').map(item => item.trim()).filter(Boolean);
 }
 
 function runtimeConfigDefaults() {
-  const timelineProjects = setting('TIMELINE_SUCCESSOR_PROJECT_IDS', 'den-web');
-  const conversationProjects = setting('CONVERSATION_SUCCESSOR_READ_PROJECT_IDS', timelineProjects);
+  const timelineProjects = publicSetting('TIMELINE_SUCCESSOR_PROJECT_IDS', 'den-web');
+  const conversationProjects = publicSetting('CONVERSATION_SUCCESSOR_READ_PROJECT_IDS', timelineProjects);
   return {
-    denCoreApiBase: setting('DEN_CORE_API_BASE', '/den-core-api'),
-    denChannelsApiBase: setting('DEN_CHANNELS_API_BASE', '/api'),
-    tasksSuccessorApiBase: setting('TASKS_SUCCESSOR_API_BASE', '/api/v1'),
-    messagesSuccessorApiBase: setting('MESSAGES_SUCCESSOR_API_BASE', '/api/v1'),
-    conversationSuccessorApiBase: setting('CONVERSATION_SUCCESSOR_API_BASE', '/api/v1/conversation'),
-    observationSuccessorApiBase: setting('OBSERVATION_SUCCESSOR_API_BASE', '/api/v1/observation'),
-    deliverySuccessorApiBase: setting('DELIVERY_SUCCESSOR_API_BASE', '/api/v1/delivery'),
-    timelineSuccessorApiBase: setting('TIMELINE_SUCCESSOR_API_BASE', '/api/v1/timeline'),
-    docPublishApiBase: setting('DOC_PUBLISH_API_BASE', '/api/v1/blog/publications'),
+    denCoreApiBase: publicSetting('DEN_CORE_API_BASE', '/den-core-api'),
+    denChannelsApiBase: publicSetting('DEN_CHANNELS_API_BASE', '/api'),
+    tasksSuccessorApiBase: publicSetting('TASKS_SUCCESSOR_API_BASE', '/api/v1'),
+    messagesSuccessorApiBase: publicSetting('MESSAGES_SUCCESSOR_API_BASE', '/api/v1'),
+    conversationSuccessorApiBase: publicSetting('CONVERSATION_SUCCESSOR_API_BASE', '/api/v1/conversation'),
+    observationSuccessorApiBase: publicSetting('OBSERVATION_SUCCESSOR_API_BASE', '/api/v1/observation'),
+    deliverySuccessorApiBase: publicSetting('DELIVERY_SUCCESSOR_API_BASE', '/api/v1/delivery'),
+    timelineSuccessorApiBase: publicSetting('TIMELINE_SUCCESSOR_API_BASE', '/api/v1/timeline'),
+    docPublishApiBase: publicSetting('DOC_PUBLISH_API_BASE', '/api/v1/blog/publications'),
     conversationSuccessorReadsEnabled: boolEnv('CONVERSATION_SUCCESSOR_READS_ENABLED', 'true'),
     conversationSuccessorWritesEnabled: boolEnv('CONVERSATION_SUCCESSOR_WRITES_ENABLED', 'true'),
     conversationSuccessorReadProjectIds: listEnv('CONVERSATION_SUCCESSOR_READ_PROJECT_IDS', conversationProjects),
     conversationSuccessorWriteProjectIds: listEnv('CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS', conversationProjects),
     timelineSuccessorEnabled: boolEnv('TIMELINE_SUCCESSOR_ENABLED', 'true'),
     timelineSuccessorProjectIds: listEnv('TIMELINE_SUCCESSOR_PROJECT_IDS', timelineProjects),
-    appBasePath: setting('APP_BASE_PATH', '/'),
-    environmentName: setting('ENVIRONMENT_NAME', 'den-srv'),
+    appBasePath: publicSetting('APP_BASE_PATH', '/'),
+    environmentName: publicSetting('ENVIRONMENT_NAME', 'den-srv'),
   };
 }
 

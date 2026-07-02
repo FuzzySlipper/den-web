@@ -119,35 +119,35 @@ function releaseId(commit) {
 }
 
 function boolValue(name, fallback) {
-  const value = runtimeEnv[name] ?? fallback;
+  const value = env[name] ?? fallback;
   return value === '1' || value === 'true';
 }
 
 function listValue(name, fallback = '') {
-  return (runtimeEnv[name] ?? fallback).split(',').map(item => item.trim()).filter(Boolean);
+  return (env[name] ?? fallback).split(',').map(item => item.trim()).filter(Boolean);
 }
 
 function runtimeConfig() {
-  const timelineProjects = runtimeEnv.TIMELINE_SUCCESSOR_PROJECT_IDS ?? 'den-web';
-  const conversationProjects = runtimeEnv.CONVERSATION_SUCCESSOR_READ_PROJECT_IDS ?? timelineProjects;
+  const timelineProjects = env.TIMELINE_SUCCESSOR_PROJECT_IDS ?? 'den-web';
+  const conversationProjects = env.CONVERSATION_SUCCESSOR_READ_PROJECT_IDS ?? timelineProjects;
   return {
-    denCoreApiBase: runtimeEnv.DEN_CORE_API_BASE ?? '/den-core-api',
-    denChannelsApiBase: runtimeEnv.DEN_CHANNELS_API_BASE ?? '/api',
-    tasksSuccessorApiBase: runtimeEnv.TASKS_SUCCESSOR_API_BASE ?? '/api/v1',
-    messagesSuccessorApiBase: runtimeEnv.MESSAGES_SUCCESSOR_API_BASE ?? '/api/v1',
-    conversationSuccessorApiBase: runtimeEnv.CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation',
-    observationSuccessorApiBase: runtimeEnv.OBSERVATION_SUCCESSOR_API_BASE ?? '/api/v1/observation',
-    deliverySuccessorApiBase: runtimeEnv.DELIVERY_SUCCESSOR_API_BASE ?? '/api/v1/delivery',
-    timelineSuccessorApiBase: runtimeEnv.TIMELINE_SUCCESSOR_API_BASE ?? '/api/v1/timeline',
-    docPublishApiBase: runtimeEnv.DOC_PUBLISH_API_BASE ?? '/api/v1/blog/publications',
+    denCoreApiBase: env.DEN_CORE_API_BASE ?? '/den-core-api',
+    denChannelsApiBase: env.DEN_CHANNELS_API_BASE ?? '/api',
+    tasksSuccessorApiBase: env.TASKS_SUCCESSOR_API_BASE ?? '/api/v1',
+    messagesSuccessorApiBase: env.MESSAGES_SUCCESSOR_API_BASE ?? '/api/v1',
+    conversationSuccessorApiBase: env.CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation',
+    observationSuccessorApiBase: env.OBSERVATION_SUCCESSOR_API_BASE ?? '/api/v1/observation',
+    deliverySuccessorApiBase: env.DELIVERY_SUCCESSOR_API_BASE ?? '/api/v1/delivery',
+    timelineSuccessorApiBase: env.TIMELINE_SUCCESSOR_API_BASE ?? '/api/v1/timeline',
+    docPublishApiBase: env.DOC_PUBLISH_API_BASE ?? '/api/v1/blog/publications',
     conversationSuccessorReadsEnabled: boolValue('CONVERSATION_SUCCESSOR_READS_ENABLED', 'true'),
     conversationSuccessorWritesEnabled: boolValue('CONVERSATION_SUCCESSOR_WRITES_ENABLED', 'true'),
     conversationSuccessorReadProjectIds: listValue('CONVERSATION_SUCCESSOR_READ_PROJECT_IDS', conversationProjects),
     conversationSuccessorWriteProjectIds: listValue('CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS', conversationProjects),
     timelineSuccessorEnabled: boolValue('TIMELINE_SUCCESSOR_ENABLED', 'true'),
     timelineSuccessorProjectIds: listValue('TIMELINE_SUCCESSOR_PROJECT_IDS', timelineProjects),
-    appBasePath: runtimeEnv.APP_BASE_PATH ?? '/',
-    environmentName: runtimeEnv.ENVIRONMENT_NAME ?? 'den-srv',
+    appBasePath: env.APP_BASE_PATH ?? '/',
+    environmentName: env.ENVIRONMENT_NAME ?? 'den-srv',
   };
 }
 
