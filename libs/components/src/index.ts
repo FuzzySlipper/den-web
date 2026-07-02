@@ -4,3 +4,4 @@ export interface EmptyStateCopy {
 }
 
 export * from './lib/markdown-editor-dialog.component';
+export * from './lib/markdown-view.component';

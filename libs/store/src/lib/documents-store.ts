@@ -57,7 +57,13 @@ export function createDocumentsStore(transport: DocumentsTransportPort): Documen
     dirty: dirty.asReadonly(),
     refresh: async (projectId) => {
       const previous = stateValue(documents());
-      documents.set(loadingState(previous));
+      if (selected()?.project_id !== projectId) {
+        selected.set(null);
+        detail.set(idleState());
+        discussion.set(idleState());
+        dirty.set(false);
+      }
+      if (previous === undefined) documents.set(loadingState());
       try {
         documents.set(resultState(await transport.listDocuments(projectId), previous));
       } catch (error) {

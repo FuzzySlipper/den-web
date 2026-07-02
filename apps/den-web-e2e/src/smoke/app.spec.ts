@@ -72,7 +72,8 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await expect(page.getByRole('region', { name: 'Messages' }).getByText('Message fixture loaded', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Documents' }).click();
-  await expect(page.getByLabel('Document Markdown')).toHaveValue(/Document fixture loaded\./);
+  await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Successor Brief' }).first()).toBeVisible();
+  await expect(page.getByLabel('Document content').getByText('Document fixture loaded.')).toBeVisible();
   await expect(page.getByText('Discussion fixture loaded')).toBeVisible();
 
   await page.getByRole('button', { name: 'Librarian' }).click();

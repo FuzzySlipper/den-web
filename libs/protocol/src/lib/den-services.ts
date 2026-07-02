@@ -67,9 +67,15 @@ export interface DenNotification {
 }
 
 export interface DenDocumentSummary {
+  readonly id?: number;
   readonly project_id: string;
   readonly slug: string;
   readonly title: string;
+  readonly doc_type?: string;
+  readonly visibility?: string;
+  readonly tags?: readonly string[] | null;
+  readonly summary?: string | null;
+  readonly created_at?: string;
   readonly updated_at?: string;
 }
 

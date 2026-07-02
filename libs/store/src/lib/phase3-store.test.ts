@@ -128,6 +128,22 @@ describe('successor signal stores', () => {
     expect(store.discussion().kind).toBe('data');
   });
 
+  it('clears selected document detail when refreshing a different project', async () => {
+    const store = createDocumentsStore({
+      listDocuments: async (projectId) => ok([documentSummaryFixture({ project_id: projectId, slug: `${projectId}-doc` })]),
+      getDocument: async (projectId, slug) => ok(documentDetailFixture({ project_id: projectId, slug })),
+      getDiscussion: async () => ok(discussionFixture()),
+    });
+
+    await store.refresh('den-web');
+    await store.select(documentSummaryFixture({ project_id: 'den-web', slug: 'den-web-doc' }));
+    await store.refresh('asha');
+
+    expect(store.selected()).toBeNull();
+    expect(store.detail().kind).toBe('idle');
+    expect(store.dirty()).toBe(false);
+  });
+
   it('persists optimistic notification read state through the storage port', async () => {
     const storage = memoryStorage();
     const store = createNotificationsStore({
