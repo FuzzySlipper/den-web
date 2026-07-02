@@ -9,7 +9,7 @@
     "lint": "nx run-many -t lint",
     "typecheck": "nx run-many -t typecheck",
     "test": "vitest run --passWithNoTests",
-    "test:static-server": "node tools/scripts/static-server-placeholder.mjs",
+    "test:static-server": "node --test tools/scripts/den-web-static-server-regression.mjs",
     "e2e": "nx e2e den-web-e2e",
     "verify": "npm run check:pattern && npm run check:docs && npm run check:connectivity && npm run lint && npm run typecheck && npm test && npm run build && npm run e2e",
     "check:all": "npm run verify",
@@ -17,7 +17,7 @@
     "check:docs": "node tools/scripts/check-docs-commands.mjs",
     "check:connectivity": "vitest run libs/transport/src/lib/connectivity-guard.test.ts",
     "serve:local": "node tools/scripts/serve-local.mjs",
-    "deploy:den-srv": "node tools/scripts/deploy-placeholder.mjs"
+    "deploy:den-srv": "node tools/scripts/deploy-den-srv.mjs"
   },
   "dependencies": {
     "@angular/common": "~21.2.0",

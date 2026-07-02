@@ -73,7 +73,7 @@ What the script does:
 3. Stages `dist/`, runtime config, build sentinel, and the static server into `releases/<timestamp>-<commit>`.
 4. Flips `current`, `previous`, `wwwroot`, and `den-web-static-server.mjs` symlinks.
 5. Restarts `den-web.service`.
-6. Runs `ops/smoke-den-web.mjs` against `DEN_WEB_URL` and the expected commit.
+6. Runs `tools/scripts/smoke-den-web.mjs` against `DEN_WEB_URL` and the expected commit.
 7. If restart or smoke fails, rolls `current` back to the previous release and restarts the service again.
 
 Useful deploy overrides:
@@ -228,11 +228,11 @@ npm run test:static-server
 npm run build
 mkdir -p /data/services/den-web/wwwroot
 cp -r dist/* /data/services/den-web/wwwroot/
-cp ops/den-web-static-server.mjs /data/services/den-web/den-web-static-server.mjs
+cp tools/scripts/den-web-static-server.mjs /data/services/den-web/den-web-static-server.mjs
 sudo systemctl restart den-web.service
 ```
 
-After any manual copy, run `node /data/dev/den-web/ops/smoke-den-web.mjs`
+After any manual copy, run `node /data/dev/den-web/tools/scripts/smoke-den-web.mjs`
 with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 
 ## Environment reference
