@@ -5,7 +5,7 @@ test('boots the successor task cockpit', async ({ page }) => {
   await mockDenServices(page);
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: 'Den Web' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Den Web', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Workspace' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Tasks' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Den Web den-web/ })).toBeVisible();
@@ -42,7 +42,7 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await page.getByRole('button', { name: 'Messages' }).click();
   await expect(page.getByText('Message fixture loaded')).toBeVisible();
   await page.getByRole('button', { name: /Handoff/ }).click();
-  await expect(page.getByRole('region', { name: 'Messages' }).getByText('Message fixture loaded')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Messages' }).getByText('Message fixture loaded', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Documents' }).click();
   await expect(page.getByLabel('Document Markdown')).toHaveValue(/Document fixture loaded\./);
