@@ -115,9 +115,11 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await expect(page.getByRole('status').getByText('https://blog.example.test/successor-brief')).toBeVisible();
   await expect.poll(() => publicationRequests.length).toBe(2);
   expect(publicationRequests[0]).toMatchObject({
-    document_project_id: 'den-web',
-    document_slug: 'successor-brief',
     requested_by: 'den-web',
+    source: {
+      document_project_id: 'den-web',
+      document_slug: 'successor-brief',
+    },
     options: { overwrite: true },
     document: { title: 'Successor Brief', slug: 'successor-brief' },
   });

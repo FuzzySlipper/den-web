@@ -57,8 +57,8 @@ describe('phase 5 stores', () => {
     });
 
     store.setOverwrite(true);
-    await store.preview({ document_project_id: 'den-web', document_slug: 'successor-brief' });
-    await store.publish({ document_project_id: 'den-web', document_slug: 'successor-brief' });
+    await store.preview({ source: { document_project_id: 'den-web', document_slug: 'successor-brief' }, requested_by: 'den-web' });
+    await store.publish({ source: { document_project_id: 'den-web', document_slug: 'successor-brief' }, requested_by: 'den-web' });
 
     expect(store.overwrite()).toBe(true);
     expect(store.previewResult().kind).toBe('data');

@@ -247,8 +247,6 @@ export class DocumentPublishPanelComponent {
     if (!document) return null;
     const updatedAt = normalizeDocumentPublishTimestamp(document.updated_at);
     return {
-      document_project_id: document.project_id,
-      document_slug: document.slug,
       source: {
         project_id: document.project_id,
         document_project_id: document.project_id,

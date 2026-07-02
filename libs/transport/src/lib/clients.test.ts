@@ -32,8 +32,8 @@ describe('Den transport clients', () => {
     await clients.observation.lane({ limit: 1 });
     await clients.observation.activeWork();
     await clients.delivery.createIntent({ kind: 'wake' });
-    await clients.docPublish.preview({ document_project_id: 'den-web', document_slug: 'successor-brief' });
-    await clients.docPublish.publish({ document_project_id: 'den-web', document_slug: 'successor-brief' });
+    await clients.docPublish.preview({ source: { document_project_id: 'den-web', document_slug: 'successor-brief' }, requested_by: 'den-web' });
+    await clients.docPublish.publish({ source: { document_project_id: 'den-web', document_slug: 'successor-brief' }, requested_by: 'den-web' });
 
     expect(calls).toEqual([]);
     expect(mutableCalls).toEqual([

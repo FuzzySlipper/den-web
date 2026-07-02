@@ -170,7 +170,7 @@ export interface DenLibrarianQueryResponse {
 }
 
 export interface DenDocPublishRequest {
-  readonly source?: {
+  readonly source: {
     readonly project_id?: string;
     readonly document_project_id: string;
     readonly document_slug: string;
@@ -186,8 +186,6 @@ export interface DenDocPublishRequest {
     readonly markdown: string;
     readonly updated_at?: string;
   };
-  readonly document_project_id: string;
-  readonly document_slug: string;
 }
 
 export interface DenDocPublishResponse {
