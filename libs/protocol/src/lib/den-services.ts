@@ -170,11 +170,36 @@ export interface DenLibrarianQueryResponse {
 }
 
 export interface DenDocPublishRequest {
+  readonly source?: {
+    readonly project_id?: string;
+    readonly document_project_id: string;
+    readonly document_slug: string;
+  };
+  readonly options?: {
+    readonly tags?: readonly string[];
+    readonly overwrite?: boolean;
+  };
+  readonly requested_by?: string;
+  readonly document?: {
+    readonly title: string;
+    readonly slug?: string;
+    readonly markdown: string;
+    readonly updated_at?: string;
+  };
   readonly document_project_id: string;
   readonly document_slug: string;
 }
 
 export interface DenDocPublishResponse {
   readonly id?: string;
+  readonly publication_id?: string;
   readonly status?: string;
+  readonly dry_run?: boolean;
+  readonly title?: string;
+  readonly slug?: string;
+  readonly post_path?: string;
+  readonly public_url?: string;
+  readonly git_commit?: string;
+  readonly preview_markdown?: string;
+  readonly warnings?: readonly string[];
 }

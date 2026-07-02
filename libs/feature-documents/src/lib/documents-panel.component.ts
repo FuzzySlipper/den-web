@@ -3,12 +3,13 @@ import { MarkdownEditorDialogComponent, MarkdownViewComponent } from '@den-web/c
 import { discussionAuthor, discussionBody, discussionThreads, documentMarkdownBody } from '@den-web/domain';
 import type { DenDocumentSummary } from '@den-web/protocol';
 import { DOCUMENTS_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
+import { DocumentPublishPanelComponent } from './document-publish-panel.component';
 import { documentsPanelStyles } from './documents-panel.styles';
 
 @Component({
   selector: 'den-documents-panel',
   standalone: true,
-  imports: [MarkdownEditorDialogComponent, MarkdownViewComponent],
+  imports: [DocumentPublishPanelComponent, MarkdownEditorDialogComponent, MarkdownViewComponent],
   styles: [documentsPanelStyles],
   template: `
     <section class="documents" aria-label="Documents">
@@ -95,9 +96,13 @@ import { documentsPanelStyles } from './documents-panel.styles';
                     <h3>Content</h3>
                     <div class="section-actions">
                       <span class="muted">{{ body().length }} chars</span>
+                      <button type="button" class="edit-button" [disabled]="contentEditorOpen()" (click)="openPublishPanel()">Share via blog</button>
                       <button type="button" class="edit-button" (click)="openContentEditor()">Edit</button>
                     </div>
                   </div>
+                  @if (publishPanelOpen()) {
+                    <den-document-publish-panel [document]="doc" (close)="closePublishPanel()" />
+                  }
                   @if (editError()) {
                     <p class="state error">{{ editError() }}</p>
                   }
@@ -164,6 +169,7 @@ export class DocumentsPanelComponent {
   protected readonly selectedProjectId = this.workspace.selectedProjectId;
   protected readonly contentEditorOpen = signal(false);
   protected readonly contentDraft = signal('');
+  protected readonly publishPanelOpen = signal(false);
   protected readonly editError = signal<string | null>(null);
   protected readonly documentItems = computed(() => stateValue(this.documents()) ?? []);
   protected readonly detailValue = computed(() => stateValue(this.detail()) ?? null);
@@ -196,6 +202,14 @@ export class DocumentsPanelComponent {
 
   protected select(document: DenDocumentSummary): void {
     void this.store.select(document);
+  }
+
+  protected openPublishPanel(): void {
+    this.publishPanelOpen.set(true);
+  }
+
+  protected closePublishPanel(): void {
+    this.publishPanelOpen.set(false);
   }
 
   protected openContentEditor(): void {

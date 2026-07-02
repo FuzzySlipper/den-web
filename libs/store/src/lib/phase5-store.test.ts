@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { memoryStorage, type DocumentEffectsPort } from '@den-web/platform';
-import type { DenMessage, DenResult } from '@den-web/protocol';
+import type { DenDocPublishResponse, DenMessage, DenResult } from '@den-web/protocol';
+import { createDocumentPublishStore } from './document-publish-store';
 import { createLibrarianStore } from './librarian-store';
 import { createMessagesStore } from './messages-store';
 import { createPreferencesStore } from './preferences-store';
@@ -35,6 +36,34 @@ describe('phase 5 stores', () => {
 
     expect(store.latestQuery()).toBe('phase 5');
     expect(store.result().kind).toBe('data');
+  });
+
+  it('previews and publishes document blog links', async () => {
+    const published: DenDocPublishResponse = {
+      publication_id: 'pub-1',
+      status: 'published',
+      public_url: 'https://example.test/posts/successor-brief',
+    };
+    const requests: unknown[] = [];
+    const store = createDocumentPublishStore({
+      preview: async (request) => {
+        requests.push(['preview', request]);
+        return ok({ ...published, status: 'previewed', dry_run: true });
+      },
+      publish: async (request) => {
+        requests.push(['publish', request]);
+        return ok(published);
+      },
+    });
+
+    store.setOverwrite(true);
+    await store.preview({ document_project_id: 'den-web', document_slug: 'successor-brief' });
+    await store.publish({ document_project_id: 'den-web', document_slug: 'successor-brief' });
+
+    expect(store.overwrite()).toBe(true);
+    expect(store.previewResult().kind).toBe('data');
+    expect(store.publishedResult().kind).toBe('data');
+    expect(requests.map((entry) => Array.isArray(entry) ? entry[0] : null)).toEqual(['preview', 'publish']);
   });
 
   it('persists preferences through storage and applies document effects', () => {

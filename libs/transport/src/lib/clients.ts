@@ -201,6 +201,10 @@ export class DeliveryTransport {
 export class DocPublishTransport {
   constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
 
+  preview(request: DenDocPublishRequest): Promise<DenResult<DenDocPublishResponse>> {
+    return this.http.json(joinUrl(this.config.docPublishApiBase, '/preview'), { method: 'POST', body: request });
+  }
+
   publish(request: DenDocPublishRequest): Promise<DenResult<DenDocPublishResponse>> {
     return this.http.json(this.config.docPublishApiBase, { method: 'POST', body: request });
   }

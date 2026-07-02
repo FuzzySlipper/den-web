@@ -101,6 +101,27 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await expect(page.getByLabel('Document content').getByText('Document fixture loaded.')).toBeVisible();
   await expect(page.getByText('Discussion fixture loaded')).toBeVisible();
 
+  const publicationRequests: unknown[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().includes('/api/v1/blog/publications')) {
+      publicationRequests.push(request.postDataJSON());
+    }
+  });
+  await page.getByLabel('Document content').getByRole('button', { name: 'Share via blog' }).click();
+  await page.getByLabel('Document blog publishing').getByLabel(/Overwrite/).check();
+  await page.getByRole('button', { name: 'Preview' }).click();
+  await expect(page.getByText('_posts/successor-brief.md')).toBeVisible();
+  await page.getByRole('button', { name: 'Publish' }).click();
+  await expect(page.getByRole('status').getByText('https://blog.example.test/successor-brief')).toBeVisible();
+  await expect.poll(() => publicationRequests.length).toBe(2);
+  expect(publicationRequests[0]).toMatchObject({
+    document_project_id: 'den-web',
+    document_slug: 'successor-brief',
+    requested_by: 'den-web',
+    options: { overwrite: true },
+    document: { title: 'Successor Brief', slug: 'successor-brief' },
+  });
+
   let documentPatchBody: unknown = null;
   page.on('request', (request) => {
     if (request.method() === 'PATCH' && request.url().includes('/api/v1/projects/den-web/documents/successor-brief')) {

@@ -78,6 +78,18 @@ const longDocumentDetail = { ...documents[1], content_markdown: '# Stable Rows\n
 const ashaDocuments = [{ project_id: 'asha', slug: 'asha-brief', title: 'Asha Brief', updated_at: '2026-07-02T00:00:00Z' }];
 const ashaDocumentDetail = { ...ashaDocuments[0], content_markdown: '# Asha Brief\n\nAsha document fixture loaded.', tags: ['space'] };
 const discussion = { comments: [{ id: 1, author_identity: 'codex', body_markdown: 'Discussion fixture loaded', parent_comment_id: null, created_at: '2026-07-02T00:00:00Z' }] };
+const publication = {
+  publication_id: 'pub-1',
+  status: 'previewed',
+  dry_run: true,
+  title: 'Successor Brief',
+  slug: 'successor-brief',
+  post_path: '_posts/successor-brief.md',
+  public_url: 'https://blog.example.test/successor-brief',
+  git_commit: '1234567890abcdef',
+  preview_markdown: '# Successor Brief\n\nDocument fixture loaded.',
+  warnings: [],
+};
 const observation = {
   items: [{ id: 'agent-1', agent_identity: 'den-mcp-runner', title: 'Agent fixture loaded', summary: 'Observation-backed overview', status: 'active', project_id: 'den-web', task_id: 3993 }],
   source_health: [{ source: 'observation', status: 'degraded', detail: 'Fixture degraded state' }],
@@ -132,6 +144,8 @@ export async function mockDenServices(page: Page): Promise<void> {
   await page.route('**/api/v1/projects/asha/documents', (route) => json(route, ashaDocuments));
   await page.route('**/api/v1/projects/asha/documents/asha-brief', (route) => json(route, ashaDocumentDetail));
   await page.route('**/api/v1/projects/asha/documents/asha-brief/discussion', (route) => json(route, discussion));
+  await page.route('**/api/v1/blog/publications/preview', (route) => json(route, publication));
+  await page.route('**/api/v1/blog/publications', (route) => json(route, { ...publication, status: 'published', dry_run: false }));
   await page.route('**/api/v1/projects/den-web/librarian/query', (route) => json(route, { answer: 'Librarian fixture loaded', sources: [{ title: 'fixture' }] }));
   await page.route('**/api/v1/observation/lane?**', (route) => json(route, observation));
 }

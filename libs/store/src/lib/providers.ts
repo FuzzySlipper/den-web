@@ -6,6 +6,7 @@ import { createDenTransportClients, type DenTransportClients } from '@den-web/tr
 import { createAgentsStore, type AgentsStore } from './agents-store';
 import { createConversationStore, type ConversationStore } from './conversation-store';
 import { createDocumentsStore, type DocumentsStore } from './documents-store';
+import { createDocumentPublishStore, type DocumentPublishStore } from './document-publish-store';
 import { createLibrarianStore, type LibrarianStore } from './librarian-store';
 import { createMessagesStore, type MessagesStore } from './messages-store';
 import { createNotificationsStore, type NotificationsStore } from './notifications-store';
@@ -18,6 +19,7 @@ export const DEN_TRANSPORT_CLIENTS = new InjectionToken<DenTransportClients>('DE
 export const WORKSPACE_STORE = new InjectionToken<WorkspaceStore>('WORKSPACE_STORE');
 export const TASKS_STORE = new InjectionToken<TasksStore>('TASKS_STORE');
 export const DOCUMENTS_STORE = new InjectionToken<DocumentsStore>('DOCUMENTS_STORE');
+export const DOCUMENT_PUBLISH_STORE = new InjectionToken<DocumentPublishStore>('DOCUMENT_PUBLISH_STORE');
 export const NOTIFICATIONS_STORE = new InjectionToken<NotificationsStore>('NOTIFICATIONS_STORE');
 export const CONVERSATION_STORE = new InjectionToken<ConversationStore>('CONVERSATION_STORE');
 export const AGENTS_STORE = new InjectionToken<AgentsStore>('AGENTS_STORE');
@@ -46,6 +48,11 @@ export function provideDenStoreKernel(config: RuntimeApiConfig = defaultRuntimeA
     {
       provide: DOCUMENTS_STORE,
       useFactory: (clients: DenTransportClients) => createDocumentsStore(clients.documents),
+      deps: [DEN_TRANSPORT_CLIENTS],
+    },
+    {
+      provide: DOCUMENT_PUBLISH_STORE,
+      useFactory: (clients: DenTransportClients) => createDocumentPublishStore(clients.docPublish),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
     {

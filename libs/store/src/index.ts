@@ -2,6 +2,7 @@ export * from './lib/agents-store';
 export * from './lib/async-state';
 export * from './lib/conversation-store';
 export * from './lib/documents-store';
+export * from './lib/document-publish-store';
 export * from './lib/librarian-store';
 export * from './lib/messages-store';
 export * from './lib/notifications-store';

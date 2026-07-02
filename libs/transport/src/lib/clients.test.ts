@@ -32,6 +32,7 @@ describe('Den transport clients', () => {
     await clients.observation.lane({ limit: 1 });
     await clients.observation.activeWork();
     await clients.delivery.createIntent({ kind: 'wake' });
+    await clients.docPublish.preview({ document_project_id: 'den-web', document_slug: 'successor-brief' });
     await clients.docPublish.publish({ document_project_id: 'den-web', document_slug: 'successor-brief' });
 
     expect(calls).toEqual([]);
@@ -53,6 +54,7 @@ describe('Den transport clients', () => {
       '/api/v1/observation/lane?limit=1',
       '/api/v1/observation/active-work',
       '/api/v1/delivery/intents',
+      '/api/v1/blog/publications/preview',
       '/api/v1/blog/publications',
     ]);
   });
