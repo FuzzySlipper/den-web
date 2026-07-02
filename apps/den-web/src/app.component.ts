@@ -1,4 +1,5 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
+import type { OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AgentsOverviewComponent } from '@den-web/feature-agents';
 import { ConversationCockpitComponent } from '@den-web/feature-conversation';
@@ -9,6 +10,7 @@ import { NotificationsPanelComponent } from '@den-web/feature-notifications';
 import { PreferencesPanelComponent } from '@den-web/feature-preferences';
 import { ProjectWorkspacePanelComponent } from '@den-web/feature-projects';
 import { TaskCockpitComponent } from '@den-web/feature-tasks';
+import { PREFERENCES_STORE } from '@den-web/store';
 
 type CockpitTab = 'tasks' | 'conversation' | 'notifications' | 'messages' | 'documents' | 'librarian' | 'agents' | 'preferences';
 
@@ -162,9 +164,14 @@ const tabs: readonly TabItem[] = [
     </main>
   `,
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
+  private readonly preferencesStore = inject(PREFERENCES_STORE);
   protected readonly tabs = tabs;
   protected readonly activeTab = signal<CockpitTab>('tasks');
+
+  ngOnInit(): void {
+    this.preferencesStore.apply();
+  }
 
   protected selectTab(tab: CockpitTab): void {
     this.activeTab.set(tab);

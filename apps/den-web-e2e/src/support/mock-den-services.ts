@@ -2,41 +2,40 @@ import type { Page, Route } from '@playwright/test';
 
 const project = { id: 'den-web', name: 'Den Web', visibility: 'normal' };
 const spaces = [{ id: 'den-web', name: 'Den Web', kind: 'project', visibility: 'normal' }];
-const tasks = [
-  {
-    id: 3993,
-    project_id: 'den-web',
-    title: 'Den Web Angular successor Phase 4: first vertical cockpit slice',
-    status: 'in_progress',
-    priority: 2,
-    assigned_to: 'codex',
-    parent_id: null,
-    tags: ['successor', 'angular', 'phase-4'],
-    availability: 'available',
-    dependency_count: 0,
-    unfinished_dependency_count: 0,
-    subtask_count: 1,
-    description: 'Ship the first usable Angular successor slice.',
-  },
-  {
-    id: 4001,
-    project_id: 'den-web',
-    title: 'Nested fixture task',
-    status: 'planned',
-    priority: 3,
-    assigned_to: 'codex',
-    parent_id: 3993,
-    tags: ['fixture'],
-    availability: 'waiting_on_dependencies',
-    dependency_count: 1,
-    unfinished_dependency_count: 1,
-    subtask_count: 0,
-  },
-];
+const primaryTask = {
+  id: 3993,
+  project_id: 'den-web',
+  title: 'Den Web Angular successor Phase 4: first vertical cockpit slice',
+  status: 'in_progress',
+  priority: 2,
+  assigned_to: 'codex',
+  parent_id: null,
+  tags: ['successor', 'angular', 'phase-4'],
+  availability: 'available',
+  dependency_count: 0,
+  unfinished_dependency_count: 0,
+  subtask_count: 1,
+  description: 'Ship the first usable Angular successor slice.',
+};
+const nestedTask = {
+  id: 4001,
+  project_id: 'den-web',
+  title: 'Nested fixture task',
+  status: 'planned',
+  priority: 3,
+  assigned_to: 'codex',
+  parent_id: 3993,
+  tags: ['fixture'],
+  availability: 'waiting_on_dependencies',
+  dependency_count: 1,
+  unfinished_dependency_count: 1,
+  subtask_count: 0,
+};
+const tasks = [primaryTask, nestedTask];
 const taskDetail = {
-  task: tasks[0],
+  task: primaryTask,
   dependencies: [],
-  subtasks: [tasks[1]],
+  subtasks: [nestedTask],
   recent_messages: [
     { id: 1, sender: 'codex', content: 'Phase 4 fixture loaded', created_at: '2026-07-02T00:00:00Z' },
   ],
@@ -59,10 +58,17 @@ export async function mockDenServices(page: Page): Promise<void> {
   await page.route('**/api/v1/spaces', (route) => json(route, spaces));
   await page.route('**/api/v1/spaces?**', (route) => json(route, spaces));
   await page.route('**/api/v1/projects/den-web/tasks?**', (route) => json(route, tasks));
-  await page.route('**/api/v1/projects/den-web/tasks/3993', (route) => json(route, taskDetail));
+  await page.route('**/api/v1/projects/den-web/tasks/3993', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      const body = route.request().postDataJSON() as { readonly status?: string };
+      await json(route, { ...primaryTask, status: body.status ?? primaryTask.status });
+      return;
+    }
+    await json(route, taskDetail);
+  });
   await page.route('**/api/v1/projects/den-web/tasks/4001', (route) => json(route, {
-    task: tasks[1],
-    dependencies: [tasks[0]],
+    task: nestedTask,
+    dependencies: [primaryTask],
     subtasks: [],
     recent_messages: [],
   }));

@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { MarkdownEditorDialogComponent } from '@den-web/components';
-import { isDependencyWaitingDetail, taskAvailabilityLabel, type TaskStatusFilter } from '@den-web/domain';
+import { taskAvailabilityLabel, type TaskStatusFilter } from '@den-web/domain';
 import type { DenMessage, DenTaskDetail, DenTaskSummary } from '@den-web/protocol';
 import { stateValue, TASKS_STORE, WORKSPACE_STORE } from '@den-web/store';
 
@@ -209,7 +209,7 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
         font-size: var(--den-font-size-base);
       }
 
-      .status-control { margin-top: 8px; width: 100%; }
+      .status-control { width: 100%; }
 
       .section-head {
         align-items: center;
@@ -376,13 +376,12 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
             <div class="detail-body">
               <div class="detail-head">
                 <h3>#{{ detail.task.id }} {{ detail.task.title || 'Untitled task' }}</h3>
-                <div class="meta">{{ detail.task.project_id || selectedProjectId() }} · {{ detail.task.status || 'unknown' }}</div>
+                <div class="meta">{{ detail.task.project_id || selectedProjectId() }}</div>
               </div>
 
               <div class="detail-grid">
                 <div class="metric">
-                  <span>Availability</span>
-                  <strong [class.waiting]="isDetailWaiting(detail)">{{ availability(detail.task) }}</strong>
+                  <span>Status</span>
                   <select
                     class="status-control"
                     aria-label="Task status"
@@ -570,14 +569,6 @@ export class TaskCockpitComponent {
 
   protected isWaiting(task: DenTaskSummary): boolean {
     return taskAvailabilityLabel(task) === 'waiting on dependencies';
-  }
-
-  protected isDetailWaiting(detail: DenTaskDetail): boolean {
-    return isDependencyWaitingDetail(detail);
-  }
-
-  protected availability(task: DenTaskSummary): string {
-    return taskAvailabilityLabel(task);
   }
 
   protected statusLabel(status: string): string {

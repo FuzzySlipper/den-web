@@ -1,5 +1,4 @@
 import { Component, inject } from '@angular/core';
-import type { OnInit } from '@angular/core';
 import { PREFERENCES_STORE } from '@den-web/store';
 
 @Component({
@@ -37,10 +36,9 @@ import { PREFERENCES_STORE } from '@den-web/store';
     </section>
   `,
 })
-export class PreferencesPanelComponent implements OnInit {
+export class PreferencesPanelComponent {
   private readonly store = inject(PREFERENCES_STORE);
   protected readonly preferences = this.store.preferences;
-  ngOnInit(): void { this.store.apply(); }
   protected setDensity(event: Event): void {
     if (event.target instanceof HTMLSelectElement) this.store.setDensity(event.target.value === 'compact' ? 'compact' : 'comfortable');
   }

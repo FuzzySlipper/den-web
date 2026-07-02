@@ -83,12 +83,16 @@ describe('successor signal stores', () => {
   });
 
   it('reconciles task edits into selected detail and list state', async () => {
+    const patches: unknown[] = [];
     const store = createTasksStore({
       listTasks: async () => ok([taskFixture({ id: 3992, description: 'old', status: 'planned' })]),
       getTask: async (_projectId, taskId) => ok(taskDetailFixture({
         task: taskFixture({ id: taskId, description: 'old', status: 'planned' }),
       })),
-      updateTask: async (_projectId, taskId, patch) => ok({ id: taskId, ...patch }),
+      updateTask: async (_projectId, taskId, patch) => {
+        patches.push(patch);
+        return ok({ id: taskId, ...patch });
+      },
     });
 
     await store.refresh('den-web');
@@ -100,6 +104,10 @@ describe('successor signal stores', () => {
     expect(stateValue(store.selectedTask())?.task.description).toBe('new body');
     expect(stateValue(store.tasks())?.[0]?.status).toBe('in_progress');
     expect(stateValue(store.tasks())?.[0]?.description).toBe('new body');
+    expect(patches).toEqual([
+      { agent: 'web-ui', status: 'in_progress' },
+      { agent: 'web-ui', description: 'new body' },
+    ]);
   });
 
   it('owns dirty document switching and separate discussion reads', async () => {

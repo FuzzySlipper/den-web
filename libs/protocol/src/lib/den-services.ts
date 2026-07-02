@@ -37,6 +37,7 @@ export interface DenTaskDetail {
 }
 
 export interface DenTaskUpdateRequest {
+  readonly agent?: string;
   readonly status?: string;
   readonly description?: string | null;
 }

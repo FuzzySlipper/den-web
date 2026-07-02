@@ -14,6 +14,17 @@ test('boots the successor task cockpit', async ({ page }) => {
   await expect(page.getByText('Phase 4 fixture loaded')).toBeVisible();
 });
 
+test('applies persisted theme preferences on boot', async ({ page }) => {
+  await mockDenServices(page);
+  await page.addInitScript(() => {
+    localStorage.setItem('den-web.preferences.v2', JSON.stringify({ density: 'comfortable', theme: 'dark', highContrast: false }));
+  });
+
+  await page.goto('/');
+
+  await expect(page.locator('html')).toHaveClass(/den-dark/);
+});
+
 test('searches nested task results and preserves parent context in flat mode', async ({ page }) => {
   await mockDenServices(page);
   await page.goto('/');
@@ -24,6 +35,22 @@ test('searches nested task results and preserves parent context in flat mode', a
 
   await page.getByLabel('Flat').check();
   await expect(page.getByRole('button', { name: /#4001 Nested fixture task/ })).toContainText('parent #3993');
+});
+
+test('updates task status with the web UI actor', async ({ page }) => {
+  await mockDenServices(page);
+  let patchBody: unknown = null;
+  page.on('request', (request) => {
+    if (request.method() === 'PATCH' && request.url().includes('/api/v1/projects/den-web/tasks/3993')) {
+      patchBody = request.postDataJSON();
+    }
+  });
+
+  await page.goto('/');
+  await page.getByLabel('Task status', { exact: true }).selectOption('review');
+
+  await expect.poll(() => patchBody).toEqual({ agent: 'web-ui', status: 'review' });
+  await expect(page.getByLabel('Task status', { exact: true })).toHaveValue('review');
 });
 
 test('renders inherited feature tabs through successor fixtures', async ({ page }) => {

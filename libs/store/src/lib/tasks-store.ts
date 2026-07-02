@@ -3,6 +3,8 @@ import { visibleTaskRows, type FlatTaskRow, type TaskStatusFilter } from '@den-w
 import type { DenResult, DenTaskDetail, DenTaskSummary, DenTaskUpdateRequest } from '@den-web/protocol';
 import { errorState, idleState, loadingState, resultState, stateValue, type AsyncState, unknownStoreError } from './async-state';
 
+const taskUpdateAgent = 'web-ui';
+
 export interface TasksTransportPort {
   readonly listTasks: (projectId: string, options?: { readonly limit?: number; readonly status?: string; readonly tree?: boolean }) => Promise<DenResult<readonly DenTaskSummary[]>>;
   readonly getTask: (projectId: string, taskId: number) => Promise<DenResult<DenTaskDetail>>;
@@ -68,7 +70,7 @@ export function createTasksStore(transport: TasksTransportPort): TasksStore {
   async function updateTask(projectId: string, taskId: number, patch: DenTaskUpdateRequest): Promise<DenResult<DenTaskDetail>> {
     const previous = stateValue(selectedTask());
     try {
-      const result = await transport.updateTask(projectId, taskId, patch);
+      const result = await transport.updateTask(projectId, taskId, { agent: taskUpdateAgent, ...patch });
       if (!result.ok) {
         selectedTask.set(errorState(result.error, previous));
         return result;
