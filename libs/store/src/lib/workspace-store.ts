@@ -31,8 +31,8 @@ export function createWorkspaceStore(transport: WorkspaceTransportPort, clock: C
   const refresh = async (): Promise<void> => {
     const previousProjects = stateValue(projects());
     const previousSpaces = stateValue(spaces());
-    projects.set(loadingState(previousProjects));
-    spaces.set(loadingState(previousSpaces));
+    if (previousProjects === undefined) projects.set(loadingState());
+    if (previousSpaces === undefined) spaces.set(loadingState());
     try {
       const [projectResult, spaceResult] = await Promise.all([transport.listProjects(), transport.listSpaces()]);
       projects.set(resultState(projectResult, previousProjects));

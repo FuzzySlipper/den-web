@@ -23,6 +23,7 @@ import {
   createTasksStore,
   createWorkspaceStore,
   NOTIFICATION_READ_CACHE_KEY,
+  stateValue,
 } from '../index';
 
 const ok = <T>(value: T): DenResult<T> => ({ ok: true, value });
@@ -42,6 +43,27 @@ describe('successor signal stores', () => {
     expect('set' in store.projects).toBe(false);
   });
 
+  it('keeps workspace data visible during background refreshes', async () => {
+    let resolver: ((value: DenResult<readonly DenProject[]>) => void) | null = null;
+    const store = createWorkspaceStore({
+      listProjects: () => new Promise((resolve) => {
+        resolver = resolve;
+      }),
+      listSpaces: async () => ok([spaceFixture()]),
+    }, fakeClock());
+
+    const firstRefresh = store.refresh();
+    resolver?.(ok([projectFixture()]));
+    await firstRefresh;
+
+    const secondRefresh = store.refresh();
+
+    expect(store.projects().kind).toBe('data');
+    resolver?.(ok([projectFixture({ name: 'Den Web Updated' })]));
+    await secondRefresh;
+    expect(stateValue(store.projects())?.[0]?.name).toBe('Den Web Updated');
+  });
+
   it('keeps task filtering, search, and flat mode in the task store', async () => {
     const store = createTasksStore({
       listTasks: async () => ok([
@@ -49,6 +71,7 @@ describe('successor signal stores', () => {
         taskFixture({ id: 3992, title: 'Domain stores', parent_id: 10 }),
       ]),
       getTask: async (_projectId, taskId) => ok(taskDetailFixture({ task: taskFixture({ id: taskId }) })),
+      updateTask: async () => ok(undefined),
     });
 
     await store.refresh('den-web');
@@ -57,6 +80,26 @@ describe('successor signal stores', () => {
     expect(store.rows().map((row) => row.task.id)).toEqual([10, 3992]);
     store.setFlat(true);
     expect(store.rows()[0]?.parent?.id).toBe(10);
+  });
+
+  it('reconciles task edits into selected detail and list state', async () => {
+    const store = createTasksStore({
+      listTasks: async () => ok([taskFixture({ id: 3992, description: 'old', status: 'planned' })]),
+      getTask: async (_projectId, taskId) => ok(taskDetailFixture({
+        task: taskFixture({ id: taskId, description: 'old', status: 'planned' }),
+      })),
+      updateTask: async (_projectId, taskId, patch) => ok({ id: taskId, ...patch }),
+    });
+
+    await store.refresh('den-web');
+    await store.selectTask('den-web', 3992);
+    await store.updateTaskStatus('den-web', 3992, 'in_progress');
+    await store.updateTaskDescription('den-web', 3992, 'new body');
+
+    expect(stateValue(store.selectedTask())?.task.status).toBe('in_progress');
+    expect(stateValue(store.selectedTask())?.task.description).toBe('new body');
+    expect(stateValue(store.tasks())?.[0]?.status).toBe('in_progress');
+    expect(stateValue(store.tasks())?.[0]?.description).toBe('new body');
   });
 
   it('owns dirty document switching and separate discussion reads', async () => {

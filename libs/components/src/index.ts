@@ -3,3 +3,4 @@ export interface EmptyStateCopy {
   readonly detail: string;
 }
 
+export * from './lib/markdown-editor-dialog.component';

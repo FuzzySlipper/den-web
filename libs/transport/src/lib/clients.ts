@@ -17,6 +17,7 @@ import type {
   DenSpace,
   DenTaskDetail,
   DenTaskSummary,
+  DenTaskUpdateRequest,
   DenTimelineResponse,
   RuntimeApiConfig,
 } from '@den-web/protocol';
@@ -77,6 +78,13 @@ export class TasksTransport {
 
   getTask(projectId: string, taskId: number): Promise<DenResult<DenTaskDetail>> {
     return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/tasks/${taskId}`));
+  }
+
+  updateTask(projectId: string, taskId: number, body: DenTaskUpdateRequest): Promise<DenResult<DenTaskDetail | DenTaskSummary | undefined>> {
+    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/tasks/${taskId}`), {
+      method: 'PATCH',
+      body,
+    });
   }
 }
 

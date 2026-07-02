@@ -36,6 +36,11 @@ export interface DenTaskDetail {
   readonly recent_messages?: readonly DenMessage[];
 }
 
+export interface DenTaskUpdateRequest {
+  readonly status?: string;
+  readonly description?: string | null;
+}
+
 export interface DenMessage {
   readonly id: number;
   readonly project_id?: string;

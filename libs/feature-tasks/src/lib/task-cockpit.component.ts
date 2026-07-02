@@ -1,4 +1,5 @@
-import { Component, computed, effect, inject } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { MarkdownEditorDialogComponent } from '@den-web/components';
 import { isDependencyWaitingDetail, taskAvailabilityLabel, type TaskStatusFilter } from '@den-web/domain';
 import type { DenMessage, DenTaskDetail, DenTaskSummary } from '@den-web/protocol';
 import { stateValue, TASKS_STORE, WORKSPACE_STORE } from '@den-web/store';
@@ -20,9 +21,12 @@ const filterOptions: readonly FilterOption[] = [
   { value: 'done', filter: 'done', label: 'Done' },
 ];
 
+const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review', 'blocked', 'done', 'cancelled'];
+
 @Component({
   selector: 'den-task-cockpit',
   standalone: true,
+  imports: [MarkdownEditorDialogComponent],
   styles: [
     `
       :host {
@@ -205,6 +209,41 @@ const filterOptions: readonly FilterOption[] = [
         font-size: var(--den-font-size-base);
       }
 
+      .status-control { margin-top: 8px; width: 100%; }
+
+      .section-head {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .section-head .section-title {
+        margin: 0;
+      }
+
+      .edit-button {
+        appearance: none;
+        background: var(--den-input);
+        border: 1px solid var(--den-border);
+        border-radius: 6px;
+        color: var(--den-text);
+        cursor: pointer;
+        font: inherit;
+        min-height: 30px;
+        padding: 0 10px;
+      }
+
+      .edit-button:hover,
+      .edit-button:focus-visible {
+        background: var(--den-hover);
+        border-color: var(--den-border-strong);
+        outline: none;
+      }
+
+      .description-body { margin: 0; white-space: pre-wrap; }
+
       .section ul {
         display: grid;
         gap: 8px;
@@ -344,6 +383,19 @@ const filterOptions: readonly FilterOption[] = [
                 <div class="metric">
                   <span>Availability</span>
                   <strong [class.waiting]="isDetailWaiting(detail)">{{ availability(detail.task) }}</strong>
+                  <select
+                    class="status-control"
+                    aria-label="Task status"
+                    [value]="detail.task.status || ''"
+                    (change)="changeStatus($event, detail)"
+                  >
+                    @if (!detail.task.status) {
+                      <option value="">unknown</option>
+                    }
+                    @for (status of statuses; track status) {
+                      <option [value]="status">{{ statusLabel(status) }}</option>
+                    }
+                  </select>
                 </div>
                 <div class="metric">
                   <span>Assignee</span>
@@ -355,12 +407,21 @@ const filterOptions: readonly FilterOption[] = [
                 </div>
               </div>
 
-              @if (detail.task.description) {
-                <section class="section" aria-label="Description">
-                  <span class="section-title">Description</span>
-                  <p class="meta">{{ detail.task.description }}</p>
-                </section>
+              @if (editError()) {
+                <p class="state error">{{ editError() }}</p>
               }
+
+              <section class="section" aria-label="Description">
+                <div class="section-head">
+                  <span class="section-title">Description</span>
+                  <button type="button" class="edit-button" (click)="openDescriptionEditor(detail)">Edit</button>
+                </div>
+                @if (detail.task.description) {
+                  <p class="meta description-body">{{ detail.task.description }}</p>
+                } @else {
+                  <p class="state">No description</p>
+                }
+              </section>
 
               <section class="section" aria-label="Dependencies">
                 <span class="section-title">Dependencies</span>
@@ -405,6 +466,14 @@ const filterOptions: readonly FilterOption[] = [
           }
         }
       </article>
+
+      <den-markdown-editor-dialog
+        title="Edit Description"
+        [open]="descriptionEditorOpen()"
+        [value]="descriptionDraft()"
+        (cancel)="closeDescriptionEditor()"
+        (done)="saveDescription($event)"
+      />
     </section>
   `,
 })
@@ -420,6 +489,10 @@ export class TaskCockpitComponent {
   protected readonly rows = this.taskStore.rows;
   protected readonly query = this.taskStore.query;
   protected readonly flat = this.taskStore.flat;
+  protected readonly statuses = editableStatuses;
+  protected readonly descriptionEditorOpen = signal(false);
+  protected readonly descriptionDraft = signal('');
+  protected readonly editError = signal<string | null>(null);
   protected readonly tasksError = computed(() => {
     const state = this.tasks();
     return state.kind === 'error' ? state.error : null;
@@ -467,6 +540,34 @@ export class TaskCockpitComponent {
     if (projectId) void this.taskStore.selectTask(projectId, task.id);
   }
 
+  protected changeStatus(event: Event, detail: DenTaskDetail): void {
+    const target = event.target;
+    const projectId = detail.task.project_id ?? this.selectedProjectId();
+    if (!(target instanceof HTMLSelectElement) || !projectId || !target.value || target.value === detail.task.status) return;
+    void this.taskStore.updateTaskStatus(projectId, detail.task.id, target.value).then((result) => {
+      this.editError.set(result.ok ? null : this.errorText(result.error));
+    });
+  }
+
+  protected openDescriptionEditor(detail: DenTaskDetail): void {
+    this.descriptionDraft.set(detail.task.description ?? '');
+    this.descriptionEditorOpen.set(true);
+  }
+
+  protected closeDescriptionEditor(): void {
+    this.descriptionEditorOpen.set(false);
+  }
+
+  protected saveDescription(description: string): void {
+    const detail = this.selectedTaskDetail();
+    const projectId = detail?.task.project_id ?? this.selectedProjectId();
+    if (!detail || !projectId) return;
+    void this.taskStore.updateTaskDescription(projectId, detail.task.id, description).then((result) => {
+      this.editError.set(result.ok ? null : this.errorText(result.error));
+      if (result.ok) this.descriptionEditorOpen.set(false);
+    });
+  }
+
   protected isWaiting(task: DenTaskSummary): boolean {
     return taskAvailabilityLabel(task) === 'waiting on dependencies';
   }
@@ -477,6 +578,10 @@ export class TaskCockpitComponent {
 
   protected availability(task: DenTaskSummary): string {
     return taskAvailabilityLabel(task);
+  }
+
+  protected statusLabel(status: string): string {
+    return status.replace(/_/g, ' ');
   }
 
   protected messageLine(message: DenMessage): string {

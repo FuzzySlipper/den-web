@@ -19,6 +19,7 @@ describe('Den transport clients', () => {
     await clients.projects.listSpaces({ includeHidden: true, includeArchived: true });
     await clients.tasks.listTasks('den-web', { limit: 1, tree: true });
     await clients.tasks.getTask('den-web', 3991);
+    await clients.tasks.updateTask('den-web', 3991, { status: 'in_progress' });
     await clients.messages.listMessages('den-web', { taskId: 3991, limit: 10 });
     await clients.notifications.listUserNotifications({ readForAgent: 'web-ui', limit: 5 });
     await clients.documents.getDiscussion('den-web', 'successor-brief');
@@ -37,6 +38,7 @@ describe('Den transport clients', () => {
       '/api/v1/projects',
       '/api/v1/spaces?include_hidden=true&include_archived=true',
       '/api/v1/projects/den-web/tasks?limit=1&tree=true',
+      '/api/v1/projects/den-web/tasks/3991',
       '/api/v1/projects/den-web/tasks/3991',
       '/api/v1/projects/den-web/messages?task_id=3991&limit=10',
       '/api/v1/user-notifications?read_for_agent=web-ui&limit=5',
@@ -61,4 +63,3 @@ describe('Den transport clients', () => {
     );
   });
 });
-
