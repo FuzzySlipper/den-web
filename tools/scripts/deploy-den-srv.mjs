@@ -2,6 +2,7 @@
 
 import * as fs from 'node:fs/promises';
 import * as fssync from 'node:fs';
+import * as http from 'node:http';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as url from 'node:url';
@@ -26,6 +27,7 @@ const shouldSmoke = env.DEPLOY_SMOKE !== '0';
 const skipInstall = env.SKIP_INSTALL === '1';
 const skipChecks = env.SKIP_CHECKS === '1';
 const allowDirty = env.ALLOW_DIRTY === '1';
+const readyTimeoutMs = Number.parseInt(env.SERVICE_READY_TIMEOUT_MS ?? '15000', 10);
 const runtimeEnv = { ...readEnvFile(path.join(sharedDir, 'gateway.env')), ...env };
 
 function log(message) {
@@ -199,6 +201,37 @@ function restartService() {
   run(systemctl[0], [...systemctl.slice(1), 'restart', serviceName], { cwd: '/' });
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function probeBuildSentinel() {
+  const target = new URL('den-web-build.json', publicUrl.endsWith('/') ? publicUrl : `${publicUrl}/`);
+  return new Promise(resolve => {
+    const req = http.request(target, { method: 'GET', timeout: 1000 }, res => {
+      res.resume();
+      res.on('end', () => resolve(res.statusCode ?? 0));
+    });
+    req.on('error', () => resolve(0));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(0);
+    });
+    req.end();
+  });
+}
+
+async function waitForServiceReady() {
+  if (!shouldRestart) return;
+  const deadline = Date.now() + readyTimeoutMs;
+  log(`waiting for ${serviceName} to serve /den-web-build.json`);
+  while (Date.now() < deadline) {
+    if (await probeBuildSentinel() === 200) return;
+    await sleep(250);
+  }
+  throw new Error(`${serviceName} did not become ready within ${readyTimeoutMs}ms`);
+}
+
 async function rollback(previousTarget) {
   if (!previousTarget) {
     log('no previous release recorded; rollback cannot switch current');
@@ -270,6 +303,7 @@ async function main() {
   await activate(releaseDir, previousTarget);
   try {
     restartService();
+    await waitForServiceReady();
     smoke(commit);
   } catch (error) {
     await rollback(previousTarget);
