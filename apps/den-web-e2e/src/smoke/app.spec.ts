@@ -9,9 +9,23 @@ test('boots the successor task cockpit', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Workspace' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Tasks' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Den Web den-web/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Asha Studio asha/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Projects' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Spaces' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /#3993 Den Web Angular/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: /#3993 Den Web Angular successor Phase 4/ })).toBeVisible();
   await expect(page.getByText('Phase 4 fixture loaded')).toBeVisible();
+});
+
+test('selects spaces as active workspaces', async ({ page }) => {
+  await mockDenServices(page);
+  await page.goto('/');
+
+  await page.getByRole('button', { name: /Asha Studio asha/ }).click();
+
+  await expect(page.getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Documents' }).click();
+  await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Asha Brief' }).first()).toBeVisible();
 });
 
 test('applies persisted theme preferences on boot', async ({ page }) => {
@@ -73,6 +87,12 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
 
   await page.getByRole('button', { name: 'Documents' }).click();
   await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Successor Brief' }).first()).toBeVisible();
+  await expect(async () => {
+    const heights = await page.getByTestId('document-list-item').evaluateAll((items) => items.map((item) => item.getBoundingClientRect().height));
+    expect(heights.length).toBeGreaterThan(1);
+    expect(Math.max(...heights)).toBeLessThan(130);
+    expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(4);
+  }).toPass();
   await expect(async () => {
     const box = await page.getByLabel('Document metadata').boundingBox();
     expect(box?.height).toBeLessThan(220);

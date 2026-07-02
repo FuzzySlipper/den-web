@@ -3,6 +3,14 @@ import type { OnDestroy, OnInit } from '@angular/core';
 import type { DenProject, DenSpace } from '@den-web/protocol';
 import { stateValue, WORKSPACE_STORE } from '@den-web/store';
 
+interface WorkspaceItem {
+  readonly id: string;
+  readonly kind: string | undefined;
+  readonly name: string | undefined;
+  readonly source: 'project' | 'space';
+  readonly visibility: string | undefined;
+}
+
 @Component({
   selector: 'den-project-workspace-panel',
   standalone: true,
@@ -38,8 +46,9 @@ import { stateValue, WORKSPACE_STORE } from '@den-web/store';
       }
 
       .body {
+        align-content: start;
         display: grid;
-        gap: 20px;
+        gap: 14px;
         overflow: auto;
         padding: 14px;
       }
@@ -53,8 +62,7 @@ import { stateValue, WORKSPACE_STORE } from '@den-web/store';
         text-transform: uppercase;
       }
 
-      .project-list,
-      .space-list {
+      .workspace-list {
         display: grid;
         gap: 6px;
       }
@@ -69,6 +77,7 @@ import { stateValue, WORKSPACE_STORE } from '@den-web/store';
         display: grid;
         gap: 3px;
         min-height: 44px;
+        min-width: 0;
         padding: 9px 10px;
         text-align: left;
       }
@@ -92,9 +101,30 @@ import { stateValue, WORKSPACE_STORE } from '@den-web/store';
         white-space: nowrap;
       }
 
+      .item-line {
+        align-items: center;
+        display: flex;
+        gap: 6px;
+        min-width: 0;
+      }
+
       span {
         color: var(--den-muted);
         font-size: var(--den-font-size-sm);
+      }
+
+      .item-id {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .chip {
+        border: 1px solid var(--den-border);
+        border-radius: 999px;
+        flex: 0 0 auto;
+        font-size: var(--den-font-size-xs);
+        padding: 1px 6px;
       }
 
       .state {
@@ -129,66 +159,32 @@ import { stateValue, WORKSPACE_STORE } from '@den-web/store';
       </header>
 
       <div class="body">
-        <section aria-label="Projects">
-          <p class="section-title">Projects</p>
-          @switch (projects().kind) {
-            @case ('idle') {
-              <p class="state">Ready</p>
+        <section aria-label="Workspaces">
+          <p class="section-title">Projects and spaces</p>
+          @if (workspaceItems().length === 0) {
+            @if (loading()) {
+              <p class="state">Loading workspaces</p>
+            } @else if (loadError()) {
+              <p class="state error">{{ errorText(loadError()) }}</p>
+            } @else {
+              <p class="state">No workspaces</p>
             }
-            @case ('loading') {
-              <p class="state">Loading projects</p>
-            }
-            @case ('error') {
-              <p class="state error">{{ errorText(projectError()) }}</p>
-            }
-            @case ('data') {
-              @if (projectItems().length === 0) {
-                <p class="state">No projects</p>
-              } @else {
-                <div class="project-list">
-                  @for (project of projectItems(); track project.id) {
-                    <button
-                      type="button"
-                      [attr.aria-pressed]="project.id === selectedProjectId()"
-                      (click)="selectProject(project)"
-                    >
-                      <strong>{{ project.name || project.id }}</strong>
-                      <span>{{ project.id }}</span>
-                    </button>
-                  }
-                </div>
+          } @else {
+            <div class="workspace-list">
+              @for (item of workspaceItems(); track item.id) {
+                <button
+                  type="button"
+                  [attr.aria-pressed]="item.id === selectedProjectId()"
+                  (click)="selectWorkspace(item)"
+                >
+                  <strong>{{ item.name || item.id }}</strong>
+                  <span class="item-line">
+                    <span class="item-id">{{ item.id }}</span>
+                    <span class="chip">{{ workspaceKind(item) }}</span>
+                  </span>
+                </button>
               }
-            }
-          }
-        </section>
-
-        <section aria-label="Spaces">
-          <p class="section-title">Spaces</p>
-          @switch (spaces().kind) {
-            @case ('loading') {
-              <p class="state">Loading spaces</p>
-            }
-            @case ('error') {
-              <p class="state error">{{ errorText(spaceError()) }}</p>
-            }
-            @case ('data') {
-              @if (spaceItems().length === 0) {
-                <p class="state">No spaces</p>
-              } @else {
-                <div class="space-list">
-                  @for (space of spaceItems(); track space.id) {
-                    <button
-                      type="button"
-                      [attr.aria-pressed]="space.id === selectedSpaceId()"
-                      (click)="selectSpace(space)"
-                    >
-                      <strong>{{ space.name || space.id }}</strong>
-                      <span>{{ space.kind || space.visibility || 'space' }}</span>
-                    </button>
-                  }
-                </div>
-              }
-            }
+            </div>
           }
         </section>
       </div>
@@ -209,13 +205,13 @@ export class ProjectWorkspacePanelComponent implements OnInit, OnDestroy {
   protected readonly selectedSpaceId = this.workspace.selectedSpaceId;
   protected readonly projectItems = computed(() => stateValue(this.projects()) ?? []);
   protected readonly spaceItems = computed(() => stateValue(this.spaces()) ?? []);
-  protected readonly projectError = computed(() => {
+  protected readonly workspaceItems = computed(() => workspaceItems(this.projectItems(), this.spaceItems()));
+  protected readonly loading = computed(() => this.projects().kind === 'loading' || this.spaces().kind === 'loading');
+  protected readonly loadError = computed(() => {
     const state = this.projects();
-    return state.kind === 'error' ? state.error : null;
-  });
-  protected readonly spaceError = computed(() => {
-    const state = this.spaces();
-    return state.kind === 'error' ? state.error : null;
+    if (state.kind === 'error') return state.error;
+    const spaceState = this.spaces();
+    return spaceState.kind === 'error' ? spaceState.error : null;
   });
 
   ngOnInit(): void {
@@ -230,16 +226,48 @@ export class ProjectWorkspacePanelComponent implements OnInit, OnDestroy {
     void this.workspace.refresh();
   }
 
-  protected selectProject(project: DenProject): void {
-    this.workspace.selectProject(project.id);
+  protected selectWorkspace(item: WorkspaceItem): void {
+    if (item.source === 'space') {
+      this.workspace.selectSpace(item.id);
+      return;
+    }
+    this.workspace.selectProject(item.id);
   }
 
-  protected selectSpace(space: DenSpace): void {
-    this.workspace.selectSpace(space.id);
+  protected workspaceKind(item: WorkspaceItem): string {
+    return item.kind || item.visibility || item.source;
   }
 
   protected errorText(error: { readonly kind: string; readonly message: string } | null): string {
     if (!error) return 'unknown: Unable to load';
     return `${error.kind}: ${error.message}`;
   }
+}
+
+function workspaceItems(projects: readonly DenProject[], spaces: readonly DenSpace[]): readonly WorkspaceItem[] {
+  const byId = new Map<string, WorkspaceItem>();
+  for (const space of spaces) {
+    byId.set(space.id, {
+      id: space.id,
+      kind: space.kind,
+      name: space.name,
+      source: 'space',
+      visibility: space.visibility,
+    });
+  }
+  for (const project of projects) {
+    if (byId.has(project.id)) continue;
+    byId.set(project.id, {
+      id: project.id,
+      kind: project.visibility,
+      name: project.name,
+      source: 'project',
+      visibility: project.visibility,
+    });
+  }
+  return [...byId.values()].sort((left, right) => displayName(left).localeCompare(displayName(right)));
+}
+
+function displayName(item: WorkspaceItem): string {
+  return item.name || item.id;
 }

@@ -37,7 +37,10 @@ export function createWorkspaceStore(transport: WorkspaceTransportPort, clock: C
       const [projectResult, spaceResult] = await Promise.all([transport.listProjects(), transport.listSpaces()]);
       projects.set(resultState(projectResult, previousProjects));
       spaces.set(resultState(spaceResult, previousSpaces));
-      if (projectResult.ok && selectedProjectId() === null) selectedProjectId.set(projectResult.value[0]?.id ?? null);
+      if (selectedProjectId() === null) {
+        selectedProjectId.set(initialScopeId(projectResult, spaceResult));
+      }
+      syncSelectedSpace();
     } catch (error) {
       const classified = unknownStoreError(error);
       projects.set(errorState(classified, previousProjects));
@@ -59,8 +62,14 @@ export function createWorkspaceStore(transport: WorkspaceTransportPort, clock: C
     selectedSpaceId: selectedSpaceId.asReadonly(),
     selectedProject: computed(() => stateValue(projects())?.find((project) => project.id === selectedProjectId()) ?? null),
     refresh,
-    selectProject: (projectId) => selectedProjectId.set(projectId),
-    selectSpace: (spaceId) => selectedSpaceId.set(spaceId),
+    selectProject: (projectId) => {
+      selectedProjectId.set(projectId);
+      syncSelectedSpace();
+    },
+    selectSpace: (spaceId) => {
+      selectedSpaceId.set(spaceId);
+      selectedProjectId.set(spaceId);
+    },
     startPolling: (cadenceMs = 5000) => {
       stopped = false;
       void refresh().finally(() => schedule(cadenceMs));
@@ -70,4 +79,18 @@ export function createWorkspaceStore(transport: WorkspaceTransportPort, clock: C
       };
     },
   };
+
+  function syncSelectedSpace(): void {
+    const projectId = selectedProjectId();
+    selectedSpaceId.set(stateValue(spaces())?.some((space) => space.id === projectId) ? projectId : null);
+  }
+}
+
+function initialScopeId(
+  projectResult: DenResult<readonly DenProject[]>,
+  spaceResult: DenResult<readonly DenSpace[]>,
+): string | null {
+  if (spaceResult.ok && spaceResult.value.length > 0) return spaceResult.value[0]?.id ?? null;
+  if (projectResult.ok && projectResult.value.length > 0) return projectResult.value[0]?.id ?? null;
+  return null;
 }

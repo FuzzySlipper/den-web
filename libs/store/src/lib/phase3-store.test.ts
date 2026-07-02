@@ -40,7 +40,21 @@ describe('successor signal stores', () => {
 
     expect(store.projects().kind).toBe('data');
     expect(store.selectedProjectId()).toBe('den-web');
+    expect(store.selectedSpaceId()).toBe('den-web');
     expect('set' in store.projects).toBe(false);
+  });
+
+  it('uses selected spaces as the active project scope', async () => {
+    const store = createWorkspaceStore({
+      listProjects: async () => ok([projectFixture()]),
+      listSpaces: async () => ok([spaceFixture(), spaceFixture({ id: 'asha', name: 'Asha Studio' })]),
+    }, fakeClock());
+
+    await store.refresh();
+    store.selectSpace('asha');
+
+    expect(store.selectedSpaceId()).toBe('asha');
+    expect(store.selectedProjectId()).toBe('asha');
   });
 
   it('keeps workspace data visible during background refreshes', async () => {
