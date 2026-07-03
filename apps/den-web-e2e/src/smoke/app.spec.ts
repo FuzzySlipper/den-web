@@ -49,7 +49,7 @@ test('clicks through task references across projects', async ({ page }) => {
   await page.getByLabel('Subtasks').getByRole('button', { name: /#4100 Asha Studio space task/ }).click();
 
   await expect(page.getByRole('button', { name: /Asha Studio asha/ })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
+  await expect(page.locator('.task-list').getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
   await expect(page.getByLabel('Task detail').getByRole('heading', { name: /#4100 Asha Studio space task/ })).toBeVisible();
 });
 
@@ -59,7 +59,7 @@ test('selects spaces as active workspaces', async ({ page }) => {
 
   await page.getByRole('button', { name: /Asha Studio asha/ }).click();
 
-  await expect(page.getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
+  await expect(page.locator('.task-list').getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
   await page.getByRole('button', { name: 'Documents' }).click();
   await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Asha Brief' }).first()).toBeVisible();
 });
@@ -77,7 +77,7 @@ test('shows archived workspaces on demand and exposes global scope views', async
   await expect(page.getByRole('button', { name: /Old Space old-space/ })).toHaveCount(0);
 
   await page.getByRole('button', { name: /Global _global/ }).click();
-  await expect(page.getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
+  await expect(page.locator('.task-list').getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
 
   await page.getByRole('button', { name: 'Documents' }).click();
   await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Global Brief' }).first()).toBeVisible();
@@ -96,11 +96,11 @@ test('supports minimal mobile viewing navigation', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Tasks' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Den Web den-web/ })).toBeVisible();
   await page.getByRole('button', { name: /Asha Studio asha/ }).click();
-  await expect(page.getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
-  await page.getByRole('button', { name: /#4100 Asha Studio space task/ }).click();
+  await expect(page.locator('.task-list').getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
+  await page.locator('.task-list').getByRole('button', { name: /#4100 Asha Studio space task/ }).click();
   await expect(page.getByLabel('Task detail').getByRole('heading', { name: /#4100/ })).toBeVisible();
   await page.getByRole('button', { name: 'Back to tasks' }).click();
-  await expect(page.getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
+  await expect(page.locator('.task-list').getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
 
   await page.getByRole('button', { name: 'Documents' }).click();
   await expect(page.getByRole('button', { name: /Asha Brief/ })).toBeVisible();
