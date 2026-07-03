@@ -116,11 +116,11 @@ test('retires legacy API routes without proxying them upstream', async t => {
   const port = await listen(upstream.server);
   t.after(() => new Promise(resolve => upstream.server.close(resolve)));
   const baseUrl = await startServer(t, {
-    DEN_CORE_TARGET: `http://127.0.0.1:${port}`,
     DEN_GATEWAY_TARGET: `http://127.0.0.1:${port}`,
   });
   assert.equal((await request(`${baseUrl}/api/channels?limit=1`)).status, 410);
   assert.equal((await request(`${baseUrl}/api/gateway/memberships?projectId=den-web`)).status, 410);
+  assert.equal((await request(`${baseUrl}/den-core-api/api/projects`)).status, 404);
   assert.equal((await request(`${baseUrl}/den-gateway-api/anything`)).status, 404);
   assert.deepEqual(upstream.observed, []);
 });

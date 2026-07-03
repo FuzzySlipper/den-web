@@ -95,8 +95,6 @@ Useful deploy overrides:
 Runtime config values are generated from:
 
 ```bash
-DEN_CORE_API_BASE=/den-core-api
-DEN_CHANNELS_API_BASE=/api
 TASKS_SUCCESSOR_API_BASE=/api/v1
 MESSAGES_SUCCESSOR_API_BASE=/api/v1
 CONVERSATION_SUCCESSOR_READS_ENABLED=true
@@ -188,7 +186,6 @@ RestartSec=5
 Environment=PORT=18080
 Environment=HOST=0.0.0.0
 Environment=STATIC_ROOT=/data/services/den-web/wwwroot
-Environment=DEN_CORE_TARGET=http://127.0.0.1:5299
 Environment=DEN_GATEWAY_TARGET=http://127.0.0.1:8079
 Environment=GATEWAY_ENV_PATH=/data/services/den-web/shared/gateway.env
 
@@ -242,7 +239,6 @@ with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 | `PORT` | `18080` | Listen port |
 | `HOST` | `0.0.0.0` | Listen host |
 | `STATIC_ROOT` | `/data/services/den-web/wwwroot` | Static asset directory |
-| `DEN_CORE_TARGET` | `http://127.0.0.1:5299` | Legacy Den Core backend URL for rollback/diagnostic `/den-core-api` proxy |
 | `DEN_PROJECTS_TARGET` | `http://127.0.0.1:8091` | Projects successor backend URL |
 | `DEN_TASKS_TARGET` | `http://127.0.0.1:8092` | Tasks successor backend URL |
 | `DEN_MESSAGES_TARGET` | `http://127.0.0.1:8093` | Messages/notifications successor backend URL |
@@ -262,8 +258,6 @@ with `DEN_WEB_URL` and `EXPECTED_BUILD_COMMIT` set as appropriate.
 | `CACHE_HTML_SECONDS` | `0` | max-age for HTML and un-hashed files |
 | `APP_BASE_PATH` | `/` | App base path for config defaults |
 | `ENVIRONMENT_NAME` | `den-srv` | Environment name for config defaults |
-| `DEN_CORE_API_BASE` | `/den-core-api` | Core API base for config defaults |
-| `DEN_CHANNELS_API_BASE` | `/api` | Channels API base for config defaults |
 | `TASKS_SUCCESSOR_API_BASE` | `/api/v1` | Browser proxy base for tasks and other successor owner APIs |
 | `MESSAGES_SUCCESSOR_API_BASE` | `/api/v1` | Browser proxy base for messages and notifications successor APIs |
 | `CONVERSATION_SUCCESSOR_READS_ENABLED` | `true` | Enables Conversation successor channel/message reads in browser config. On den-srv this should stay aligned with write allowlists so posted messages are visible in the same UI. |

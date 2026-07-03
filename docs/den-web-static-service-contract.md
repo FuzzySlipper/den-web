@@ -51,14 +51,14 @@ The browser app must use explicit configured API bases and must not infer backen
 | Observation | `den-services` Gateway route | `/api/v1/observation` | `/api/v1/observation/lane?limit=1` | Canonical display-only agent activity breadcrumbs. The static server injects `DEN_GATEWAY_OBSERVATION_READ_TOKEN` for read routes; browser code must not call Observation loopback directly. |
 | Delivery | `den-services` Gateway route | `/api/v1/delivery` | `/api/v1/delivery/intents` | Canonical executable direct-agent wake intent surface. The static server injects `DEN_GATEWAY_DELIVERY_WRITE_TOKEN` and the migrated route header; browser code must not create wakes through legacy den-channels routes. |
 | Timeline | `den-services` Gateway route | `/api/v1/timeline` | `/api/v1/timeline/channels/1/items?limit=1` | Composed human-facing conversation + observation timeline. The static server injects `DEN_GATEWAY_TIMELINE_READ_TOKEN`; browser code must not call Timeline loopback directly. |
-| Retired den-channels compatibility API | none | `/api/*` except `/api/v1/*` successor paths | `/api/channels?limit=1` returns `410` | Legacy `den-channels` proxy is intentionally not a normal Den Web dependency. History/evidence links should use successor, Core, or explicit archive tooling. |
+| Retired den-channels compatibility API | none | `/api/*` except `/api/v1/*` successor paths | `/api/channels?limit=1` returns `410` | Legacy `den-channels` proxy is intentionally not a normal Den Web dependency. History/evidence links should use successor or explicit archive tooling. |
+| Retired Core compatibility API | none | `/den-core-api/*` | `/den-core-api/api/projects` returns `404` | Legacy Core proxying is intentionally not exposed through Den Web runtime config or static-server routes. |
 | Agents overview | `den-services` Gateway route | `/api/v1/observation` | `/api/v1/observation/lane?limit=1` | Operator overview is derived from Observation successor reads. Membership/binding aggregates are visibly degraded until den-services exposes successor parity. |
 
 Current app code uses explicit Vite build-time variables for backend bases:
 
 - `VITE_TASKS_SUCCESSOR_API_BASE`, fallback `/api/v1`;
-- `VITE_MESSAGES_SUCCESSOR_API_BASE`, fallback `/api/v1`;
-- `VITE_DEN_CORE_API_BASE` and `VITE_DEN_CHANNELS_API_BASE` remain compatibility keys for old config records and diagnostic routes only.
+- `VITE_MESSAGES_SUCCESSOR_API_BASE`, fallback `/api/v1`.
 
 Legacy den-channels `/api/*` routes were retired from the normal product path in task #3161.
 
@@ -69,15 +69,13 @@ The standalone static site should support deploy-time runtime configuration inst
 Required precedence for the extracted app:
 
 1. Runtime config loaded from `/den-web-config.json` when present.
-2. Vite build-time env values (`VITE_DEN_CORE_API_BASE`, `VITE_DEN_CHANNELS_API_BASE`, and disabled conversation successor pilot flags) as fallback.
-3. Safe local defaults: `/api/v1`, `/api`, and conversation successor reads disabled.
+2. Successor Vite build-time env values and disabled conversation successor pilot flags as fallback.
+3. Safe local defaults: `/api/v1` and conversation successor reads disabled.
 
 Recommended runtime config keys:
 
 | Key | Recommended den-srv value | Meaning |
 | --- | --- | --- |
-| `denCoreApiBase` | `/den-core-api` | Core REST facade base path. |
-| `denChannelsApiBase` | `/api` | Compatibility key retained for older config consumers; `/api/*` legacy den-channels routes are not a live browser dependency. |
 | `tasksSuccessorApiBase` | `/api/v1` | Same-origin Den Web proxy base for project/task/document/review/librarian successor routes. |
 | `messagesSuccessorApiBase` | `/api/v1` | Same-origin Den Web proxy base for messages and notifications successor routes. |
 | `docPublishApiBase` | `/api/v1/blog/publications` | Same-origin Den Web proxy base for the den-services document blog publisher. |

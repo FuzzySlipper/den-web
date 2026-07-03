@@ -131,8 +131,6 @@ function runtimeConfig() {
   const timelineProjects = env.TIMELINE_SUCCESSOR_PROJECT_IDS ?? 'den-web';
   const conversationProjects = env.CONVERSATION_SUCCESSOR_READ_PROJECT_IDS ?? timelineProjects;
   return {
-    denCoreApiBase: env.DEN_CORE_API_BASE ?? '/den-core-api',
-    denChannelsApiBase: env.DEN_CHANNELS_API_BASE ?? '/api',
     tasksSuccessorApiBase: env.TASKS_SUCCESSOR_API_BASE ?? '/api/v1',
     messagesSuccessorApiBase: env.MESSAGES_SUCCESSOR_API_BASE ?? '/api/v1',
     conversationSuccessorApiBase: env.CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation',

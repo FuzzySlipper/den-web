@@ -18,7 +18,6 @@ const cacheAssets = Number.parseInt(process.env.CACHE_MAX_AGE_SECONDS ?? '315360
 const cacheHtml = Number.parseInt(process.env.CACHE_HTML_SECONDS ?? '0', 10);
 
 const targets = {
-  core: setting('DEN_CORE_TARGET', 'http://127.0.0.1:5299'),
   projects: setting('DEN_PROJECTS_TARGET', 'http://127.0.0.1:8091'),
   tasks: setting('DEN_TASKS_TARGET', 'http://127.0.0.1:8092'),
   messages: setting('DEN_MESSAGES_TARGET', 'http://127.0.0.1:8093'),
@@ -87,8 +86,6 @@ function runtimeConfigDefaults() {
   const timelineProjects = publicSetting('TIMELINE_SUCCESSOR_PROJECT_IDS', 'den-web');
   const conversationProjects = publicSetting('CONVERSATION_SUCCESSOR_READ_PROJECT_IDS', timelineProjects);
   return {
-    denCoreApiBase: publicSetting('DEN_CORE_API_BASE', '/den-core-api'),
-    denChannelsApiBase: publicSetting('DEN_CHANNELS_API_BASE', '/api'),
     tasksSuccessorApiBase: publicSetting('TASKS_SUCCESSOR_API_BASE', '/api/v1'),
     messagesSuccessorApiBase: publicSetting('MESSAGES_SUCCESSOR_API_BASE', '/api/v1'),
     conversationSuccessorApiBase: publicSetting('CONVERSATION_SUCCESSOR_API_BASE', '/api/v1/conversation'),
@@ -227,10 +224,7 @@ function handleRequest(req, res) {
     if (pathname === '/den-web-build.json') {
       return json(res, 200, fs.existsSync(buildPath) ? JSON.parse(fs.readFileSync(buildPath, 'utf8')) : {});
     }
-    if (pathname === '/den-core-api' || pathname.startsWith('/den-core-api/')) {
-      return proxy(targets.core, req, res, pathname.replace(/^\/den-core-api/, '') + search);
-    }
-    if (pathname === '/den-host-api' || pathname.startsWith('/den-host-api/') || pathname === '/den-gateway-api' || pathname.startsWith('/den-gateway-api/')) {
+    if (pathname === '/den-core-api' || pathname.startsWith('/den-core-api/') || pathname === '/den-host-api' || pathname.startsWith('/den-host-api/') || pathname === '/den-gateway-api' || pathname.startsWith('/den-gateway-api/')) {
       return json(res, 404, { error: 'legacy_api_not_found', path: pathname });
     }
     if (pathname === '/api' || pathname.startsWith('/api/')) return proxyApi(req, res, pathname, search);
