@@ -1,7 +1,6 @@
 import { Component, computed, EventEmitter, inject, Input, Output } from '@angular/core';
 import type { DenDocPublishRequest, DenDocumentDetail } from '@den-web/protocol';
 import { DOCUMENT_PUBLISH_STORE, stateValue } from '@den-web/store';
-import { documentMarkdownBody } from '@den-web/domain';
 
 @Component({
   selector: 'den-document-publish-panel',
@@ -245,7 +244,6 @@ export class DocumentPublishPanelComponent {
   private request(): DenDocPublishRequest | null {
     const document = this.document;
     if (!document) return null;
-    const updatedAt = normalizeDocumentPublishTimestamp(document.updated_at);
     return {
       source: {
         project_id: document.project_id,
@@ -257,23 +255,6 @@ export class DocumentPublishPanelComponent {
         overwrite: this.overwrite(),
       },
       requested_by: 'den-web',
-      document: {
-        title: document.title,
-        slug: document.slug,
-        markdown: documentMarkdownBody(document),
-        ...(updatedAt ? { updated_at: updatedAt } : {}),
-      },
     };
   }
-}
-
-function normalizeDocumentPublishTimestamp(value: string | null | undefined): string | undefined {
-  if (!value) return undefined;
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  if (/[zZ]|[+-]\d{2}:\d{2}$/.test(trimmed)) return trimmed;
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(trimmed)) return `${trimmed}Z`;
-
-  const parsed = new Date(trimmed);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }

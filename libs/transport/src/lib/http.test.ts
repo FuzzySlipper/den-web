@@ -27,6 +27,21 @@ describe('DenHttpClient', () => {
     expect(invalid.ok ? null : invalid.error.kind).toBe('invalid-response');
     expect(network.ok ? null : network.error.kind).toBe('network');
   });
+
+  it('includes structured error details from failed JSON responses', async () => {
+    const result = await new DenHttpClient({
+      fetchImpl: async () => Response.json({
+        error: {
+          code: 'invalid_doc_publish_request',
+          message: 'source document fetch returned status 404',
+        },
+      }, { status: 400 }),
+    }).json('/api/v1/blog/publications', { method: 'POST' });
+
+    expect(result.ok ? null : result.error.message).toBe(
+      'POST /api/v1/blog/publications: 400 - invalid_doc_publish_request: source document fetch returned status 404',
+    );
+  });
 });
 
 describe('URL helpers', () => {
@@ -35,4 +50,3 @@ describe('URL helpers', () => {
     expect(query({ limit: 5, after: '', enabled: false, skip: undefined })).toBe('?limit=5&enabled=false');
   });
 });
-

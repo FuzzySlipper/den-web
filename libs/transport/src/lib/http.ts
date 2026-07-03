@@ -37,7 +37,9 @@ export class DenHttpClient {
       const response = await this.fetchImpl(url, requestInit);
 
       if (!response.ok) {
-        return { ok: false, error: classifyHttpStatus(response.status, `${options.method ?? 'GET'} ${url}: ${response.status}`) };
+        const detail = await responseErrorDetail(response);
+        const message = `${options.method ?? 'GET'} ${url}: ${response.status}${detail ? ` - ${detail}` : ''}`;
+        return { ok: false, error: classifyHttpStatus(response.status, message) };
       }
 
       if (response.status === 204) {
@@ -50,6 +52,37 @@ export class DenHttpClient {
       return { ok: false, error: classifyThrownError(error) };
     }
   }
+}
+
+async function responseErrorDetail(response: Response): Promise<string | null> {
+  const text = await response.text();
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    return parsedErrorMessage(parsed) ?? trimmed;
+  } catch {
+    return trimmed;
+  }
+}
+
+function parsedErrorMessage(value: unknown): string | null {
+  if (!isRecord(value)) return null;
+  const error = value['error'];
+  if (typeof error === 'string') return error;
+  if (isRecord(error)) {
+    const code = typeof error['code'] === 'string' ? error['code'] : null;
+    const message = typeof error['message'] === 'string' ? error['message'] : null;
+    if (code && message) return `${code}: ${message}`;
+    return message ?? code;
+  }
+  const message = value['message'];
+  return typeof message === 'string' ? message : null;
+}
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export function classifyHttpStatus(status: number, message: string): ClassifiedError {

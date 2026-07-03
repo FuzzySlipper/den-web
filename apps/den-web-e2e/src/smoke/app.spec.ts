@@ -121,8 +121,9 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
       document_slug: 'successor-brief',
     },
     options: { overwrite: true },
-    document: { title: 'Successor Brief', slug: 'successor-brief' },
   });
+  expect(publicationRequests[0]).not.toHaveProperty('document');
+  expect(publicationRequests[1]).not.toHaveProperty('document');
 
   let documentPatchBody: unknown = null;
   page.on('request', (request) => {
