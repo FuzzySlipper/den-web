@@ -10,6 +10,7 @@ test('boots the successor task cockpit', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Tasks' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Den Web den-web/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Asha Studio asha/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Global _global/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Projects' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Spaces' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /#3993 Den Web Angular/ })).toBeVisible();
@@ -26,6 +27,30 @@ test('selects spaces as active workspaces', async ({ page }) => {
   await expect(page.getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
   await page.getByRole('button', { name: 'Documents' }).click();
   await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Asha Brief' }).first()).toBeVisible();
+});
+
+test('shows archived workspaces on demand and exposes global scope views', async ({ page }) => {
+  await mockDenServices(page);
+  await page.goto('/');
+
+  await expect(page.getByRole('button', { name: /Old Space old-space/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Archive Mine archive-mine/ })).toHaveCount(0);
+  await page.getByLabel('Show archived and hidden').check();
+  await expect(page.getByRole('button', { name: /Old Space old-space/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Archive Mine archive-mine/ })).toBeVisible();
+  await page.getByLabel('Show archived and hidden').uncheck();
+  await expect(page.getByRole('button', { name: /Old Space old-space/ })).toHaveCount(0);
+
+  await page.getByRole('button', { name: /Global _global/ }).click();
+  await expect(page.getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Documents' }).click();
+  await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Global Brief' }).first()).toBeVisible();
+  await expect(page.getByLabel('Document content').getByText('Global document fixture loaded.')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Conversation' }).click();
+  await expect(page.getByLabel('Channels').getByRole('button', { name: /#agent-commons/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('Channel chat').getByText('Agent commons fixture loaded')).toBeVisible();
 });
 
 test('supports minimal mobile viewing navigation', async ({ page }) => {

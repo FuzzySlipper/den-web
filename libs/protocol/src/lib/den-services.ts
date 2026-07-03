@@ -1,3 +1,5 @@
+export const DEN_GLOBAL_PROJECT_ID = '_global';
+
 export interface DenProject {
   readonly id: string;
   readonly name?: string;

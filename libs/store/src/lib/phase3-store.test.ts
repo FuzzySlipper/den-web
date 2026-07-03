@@ -15,6 +15,7 @@ import type {
   DenTaskSummary,
   DenTimelineResponse,
 } from '@den-web/protocol';
+import { DEN_GLOBAL_PROJECT_ID } from '@den-web/protocol';
 import {
   createAgentsStore,
   createConversationStore,
@@ -55,6 +56,48 @@ describe('successor signal stores', () => {
 
     expect(store.selectedSpaceId()).toBe('asha');
     expect(store.selectedProjectId()).toBe('asha');
+  });
+
+  it('refreshes archived and hidden workspace visibility on demand', async () => {
+    const projectOptions: unknown[] = [];
+    const spaceOptions: unknown[] = [];
+    const store = createWorkspaceStore({
+      listProjects: async (options) => {
+        projectOptions.push(options);
+        return ok([projectFixture()]);
+      },
+      listSpaces: async (options) => {
+        spaceOptions.push(options);
+        return ok(options?.includeArchived ? [
+          spaceFixture(),
+          spaceFixture({ id: 'old-den', name: 'Old Den', visibility: 'archived' }),
+        ] : [spaceFixture()]);
+      },
+    }, fakeClock());
+
+    await store.refresh();
+    store.selectSpace('old-den');
+    store.setIncludeArchivedHidden(true);
+    await eventually(() => stateValue(store.spaces())?.some((space) => space.id === 'old-den') === true);
+    store.setIncludeArchivedHidden(false);
+    await eventually(() => store.selectedProjectId() === 'den-web');
+
+    expect(store.includeArchivedHidden()).toBe(false);
+    expect(projectOptions).toEqual([{}, { includeHidden: true, includeArchived: true }, {}]);
+    expect(spaceOptions).toEqual([{}, { includeHidden: true, includeArchived: true }, {}]);
+  });
+
+  it('keeps the synthetic global workspace selectable without a backing project row', async () => {
+    const store = createWorkspaceStore({
+      listProjects: async () => ok([]),
+      listSpaces: async () => ok([]),
+    }, fakeClock());
+
+    await store.refresh();
+    store.selectProject(DEN_GLOBAL_PROJECT_ID);
+
+    expect(store.selectedProjectId()).toBe(DEN_GLOBAL_PROJECT_ID);
+    expect(store.selectedSpaceId()).toBeNull();
   });
 
   it('keeps workspace data visible during background refreshes', async () => {
@@ -263,6 +306,14 @@ function fakeClock(): ClockPort {
 function readStorageSet(storage: KeyValueStoragePort, key: string): ReadonlySet<string> {
   const raw = storage.getItem(key);
   return new Set(raw ? JSON.parse(raw) as string[] : []);
+}
+
+async function eventually(predicate: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (predicate()) return;
+    await Promise.resolve();
+  }
+  expect(predicate()).toBe(true);
 }
 
 function projectFixture(overrides: Partial<DenProject> = {}): DenProject {

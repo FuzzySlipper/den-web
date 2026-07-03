@@ -23,7 +23,7 @@ import type {
   DenTimelineResponse,
   RuntimeApiConfig,
 } from '@den-web/protocol';
-import { defaultRuntimeApiConfig } from '@den-web/protocol';
+import { defaultRuntimeApiConfig, DEN_GLOBAL_PROJECT_ID } from '@den-web/protocol';
 import { DenHttpClient, joinUrl, query } from './http';
 
 export interface DenTransportClients {
@@ -62,8 +62,8 @@ export function createDenTransportClients(
 export class ProjectsTransport {
   constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
 
-  listProjects(): Promise<DenResult<readonly DenProject[]>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, '/projects'));
+  listProjects(options: { readonly includeHidden?: boolean; readonly includeArchived?: boolean } = {}): Promise<DenResult<readonly DenProject[]>> {
+    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects${query({ include_hidden: options.includeHidden, include_archived: options.includeArchived })}`));
   }
 
   listSpaces(options: { readonly includeHidden?: boolean; readonly includeArchived?: boolean } = {}): Promise<DenResult<readonly DenSpace[]>> {
@@ -75,7 +75,10 @@ export class TasksTransport {
   constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
 
   listTasks(projectId: string, options: { readonly limit?: number; readonly status?: string; readonly tree?: boolean } = {}): Promise<DenResult<readonly DenTaskSummary[]>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/tasks${query(options)}`));
+    if (projectId === DEN_GLOBAL_PROJECT_ID) {
+      return this.listGlobalTasks(options);
+    }
+    return this.listProjectTasks(projectId, options);
   }
 
   getTask(projectId: string, taskId: number): Promise<DenResult<DenTaskDetail>> {
@@ -87,6 +90,29 @@ export class TasksTransport {
       method: 'PATCH',
       body,
     });
+  }
+
+  private listProjectTasks(projectId: string, options: { readonly limit?: number; readonly status?: string; readonly tree?: boolean }): Promise<DenResult<readonly DenTaskSummary[]>> {
+    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/tasks${query(options)}`));
+  }
+
+  private async listGlobalTasks(options: { readonly limit?: number; readonly status?: string; readonly tree?: boolean }): Promise<DenResult<readonly DenTaskSummary[]>> {
+    const [projectResult, spaceResult] = await Promise.all([
+      this.http.json<readonly DenProject[]>(joinUrl(this.config.servicesApiBase, '/projects')),
+      this.http.json<readonly DenSpace[]>(joinUrl(this.config.servicesApiBase, '/spaces')),
+    ]);
+    if (!projectResult.ok) return { ok: false, error: projectResult.error };
+    if (!spaceResult.ok) return { ok: false, error: spaceResult.error };
+
+    const projectIds = activeProjectIds(projectResult.value, spaceResult.value);
+    const taskResults = await Promise.all(projectIds.map((id) => this.listProjectTasks(id, options)));
+    const failedResult = taskResults.find((result) => !result.ok);
+    if (failedResult && !failedResult.ok) return { ok: false, error: failedResult.error };
+
+    return {
+      ok: true,
+      value: taskResults.flatMap((result) => result.ok ? result.value : []),
+    };
   }
 }
 
@@ -121,6 +147,9 @@ export class DocumentsTransport {
   constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
 
   listDocuments(projectId: string): Promise<DenResult<readonly DenDocumentSummary[]>> {
+    if (projectId === DEN_GLOBAL_PROJECT_ID) {
+      return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(DEN_GLOBAL_PROJECT_ID)}/documents`));
+    }
     return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/documents`));
   }
 
@@ -140,6 +169,19 @@ export class DocumentsTransport {
   }
 }
 
+function activeProjectIds(projects: readonly DenProject[], spaces: readonly DenSpace[]): readonly string[] {
+  const ids = new Set<string>();
+  for (const space of spaces) {
+    if (space.visibility === 'archived' || space.id === DEN_GLOBAL_PROJECT_ID) continue;
+    ids.add(space.id);
+  }
+  for (const project of projects) {
+    if (project.visibility === 'archived' || project.id === DEN_GLOBAL_PROJECT_ID) continue;
+    ids.add(project.id);
+  }
+  return [...ids];
+}
+
 export class LibrarianTransport {
   constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
 
@@ -155,6 +197,9 @@ export class ConversationTransport {
   constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
 
   listChannels(projectId: string, options: { readonly limit?: number; readonly kind?: string } = {}): Promise<DenResult<readonly DenConversationChannel[]>> {
+    if (projectId === DEN_GLOBAL_PROJECT_ID) {
+      return this.http.json(joinUrl(this.config.conversationApiBase, `/channels${query({ limit: options.limit, kind: options.kind ?? 'system' })}`));
+    }
     return this.http.json(joinUrl(this.config.conversationApiBase, `/channels${query({ project_id: projectId, limit: options.limit, kind: options.kind })}`));
   }
 

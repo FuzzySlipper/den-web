@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultRuntimeApiConfig } from '@den-web/protocol';
+import { defaultRuntimeApiConfig, DEN_GLOBAL_PROJECT_ID } from '@den-web/protocol';
 import { createDenTransportClients } from './clients';
 import { DenHttpClient } from './http';
 
@@ -15,17 +15,20 @@ describe('Den transport clients', () => {
     });
     const clients = createDenTransportClients(defaultRuntimeApiConfig, http);
 
-    await clients.projects.listProjects();
+    await clients.projects.listProjects({ includeHidden: true, includeArchived: true });
     await clients.projects.listSpaces({ includeHidden: true, includeArchived: true });
     await clients.tasks.listTasks('den-web', { limit: 1, tree: true });
+    await clients.tasks.listTasks(DEN_GLOBAL_PROJECT_ID, { tree: true });
     await clients.tasks.getTask('den-web', 3991);
     await clients.tasks.updateTask('den-web', 3991, { status: 'in_progress' });
     await clients.messages.listMessages('den-web', { taskId: 3991, limit: 10 });
     await clients.notifications.listUserNotifications({ readForAgent: 'web-ui', limit: 5 });
     await clients.documents.updateDocument('den-web', 'successor-brief', { content_markdown: '# Updated' });
+    await clients.documents.listDocuments(DEN_GLOBAL_PROJECT_ID);
     await clients.documents.getDiscussion('den-web', 'successor-brief');
     await clients.librarian.query('den-web', { query: 'successor' });
     await clients.conversation.listChannels('den-web', { limit: 1 });
+    await clients.conversation.listChannels(DEN_GLOBAL_PROJECT_ID, { limit: 100 });
     await clients.conversation.listMemberships({ channelId: 7, limit: 10 });
     await clients.conversation.listMessages(7, { afterId: 2, limit: 20 });
     await clients.conversation.postMessage(7, { sender: 'web-ui', body: 'hello', idempotency_key: 'k1' });
@@ -38,17 +41,21 @@ describe('Den transport clients', () => {
 
     expect(calls).toEqual([]);
     expect(mutableCalls).toEqual([
-      '/api/v1/projects',
+      '/api/v1/projects?include_hidden=true&include_archived=true',
       '/api/v1/spaces?include_hidden=true&include_archived=true',
       '/api/v1/projects/den-web/tasks?limit=1&tree=true',
+      '/api/v1/projects',
+      '/api/v1/spaces',
       '/api/v1/projects/den-web/tasks/3991',
       '/api/v1/projects/den-web/tasks/3991',
       '/api/v1/projects/den-web/messages?task_id=3991&limit=10',
       '/api/v1/user-notifications?read_for_agent=web-ui&limit=5',
       '/api/v1/projects/den-web/documents/successor-brief',
+      '/api/v1/projects/_global/documents',
       '/api/v1/projects/den-web/documents/successor-brief/discussion',
       '/api/v1/projects/den-web/librarian/query',
       '/api/v1/conversation/channels?project_id=den-web&limit=1',
+      '/api/v1/conversation/channels?limit=100&kind=system',
       '/api/v1/conversation/memberships?channel_id=7&limit=10',
       '/api/v1/conversation/channels/7/messages?after_id=2&limit=20',
       '/api/v1/conversation/channels/7/messages',
@@ -58,6 +65,40 @@ describe('Den transport clients', () => {
       '/api/v1/delivery/intents',
       '/api/v1/blog/publications/preview',
       '/api/v1/blog/publications',
+    ]);
+  });
+
+  it('fans global task lists through active workspace project routes', async () => {
+    const calls: string[] = [];
+    const http = new DenHttpClient({
+      fetchImpl: async (input) => {
+        const path = String(input);
+        calls.push(path);
+        if (path === '/api/v1/projects') {
+          return Response.json([
+            { id: 'den-web', name: 'Den Web', visibility: 'normal' },
+            { id: 'old-project', name: 'Old Project', visibility: 'archived' },
+          ]);
+        }
+        if (path === '/api/v1/spaces') {
+          return Response.json([
+            { id: 'asha', name: 'Asha Studio', kind: 'project', visibility: 'normal' },
+            { id: '_global', name: 'Global', kind: 'system', visibility: 'hidden' },
+          ]);
+        }
+        return Response.json([{ id: path.includes('asha') ? 2 : 1, project_id: path.includes('asha') ? 'asha' : 'den-web' }]);
+      },
+    });
+    const clients = createDenTransportClients(defaultRuntimeApiConfig, http);
+
+    const result = await clients.tasks.listTasks(DEN_GLOBAL_PROJECT_ID, { tree: true });
+
+    expect(result.ok ? result.value.map((task) => task.project_id) : []).toEqual(['asha', 'den-web']);
+    expect(calls).toEqual([
+      '/api/v1/projects',
+      '/api/v1/spaces',
+      '/api/v1/projects/asha/tasks?tree=true',
+      '/api/v1/projects/den-web/tasks?tree=true',
     ]);
   });
 
