@@ -1,18 +1,25 @@
 export const documentsPanelStyles = `
   :host {
     display: block;
+    height: calc(100dvh - 57px);
     min-width: 0;
+    overflow: hidden;
   }
 
   .documents {
     display: grid;
     grid-template-columns: minmax(280px, 0.42fr) minmax(0, 1fr);
-    min-height: 100%;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .list,
   .detail {
+    min-height: 0;
     min-width: 0;
+    overflow: hidden;
   }
 
   .list {
@@ -56,6 +63,7 @@ export const documentsPanelStyles = `
     display: grid;
     gap: 8px;
     grid-auto-rows: max-content;
+    min-height: 0;
     overflow: auto;
     padding: 10px;
   }
@@ -134,6 +142,8 @@ export const documentsPanelStyles = `
   .detail {
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
+    height: 100%;
+    max-height: 100%;
   }
 
   .detail-body {
@@ -141,6 +151,7 @@ export const documentsPanelStyles = `
     display: grid;
     gap: 14px;
     grid-auto-rows: max-content;
+    min-height: 0;
     overflow: auto;
     padding: 18px;
   }
@@ -249,9 +260,17 @@ export const documentsPanelStyles = `
   }
 
   @media (max-width: 920px) {
+    :host {
+      height: auto;
+      overflow: visible;
+    }
+
     .documents {
       grid-template-columns: 1fr;
+      height: auto;
+      max-height: none;
       min-height: calc(100vh - 250px);
+      overflow: visible;
     }
 
     .list {
