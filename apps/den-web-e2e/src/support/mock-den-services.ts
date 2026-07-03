@@ -96,7 +96,11 @@ const documents = [
     updated_at: '2026-07-02T00:00:00Z',
   },
 ];
-const documentDetail = { ...documents[0], content_markdown: '# Successor Brief\n\nDocument fixture loaded.', tags: ['successor'] };
+const documentDetail = {
+  ...documents[0],
+  content_markdown: '# Successor Brief\n\nDocument fixture loaded.\n\n| Surface | Owner |\n|---|---|\n| Runtime | ASHA main |\n| Demo | asha-demo |',
+  tags: ['successor'],
+};
 const longDocumentDetail = { ...documents[1], content_markdown: '# Stable Rows\n\nSecond fixture loaded.', tags: ['successor', 'layout'] };
 const ashaDocuments = [{ project_id: 'asha', slug: 'asha-brief', title: 'Asha Brief', updated_at: '2026-07-02T00:00:00Z' }];
 const ashaDocumentDetail = { ...ashaDocuments[0], content_markdown: '# Asha Brief\n\nAsha document fixture loaded.', tags: ['space'] };

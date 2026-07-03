@@ -1,12 +1,5 @@
 import { Component, Input, computed, signal } from '@angular/core';
-
-type MarkdownBlock =
-  | { readonly kind: 'heading'; readonly depth: number; readonly text: string }
-  | { readonly kind: 'paragraph'; readonly text: string }
-  | { readonly kind: 'list'; readonly items: readonly string[] }
-  | { readonly kind: 'code'; readonly text: string }
-  | { readonly kind: 'quote'; readonly text: string }
-  | { readonly kind: 'rule' };
+import { parseMarkdownBlocks, type MarkdownBlock } from './markdown-blocks';
 
 @Component({
   selector: 'den-markdown-view',
@@ -29,6 +22,7 @@ type MarkdownBlock =
       h3,
       p,
       ul,
+      table,
       pre,
       blockquote {
         margin: 0;
@@ -62,6 +56,51 @@ type MarkdownBlock =
         padding-left: 20px;
       }
 
+      .table-scroll {
+        border: 1px solid var(--den-border);
+        border-radius: 6px;
+        max-width: 100%;
+        overflow-x: auto;
+      }
+
+      table {
+        border-collapse: collapse;
+        font-size: var(--den-font-size-sm);
+        line-height: var(--den-line-height-normal);
+        min-width: 760px;
+        table-layout: auto;
+        width: 100%;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--den-border);
+        border-right: 1px solid var(--den-border);
+        min-width: 130px;
+        padding: 9px 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th:last-child,
+      td:last-child {
+        border-right: 0;
+      }
+
+      tbody tr:last-child td {
+        border-bottom: 0;
+      }
+
+      th {
+        background: var(--den-surface);
+        color: var(--den-text);
+        font-weight: 700;
+      }
+
+      td {
+        color: var(--den-text);
+      }
+
       pre {
         background: var(--den-input);
         border: 1px solid var(--den-border);
@@ -92,6 +131,65 @@ type MarkdownBlock =
         color: var(--den-muted);
         font-size: var(--den-font-size-md);
       }
+
+      @media (max-width: 720px) {
+        .table-scroll {
+          border: 0;
+          overflow: visible;
+        }
+
+        table,
+        thead,
+        tbody,
+        tr,
+        th,
+        td {
+          display: block;
+        }
+
+        table {
+          min-width: 0;
+        }
+
+        thead {
+          clip: rect(0 0 0 0);
+          height: 1px;
+          overflow: hidden;
+          position: absolute;
+          white-space: nowrap;
+          width: 1px;
+        }
+
+        tbody {
+          display: grid;
+          gap: 10px;
+        }
+
+        tr {
+          border: 1px solid var(--den-border);
+          border-radius: 6px;
+          overflow: hidden;
+        }
+
+        td {
+          border-bottom: 1px solid var(--den-border);
+          border-right: 0;
+          display: grid;
+          gap: 6px;
+          grid-template-columns: minmax(110px, 34%) minmax(0, 1fr);
+          min-width: 0;
+        }
+
+        td::before {
+          color: var(--den-muted);
+          content: attr(data-label);
+          font-weight: 700;
+        }
+
+        td:last-child {
+          border-bottom: 0;
+        }
+      }
     `,
   ],
   template: `
@@ -116,6 +214,28 @@ type MarkdownBlock =
                 }
               </ul>
             }
+            @case ('table') {
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      @for (header of block.headers; track $index) {
+                        <th scope="col">{{ header }}</th>
+                      }
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of block.rows; track $index) {
+                      <tr>
+                        @for (cell of row; track $index) {
+                          <td [attr.data-label]="tableHeader(block, $index)">{{ cell }}</td>
+                        }
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
             @case ('code') { <pre><code>{{ block.text }}</code></pre> }
             @case ('quote') { <blockquote>{{ block.text }}</blockquote> }
             @case ('rule') { <hr /> }
@@ -132,94 +252,8 @@ export class MarkdownViewComponent {
   @Input() set content(value: string | null | undefined) {
     this.contentSignal.set(value ?? '');
   }
-}
 
-function parseMarkdownBlocks(markdown: string): readonly MarkdownBlock[] {
-  const blocks: MarkdownBlock[] = [];
-  let paragraph: string[] = [];
-  let list: string[] = [];
-  let quote: string[] = [];
-  let code: string[] | null = null;
-
-  const flushParagraph = (): void => {
-    if (paragraph.length === 0) return;
-    blocks.push({ kind: 'paragraph', text: paragraph.join(' ') });
-    paragraph = [];
-  };
-  const flushList = (): void => {
-    if (list.length === 0) return;
-    blocks.push({ kind: 'list', items: list });
-    list = [];
-  };
-  const flushQuote = (): void => {
-    if (quote.length === 0) return;
-    blocks.push({ kind: 'quote', text: quote.join('\n') });
-    quote = [];
-  };
-  const flushLoose = (): void => {
-    flushParagraph();
-    flushList();
-    flushQuote();
-  };
-
-  for (const line of markdown.replace(/\r\n/g, '\n').split('\n')) {
-    if (line.trim().startsWith('```')) {
-      if (code === null) {
-        flushLoose();
-        code = [];
-      } else {
-        blocks.push({ kind: 'code', text: code.join('\n') });
-        code = null;
-      }
-      continue;
-    }
-
-    if (code !== null) {
-      code.push(line);
-      continue;
-    }
-
-    const trimmed = line.trim();
-    if (!trimmed) {
-      flushLoose();
-      continue;
-    }
-
-    const heading = /^(#{1,6})\s+(.+)$/.exec(trimmed);
-    if (heading) {
-      flushLoose();
-      blocks.push({ kind: 'heading', depth: Math.min(heading[1]?.length ?? 3, 3), text: heading[2] ?? '' });
-      continue;
-    }
-
-    if (/^(-{3,}|\*{3,})$/.test(trimmed)) {
-      flushLoose();
-      blocks.push({ kind: 'rule' });
-      continue;
-    }
-
-    const listItem = /^[-*]\s+(.+)$/.exec(trimmed);
-    if (listItem) {
-      flushParagraph();
-      flushQuote();
-      list.push(listItem[1] ?? '');
-      continue;
-    }
-
-    const quoteLine = /^>\s?(.+)$/.exec(trimmed);
-    if (quoteLine) {
-      flushParagraph();
-      flushList();
-      quote.push(quoteLine[1] ?? '');
-      continue;
-    }
-
-    flushList();
-    flushQuote();
-    paragraph.push(trimmed);
+  protected tableHeader(block: Extract<MarkdownBlock, { readonly kind: 'table' }>, index: number): string {
+    return block.headers[index] || `Column ${index + 1}`;
   }
-
-  if (code !== null) blocks.push({ kind: 'code', text: code.join('\n') });
-  flushLoose();
-  return blocks;
 }

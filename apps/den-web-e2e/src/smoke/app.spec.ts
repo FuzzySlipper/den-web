@@ -154,6 +154,8 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
     expect(box?.height).toBeLessThan(220);
   }).toPass();
   await expect(page.getByLabel('Document content').getByText('Document fixture loaded.')).toBeVisible();
+  await expect(page.getByLabel('Document content').getByRole('table')).toBeVisible();
+  await expect(page.getByLabel('Document content').getByRole('cell', { name: 'ASHA main' })).toBeVisible();
   await expect(page.getByText('Discussion fixture loaded')).toBeVisible();
 
   const publicationRequests: unknown[] = [];
