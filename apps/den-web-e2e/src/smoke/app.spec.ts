@@ -18,6 +18,28 @@ test('boots the successor task cockpit', async ({ page }) => {
   await expect(page.getByText('Phase 4 fixture loaded')).toBeVisible();
 });
 
+test('scrolls long task lists inside the task list panel', async ({ page }) => {
+  await mockDenServices(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/');
+
+  const taskRows = page.locator('.task-list .rows');
+  await expect(page.getByRole('button', { name: /#3993 Den Web Angular/ })).toBeVisible();
+  await expect(async () => {
+    const metrics = await taskRows.evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+    }));
+    expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight + 100);
+  }).toPass();
+
+  await taskRows.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+
+  await expect(page.getByRole('button', { name: /#4379 Long task list fixture 80/ })).toBeVisible();
+});
+
 test('selects spaces as active workspaces', async ({ page }) => {
   await mockDenServices(page);
   await page.goto('/');

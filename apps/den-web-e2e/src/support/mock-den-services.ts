@@ -36,7 +36,21 @@ const nestedTask = {
   unfinished_dependency_count: 1,
   subtask_count: 0,
 };
-const tasks = [primaryTask, nestedTask];
+const extraTasks = Array.from({ length: 80 }, (_, index) => ({
+  id: 4300 + index,
+  project_id: 'den-web',
+  title: `Long task list fixture ${index + 1}`,
+  status: 'planned',
+  priority: 4,
+  assigned_to: 'codex',
+  parent_id: null,
+  tags: ['fixture', 'scroll'],
+  availability: 'available',
+  dependency_count: 0,
+  unfinished_dependency_count: 0,
+  subtask_count: 0,
+}));
+const tasks = [primaryTask, nestedTask, ...extraTasks];
 const ashaTask = {
   id: 4100,
   project_id: 'asha',

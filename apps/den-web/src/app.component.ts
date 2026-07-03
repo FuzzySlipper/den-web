@@ -118,7 +118,10 @@ const tabs: readonly TabItem[] = [
 
       .main {
         background: var(--den-surface);
+        height: 100%;
+        min-height: 0;
         min-width: 0;
+        overflow: hidden;
       }
 
       @media (max-width: 840px) {
