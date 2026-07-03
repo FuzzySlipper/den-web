@@ -269,6 +269,40 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
         font-size: var(--den-font-size-md);
       }
 
+      .task-reference {
+        appearance: none;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        color: var(--den-text);
+        cursor: pointer;
+        display: grid;
+        font: inherit;
+        gap: 3px;
+        padding: 6px 8px;
+        text-align: left;
+        width: 100%;
+      }
+
+      .task-reference:hover,
+      .task-reference:focus-visible {
+        background: var(--den-hover);
+        border-color: var(--den-border-strong);
+        outline: none;
+      }
+
+      .task-reference strong {
+        font-size: var(--den-font-size-md);
+        font-weight: 600;
+        line-height: var(--den-line-height-snug);
+      }
+
+      .task-reference span {
+        color: var(--den-muted);
+        font-size: var(--den-font-size-sm);
+        line-height: var(--den-line-height-snug);
+      }
+
       .error {
         color: var(--den-danger);
       }
@@ -485,7 +519,12 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
                 } @else {
                   <ul>
                     @for (dependency of detail.dependencies; track dependency.id) {
-                      <li>#{{ dependency.id }} {{ dependency.title || 'Untitled task' }} · {{ dependency.status || 'unknown' }}</li>
+                      <li>
+                        <button type="button" class="task-reference" (click)="openTaskReference(dependency)">
+                          <strong>#{{ dependency.id }} {{ dependency.title || 'Untitled task' }}</strong>
+                          <span>{{ taskReferenceMeta(dependency) }}</span>
+                        </button>
+                      </li>
                     }
                   </ul>
                 }
@@ -498,7 +537,12 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
                 } @else {
                   <ul>
                     @for (subtask of detail.subtasks; track subtask.id) {
-                      <li>#{{ subtask.id }} {{ subtask.title || 'Untitled task' }} · {{ subtask.status || 'unknown' }}</li>
+                      <li>
+                        <button type="button" class="task-reference" (click)="openTaskReference(subtask)">
+                          <strong>#{{ subtask.id }} {{ subtask.title || 'Untitled task' }}</strong>
+                          <span>{{ taskReferenceMeta(subtask) }}</span>
+                        </button>
+                      </li>
                     }
                   </ul>
                 }
@@ -536,6 +580,7 @@ export class TaskCockpitComponent {
   private readonly workspace = inject(WORKSPACE_STORE);
   private readonly taskStore = inject(TASKS_STORE);
   private loadedProjectId: string | null = null;
+  private keepDetailPaneForProjectChange = false;
 
   protected readonly filters = filterOptions;
   protected readonly selectedProjectId = this.workspace.selectedProjectId;
@@ -565,7 +610,11 @@ export class TaskCockpitComponent {
     const projectId = this.selectedProjectId();
     if (!projectId || projectId === this.loadedProjectId) return;
     this.loadedProjectId = projectId;
-    this.mobilePane.set('list');
+    if (this.keepDetailPaneForProjectChange) {
+      this.keepDetailPaneForProjectChange = false;
+    } else {
+      this.mobilePane.set('list');
+    }
     queueMicrotask(() => void this.taskStore.refresh(projectId));
   });
 
@@ -596,6 +645,23 @@ export class TaskCockpitComponent {
     const projectId = task.project_id ?? this.selectedProjectId();
     if (projectId) void this.taskStore.selectTask(projectId, task.id);
     this.mobilePane.set('detail');
+  }
+
+  protected openTaskReference(task: DenTaskSummary): void {
+    const projectId = task.project_id ?? this.selectedProjectId();
+    if (!projectId) return;
+    if (projectId !== this.selectedProjectId()) {
+      this.keepDetailPaneForProjectChange = true;
+      this.workspace.selectProject(projectId);
+    }
+    void this.taskStore.selectTask(projectId, task.id);
+    this.mobilePane.set('detail');
+  }
+
+  protected taskReferenceMeta(task: DenTaskSummary): string {
+    const projectId = task.project_id;
+    const projectText = projectId && projectId !== this.selectedProjectId() ? `${projectId} · ` : '';
+    return `${projectText}${task.status || 'unknown'}`;
   }
 
   protected showTaskList(): void {

@@ -40,6 +40,17 @@ test('scrolls long task lists inside the task list panel', async ({ page }) => {
   await expect(page.getByRole('button', { name: /#4379 Long task list fixture 80/ })).toBeVisible();
 });
 
+test('clicks through task references across projects', async ({ page }) => {
+  await mockDenServices(page);
+  await page.goto('/');
+
+  await page.getByLabel('Subtasks').getByRole('button', { name: /#4100 Asha Studio space task/ }).click();
+
+  await expect(page.getByRole('button', { name: /Asha Studio asha/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
+  await expect(page.getByLabel('Task detail').getByRole('heading', { name: /#4100 Asha Studio space task/ })).toBeVisible();
+});
+
 test('selects spaces as active workspaces', async ({ page }) => {
   await mockDenServices(page);
   await page.goto('/');
@@ -114,11 +125,11 @@ test('searches nested task results and preserves parent context in flat mode', a
 
   await page.getByLabel('Search tasks').fill('4001');
   await expect(page.getByRole('button', { name: /#3993 Den Web Angular/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /#4001 Nested fixture task/ })).toBeVisible();
+  await expect(page.locator('.task-list').getByRole('button', { name: /#4001 Nested fixture task/ })).toBeVisible();
 
   await page.getByLabel('Flat').check();
-  await expect(page.getByRole('button', { name: /#4001 Nested fixture task/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /#4001 Nested fixture task/ })).not.toContainText('parent #3993');
+  await expect(page.locator('.task-list').getByRole('button', { name: /#4001 Nested fixture task/ })).toBeVisible();
+  await expect(page.locator('.task-list').getByRole('button', { name: /#4001 Nested fixture task/ })).not.toContainText('parent #3993');
 });
 
 test('updates task status with the web UI actor', async ({ page }) => {

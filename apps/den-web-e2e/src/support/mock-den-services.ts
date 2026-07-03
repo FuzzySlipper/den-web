@@ -69,7 +69,7 @@ const ashaTask = {
 const taskDetail = {
   task: primaryTask,
   dependencies: [],
-  subtasks: [nestedTask],
+  subtasks: [nestedTask, ashaTask],
   recent_messages: [
     { id: 1, sender: 'codex', content: 'Phase 4 fixture loaded', created_at: '2026-07-02T00:00:00Z' },
   ],
