@@ -1,7 +1,9 @@
 export const conversationCockpitStyles = `
   :host {
     display: block;
+    height: calc(100dvh - 57px);
     min-width: 0;
+    overflow: hidden;
   }
 
   .surface {
@@ -9,7 +11,9 @@ export const conversationCockpitStyles = `
     display: grid;
     gap: 14px;
     grid-template-rows: auto minmax(0, 1fr);
-    min-height: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
     padding: 16px;
   }
 
@@ -39,7 +43,9 @@ export const conversationCockpitStyles = `
     display: grid;
     gap: 12px;
     grid-template-columns: 240px minmax(0, 1fr);
+    height: 100%;
     min-height: 0;
+    overflow: hidden;
   }
 
   .side-stack {
@@ -47,6 +53,7 @@ export const conversationCockpitStyles = `
     gap: 12px;
     grid-template-rows: minmax(0, 1fr) minmax(180px, 0.9fr);
     min-height: 0;
+    overflow: hidden;
   }
 
   .panel,
@@ -61,6 +68,7 @@ export const conversationCockpitStyles = `
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     min-height: 0;
+    overflow: hidden;
   }
 
   .panel header,
@@ -76,6 +84,7 @@ export const conversationCockpitStyles = `
     align-content: start;
     display: grid;
     gap: 6px;
+    min-height: 0;
     overflow: auto;
     padding: 8px;
   }
@@ -140,12 +149,14 @@ export const conversationCockpitStyles = `
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
     min-height: 0;
+    overflow: hidden;
   }
 
   .scrollback {
     align-content: start;
     display: grid;
     gap: 8px;
+    min-height: 0;
     overflow: auto;
     padding: 12px;
   }
@@ -223,18 +234,23 @@ export const conversationCockpitStyles = `
   }
 
   @media (max-width: 920px) {
+    :host {
+      height: calc(100dvh - 250px);
+    }
+
     .surface {
-      min-height: calc(100vh - 250px);
       padding: 12px;
     }
 
     .layout {
       grid-template-columns: 1fr;
+      grid-template-rows: auto minmax(0, 1fr);
     }
 
     .side-stack {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       grid-template-rows: minmax(160px, 220px);
+      height: 220px;
     }
 
     .composer {
@@ -255,6 +271,7 @@ export const conversationCockpitStyles = `
     .side-stack {
       grid-template-columns: 1fr;
       grid-template-rows: minmax(130px, 180px) minmax(120px, 170px);
+      height: 350px;
     }
   }
 `;
