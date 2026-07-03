@@ -149,6 +149,49 @@ interface WorkspaceItem {
         min-height: 36px;
         padding: 0 12px;
       }
+
+      @media (max-width: 840px) {
+        .workspace-panel {
+          border-right: 0;
+          grid-template-rows: auto minmax(0, 1fr);
+          min-height: 0;
+          max-height: 190px;
+        }
+
+        header {
+          padding: 10px 12px;
+        }
+
+        .meta {
+          margin-top: 4px;
+        }
+
+        .body {
+          display: block;
+          overflow-x: auto;
+          overflow-y: hidden;
+          padding: 8px;
+        }
+
+        .section-title {
+          margin-bottom: 6px;
+        }
+
+        .workspace-list {
+          display: flex;
+          gap: 8px;
+          padding-bottom: 2px;
+        }
+
+        button {
+          flex: 0 0 180px;
+          min-height: 54px;
+        }
+
+        footer {
+          display: none;
+        }
+      }
     `,
   ],
   template: `

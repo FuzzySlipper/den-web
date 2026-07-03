@@ -10,6 +10,8 @@ interface FilterOption {
   readonly label: string;
 }
 
+type MobilePane = 'list' | 'detail';
+
 const filterOptions: readonly FilterOption[] = [
   { value: 'active', filter: 'active', label: 'Active' },
   { value: '__all', filter: null, label: 'All' },
@@ -262,25 +264,72 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
         color: var(--den-danger);
       }
 
+      .mobile-back {
+        display: none;
+      }
+
       @media (max-width: 920px) {
         .task-cockpit {
           grid-template-columns: 1fr;
+          min-height: calc(100vh - 250px);
         }
 
         .task-list {
-          border-bottom: 1px solid var(--den-border);
           border-right: 0;
-          min-height: 420px;
+          min-height: calc(100vh - 250px);
+        }
+
+        .task-detail {
+          display: none;
+          min-height: calc(100vh - 250px);
+        }
+
+        .task-cockpit.show-detail .task-list {
+          display: none;
+        }
+
+        .task-cockpit.show-detail .task-detail {
+          display: block;
         }
 
         .toolbar {
           grid-template-columns: 1fr;
         }
+
+        header {
+          padding: 14px;
+        }
+
+        .detail-body {
+          padding: 14px;
+        }
+
+        .mobile-back {
+          appearance: none;
+          background: var(--den-input);
+          border: 1px solid var(--den-border);
+          border-radius: 6px;
+          color: var(--den-text);
+          cursor: pointer;
+          display: inline-flex;
+          font: inherit;
+          justify-content: center;
+          min-height: 34px;
+          padding: 0 12px;
+          width: max-content;
+        }
+
+        .mobile-back:hover,
+        .mobile-back:focus-visible {
+          background: var(--den-hover);
+          border-color: var(--den-border-strong);
+          outline: none;
+        }
       }
     `,
   ],
   template: `
-    <section class="task-cockpit" aria-label="Tasks">
+    <section class="task-cockpit" aria-label="Tasks" [class.show-detail]="mobilePane() === 'detail'">
       <div class="task-list">
         <header>
           <h2>Tasks</h2>
@@ -349,16 +398,19 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
         @switch (selectedTask().kind) {
           @case ('idle') {
             <div class="detail-body">
+              <button type="button" class="mobile-back" (click)="showTaskList()">Back to tasks</button>
               <p class="state">Select a task</p>
             </div>
           }
           @case ('loading') {
             <div class="detail-body">
+              <button type="button" class="mobile-back" (click)="showTaskList()">Back to tasks</button>
               <p class="state">Loading task detail</p>
             </div>
           }
           @case ('error') {
             <div class="detail-body">
+              <button type="button" class="mobile-back" (click)="showTaskList()">Back to tasks</button>
               <p class="state error">{{ errorText(selectedTaskError()) }}</p>
             </div>
           }
@@ -366,6 +418,7 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
             @let detail = selectedTaskDetail();
             @if (detail) {
             <div class="detail-body">
+              <button type="button" class="mobile-back" (click)="showTaskList()">Back to tasks</button>
               <div class="detail-head">
                 <h3>#{{ detail.task.id }} {{ detail.task.title || 'Untitled task' }}</h3>
                 <div class="meta">{{ detail.task.project_id || selectedProjectId() }}</div>
@@ -484,6 +537,7 @@ export class TaskCockpitComponent {
   protected readonly descriptionEditorOpen = signal(false);
   protected readonly descriptionDraft = signal('');
   protected readonly editError = signal<string | null>(null);
+  protected readonly mobilePane = signal<MobilePane>('list');
   protected readonly tasksError = computed(() => {
     const state = this.tasks();
     return state.kind === 'error' ? state.error : null;
@@ -500,6 +554,7 @@ export class TaskCockpitComponent {
     const projectId = this.selectedProjectId();
     if (!projectId || projectId === this.loadedProjectId) return;
     this.loadedProjectId = projectId;
+    this.mobilePane.set('list');
     queueMicrotask(() => void this.taskStore.refresh(projectId));
   });
 
@@ -529,6 +584,11 @@ export class TaskCockpitComponent {
   protected selectTask(task: DenTaskSummary): void {
     const projectId = task.project_id ?? this.selectedProjectId();
     if (projectId) void this.taskStore.selectTask(projectId, task.id);
+    this.mobilePane.set('detail');
+  }
+
+  protected showTaskList(): void {
+    this.mobilePane.set('list');
   }
 
   protected changeStatus(event: Event, detail: DenTaskDetail): void {

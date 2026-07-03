@@ -120,12 +120,37 @@ const tabs: readonly TabItem[] = [
       }
 
       @media (max-width: 840px) {
+        .topbar {
+          align-items: start;
+          display: grid;
+          gap: 8px;
+          min-height: 0;
+          padding: 10px 12px;
+        }
+
+        nav {
+          margin: 0 -4px;
+          padding: 0 4px 2px;
+          width: calc(100vw - 24px);
+        }
+
+        .nav-item {
+          flex: 0 0 auto;
+        }
+
         .layout {
           grid-template-columns: 1fr;
         }
 
         .workspace {
-          min-height: 360px;
+          border-bottom: 1px solid var(--den-border);
+          min-height: 0;
+          max-height: 190px;
+          overflow: hidden;
+        }
+
+        .main {
+          min-height: calc(100vh - 250px);
         }
       }
     `,

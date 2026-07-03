@@ -6,13 +6,15 @@ import { DOCUMENTS_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
 import { DocumentPublishPanelComponent } from './document-publish-panel.component';
 import { documentsPanelStyles } from './documents-panel.styles';
 
+type MobilePane = 'list' | 'detail';
+
 @Component({
   selector: 'den-documents-panel',
   standalone: true,
   imports: [DocumentPublishPanelComponent, MarkdownEditorDialogComponent, MarkdownViewComponent],
   styles: [documentsPanelStyles],
   template: `
-    <section class="documents" aria-label="Documents">
+    <section class="documents" aria-label="Documents" [class.show-detail]="mobilePane() === 'detail'">
       <aside class="list" aria-label="Document list">
         <header>
           <h2>Documents</h2>
@@ -53,15 +55,22 @@ import { documentsPanelStyles } from './documents-panel.styles';
       <article class="detail" aria-label="Document detail">
         @switch (detail().kind) {
           @case ('loading') {
-            <div class="detail-body"><p class="state">Loading document</p></div>
+            <div class="detail-body">
+              <button type="button" class="mobile-back" (click)="showDocumentList()">Back to documents</button>
+              <p class="state">Loading document</p>
+            </div>
           }
           @case ('error') {
-            <div class="detail-body"><p class="state error">{{ errorText(detailError()) }}</p></div>
+            <div class="detail-body">
+              <button type="button" class="mobile-back" (click)="showDocumentList()">Back to documents</button>
+              <p class="state error">{{ errorText(detailError()) }}</p>
+            </div>
           }
           @case ('data') {
             @let doc = detailValue();
             @if (doc) {
               <header>
+                <button type="button" class="mobile-back" (click)="showDocumentList()">Back to documents</button>
                 <h3>{{ doc.title }}</h3>
                 <div class="meta">{{ doc.project_id }} / {{ doc.slug }}</div>
               </header>
@@ -142,7 +151,10 @@ import { documentsPanelStyles } from './documents-panel.styles';
             }
           }
           @default {
-            <div class="detail-body"><p class="state">Select a document</p></div>
+            <div class="detail-body">
+              <button type="button" class="mobile-back" (click)="showDocumentList()">Back to documents</button>
+              <p class="state">Select a document</p>
+            </div>
           }
         }
       </article>
@@ -171,6 +183,7 @@ export class DocumentsPanelComponent {
   protected readonly contentDraft = signal('');
   protected readonly publishPanelOpen = signal(false);
   protected readonly editError = signal<string | null>(null);
+  protected readonly mobilePane = signal<MobilePane>('list');
   protected readonly documentItems = computed(() => stateValue(this.documents()) ?? []);
   protected readonly detailValue = computed(() => stateValue(this.detail()) ?? null);
   protected readonly body = computed(() => {
@@ -191,6 +204,7 @@ export class DocumentsPanelComponent {
     const projectId = this.workspace.selectedProjectId();
     if (!projectId || projectId === this.loadedProjectId) return;
     this.loadedProjectId = projectId;
+    this.mobilePane.set('list');
     queueMicrotask(() => void this.store.refresh(projectId));
   });
 
@@ -202,6 +216,11 @@ export class DocumentsPanelComponent {
 
   protected select(document: DenDocumentSummary): void {
     void this.store.select(document);
+    this.mobilePane.set('detail');
+  }
+
+  protected showDocumentList(): void {
+    this.mobilePane.set('list');
   }
 
   protected openPublishPanel(): void {

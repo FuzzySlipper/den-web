@@ -244,15 +244,67 @@ export const documentsPanelStyles = `
     color: var(--den-danger);
   }
 
+  .mobile-back {
+    display: none;
+  }
+
   @media (max-width: 920px) {
     .documents {
       grid-template-columns: 1fr;
+      min-height: calc(100vh - 250px);
     }
 
     .list {
-      border-bottom: 1px solid var(--den-border);
       border-right: 0;
-      min-height: 360px;
+      min-height: calc(100vh - 250px);
+    }
+
+    .detail {
+      display: none;
+      min-height: calc(100vh - 250px);
+    }
+
+    .documents.show-detail .list {
+      display: none;
+    }
+
+    .documents.show-detail .detail {
+      display: grid;
+    }
+
+    header {
+      padding: 14px;
+    }
+
+    .detail-body {
+      padding: 12px;
+    }
+
+    .section-head,
+    .section-actions {
+      flex-wrap: wrap;
+    }
+
+    .mobile-back {
+      appearance: none;
+      background: var(--den-input);
+      border: 1px solid var(--den-border);
+      border-radius: 6px;
+      color: var(--den-text);
+      cursor: pointer;
+      display: inline-flex;
+      font: inherit;
+      justify-content: center;
+      min-height: 34px;
+      padding: 0 12px;
+      width: max-content;
+    }
+
+    .mobile-back:hover,
+    .mobile-back:focus-visible {
+      background: var(--den-hover);
+      border-color: var(--den-border-strong);
+      outline: none;
     }
   }
 `;

@@ -28,6 +28,28 @@ test('selects spaces as active workspaces', async ({ page }) => {
   await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Asha Brief' }).first()).toBeVisible();
 });
 
+test('supports minimal mobile viewing navigation', async ({ page }) => {
+  await mockDenServices(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+
+  await expect(page.getByRole('button', { name: 'Tasks' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Den Web den-web/ })).toBeVisible();
+  await page.getByRole('button', { name: /Asha Studio asha/ }).click();
+  await expect(page.getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
+  await page.getByRole('button', { name: /#4100 Asha Studio space task/ }).click();
+  await expect(page.getByLabel('Task detail').getByRole('heading', { name: /#4100/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Back to tasks' }).click();
+  await expect(page.getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Documents' }).click();
+  await expect(page.getByRole('button', { name: /Asha Brief/ })).toBeVisible();
+  await page.getByRole('button', { name: /Asha Brief/ }).click();
+  await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Asha Brief' }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Back to documents' }).click();
+  await expect(page.getByRole('button', { name: /Asha Brief/ })).toBeVisible();
+});
+
 test('applies persisted theme preferences on boot', async ({ page }) => {
   await mockDenServices(page);
   await page.addInitScript(() => {
