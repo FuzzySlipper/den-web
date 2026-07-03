@@ -26,6 +26,7 @@ describe('Den transport clients', () => {
     await clients.documents.getDiscussion('den-web', 'successor-brief');
     await clients.librarian.query('den-web', { query: 'successor' });
     await clients.conversation.listChannels('den-web', { limit: 1 });
+    await clients.conversation.listMemberships({ channelId: 7, limit: 10 });
     await clients.conversation.listMessages(7, { afterId: 2, limit: 20 });
     await clients.conversation.postMessage(7, { sender: 'web-ui', body: 'hello', idempotency_key: 'k1' });
     await clients.timeline.listChannelItems(7, { limit: 1 });
@@ -48,6 +49,7 @@ describe('Den transport clients', () => {
       '/api/v1/projects/den-web/documents/successor-brief/discussion',
       '/api/v1/projects/den-web/librarian/query',
       '/api/v1/conversation/channels?project_id=den-web&limit=1',
+      '/api/v1/conversation/memberships?channel_id=7&limit=10',
       '/api/v1/conversation/channels/7/messages?after_id=2&limit=20',
       '/api/v1/conversation/channels/7/messages',
       '/api/v1/timeline/channels/7/items?limit=1',

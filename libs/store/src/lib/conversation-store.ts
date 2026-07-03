@@ -1,10 +1,11 @@
 import { computed, signal, type Signal } from '@angular/core';
 import { timelineItems, type TimelineItemView } from '@den-web/domain';
-import type { DenChannelMessage, DenConversationChannel, DenResult, DenTimelineResponse } from '@den-web/protocol';
+import type { DenChannelMessage, DenConversationChannel, DenConversationMembership, DenResult, DenTimelineResponse } from '@den-web/protocol';
 import { errorState, idleState, loadingState, resultState, stateValue, type AsyncState, unknownStoreError } from './async-state';
 
 export interface ConversationTransportPort {
   readonly listChannels: (projectId: string, options?: { readonly limit?: number; readonly kind?: string }) => Promise<DenResult<readonly DenConversationChannel[]>>;
+  readonly listMemberships: (options?: { readonly channelId?: number; readonly projectId?: string; readonly includeLeft?: boolean; readonly limit?: number }) => Promise<DenResult<readonly DenConversationMembership[]>>;
   readonly listMessages: (channelId: number, options?: { readonly afterId?: number; readonly limit?: number }) => Promise<DenResult<readonly DenChannelMessage[]>>;
   readonly postMessage: (channelId: number, body: { readonly sender: string; readonly body: string; readonly idempotency_key: string }) => Promise<DenResult<DenChannelMessage>>;
 }
@@ -16,6 +17,7 @@ export interface TimelineTransportPort {
 export interface ConversationStore {
   readonly channels: Signal<AsyncState<readonly DenConversationChannel[]>>;
   readonly messages: Signal<AsyncState<readonly DenChannelMessage[]>>;
+  readonly memberships: Signal<AsyncState<readonly DenConversationMembership[]>>;
   readonly timeline: Signal<AsyncState<readonly TimelineItemView[]>>;
   readonly selectedChannelId: Signal<number | null>;
   readonly selectedChannel: Signal<DenConversationChannel | null>;
@@ -27,25 +29,31 @@ export interface ConversationStore {
 export function createConversationStore(conversation: ConversationTransportPort, timeline: TimelineTransportPort): ConversationStore {
   const channels = signal<AsyncState<readonly DenConversationChannel[]>>(idleState());
   const messages = signal<AsyncState<readonly DenChannelMessage[]>>(idleState());
+  const memberships = signal<AsyncState<readonly DenConversationMembership[]>>(idleState());
   const timelineState = signal<AsyncState<readonly TimelineItemView[]>>(idleState());
   const selectedChannelId = signal<number | null>(null);
 
   const loadChannel = async (channelId: number): Promise<void> => {
     const previousMessages = stateValue(messages());
+    const previousMemberships = stateValue(memberships());
     const previousTimeline = stateValue(timelineState());
     selectedChannelId.set(channelId);
     messages.set(loadingState(previousMessages));
+    memberships.set(loadingState(previousMemberships));
     timelineState.set(loadingState(previousTimeline));
     try {
-      const [messageResult, timelineResult] = await Promise.all([
+      const [messageResult, membershipResult, timelineResult] = await Promise.all([
         conversation.listMessages(channelId, { limit: 100 }),
+        conversation.listMemberships({ channelId, limit: 100 }),
         timeline.listChannelItems(channelId, { limit: 100 }),
       ]);
       messages.set(resultState(messageResult, previousMessages));
+      memberships.set(resultState(membershipResult, previousMemberships));
       timelineState.set(timelineResult.ok ? resultState({ ok: true, value: timelineItems(timelineResult.value) }, previousTimeline) : resultState(timelineResult, previousTimeline));
     } catch (error) {
       const classified = unknownStoreError(error);
       messages.set(errorState(classified, previousMessages));
+      memberships.set(errorState(classified, previousMemberships));
       timelineState.set(errorState(classified, previousTimeline));
     }
   };
@@ -53,17 +61,22 @@ export function createConversationStore(conversation: ConversationTransportPort,
   return {
     channels: channels.asReadonly(),
     messages: messages.asReadonly(),
+    memberships: memberships.asReadonly(),
     timeline: timelineState.asReadonly(),
     selectedChannelId: selectedChannelId.asReadonly(),
     selectedChannel: computed(() => stateValue(channels())?.find((channel) => channel.id === selectedChannelId()) ?? null),
     refreshChannels: async (projectId) => {
       const previous = stateValue(channels());
       channels.set(loadingState(previous));
+      selectedChannelId.set(null);
+      messages.set(idleState());
+      memberships.set(idleState());
+      timelineState.set(idleState());
       try {
         const result = await conversation.listChannels(projectId, { limit: 100 });
         channels.set(resultState(result, previous));
         const firstChannelId = result.ok ? result.value[0]?.id : undefined;
-        if (firstChannelId !== undefined && selectedChannelId() === null) await loadChannel(firstChannelId);
+        if (firstChannelId !== undefined) await loadChannel(firstChannelId);
       } catch (error) {
         channels.set(errorState(unknownStoreError(error), previous));
       }

@@ -199,6 +199,7 @@ describe('successor signal stores', () => {
   it('loads conversation messages and timeline projections by selected channel', async () => {
     const store = createConversationStore({
       listChannels: async () => ok([{ id: 10, slug: 'den-web', project_id: 'den-web' }]),
+      listMemberships: async () => ok([{ id: 1, channel_id: 10, member_identity: 'codex', member_type: 'agent', membership_status: 'active' }]),
       listMessages: async () => ok([channelMessageFixture({ id: 4 })]),
       postMessage: async (_channelId, body) => ok(channelMessageFixture({ id: 5, body: body.body })),
     }, {
@@ -210,7 +211,33 @@ describe('successor signal stores', () => {
     await store.sendMessage('codex', 'Hello', 'phase-3');
 
     expect(store.messages().kind).toBe('data');
+    expect(store.memberships().kind).toBe('data');
     expect(store.timeline().kind).toBe('data');
+  });
+
+  it('selects the top channel whenever conversation project channels refresh', async () => {
+    let projectId = 'den-web';
+    const store = createConversationStore({
+      listChannels: async () => ok(projectId === 'den-web'
+        ? [
+            { id: 10, slug: 'den-web', project_id: 'den-web' },
+            { id: 11, slug: 'ops', project_id: 'den-web' },
+          ]
+        : [{ id: 20, slug: 'asha', project_id: 'asha' }]),
+      listMemberships: async (options) => ok([{ id: 1, channel_id: options?.channelId, member_identity: 'codex', member_type: 'agent' }]),
+      listMessages: async (channelId) => ok([channelMessageFixture({ id: channelId, channel_id: channelId })]),
+      postMessage: async (_channelId, body) => ok(channelMessageFixture({ id: 5, body: body.body })),
+    }, {
+      listChannelItems: async () => ok(timelineFixture()),
+    });
+
+    await store.refreshChannels(projectId);
+    await store.selectChannel(11);
+    projectId = 'asha';
+    await store.refreshChannels(projectId);
+
+    expect(store.selectedChannelId()).toBe(20);
+    expect(stateValue(store.messages())?.[0]?.channel_id).toBe(20);
   });
 
   it('projects observation lanes through the agents store', async () => {

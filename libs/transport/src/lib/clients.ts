@@ -1,6 +1,7 @@
 import type {
   DenChannelMessage,
   DenConversationChannel,
+  DenConversationMembership,
   DenDeliveryIntent,
   DenDiscussion,
   DenDocPublishRequest,
@@ -155,6 +156,15 @@ export class ConversationTransport {
 
   listChannels(projectId: string, options: { readonly limit?: number; readonly kind?: string } = {}): Promise<DenResult<readonly DenConversationChannel[]>> {
     return this.http.json(joinUrl(this.config.conversationApiBase, `/channels${query({ project_id: projectId, limit: options.limit, kind: options.kind })}`));
+  }
+
+  listMemberships(options: { readonly channelId?: number; readonly projectId?: string; readonly includeLeft?: boolean; readonly limit?: number } = {}): Promise<DenResult<readonly DenConversationMembership[]>> {
+    return this.http.json(joinUrl(this.config.conversationApiBase, `/memberships${query({
+      channel_id: options.channelId,
+      project_id: options.projectId,
+      include_left: options.includeLeft,
+      limit: options.limit,
+    })}`));
   }
 
   listMessages(channelId: number, options: { readonly afterId?: number; readonly limit?: number } = {}): Promise<DenResult<readonly DenChannelMessage[]>> {

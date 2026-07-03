@@ -58,9 +58,22 @@ const taskDetail = {
     { id: 1, sender: 'codex', content: 'Phase 4 fixture loaded', created_at: '2026-07-02T00:00:00Z' },
   ],
 };
-const channels = [{ id: 7, project_id: 'den-web', slug: 'den-web', name: 'den-web', kind: 'project_default' }];
+const channels = [
+  { id: 7, project_id: 'den-web', slug: 'den-web', name: 'den-web', kind: 'project_default' },
+  { id: 8, project_id: 'den-web', slug: 'ops', name: 'ops', kind: 'project' },
+];
+const memberships = [
+  { id: 701, channel_id: 7, member_identity: 'codex', member_type: 'agent', membership_status: 'active', wake_policy: 'normal' },
+  { id: 702, channel_id: 7, member_identity: 'patch', member_type: 'user', membership_status: 'active', wake_policy: 'mentions_only' },
+];
 const channelMessages = [{ id: 71, channel_id: 7, sender_identity: 'codex', sender_type: 'agent', body: 'Conversation fixture loaded', created_at: '2026-07-02T00:00:00Z' }];
-const timeline = { items: [{ id: 'tl-1', kind: 'message', title: 'Timeline fixture loaded', created_at: '2026-07-02T00:00:00Z' }], next_cursor: null };
+const timeline = {
+  items: [
+    { id: 'tl-1', kind: 'message', title: 'Timeline fixture loaded', created_at: '2026-07-02T00:01:00Z' },
+    { id: 'tl-2', kind: 'observation_tool_call', title: 'Observation tool fixture loaded', sender_identity: 'den-mcp-runner', created_at: '2026-07-02T00:02:00Z' },
+  ],
+  next_cursor: null,
+};
 const notifications = [{ id: 9, project_id: 'den-web', task_id: 3993, sender: 'den-services', content: 'Notification fixture loaded', urgency: 'normal', is_read: false, created_at: '2026-07-02T00:00:00Z', metadata: null }];
 const messages = [{ id: 1, project_id: 'den-web', task_id: 3993, thread_id: 1, sender: 'codex', intent: 'handoff', content: 'Message fixture loaded', created_at: '2026-07-02T00:00:00Z' }];
 const documents = [
@@ -122,9 +135,19 @@ export async function mockDenServices(page: Page): Promise<void> {
     recent_messages: [],
   }));
   await page.route('**/api/v1/conversation/channels?**', (route) => json(route, channels));
-  await page.route('**/api/v1/conversation/channels/7/messages', (route) => json(route, channelMessages));
+  await page.route('**/api/v1/conversation/memberships?**', (route) => json(route, memberships));
+  await page.route('**/api/v1/conversation/channels/7/messages', (route) => {
+    if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON() as { readonly body?: string; readonly sender?: string };
+      return json(route, { id: 72, channel_id: 7, sender_identity: body.sender ?? 'web-ui', sender_type: 'user', body: body.body ?? '', created_at: '2026-07-02T00:03:00Z' });
+    }
+    return json(route, channelMessages);
+  });
   await page.route('**/api/v1/conversation/channels/7/messages?**', (route) => json(route, channelMessages));
+  await page.route('**/api/v1/conversation/channels/8/messages', (route) => json(route, []));
+  await page.route('**/api/v1/conversation/channels/8/messages?**', (route) => json(route, []));
   await page.route('**/api/v1/timeline/channels/7/items?**', (route) => json(route, timeline));
+  await page.route('**/api/v1/timeline/channels/8/items?**', (route) => json(route, { items: [], next_cursor: null }));
   await page.route('**/api/v1/user-notifications?**', (route) => json(route, notifications));
   await page.route('**/api/v1/user-notifications/read', (route) => json(route, { marked: 1 }));
   await page.route('**/api/v1/projects/den-web/messages?**', (route) => json(route, messages));

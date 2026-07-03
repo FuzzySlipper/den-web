@@ -113,6 +113,26 @@ export interface DenConversationChannel {
   readonly kind?: string;
 }
 
+export interface DenConversationMembership {
+  readonly id?: number;
+  readonly channel_id?: number;
+  readonly channelId?: number;
+  readonly member_type?: string;
+  readonly memberType?: string;
+  readonly member_identity?: string;
+  readonly memberIdentity?: string;
+  readonly profile_identity?: string | null;
+  readonly profileIdentity?: string | null;
+  readonly membership_status?: string;
+  readonly membershipStatus?: string;
+  readonly wake_policy?: string;
+  readonly wakePolicy?: string;
+  readonly can_send?: boolean;
+  readonly canSend?: boolean;
+  readonly updated_at?: string | null;
+  readonly updatedAt?: string | null;
+}
+
 export interface DenChannelMessage {
   readonly id: number;
   readonly channel_id?: number;

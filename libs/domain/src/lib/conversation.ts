@@ -1,4 +1,4 @@
-import type { DenChannelMessage, DenConversationChannel, DenTimelineResponse } from '@den-web/protocol';
+import type { DenChannelMessage, DenConversationChannel, DenConversationMembership, DenTimelineResponse } from '@den-web/protocol';
 
 export type MessageBodySegment =
   | { readonly type: 'text'; readonly text: string }
@@ -9,7 +9,27 @@ export interface TimelineItemView {
   readonly kind: string;
   readonly title: string;
   readonly createdAt: string | null;
+  readonly body: string;
+  readonly sender: string;
 }
+
+export type ConversationFeedItem =
+  | {
+      readonly id: string;
+      readonly source: 'message';
+      readonly kind: string;
+      readonly sender: string;
+      readonly body: string;
+      readonly createdAt: string | null;
+    }
+  | {
+      readonly id: string;
+      readonly source: 'timeline';
+      readonly kind: string;
+      readonly sender: string;
+      readonly body: string;
+      readonly createdAt: string | null;
+    };
 
 const detailsPattern = /<details>\s*<summary>([\s\S]*?)<\/summary>\s*([\s\S]*?)<\/details>/gi;
 
@@ -25,6 +45,50 @@ export function messageSender(message: DenChannelMessage): string {
 
 export function channelMessagePrimaryBody(message: DenChannelMessage): string {
   return message.body || stringMetadata(message, 'request_body') || message.summary || '';
+}
+
+export function channelMessageKind(message: DenChannelMessage): string {
+  return stringMetadata(message, 'message_kind') || stringMetadata(message, 'source_kind') || 'message';
+}
+
+export function conversationFeedItems(
+  messages: readonly DenChannelMessage[],
+  timeline: readonly TimelineItemView[],
+): readonly ConversationFeedItem[] {
+  return [
+    ...messages.map((message) => ({
+      id: `message:${message.id}`,
+      source: 'message' as const,
+      kind: channelMessageKind(message),
+      sender: messageSender(message),
+      body: channelMessagePrimaryBody(message),
+      createdAt: message.created_at ?? null,
+    })),
+    ...timeline.map((item) => ({
+      id: `timeline:${item.id}`,
+      source: 'timeline' as const,
+      kind: item.kind,
+      sender: item.sender,
+      body: item.body || item.title,
+      createdAt: item.createdAt,
+    })),
+  ].sort(compareFeedItems);
+}
+
+export function membershipIdentity(member: DenConversationMembership): string {
+  return member.member_identity ?? member.memberIdentity ?? 'unknown';
+}
+
+export function membershipType(member: DenConversationMembership): string {
+  return member.member_type ?? member.memberType ?? 'member';
+}
+
+export function membershipStatus(member: DenConversationMembership): string {
+  return member.membership_status ?? member.membershipStatus ?? 'active';
+}
+
+export function membershipWakePolicy(member: DenConversationMembership): string {
+  return member.wake_policy ?? member.wakePolicy ?? 'normal';
 }
 
 export function parseMessageBodySegments(body: string): readonly MessageBodySegment[] {
@@ -47,13 +111,38 @@ export function parseMessageBodySegments(body: string): readonly MessageBodySegm
 export function timelineItems(response: DenTimelineResponse): readonly TimelineItemView[] {
   return (response.items ?? []).map((item, index) => {
     const record = asRecord(item);
+    const payload = asRecord(record['payload']);
     return {
       id: String(record['id'] ?? index),
-      kind: String(record['kind'] ?? record['type'] ?? 'event'),
-      title: String(record['title'] ?? record['summary'] ?? record['body'] ?? 'Untitled event'),
+      kind: String(record['kind'] ?? record['type'] ?? payload['kind'] ?? payload['type'] ?? 'event'),
+      title: String(record['title'] ?? record['summary'] ?? payload['title'] ?? payload['summary'] ?? record['body'] ?? payload['body'] ?? 'Untitled event'),
+      body: String(record['body'] ?? payload['body'] ?? record['summary'] ?? payload['summary'] ?? record['title'] ?? payload['title'] ?? ''),
+      sender: String(
+        record['sender_identity']
+          ?? record['sender']
+          ?? record['agent_identity']
+          ?? payload['sender_identity']
+          ?? payload['sender']
+          ?? payload['agent_identity']
+          ?? record['source']
+          ?? 'timeline',
+      ),
       createdAt: typeof record['created_at'] === 'string' ? record['created_at'] : null,
     };
   });
+}
+
+function compareFeedItems(left: ConversationFeedItem, right: ConversationFeedItem): number {
+  const leftTime = feedTimestamp(left.createdAt);
+  const rightTime = feedTimestamp(right.createdAt);
+  if (leftTime !== rightTime) return leftTime - rightTime;
+  return left.id.localeCompare(right.id);
+}
+
+function feedTimestamp(value: string | null): number {
+  if (!value) return Number.POSITIVE_INFINITY;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : Number.POSITIVE_INFINITY;
 }
 
 function stringMetadata(message: DenChannelMessage, key: string): string | null {

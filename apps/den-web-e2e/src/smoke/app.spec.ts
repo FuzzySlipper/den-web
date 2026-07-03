@@ -97,6 +97,14 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await page.getByRole('button', { name: 'Conversation' }).click();
   await expect(page.getByText('Conversation fixture loaded')).toBeVisible();
   await expect(page.getByText('Timeline fixture loaded')).toBeVisible();
+  await expect(page.getByText('Observation tool fixture loaded')).toBeVisible();
+  await expect(page.getByLabel('Channels').getByRole('button', { name: /#den-web/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('Channels').getByRole('button', { name: /#ops/ })).toBeVisible();
+  await expect(page.getByLabel('Channel participants').getByText('codex')).toBeVisible();
+  await expect(page.getByLabel('Channel chat').getByText(/Jul 1|Jul 2|Jul 3/).first()).toBeVisible();
+  await page.getByLabel('Conversation message').fill('Sent from fixture UI');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.getByLabel('Channel chat').getByText('Sent from fixture UI')).toBeVisible();
 
   await page.getByRole('button', { name: 'Notifications' }).click();
   await expect(page.getByText('Notification fixture loaded')).toBeVisible();

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   channelMessagePrimaryBody,
+  conversationFeedItems,
   discussionAuthor,
   discussionBody,
   discussionThreads,
@@ -222,6 +223,15 @@ describe('successor conversation and observation fixtures', () => {
 
   it('prefers the message body before metadata or summaries', () => {
     expect(channelMessagePrimaryBody(channelMessageFixture({ body: 'Request body', summary: 'Generated summary' }))).toBe('Request body');
+  });
+
+  it('merges channel messages and timeline items into chronological chat feed rows', () => {
+    const feed = conversationFeedItems(
+      [channelMessageFixture({ id: 1, body: 'Channel message', created_at: '2026-07-02T00:02:00Z' })],
+      [{ id: 'tool-1', kind: 'observation_tool_call', title: 'Tool call', body: 'Observation event', sender: 'den-mcp-runner', createdAt: '2026-07-02T00:01:00Z' }],
+    );
+
+    expect(feed.map((item) => item.body)).toEqual(['Observation event', 'Channel message']);
   });
 
   it('marks the agents overview degraded when an observation source is unhealthy', () => {
