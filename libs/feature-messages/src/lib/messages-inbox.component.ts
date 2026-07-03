@@ -1,10 +1,19 @@
 import { Component, computed, effect, inject } from '@angular/core';
-import type { MessageViewItem } from '@den-web/domain';
-import { MESSAGES_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
+import {
+  artifactDimensions,
+  artifactDisplayName,
+  artifactRetentionLabel,
+  formatArtifactByteCount,
+  type ArtifactReference,
+  type MessageViewItem,
+} from '@den-web/domain';
+import { ArtifactEvidenceComponent, type ArtifactEvidenceItem } from '@den-web/feature-artifacts';
+import { ARTIFACTS_STORE, MESSAGES_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
 
 @Component({
   selector: 'den-messages-inbox',
   standalone: true,
+  imports: [ArtifactEvidenceComponent],
   styles: [`
     .surface { display: grid; gap: 14px; padding: 20px; }
     h2 { margin: 0; font-size: var(--den-font-size-xl); }
@@ -47,7 +56,11 @@ import { MESSAGES_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
             @case ('data') {
               @if (threadItems().length === 0) { <p class="state">No thread messages</p> }
               @for (message of threadItems(); track message.id) {
-                <article class="item"><strong>{{ message.sender }}</strong><span class="muted">{{ message.body }}</span></article>
+                <article class="item">
+                  <strong>{{ message.sender }}</strong>
+                  <span class="muted">{{ message.body }}</span>
+                  <den-artifact-evidence [items]="artifactEvidenceItems(message.artifactRefs)" />
+                </article>
               }
             }
             @default { <p class="state">Select a message</p> }
@@ -60,6 +73,7 @@ import { MESSAGES_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
 export class MessagesInboxComponent {
   private readonly workspace = inject(WORKSPACE_STORE);
   private readonly store = inject(MESSAGES_STORE);
+  private readonly artifacts = inject(ARTIFACTS_STORE);
   private loadedProjectId: string | null = null;
   protected readonly inbox = this.store.inbox;
   protected readonly thread = this.store.thread;
@@ -76,9 +90,34 @@ export class MessagesInboxComponent {
     queueMicrotask(() => void this.store.refresh(projectId));
   });
 
+  private readonly artifactLoadEffect = effect(() => {
+    for (const message of this.threadItems()) {
+      for (const ref of message.artifactRefs) void this.artifacts.load(ref.ref);
+    }
+  });
+
   protected select(message: MessageViewItem): void {
     const projectId = this.workspace.selectedProjectId();
     if (projectId) void this.store.selectThread(projectId, message.id);
+  }
+  protected artifactEvidenceItems(refs: readonly ArtifactReference[]): readonly ArtifactEvidenceItem[] {
+    return refs.map((ref) => {
+      const state = this.artifacts.stateFor(ref.ref);
+      const metadata = stateValue(state) ?? null;
+      return {
+        ref: ref.ref,
+        label: artifactDisplayName(ref, metadata),
+        status: state.kind === 'error' ? 'error' : metadata ? 'ready' : 'loading',
+        contentUrl: metadata ? this.artifacts.contentUrl(metadata) : null,
+        error: state.kind === 'error' ? state.error.message : null,
+        mimeType: metadata?.mime_type ?? ref.mimeType,
+        byteCount: metadata ? formatArtifactByteCount(metadata.byte_count) : null,
+        dimensions: metadata ? artifactDimensions(metadata) : null,
+        sha256: metadata?.sha256 ?? null,
+        sensitive: metadata?.sensitive ?? ref.sensitive ?? false,
+        retention: metadata ? artifactRetentionLabel(metadata) : null,
+      };
+    });
   }
   protected errorText(error: { readonly kind: string; readonly message: string } | null): string { return error ? `${error.kind}: ${error.message}` : 'unknown: Unable to load'; }
 }

@@ -9,6 +9,7 @@ import type {
   DenDocumentDetail,
   DenDocumentSummary,
   DenDocumentUpdateRequest,
+  DenArtifactMetadata,
   DenLibrarianQueryRequest,
   DenLibrarianQueryResponse,
   DenMessage,
@@ -38,6 +39,7 @@ export interface DenTransportClients {
   readonly observation: ObservationTransport;
   readonly delivery: DeliveryTransport;
   readonly docPublish: DocPublishTransport;
+  readonly artifacts: ArtifactsTransport;
 }
 
 export function createDenTransportClients(
@@ -56,6 +58,7 @@ export function createDenTransportClients(
     observation: new ObservationTransport(config, http),
     delivery: new DeliveryTransport(config, http),
     docPublish: new DocPublishTransport(config, http),
+    artifacts: new ArtifactsTransport(config, http),
   };
 }
 
@@ -166,6 +169,22 @@ export class DocumentsTransport {
 
   getDiscussion(projectId: string, slug: string): Promise<DenResult<DenDiscussion>> {
     return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(slug)}/discussion`));
+  }
+}
+
+export class ArtifactsTransport {
+  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+
+  resolve(ref: string): Promise<DenResult<DenArtifactMetadata>> {
+    return this.http.json(joinUrl(this.config.artifactsApiBase, `/resolve${query({ ref })}`));
+  }
+
+  metadata(artifactId: string): Promise<DenResult<DenArtifactMetadata>> {
+    return this.http.json(joinUrl(this.config.artifactsApiBase, `/${encodeURIComponent(artifactId)}/metadata`));
+  }
+
+  contentUrl(artifactId: string): string {
+    return joinUrl(this.config.artifactsApiBase, `/${encodeURIComponent(artifactId)}/content`);
   }
 }
 

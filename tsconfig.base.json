@@ -26,6 +26,7 @@
       "@den-web/components": ["libs/components/src/index.ts"],
       "@den-web/domain": ["libs/domain/src/index.ts"],
       "@den-web/feature-agents": ["libs/feature-agents/src/index.ts"],
+      "@den-web/feature-artifacts": ["libs/feature-artifacts/src/index.ts"],
       "@den-web/feature-conversation": ["libs/feature-conversation/src/index.ts"],
       "@den-web/feature-documents": ["libs/feature-documents/src/index.ts"],
       "@den-web/feature-librarian": ["libs/feature-librarian/src/index.ts"],

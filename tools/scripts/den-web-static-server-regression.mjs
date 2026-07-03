@@ -129,22 +129,33 @@ test('routes den-services owner APIs to their service targets with service token
   const projects = service([{ id: 'den-web' }]);
   const tasks = service([]);
   const messages = service([]);
-  const [projectsPort, tasksPort, messagesPort] = await Promise.all([listen(projects.server), listen(tasks.server), listen(messages.server)]);
-  t.after(() => Promise.all([projects.server, tasks.server, messages.server].map(server => new Promise(resolve => server.close(resolve)))));
+  const artifacts = service({ artifact_id: 'art_fixture' });
+  const [projectsPort, tasksPort, messagesPort, artifactsPort] = await Promise.all([
+    listen(projects.server),
+    listen(tasks.server),
+    listen(messages.server),
+    listen(artifacts.server),
+  ]);
+  t.after(() => Promise.all([projects.server, tasks.server, messages.server, artifacts.server].map(server => new Promise(resolve => server.close(resolve)))));
   const baseUrl = await startServer(t, {
     DEN_PROJECTS_TARGET: `http://127.0.0.1:${projectsPort}`,
     DEN_TASKS_TARGET: `http://127.0.0.1:${tasksPort}`,
     DEN_MESSAGES_TARGET: `http://127.0.0.1:${messagesPort}`,
+    DEN_ARTIFACTS_TARGET: `http://127.0.0.1:${artifactsPort}`,
     DEN_PROJECTS_SERVICE_TOKEN: 'projects-token',
     DEN_TASKS_SERVICE_TOKEN: 'tasks-token',
     DEN_MESSAGES_SERVICE_TOKEN: 'messages-token',
+    DEN_ARTIFACTS_SERVICE_TOKEN: 'artifacts-token',
   });
   assert.equal((await request(`${baseUrl}/api/v1/projects`)).status, 200);
   assert.equal((await request(`${baseUrl}/api/v1/projects/den-web/tasks?limit=1`)).status, 200);
   assert.equal((await request(`${baseUrl}/api/v1/user-notifications?limit=1`)).status, 200);
+  assert.equal((await request(`${baseUrl}/api/v1/artifacts/resolve?ref=den-artifact%3A%2F%2Fart_fixture`)).status, 200);
   assert.equal(projects.observed[0].url, '/v1/projects');
   assert.equal(tasks.observed[0].authorization, 'Bearer tasks-token');
   assert.equal(messages.observed[0].authorization, 'Bearer messages-token');
+  assert.equal(artifacts.observed[0].url, '/v1/artifacts/resolve?ref=den-artifact%3A%2F%2Fart_fixture');
+  assert.equal(artifacts.observed[0].authorization, 'Bearer artifacts-token');
 });
 
 test('routes Gateway successor APIs with route-specific tokens and headers', async t => {

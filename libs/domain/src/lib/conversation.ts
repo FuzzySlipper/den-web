@@ -1,4 +1,5 @@
 import type { DenChannelMessage, DenConversationChannel, DenConversationMembership, DenTimelineResponse } from '@den-web/protocol';
+import { extractArtifactReferences, type ArtifactReference } from './artifacts';
 
 export type MessageBodySegment =
   | { readonly type: 'text'; readonly text: string }
@@ -11,6 +12,7 @@ export interface TimelineItemView {
   readonly createdAt: string | null;
   readonly body: string;
   readonly sender: string;
+  readonly artifactRefs: readonly ArtifactReference[];
 }
 
 export type ConversationFeedItem =
@@ -21,6 +23,7 @@ export type ConversationFeedItem =
       readonly sender: string;
       readonly body: string;
       readonly createdAt: string | null;
+      readonly artifactRefs: readonly ArtifactReference[];
     }
   | {
       readonly id: string;
@@ -29,6 +32,7 @@ export type ConversationFeedItem =
       readonly sender: string;
       readonly body: string;
       readonly createdAt: string | null;
+      readonly artifactRefs: readonly ArtifactReference[];
     };
 
 const detailsPattern = /<details>\s*<summary>([\s\S]*?)<\/summary>\s*([\s\S]*?)<\/details>/gi;
@@ -63,6 +67,7 @@ export function conversationFeedItems(
       sender: messageSender(message),
       body: channelMessagePrimaryBody(message),
       createdAt: message.created_at ?? null,
+      artifactRefs: extractArtifactReferences(message.metadata),
     })),
     ...timeline.map((item) => ({
       id: `timeline:${item.id}`,
@@ -71,6 +76,7 @@ export function conversationFeedItems(
       sender: item.sender,
       body: item.body || item.title,
       createdAt: item.createdAt,
+      artifactRefs: item.artifactRefs,
     })),
   ].sort(compareFeedItems);
 }
@@ -128,6 +134,7 @@ export function timelineItems(response: DenTimelineResponse): readonly TimelineI
           ?? 'timeline',
       ),
       createdAt: typeof record['created_at'] === 'string' ? record['created_at'] : null,
+      artifactRefs: extractArtifactReferences(record),
     };
   });
 }

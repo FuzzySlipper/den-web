@@ -1,8 +1,17 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { MarkdownEditorDialogComponent } from '@den-web/components';
-import type { TaskStatusFilter } from '@den-web/domain';
+import {
+  artifactDimensions,
+  artifactDisplayName,
+  artifactRetentionLabel,
+  extractArtifactReferences,
+  formatArtifactByteCount,
+  type ArtifactReference,
+  type TaskStatusFilter,
+} from '@den-web/domain';
+import { ArtifactEvidenceComponent, type ArtifactEvidenceItem } from '@den-web/feature-artifacts';
 import type { DenMessage, DenTaskDetail, DenTaskSummary } from '@den-web/protocol';
-import { stateValue, TASKS_STORE, WORKSPACE_STORE } from '@den-web/store';
+import { ARTIFACTS_STORE, stateValue, TASKS_STORE, WORKSPACE_STORE } from '@den-web/store';
 
 interface FilterOption {
   readonly value: string;
@@ -28,7 +37,7 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
 @Component({
   selector: 'den-task-cockpit',
   standalone: true,
-  imports: [MarkdownEditorDialogComponent],
+  imports: [MarkdownEditorDialogComponent, ArtifactEvidenceComponent],
   styles: [
     `
       :host {
@@ -555,7 +564,10 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
                 } @else {
                   <ul>
                     @for (message of detail.recent_messages; track message.id) {
-                      <li>{{ messageLine(message) }}</li>
+                      <li>
+                        <div>{{ messageLine(message) }}</div>
+                        <den-artifact-evidence [items]="artifactEvidenceItems(artifactRefsForMessage(message))" />
+                      </li>
                     }
                   </ul>
                 }
@@ -579,6 +591,7 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
 export class TaskCockpitComponent {
   private readonly workspace = inject(WORKSPACE_STORE);
   private readonly taskStore = inject(TASKS_STORE);
+  private readonly artifacts = inject(ARTIFACTS_STORE);
   private loadedProjectId: string | null = null;
   private keepDetailPaneForProjectChange = false;
 
@@ -623,6 +636,12 @@ export class TaskCockpitComponent {
     const firstTaskId = this.rows()[0]?.task.id;
     if (!projectId || firstTaskId === undefined || this.selectedTaskId() !== null) return;
     queueMicrotask(() => void this.taskStore.selectTask(projectId, firstTaskId));
+  });
+
+  private readonly artifactLoadEffect = effect(() => {
+    for (const message of this.selectedTaskDetail()?.recent_messages ?? []) {
+      for (const ref of this.artifactRefsForMessage(message)) void this.artifacts.load(ref.ref);
+    }
   });
 
   protected setQuery(event: Event): void {
@@ -703,6 +722,30 @@ export class TaskCockpitComponent {
   protected messageLine(message: DenMessage): string {
     const sender = message.sender ?? 'unknown';
     return `${sender}: ${message.content ?? message.summary ?? ''}`;
+  }
+
+  protected artifactRefsForMessage(message: DenMessage): readonly ArtifactReference[] {
+    return extractArtifactReferences(message.metadata);
+  }
+
+  protected artifactEvidenceItems(refs: readonly ArtifactReference[]): readonly ArtifactEvidenceItem[] {
+    return refs.map((ref) => {
+      const state = this.artifacts.stateFor(ref.ref);
+      const metadata = stateValue(state) ?? null;
+      return {
+        ref: ref.ref,
+        label: artifactDisplayName(ref, metadata),
+        status: state.kind === 'error' ? 'error' : metadata ? 'ready' : 'loading',
+        contentUrl: metadata ? this.artifacts.contentUrl(metadata) : null,
+        error: state.kind === 'error' ? state.error.message : null,
+        mimeType: metadata?.mime_type ?? ref.mimeType,
+        byteCount: metadata ? formatArtifactByteCount(metadata.byte_count) : null,
+        dimensions: metadata ? artifactDimensions(metadata) : null,
+        sha256: metadata?.sha256 ?? null,
+        sensitive: metadata?.sensitive ?? ref.sensitive ?? false,
+        retention: metadata ? artifactRetentionLabel(metadata) : null,
+      };
+    });
   }
 
   protected errorText(error: { readonly kind: string; readonly message: string } | null): string {

@@ -1,4 +1,5 @@
 import type { DenMessage } from '@den-web/protocol';
+import { extractArtifactReferences, type ArtifactReference } from './artifacts';
 
 export const MESSAGE_INTENT_LABELS: Readonly<Record<string, string>> = {
   answer: 'Answer',
@@ -21,6 +22,7 @@ export interface MessageViewItem {
   readonly body: string;
   readonly intentLabel: string;
   readonly createdAt: string;
+  readonly artifactRefs: readonly ArtifactReference[];
 }
 
 export function messageIntentLabel(intent: string | null | undefined): string {
@@ -35,6 +37,7 @@ export function messageViewItem(message: DenMessage): MessageViewItem {
     body: message.content || message.summary || '',
     intentLabel: messageIntentLabel(message.intent),
     createdAt: message.created_at ?? '',
+    artifactRefs: extractArtifactReferences(message.metadata),
   };
 }
 

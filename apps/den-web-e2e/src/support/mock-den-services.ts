@@ -66,14 +66,6 @@ const ashaTask = {
   subtask_count: 0,
   description: 'Loaded through space selection.',
 };
-const taskDetail = {
-  task: primaryTask,
-  dependencies: [],
-  subtasks: [nestedTask, ashaTask],
-  recent_messages: [
-    { id: 1, sender: 'codex', content: 'Phase 4 fixture loaded', created_at: '2026-07-02T00:00:00Z' },
-  ],
-};
 const channels = [
   { id: 7, project_id: 'den-web', slug: 'den-web', name: 'den-web', kind: 'project_default' },
   { id: 8, project_id: 'den-web', slug: 'ops', name: 'ops', kind: 'project' },
@@ -98,8 +90,41 @@ const agentCommonsTimeline = {
   items: [{ id: 'tl-99', kind: 'message', title: 'Agent commons timeline loaded', created_at: '2026-07-02T00:01:00Z' }],
   next_cursor: null,
 };
+const artifactRef = 'den-artifact://art_fixture_image';
+const artifactMetadata = {
+  artifact_id: 'art_fixture_image',
+  artifact_ref: artifactRef,
+  project_id: 'den-web',
+  task_id: 3993,
+  logical_name: 'visual-evidence-overview.png',
+  mime_type: 'image/png',
+  byte_count: 70,
+  sha256: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+  width: 1,
+  height: 1,
+  sensitive: false,
+  storage_backend: 'filesystem',
+  storage_key: 'sha256/fixture',
+  created_by: 'codex',
+  created_at: '2026-07-02T00:00:00Z',
+};
+const artifactPacket = {
+  packet_type: 'visual_inspect_result',
+  schema_version: 'visual-inspect-review-packet/v0',
+  artifact_refs: [{ screenshot_id: 'Visual evidence overview', ref: artifactRef, mime_type: 'image/png', sensitive: false }],
+  result: { verdict: 'pass', confidence: 0.86 },
+};
+const artifactPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=', 'base64');
+const taskDetail = {
+  task: primaryTask,
+  dependencies: [],
+  subtasks: [nestedTask, ashaTask],
+  recent_messages: [
+    { id: 1, sender: 'codex', content: 'Phase 4 fixture loaded', metadata: artifactPacket, created_at: '2026-07-02T00:00:00Z' },
+  ],
+};
 const notifications = [{ id: 9, project_id: 'den-web', task_id: 3993, sender: 'den-services', content: 'Notification fixture loaded', urgency: 'normal', is_read: false, created_at: '2026-07-02T00:00:00Z', metadata: null }];
-const messages = [{ id: 1, project_id: 'den-web', task_id: 3993, thread_id: 1, sender: 'codex', intent: 'handoff', content: 'Message fixture loaded', created_at: '2026-07-02T00:00:00Z' }];
+const messages = [{ id: 1, project_id: 'den-web', task_id: 3993, thread_id: 1, sender: 'codex', intent: 'handoff', content: 'Message fixture loaded', metadata: artifactPacket, created_at: '2026-07-02T00:00:00Z' }];
 const documents = [
   { project_id: 'den-web', slug: 'successor-brief', title: 'Successor Brief', updated_at: '2026-07-02T00:00:00Z' },
   {
@@ -186,6 +211,12 @@ export async function mockDenServices(page: Page): Promise<void> {
   await page.route('**/api/v1/user-notifications/read', (route) => json(route, { marked: 1 }));
   await page.route('**/api/v1/projects/den-web/messages?**', (route) => json(route, messages));
   await page.route('**/api/v1/projects/den-web/messages/threads/1', (route) => json(route, messages));
+  await page.route('**/api/v1/artifacts/resolve?**', (route) => json(route, artifactMetadata));
+  await page.route('**/api/v1/artifacts/art_fixture_image/metadata', (route) => json(route, artifactMetadata));
+  await page.route('**/api/v1/artifacts/art_fixture_image/content', (route) => route.fulfill({
+    contentType: 'image/png',
+    body: artifactPng,
+  }));
   await page.route('**/api/v1/projects/den-web/documents', (route) => json(route, documents));
   await page.route('**/api/v1/projects/_global/documents', (route) => json(route, globalDocuments));
   await page.route('**/api/v1/projects/den-web/documents/successor-brief', async (route) => {

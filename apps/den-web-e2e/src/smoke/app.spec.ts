@@ -16,6 +16,8 @@ test('boots the successor task cockpit', async ({ page }) => {
   await expect(page.getByRole('button', { name: /#3993 Den Web Angular/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: /#3993 Den Web Angular successor Phase 4/ })).toBeVisible();
   await expect(page.getByText('Phase 4 fixture loaded')).toBeVisible();
+  await expect(page.getByLabel('Artifact evidence').getByText('visual-evidence-overview.png')).toBeVisible();
+  await expect(page.getByLabel('Artifact evidence').getByText('1 x 1')).toBeVisible();
 });
 
 test('scrolls long task lists inside the task list panel', async ({ page }) => {
@@ -173,6 +175,8 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await expect(page.getByText('Message fixture loaded')).toBeVisible();
   await page.getByRole('button', { name: /Handoff/ }).click();
   await expect(page.getByRole('region', { name: 'Messages' }).getByText('Message fixture loaded', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Artifact evidence').getByText('visual-evidence-overview.png')).toBeVisible();
+  await expect(page.getByLabel('Artifact evidence').getByRole('img', { name: 'visual-evidence-overview.png' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Documents' }).click();
   await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Successor Brief' }).first()).toBeVisible();

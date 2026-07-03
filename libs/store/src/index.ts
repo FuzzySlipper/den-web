@@ -1,4 +1,5 @@
 export * from './lib/agents-store';
+export * from './lib/artifacts-store';
 export * from './lib/async-state';
 export * from './lib/conversation-store';
 export * from './lib/documents-store';

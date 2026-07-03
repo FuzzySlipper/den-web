@@ -53,7 +53,32 @@ export interface DenMessage {
   readonly intent?: string | null;
   readonly content?: string;
   readonly summary?: string | null;
+  readonly metadata?: Readonly<Record<string, unknown>> | null;
   readonly created_at?: string;
+}
+
+export interface DenArtifactMetadata {
+  readonly artifact_id: string;
+  readonly artifact_ref: string;
+  readonly project_id?: string;
+  readonly task_id?: number | null;
+  readonly review_round_id?: number | null;
+  readonly finding_id?: number | null;
+  readonly owner_kind?: string;
+  readonly owner_id?: string;
+  readonly logical_name: string;
+  readonly mime_type: string;
+  readonly byte_count: number;
+  readonly sha256: string;
+  readonly width?: number | null;
+  readonly height?: number | null;
+  readonly sensitive: boolean;
+  readonly storage_backend?: string;
+  readonly storage_key?: string;
+  readonly created_by?: string;
+  readonly created_at?: string;
+  readonly expires_at?: string | null;
+  readonly deleted_at?: string | null;
 }
 
 export interface DenNotification {

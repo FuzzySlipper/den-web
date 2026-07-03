@@ -16,6 +16,7 @@ describe('runtime API config', () => {
       observationSuccessorApiBase: '/api/v1/observation/',
       deliverySuccessorApiBase: '/api/v1/delivery/',
       docPublishApiBase: '/api/v1/blog/publications/',
+      artifactsApiBase: '/api/v1/artifacts/',
       environmentName: 'den-srv',
     });
 
@@ -26,6 +27,7 @@ describe('runtime API config', () => {
       observationApiBase: '/api/v1/observation',
       deliveryApiBase: '/api/v1/delivery',
       docPublishApiBase: '/api/v1/blog/publications',
+      artifactsApiBase: '/api/v1/artifacts',
       environmentName: 'den-srv',
     });
   });
@@ -46,4 +48,3 @@ describe('runtime API config', () => {
     expect(result.error).toContain('tasksSuccessorApiBase');
   });
 });
-

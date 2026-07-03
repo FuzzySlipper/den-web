@@ -1,0 +1,1 @@
+{"name":"feature-artifacts","$schema":"../../node_modules/nx/schemas/project-schema.json","sourceRoot":"libs/feature-artifacts/src","projectType":"library","tags":["type:lib","scope:renderer"],"targets":{"lint":{"executor":"@nx/eslint:lint"},"typecheck":{"executor":"nx:run-commands","options":{"command":"tsc -p libs/feature-artifacts/tsconfig.lib.json --noEmit"}}}}

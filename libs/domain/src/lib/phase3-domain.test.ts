@@ -7,6 +7,7 @@ import {
   discussionThreads,
   documentMarkdownBody,
   documentSelectionAction,
+  extractArtifactReferences,
   isDependencyWaitingDetail,
   isDependencyWaitingTask,
   messageIntentLabel,
@@ -207,6 +208,28 @@ describe('successor notification and message fixtures', () => {
   it('projects messages to stable labels and display bodies', () => {
     expect(messageIntentLabel('review_feedback')).toBe('Feedback');
     expect(messageViewItem(messageFixture({ content: '', summary: 'Fallback summary' })).body).toBe('Fallback summary');
+  });
+
+  it('extracts den artifact refs from review metadata without raw image bytes', () => {
+    const metadata = {
+      packet_type: 'visual_inspect_result',
+      artifact_refs: [{
+        screenshot_id: 'overview',
+        ref: 'den-artifact://art_01jexample',
+        mime_type: 'image/png',
+        sensitive: false,
+      }],
+      result: { verdict: 'pass' },
+    };
+
+    expect(extractArtifactReferences(metadata)).toEqual([{
+      ref: 'den-artifact://art_01jexample',
+      label: 'overview',
+      mimeType: 'image/png',
+      sensitive: false,
+    }]);
+    expect(JSON.stringify(metadata)).not.toContain('data:image');
+    expect(JSON.stringify(metadata)).not.toContain('base64');
   });
 });
 

@@ -5,6 +5,7 @@ export interface RuntimeApiConfig {
   readonly observationApiBase: string;
   readonly deliveryApiBase: string;
   readonly docPublishApiBase: string;
+  readonly artifactsApiBase: string;
   readonly environmentName: string;
 }
 
@@ -15,6 +16,7 @@ export const defaultRuntimeApiConfig: RuntimeApiConfig = {
   observationApiBase: '/api/v1/observation',
   deliveryApiBase: '/api/v1/delivery',
   docPublishApiBase: '/api/v1/blog/publications',
+  artifactsApiBase: '/api/v1/artifacts',
   environmentName: 'development',
 };
 
@@ -26,6 +28,6 @@ export interface DenWebRuntimeConfigFile {
   readonly observationSuccessorApiBase?: string;
   readonly deliverySuccessorApiBase?: string;
   readonly docPublishApiBase?: string;
+  readonly artifactsApiBase?: string;
   readonly environmentName?: string;
 }
-

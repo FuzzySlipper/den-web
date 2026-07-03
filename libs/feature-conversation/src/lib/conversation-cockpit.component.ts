@@ -1,20 +1,27 @@
 import { Component, computed, effect, inject, signal, ViewChild, type ElementRef } from '@angular/core';
 import type { DenConversationMembership } from '@den-web/protocol';
 import {
+  artifactDimensions,
+  artifactDisplayName,
+  artifactRetentionLabel,
   conversationChannelLabel,
   conversationFeedItems,
+  formatArtifactByteCount,
+  type ArtifactReference,
   membershipIdentity,
   membershipStatus,
   membershipType,
   membershipWakePolicy,
   type ConversationFeedItem,
 } from '@den-web/domain';
-import { CONVERSATION_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
+import { ArtifactEvidenceComponent, type ArtifactEvidenceItem } from '@den-web/feature-artifacts';
+import { ARTIFACTS_STORE, CONVERSATION_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
 import { conversationCockpitStyles } from './conversation-cockpit.styles';
 
 @Component({
   selector: 'den-conversation-cockpit',
   standalone: true,
+  imports: [ArtifactEvidenceComponent],
   styles: [conversationCockpitStyles],
   template: `
     <section class="surface" aria-label="Conversation">
@@ -110,6 +117,7 @@ import { conversationCockpitStyles } from './conversation-cockpit.styles';
                     <span class="kind">{{ item.kind }}</span>
                   </div>
                   <div class="body">{{ item.body }}</div>
+                  <den-artifact-evidence [items]="artifactEvidenceItems(item.artifactRefs)" />
                 </article>
               }
             }
@@ -137,6 +145,7 @@ import { conversationCockpitStyles } from './conversation-cockpit.styles';
 export class ConversationCockpitComponent {
   private readonly workspace = inject(WORKSPACE_STORE);
   private readonly conversation = inject(CONVERSATION_STORE);
+  private readonly artifacts = inject(ARTIFACTS_STORE);
   private loadedProjectId: string | null = null;
   private latestScrollKey = '';
   private scrollAnchor: ElementRef<HTMLElement> | null = null;
@@ -174,6 +183,12 @@ export class ConversationCockpitComponent {
   private readonly scrollEffect = effect(() => {
     const scrollKey = `${this.selectedProjectId() ?? ''}:${this.selectedChannelId() ?? ''}:${this.feedItems().length}`;
     this.scheduleScroll(scrollKey);
+  });
+
+  private readonly artifactLoadEffect = effect(() => {
+    for (const item of this.feedItems()) {
+      for (const ref of item.artifactRefs) void this.artifacts.load(ref.ref);
+    }
   });
 
   protected selectChannel(channelId: number): void {
@@ -217,6 +232,26 @@ export class ConversationCockpitComponent {
   protected memberType = membershipType;
   protected memberStatus = membershipStatus;
   protected memberWakePolicy = membershipWakePolicy;
+
+  protected artifactEvidenceItems(refs: readonly ArtifactReference[]): readonly ArtifactEvidenceItem[] {
+    return refs.map((ref) => {
+      const state = this.artifacts.stateFor(ref.ref);
+      const metadata = stateValue(state) ?? null;
+      return {
+        ref: ref.ref,
+        label: artifactDisplayName(ref, metadata),
+        status: state.kind === 'error' ? 'error' : metadata ? 'ready' : 'loading',
+        contentUrl: metadata ? this.artifacts.contentUrl(metadata) : null,
+        error: state.kind === 'error' ? state.error.message : null,
+        mimeType: metadata?.mime_type ?? ref.mimeType,
+        byteCount: metadata ? formatArtifactByteCount(metadata.byte_count) : null,
+        dimensions: metadata ? artifactDimensions(metadata) : null,
+        sha256: metadata?.sha256 ?? null,
+        sensitive: metadata?.sensitive ?? ref.sensitive ?? false,
+        retention: metadata ? artifactRetentionLabel(metadata) : null,
+      };
+    });
+  }
 
   protected errorText(error: { readonly kind: string; readonly message: string } | null): string {
     return error ? `${error.kind}: ${error.message}` : 'unknown: Unable to load';

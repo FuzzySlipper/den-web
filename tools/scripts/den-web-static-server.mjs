@@ -23,6 +23,7 @@ const targets = {
   messages: setting('DEN_MESSAGES_TARGET', 'http://127.0.0.1:8093'),
   documents: setting('DEN_DOCUMENTS_TARGET', 'http://127.0.0.1:8094'),
   review: setting('DEN_REVIEW_TARGET', 'http://127.0.0.1:8096'),
+  artifacts: setting('DEN_ARTIFACTS_TARGET', 'http://127.0.0.1:8090'),
   librarian: setting('DEN_LIBRARIAN_TARGET', 'http://127.0.0.1:8098'),
   gateway: setting('DEN_GATEWAY_TARGET', 'http://127.0.0.1:8079'),
 };
@@ -34,6 +35,7 @@ const tokens = {
   messages: setting('DEN_MESSAGES_SERVICE_TOKEN', serviceToken),
   documents: setting('DEN_DOCUMENTS_SERVICE_TOKEN', serviceToken),
   review: setting('DEN_REVIEW_SERVICE_TOKEN', serviceToken),
+  artifacts: setting('DEN_ARTIFACTS_SERVICE_TOKEN', serviceToken),
   librarian: setting('DEN_LIBRARIAN_SERVICE_TOKEN', serviceToken),
   delivery: setting('DEN_GATEWAY_DELIVERY_WRITE_TOKEN', serviceToken),
   observation: setting('DEN_GATEWAY_OBSERVATION_READ_TOKEN'),
@@ -93,6 +95,7 @@ function runtimeConfigDefaults() {
     deliverySuccessorApiBase: publicSetting('DELIVERY_SUCCESSOR_API_BASE', '/api/v1/delivery'),
     timelineSuccessorApiBase: publicSetting('TIMELINE_SUCCESSOR_API_BASE', '/api/v1/timeline'),
     docPublishApiBase: publicSetting('DOC_PUBLISH_API_BASE', '/api/v1/blog/publications'),
+    artifactsApiBase: publicSetting('ARTIFACTS_API_BASE', '/api/v1/artifacts'),
     conversationSuccessorReadsEnabled: boolEnv('CONVERSATION_SUCCESSOR_READS_ENABLED', 'true'),
     conversationSuccessorWritesEnabled: boolEnv('CONVERSATION_SUCCESSOR_WRITES_ENABLED', 'true'),
     conversationSuccessorReadProjectIds: listEnv('CONVERSATION_SUCCESSOR_READ_PROJECT_IDS', conversationProjects),
@@ -201,6 +204,9 @@ function proxyApi(req, res, pathname, search) {
   }
   if (pathname.startsWith('/api/v1/review/') || /^\/api\/v1\/projects\/[^/]+\/tasks\/[0-9]+\/review(?:\/|$)/.test(pathname) || /^\/api\/v1\/tasks\/[0-9]+\/review(?:\/|$)/.test(pathname)) {
     return proxy(targets.review, req, res, rewrite, tokens.review);
+  }
+  if (pathname === '/api/v1/artifacts' || pathname.startsWith('/api/v1/artifacts/')) {
+    return proxy(targets.artifacts, req, res, rewrite, tokens.artifacts);
   }
   if (pathname === '/api/v1/librarian/query' || /^\/api\/v1\/projects\/[^/]+\/librarian\/query$/.test(pathname)) {
     return proxy(targets.librarian, req, res, rewrite, tokens.librarian);
