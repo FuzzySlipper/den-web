@@ -144,6 +144,7 @@ test('updates task status with the web UI actor', async ({ page }) => {
   });
 
   await page.goto('/');
+  await expect(page.getByLabel('Task status', { exact: true })).toHaveValue('in_progress');
   await page.getByLabel('Task status', { exact: true }).selectOption('review');
 
   await expect.poll(() => patchBody).toEqual({ agent: 'web-ui', status: 'review' });

@@ -488,10 +488,10 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
                     (change)="changeStatus($event, detail)"
                   >
                     @if (!detail.task.status) {
-                      <option value="">unknown</option>
+                      <option value="" [selected]="!detail.task.status">unknown</option>
                     }
                     @for (status of statuses; track status) {
-                      <option [value]="status">{{ statusLabel(status) }}</option>
+                      <option [value]="status" [selected]="status === detail.task.status">{{ statusLabel(status) }}</option>
                     }
                   </select>
                 </div>
