@@ -136,7 +136,7 @@ const extraMessages = Array.from({ length: 48 }, (_, index) => ({
   created_at: `2026-07-02T00:${String(index + 2).padStart(2, '0')}:00Z`,
 }));
 const messages = [primaryMessage, ...extraMessages];
-const threadMessages = [primaryMessage];
+const threadMessages = { root: primaryMessage, replies: [] };
 const documents = [
   { project_id: 'den-web', slug: 'successor-brief', title: 'Successor Brief', updated_at: '2026-07-02T00:00:00Z' },
   {

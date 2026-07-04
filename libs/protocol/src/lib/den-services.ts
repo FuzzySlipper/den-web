@@ -57,6 +57,13 @@ export interface DenMessage {
   readonly created_at?: string;
 }
 
+export interface DenMessageThread {
+  readonly root?: DenMessage;
+  readonly replies?: readonly DenMessage[];
+}
+
+export type DenMessageThreadResponse = readonly DenMessage[] | DenMessageThread;
+
 export interface DenArtifactMetadata {
   readonly artifact_id: string;
   readonly artifact_ref: string;

@@ -16,7 +16,7 @@ describe('phase 5 stores', () => {
     ];
     const store = createMessagesStore({
       listMessages: async () => ok(messages),
-      getThread: async () => ok(messages),
+      getThread: async () => ok({ root: messages[1], replies: [messages[0]] }),
     });
 
     await store.refresh('den-web');
@@ -25,6 +25,7 @@ describe('phase 5 stores', () => {
     expect(store.inbox().kind).toBe('data');
     expect(store.selectedThreadId()).toBe(1);
     expect(store.thread().kind).toBe('data');
+    expect(store.thread().kind === 'data' ? store.thread().value.map((message) => message.body) : []).toEqual(['Earlier', 'Later']);
   });
 
   it('submits librarian queries and exposes answer state', async () => {

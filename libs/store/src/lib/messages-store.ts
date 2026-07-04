@@ -1,11 +1,11 @@
 import { signal, type Signal } from '@angular/core';
 import { messageViewItem, sortMessagesChronologically, type MessageViewItem } from '@den-web/domain';
-import type { DenMessage, DenResult } from '@den-web/protocol';
+import type { DenMessage, DenMessageThread, DenMessageThreadResponse, DenResult } from '@den-web/protocol';
 import { errorState, idleState, loadingState, resultState, stateValue, type AsyncState, unknownStoreError } from './async-state';
 
 export interface MessagesTransportPort {
   readonly listMessages: (projectId: string, options?: { readonly taskId?: number; readonly limit?: number }) => Promise<DenResult<readonly DenMessage[]>>;
-  readonly getThread: (projectId: string, threadId: number) => Promise<DenResult<readonly DenMessage[]>>;
+  readonly getThread: (projectId: string, threadId: number) => Promise<DenResult<DenMessageThreadResponse>>;
 }
 
 export interface MessagesStore {
@@ -41,7 +41,7 @@ export function createMessagesStore(transport: MessagesTransportPort): MessagesS
       thread.set(loadingState(previous));
       try {
         const result = await transport.getThread(projectId, threadId);
-        thread.set(result.ok ? resultState({ ok: true, value: sortMessagesChronologically(result.value).map(messageViewItem) }, previous) : resultState(result, previous));
+        thread.set(result.ok ? resultState({ ok: true, value: sortMessagesChronologically(threadMessages(result.value)).map(messageViewItem) }, previous) : resultState(result, previous));
       } catch (error) {
         thread.set(errorState(unknownStoreError(error), previous));
       }
@@ -52,4 +52,14 @@ export function createMessagesStore(transport: MessagesTransportPort): MessagesS
 export function firstThreadId(messages: readonly MessageViewItem[]): number | null {
   const first = messages[0];
   return first ? first.threadId ?? first.id : null;
+}
+
+function threadMessages(response: DenMessageThreadResponse): readonly DenMessage[] {
+  if (Array.isArray(response)) return response;
+  if (!isThreadEnvelope(response)) return [];
+  return response.root ? [response.root, ...(response.replies ?? [])] : response.replies ?? [];
+}
+
+function isThreadEnvelope(response: DenMessageThreadResponse): response is DenMessageThread {
+  return !Array.isArray(response);
 }

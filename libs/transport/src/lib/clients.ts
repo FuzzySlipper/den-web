@@ -13,6 +13,7 @@ import type {
   DenLibrarianQueryRequest,
   DenLibrarianQueryResponse,
   DenMessage,
+  DenMessageThreadResponse,
   DenNotification,
   DenObservationLane,
   DenProject,
@@ -126,7 +127,7 @@ export class MessagesTransport {
     return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/messages${query({ task_id: options.taskId, limit: options.limit })}`));
   }
 
-  getThread(projectId: string, threadId: number): Promise<DenResult<readonly DenMessage[]>> {
+  getThread(projectId: string, threadId: number): Promise<DenResult<DenMessageThreadResponse>> {
     return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/messages/threads/${threadId}`));
   }
 }
