@@ -50,7 +50,32 @@ sudo install -d -o agent -g agents -m 0755 /data/dev
 sudo -u agent git clone git@github.com:FuzzySlipper/den-web.git /data/dev/den-web
 ```
 
-Then run the durable deploy script from the repo root on `den-srv`:
+From another Den host or workstation with SSH access to `agent@den-srv`, run the
+remote wrapper from this repo:
+
+```bash
+npm run deploy:den-srv:remote
+```
+
+The remote wrapper pushes the local `main` branch, SSHes to
+`agent@192.168.1.10`, fast-forwards `/data/dev/den-web`, runs the durable
+service-host deploy script below, and verifies `/den-web-build.json` reports the
+expected commit.
+
+Useful remote wrapper overrides:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `DEN_WEB_DEPLOY_HOST` | `192.168.1.10` | SSH host for `den-srv`. |
+| `DEN_WEB_DEPLOY_USER` | `agent` | SSH user. |
+| `DEN_WEB_DEPLOY_TARGET` | `agent@192.168.1.10` | Full SSH target, overriding host/user. |
+| `DEN_WEB_REMOTE_REPO` | `/data/dev/den-web` | Remote checkout used for deploy. |
+| `DEN_WEB_DEPLOY_BRANCH` | `main` | Local/remote branch to deploy. |
+| `SKIP_PUSH` / `DEPLOY_SKIP_PUSH` | unset | Set to `1` when the branch is already pushed. |
+| `SKIP_SENTINEL` | unset | Set to `1` to skip local build-sentinel verification. |
+
+If you are already on `den-srv`, run the durable deploy script from the remote
+repo root:
 
 ```bash
 cd /data/dev/den-web

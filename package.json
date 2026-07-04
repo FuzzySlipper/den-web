@@ -17,7 +17,8 @@
     "check:docs": "node tools/scripts/check-docs-commands.mjs",
     "check:connectivity": "vitest run libs/transport/src/lib/connectivity-guard.test.ts",
     "serve:local": "node tools/scripts/serve-local.mjs",
-    "deploy:den-srv": "node tools/scripts/deploy-den-srv.mjs"
+    "deploy:den-srv": "node tools/scripts/deploy-den-srv.mjs",
+    "deploy:den-srv:remote": "node tools/scripts/deploy-den-srv-remote.mjs"
   },
   "dependencies": {
     "@angular/common": "~21.2.0",
