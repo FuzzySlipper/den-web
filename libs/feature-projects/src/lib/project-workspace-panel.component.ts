@@ -18,6 +18,8 @@ interface WorkspaceItem {
     `
       :host {
         display: block;
+        height: 100%;
+        min-height: 0;
         min-width: 0;
       }
 
@@ -25,7 +27,8 @@ interface WorkspaceItem {
         border-right: 1px solid var(--den-border);
         display: grid;
         grid-template-rows: auto minmax(0, 1fr) auto;
-        min-height: 100%;
+        height: 100%;
+        min-height: 0;
       }
 
       header {
@@ -63,6 +66,7 @@ interface WorkspaceItem {
         align-content: start;
         display: grid;
         gap: 14px;
+        min-height: 0;
         overflow: auto;
         padding: 14px;
       }

@@ -106,6 +106,7 @@ const tabs: readonly TabItem[] = [
       .layout {
         display: grid;
         grid-template-columns: 280px minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr);
         height: calc(100dvh - 57px);
         min-height: 0;
         overflow: hidden;
@@ -113,7 +114,10 @@ const tabs: readonly TabItem[] = [
 
       .workspace {
         background: var(--den-panel);
+        height: 100%;
+        min-height: 0;
         min-width: 0;
+        overflow: hidden;
       }
 
       .main {
