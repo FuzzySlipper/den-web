@@ -129,6 +129,8 @@ describe('successor signal stores', () => {
       ]),
       getTask: async (_projectId, taskId) => ok(taskDetailFixture({ task: taskFixture({ id: taskId }) })),
       updateTask: async () => ok(undefined),
+    }, {
+      listMessages: async () => ok([]),
     });
 
     await store.refresh('den-web');
@@ -150,6 +152,8 @@ describe('successor signal stores', () => {
         patches.push(patch);
         return ok({ id: taskId, ...patch });
       },
+    }, {
+      listMessages: async () => ok([]),
     });
 
     await store.refresh('den-web');
@@ -165,6 +169,34 @@ describe('successor signal stores', () => {
       { agent: 'web-ui', status: 'in_progress' },
       { agent: 'web-ui', description: 'new body' },
     ]);
+  });
+
+  it('loads task-scoped messages into selected task details', async () => {
+    const store = createTasksStore({
+      listTasks: async () => ok([taskFixture({ id: 4104, status: 'review' })]),
+      getTask: async (_projectId, taskId) => ok(taskDetailFixture({
+        task: taskFixture({ id: taskId, status: 'review' }),
+        recent_messages: [],
+      })),
+      updateTask: async () => ok(undefined),
+    }, {
+      listMessages: async (_projectId, options) => ok([
+        {
+          id: 17653,
+          project_id: 'asha',
+          task_id: options?.taskId ?? null,
+          sender: 'codex',
+          intent: 'handoff',
+          content: 'Studio encounter/tuning handoff is ready for review.',
+          created_at: '2026-07-04T05:08:33.975068Z',
+        },
+      ]),
+    });
+
+    await store.selectTask('asha', 4104);
+
+    expect(stateValue(store.selectedTask())?.recent_messages?.[0]?.content).toContain('ready for review');
+    expect(stateValue(store.selectedTask())?.task.status).toBe('review');
   });
 
   it('owns dirty document switching and separate discussion reads', async () => {

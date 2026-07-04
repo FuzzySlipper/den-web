@@ -119,11 +119,10 @@ const taskDetail = {
   task: primaryTask,
   dependencies: [],
   subtasks: [nestedTask, ashaTask],
-  recent_messages: [
-    { id: 1, sender: 'codex', content: 'Phase 4 fixture loaded', metadata: artifactPacket, created_at: '2026-07-02T00:00:00Z' },
-  ],
+  recent_messages: [],
 };
 const notifications = [{ id: 9, project_id: 'den-web', task_id: 3993, sender: 'den-services', content: 'Notification fixture loaded', urgency: 'normal', is_read: false, created_at: '2026-07-02T00:00:00Z', metadata: null }];
+const taskMessages = [{ id: 2, project_id: 'den-web', task_id: 3993, thread_id: 1, sender: 'codex', intent: 'handoff', content: 'Phase 4 fixture loaded', metadata: artifactPacket, created_at: '2026-07-02T00:01:00Z' }];
 const messages = [{ id: 1, project_id: 'den-web', task_id: 3993, thread_id: 1, sender: 'codex', intent: 'handoff', content: 'Message fixture loaded', metadata: artifactPacket, created_at: '2026-07-02T00:00:00Z' }];
 const documents = [
   { project_id: 'den-web', slug: 'successor-brief', title: 'Successor Brief', updated_at: '2026-07-02T00:00:00Z' },
@@ -209,7 +208,7 @@ export async function mockDenServices(page: Page): Promise<void> {
   await page.route('**/api/v1/timeline/channels/99/items?**', (route) => json(route, agentCommonsTimeline));
   await page.route('**/api/v1/user-notifications?**', (route) => json(route, notifications));
   await page.route('**/api/v1/user-notifications/read', (route) => json(route, { marked: 1 }));
-  await page.route('**/api/v1/projects/den-web/messages?**', (route) => json(route, messages));
+  await page.route('**/api/v1/projects/den-web/messages?**', (route) => json(route, messagesFor(route)));
   await page.route('**/api/v1/projects/den-web/messages/threads/1', (route) => json(route, messages));
   await page.route('**/api/v1/artifacts/resolve?**', (route) => json(route, artifactMetadata));
   await page.route('**/api/v1/artifacts/art_fixture_image/metadata', (route) => json(route, artifactMetadata));
@@ -256,6 +255,11 @@ function membershipListFor(route: Route): unknown {
   return url.searchParams.get('channel_id') === '99'
     ? [{ id: 9901, channel_id: 99, member_identity: 'codex', member_type: 'agent', membership_status: 'active', wake_policy: 'normal' }]
     : memberships;
+}
+
+function messagesFor(route: Route): unknown {
+  const url = new URL(route.request().url());
+  return url.searchParams.get('task_id') === '3993' ? taskMessages : messages;
 }
 
 function json(route: Route, body: unknown): Promise<void> {

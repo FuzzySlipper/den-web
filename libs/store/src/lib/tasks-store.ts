@@ -1,6 +1,6 @@
 import { computed, signal, type Signal } from '@angular/core';
 import { visibleTaskRows, type FlatTaskRow, type TaskStatusFilter } from '@den-web/domain';
-import type { DenResult, DenTaskDetail, DenTaskSummary, DenTaskUpdateRequest } from '@den-web/protocol';
+import type { DenMessage, DenResult, DenTaskDetail, DenTaskSummary, DenTaskUpdateRequest } from '@den-web/protocol';
 import { errorState, idleState, loadingState, resultState, stateValue, type AsyncState, unknownStoreError } from './async-state';
 
 const taskUpdateAgent = 'web-ui';
@@ -9,6 +9,10 @@ export interface TasksTransportPort {
   readonly listTasks: (projectId: string, options?: { readonly limit?: number; readonly status?: string; readonly tree?: boolean }) => Promise<DenResult<readonly DenTaskSummary[]>>;
   readonly getTask: (projectId: string, taskId: number) => Promise<DenResult<DenTaskDetail>>;
   readonly updateTask: (projectId: string, taskId: number, patch: DenTaskUpdateRequest) => Promise<DenResult<DenTaskDetail | DenTaskSummary | undefined>>;
+}
+
+export interface TaskMessagesTransportPort {
+  readonly listMessages: (projectId: string, options?: { readonly taskId?: number; readonly limit?: number }) => Promise<DenResult<readonly DenMessage[]>>;
 }
 
 export interface TasksStore {
@@ -27,7 +31,7 @@ export interface TasksStore {
   readonly setFlat: (flat: boolean) => void;
 }
 
-export function createTasksStore(transport: TasksTransportPort): TasksStore {
+export function createTasksStore(transport: TasksTransportPort, messagesTransport: TaskMessagesTransportPort): TasksStore {
   const tasks = signal<AsyncState<readonly DenTaskSummary[]>>(idleState());
   const selectedTask = signal<AsyncState<DenTaskDetail>>(idleState());
   const filter = signal<TaskStatusFilter>('active');
@@ -55,7 +59,11 @@ export function createTasksStore(transport: TasksTransportPort): TasksStore {
       const previous = stateValue(selectedTask());
       selectedTask.set(loadingState(previous));
       try {
-        selectedTask.set(resultState(await transport.getTask(projectId, taskId), previous));
+        const [taskResult, messagesResult] = await Promise.all([
+          transport.getTask(projectId, taskId),
+          messagesTransport.listMessages(projectId, { taskId, limit: 20 }),
+        ]);
+        selectedTask.set(resultState(withTaskMessages(taskResult, messagesResult), previous));
       } catch (error) {
         selectedTask.set(errorState(unknownStoreError(error), previous));
       }
@@ -85,6 +93,39 @@ export function createTasksStore(transport: TasksTransportPort): TasksStore {
       return { ok: false, error: classified };
     }
   }
+}
+
+function withTaskMessages(taskResult: DenResult<DenTaskDetail>, messagesResult: DenResult<readonly DenMessage[]>): DenResult<DenTaskDetail> {
+  if (!taskResult.ok) return taskResult;
+  if (!messagesResult.ok) return taskResult;
+
+  return {
+    ok: true,
+    value: {
+      ...taskResult.value,
+      recent_messages: mergeRecentMessages(taskResult.value.recent_messages ?? [], messagesResult.value),
+    },
+  };
+}
+
+function mergeRecentMessages(left: readonly DenMessage[], right: readonly DenMessage[]): readonly DenMessage[] {
+  const byId = new Map<number, DenMessage>();
+  for (const message of left) byId.set(message.id, message);
+  for (const message of right) byId.set(message.id, message);
+  return [...byId.values()].sort(compareRecentMessages);
+}
+
+function compareRecentMessages(left: DenMessage, right: DenMessage): number {
+  const leftTime = timestamp(left.created_at);
+  const rightTime = timestamp(right.created_at);
+  if (leftTime !== rightTime) return rightTime - leftTime;
+  return right.id - left.id;
+}
+
+function timestamp(value: string | undefined): number {
+  if (!value) return 0;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 function reconcileTaskDetail(

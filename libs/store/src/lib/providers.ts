@@ -44,7 +44,7 @@ export function provideDenStoreKernel(config: RuntimeApiConfig = defaultRuntimeA
     },
     {
       provide: TASKS_STORE,
-      useFactory: (clients: DenTransportClients) => createTasksStore(clients.tasks),
+      useFactory: (clients: DenTransportClients) => createTasksStore(clients.tasks, clients.messages),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
     {
