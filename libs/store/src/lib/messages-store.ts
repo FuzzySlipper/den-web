@@ -50,5 +50,6 @@ export function createMessagesStore(transport: MessagesTransportPort): MessagesS
 }
 
 export function firstThreadId(messages: readonly MessageViewItem[]): number | null {
-  return messages[0]?.id ?? null;
+  const first = messages[0];
+  return first ? first.threadId ?? first.id : null;
 }

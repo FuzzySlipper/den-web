@@ -20,6 +20,16 @@ test('boots the successor task cockpit', async ({ page }) => {
   await expect(page.getByLabel('Artifact evidence').getByText('1 x 1')).toBeVisible();
 });
 
+test('clicks through task recent messages into message threads', async ({ page }) => {
+  await mockDenServices(page);
+  await page.goto('/');
+
+  await page.getByLabel('Recent messages').getByRole('button', { name: /Phase 4 fixture loaded/ }).click();
+
+  await expect(page.getByRole('button', { name: 'Messages' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByLabel('Message thread').getByText('Message fixture loaded', { exact: true })).toBeVisible();
+});
+
 test('scrolls long task lists inside the task list panel', async ({ page }) => {
   await mockDenServices(page);
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -176,6 +186,18 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await expect(page.getByText('Message fixture loaded')).toBeVisible();
   await page.getByRole('button', { name: /Handoff/ }).click();
   await expect(page.getByRole('region', { name: 'Messages' }).getByText('Message fixture loaded', { exact: true })).toBeVisible();
+  await expect(async () => {
+    const metrics = await page.getByLabel('Message inbox').evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+    }));
+    expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight + 100);
+  }).toPass();
+  await expect(async () => {
+    const box = await page.getByLabel('Message thread').boundingBox();
+    expect(box?.height).toBeGreaterThan(100);
+    expect(box?.height).toBeLessThan(900);
+  }).toPass();
   await expect(page.getByLabel('Artifact evidence').getByText('visual-evidence-overview.png')).toBeVisible();
   await expect(page.getByLabel('Artifact evidence').getByRole('img', { name: 'visual-evidence-overview.png' })).toBeVisible();
 

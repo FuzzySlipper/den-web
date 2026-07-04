@@ -18,6 +18,7 @@ export const MESSAGE_INTENT_LABELS: Readonly<Record<string, string>> = {
 
 export interface MessageViewItem {
   readonly id: number;
+  readonly threadId: number | null;
   readonly sender: string;
   readonly body: string;
   readonly intentLabel: string;
@@ -33,6 +34,7 @@ export function messageIntentLabel(intent: string | null | undefined): string {
 export function messageViewItem(message: DenMessage): MessageViewItem {
   return {
     id: message.id,
+    threadId: message.thread_id ?? null,
     sender: message.sender || 'unknown',
     body: message.content || message.summary || '',
     intentLabel: messageIntentLabel(message.intent),

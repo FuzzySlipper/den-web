@@ -6,6 +6,7 @@ export * from './lib/documents-store';
 export * from './lib/document-publish-store';
 export * from './lib/librarian-store';
 export * from './lib/messages-store';
+export * from './lib/navigation-store';
 export * from './lib/notifications-store';
 export * from './lib/preferences-store';
 export * from './lib/providers';

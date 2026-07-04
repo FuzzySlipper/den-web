@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import type { OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AgentsOverviewComponent } from '@den-web/feature-agents';
@@ -10,9 +10,9 @@ import { NotificationsPanelComponent } from '@den-web/feature-notifications';
 import { PreferencesPanelComponent } from '@den-web/feature-preferences';
 import { ProjectWorkspacePanelComponent } from '@den-web/feature-projects';
 import { TaskCockpitComponent } from '@den-web/feature-tasks';
-import { PREFERENCES_STORE } from '@den-web/store';
+import { NAVIGATION_STORE, PREFERENCES_STORE, type DenWebTab } from '@den-web/store';
 
-type CockpitTab = 'tasks' | 'conversation' | 'notifications' | 'messages' | 'documents' | 'librarian' | 'agents' | 'preferences';
+type CockpitTab = DenWebTab;
 
 interface TabItem {
   readonly id: CockpitTab;
@@ -198,8 +198,16 @@ const tabs: readonly TabItem[] = [
 })
 export class AppComponent implements OnInit {
   private readonly preferencesStore = inject(PREFERENCES_STORE);
+  private readonly navigationStore = inject(NAVIGATION_STORE);
   protected readonly tabs = tabs;
   protected readonly activeTab = signal<CockpitTab>('tasks');
+
+  private readonly tabRequestEffect = effect(() => {
+    const tab = this.navigationStore.activeTabRequest();
+    if (!tab) return;
+    this.activeTab.set(tab);
+    queueMicrotask(() => this.navigationStore.clearActiveTabRequest());
+  });
 
   ngOnInit(): void {
     this.preferencesStore.apply();

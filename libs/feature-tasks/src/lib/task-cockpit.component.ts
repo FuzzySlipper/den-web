@@ -11,7 +11,7 @@ import {
 } from '@den-web/domain';
 import { ArtifactEvidenceComponent, type ArtifactEvidenceItem } from '@den-web/feature-artifacts';
 import type { DenMessage, DenTaskDetail, DenTaskSummary } from '@den-web/protocol';
-import { ARTIFACTS_STORE, stateValue, TASKS_STORE, WORKSPACE_STORE } from '@den-web/store';
+import { ARTIFACTS_STORE, NAVIGATION_STORE, stateValue, TASKS_STORE, WORKSPACE_STORE } from '@den-web/store';
 
 interface FilterOption {
   readonly value: string;
@@ -312,6 +312,53 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
         line-height: var(--den-line-height-snug);
       }
 
+      .recent-messages {
+        max-height: 320px;
+        overflow: auto;
+        padding-right: 2px;
+      }
+
+      .message-reference {
+        appearance: none;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        color: var(--den-text);
+        cursor: pointer;
+        display: grid;
+        font: inherit;
+        gap: 3px;
+        min-width: 0;
+        padding: 6px 8px;
+        text-align: left;
+        width: 100%;
+      }
+
+      .message-reference:hover,
+      .message-reference:focus-visible {
+        background: var(--den-hover);
+        border-color: var(--den-border-strong);
+        outline: none;
+      }
+
+      .message-reference strong {
+        font-size: var(--den-font-size-sm);
+        font-weight: 600;
+        line-height: var(--den-line-height-snug);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .message-reference span {
+        color: var(--den-muted);
+        font-size: var(--den-font-size-sm);
+        line-height: var(--den-line-height-snug);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
       .error {
         color: var(--den-danger);
       }
@@ -562,10 +609,13 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
                 @if ((detail.recent_messages ?? []).length === 0) {
                   <p class="state">No recent messages</p>
                 } @else {
-                  <ul>
+                  <ul class="recent-messages">
                     @for (message of detail.recent_messages; track message.id) {
                       <li>
-                        <div>{{ messageLine(message) }}</div>
+                        <button type="button" class="message-reference" (click)="openMessage(message)">
+                          <strong>{{ messageTitle(message) }}</strong>
+                          <span>{{ messageMeta(message) }}</span>
+                        </button>
                         <den-artifact-evidence [items]="artifactEvidenceItems(artifactRefsForMessage(message))" />
                       </li>
                     }
@@ -592,6 +642,7 @@ export class TaskCockpitComponent {
   private readonly workspace = inject(WORKSPACE_STORE);
   private readonly taskStore = inject(TASKS_STORE);
   private readonly artifacts = inject(ARTIFACTS_STORE);
+  private readonly navigation = inject(NAVIGATION_STORE);
   private loadedProjectId: string | null = null;
   private keepDetailPaneForProjectChange = false;
 
@@ -719,9 +770,23 @@ export class TaskCockpitComponent {
     return status.replace(/_/g, ' ');
   }
 
-  protected messageLine(message: DenMessage): string {
+  protected openMessage(message: DenMessage): void {
+    const projectId = message.project_id ?? this.selectedProjectId();
+    const threadId = message.thread_id ?? message.id;
+    if (!projectId) return;
+    this.navigation.openMessageThread({ projectId, threadId, messageId: message.id });
+  }
+
+  protected messageTitle(message: DenMessage): string {
+    const body = (message.content ?? message.summary ?? '').replace(/\s+/g, ' ').trim();
+    return body.length > 120 ? `${body.slice(0, 117)}...` : body || 'Message';
+  }
+
+  protected messageMeta(message: DenMessage): string {
     const sender = message.sender ?? 'unknown';
-    return `${sender}: ${message.content ?? message.summary ?? ''}`;
+    const intent = message.intent ? ` · ${message.intent.replace(/_/g, ' ')}` : '';
+    const date = message.created_at ? ` · ${message.created_at}` : '';
+    return `${sender}${intent}${date}`;
   }
 
   protected artifactRefsForMessage(message: DenMessage): readonly ArtifactReference[] {
