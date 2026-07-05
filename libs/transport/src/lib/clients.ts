@@ -3,6 +3,7 @@ import type {
   DenConversationChannel,
   DenConversationMembership,
   DenConversationPostMessageRequest,
+  DenConversationPutMembershipRequest,
   DenDeliveryIntent,
   DenDeliveryIntentRequest,
   DenDiscussion,
@@ -247,6 +248,13 @@ export class ConversationTransport {
       include_left: options.includeLeft,
       limit: options.limit,
     })}`));
+  }
+
+  putMembership(channelId: number, body: DenConversationPutMembershipRequest): Promise<DenResult<DenConversationMembership>> {
+    return this.http.json(joinUrl(this.config.conversationApiBase, `/channels/${channelId}/memberships`), {
+      method: 'PUT',
+      body,
+    });
   }
 
   listMessages(channelId: number, options: { readonly afterId?: number; readonly limit?: number } = {}): Promise<DenResult<readonly DenChannelMessage[]>> {

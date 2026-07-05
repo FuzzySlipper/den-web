@@ -172,12 +172,14 @@ test('routes Gateway successor APIs with route-specific tokens and headers', asy
   });
   await request(`${baseUrl}/api/v1/observation/lane?limit=1`);
   await request(`${baseUrl}/api/v1/conversation/channels?project_id=den-web&limit=1`);
+  await request(`${baseUrl}/api/v1/conversation/channels/7/memberships`, { method: 'PUT', body: '{}' });
   await request(`${baseUrl}/api/v1/conversation/channels/7/messages`, { method: 'POST', body: '{}' });
   await request(`${baseUrl}/api/v1/delivery/intents`, { method: 'POST', body: '{}' });
   await request(`${baseUrl}/api/v1/timeline/channels/7/items?limit=1`);
   assert.deepEqual(gateway.observed.map(item => [item.url, item.authorization, item.migrated]), [
     ['/v1/observation/lane?limit=1', 'Bearer observation-token', null],
     ['/v1/conversation/channels?project_id=den-web&limit=1', 'Bearer conversation-read-token', null],
+    ['/v1/conversation/channels/7/memberships', 'Bearer conversation-write-token', null],
     ['/v1/conversation/channels/7/messages', 'Bearer conversation-write-token', null],
     ['/v1/delivery/intents', 'Bearer delivery-token', 'true'],
     ['/v1/timeline/channels/7/items?limit=1', 'Bearer timeline-token', null],

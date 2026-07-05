@@ -5,6 +5,7 @@ import type {
   DenConversationChannel,
   DenConversationMembership,
   DenConversationPostMessageRequest,
+  DenConversationPutMembershipRequest,
   DenDeliveryIntent,
   DenDeliveryIntentRequest,
   DenDeliveryTargetIdentity,
@@ -17,6 +18,7 @@ import { errorState, idleState, loadingState, resultState, stateValue, type Asyn
 export interface ConversationTransportPort {
   readonly listChannels: (projectId: string, options?: { readonly limit?: number; readonly kind?: string }) => Promise<DenResult<readonly DenConversationChannel[]>>;
   readonly listMemberships: (options?: { readonly channelId?: number; readonly projectId?: string; readonly includeLeft?: boolean; readonly limit?: number }) => Promise<DenResult<readonly DenConversationMembership[]>>;
+  readonly putMembership: (channelId: number, body: DenConversationPutMembershipRequest) => Promise<DenResult<DenConversationMembership>>;
   readonly listMessages: (channelId: number, options?: { readonly afterId?: number; readonly limit?: number }) => Promise<DenResult<readonly DenChannelMessage[]>>;
   readonly postMessage: (channelId: number, body: DenConversationPostMessageRequest) => Promise<DenResult<DenChannelMessage>>;
 }
@@ -46,6 +48,8 @@ export interface ConversationStore {
   readonly selectChannel: (channelId: number) => Promise<void>;
   readonly streamChannel: (channelId: number) => () => void;
   readonly sendMessage: (senderIdentity: string, body: string, idempotencyKey: string) => Promise<void>;
+  readonly saveMembership: (member: DenConversationMembership, patch: { readonly wakePolicy: string; readonly membershipStatus: string }) => Promise<DenResult<DenConversationMembership>>;
+  readonly joinAgent: (identity: string, wakePolicy: string) => Promise<DenResult<DenConversationMembership>>;
 }
 
 export function createConversationStore(conversation: ConversationTransportPort, timeline: TimelineTransportPort, delivery: DeliveryTransportPort): ConversationStore {
@@ -139,6 +143,31 @@ export function createConversationStore(conversation: ConversationTransportPort,
         messages.set(errorState(result.error, stateValue(messages())));
       }
     },
+    saveMembership: async (member, patch) => {
+      const channelId = selectedChannelId();
+      if (channelId === null) return { ok: false, error: unknownStoreError(new Error('No channel selected')) };
+      return putMembership(channelId, membershipRequest(member, {
+        wakePolicy: patch.wakePolicy,
+        membershipStatus: patch.membershipStatus,
+      }));
+    },
+    joinAgent: async (identity, wakePolicy) => {
+      const channelId = selectedChannelId();
+      const normalized = identity.trim();
+      if (channelId === null || normalized.length === 0) return { ok: false, error: unknownStoreError(new Error('No channel selected')) };
+      return putMembership(channelId, {
+        member_type: 'agent',
+        member_identity: normalized,
+        profile_identity: normalized,
+        membership_status: 'active',
+        wake_policy: wakePolicy,
+        can_send: true,
+        can_react: true,
+        can_invite: false,
+        membership_purpose: 'ordinary',
+        settings: {},
+      });
+    },
   };
 
   function mergeTimelineItem(item: DenTimelineItem): void {
@@ -151,21 +180,35 @@ export function createConversationStore(conversation: ConversationTransportPort,
 
   async function wakeMentionedParticipants(channelId: number, message: DenChannelMessage, body: string): Promise<void> {
     const mentions = mentionedIdentities(body);
-    if (mentions.size === 0) return;
     const members = stateValue(memberships()) ?? [];
     await Promise.all(members.map(async (member) => {
+      if ((member.member_type ?? member.memberType) !== 'agent' || (member.membership_status ?? member.membershipStatus ?? 'active') !== 'active') return;
       const identity = membershipIdentity(member);
-      if (!mentions.has(identity.toLowerCase())) return;
+      const reason = wakeReason(member.wake_policy ?? member.wakePolicy ?? 'mentions_only', identity, mentions, body, message.sender_identity ?? message.sender ?? '');
+      if (!reason) return;
       const target = wakeTarget(member);
       if (!target) return;
       const sourceRef = `conversation:channels/${channelId}/messages/${message.id}`;
       await delivery.createIntent({
         target_identity: target,
-        idempotency_key: `mention:${channelId}:${target.profile}:${message.id}-${Date.now()}`,
+        idempotency_key: `${reason}:${channelId}:${target.profile}:${message.id}-${Date.now()}`,
         source_ref: sourceRef,
         channel_message_id: message.id,
       });
     }));
+  }
+
+  async function putMembership(channelId: number, request: DenConversationPutMembershipRequest): Promise<DenResult<DenConversationMembership>> {
+    try {
+      const result = await conversation.putMembership(channelId, request);
+      if (result.ok) memberships.set(reconcileMembership(memberships(), result.value));
+      else memberships.set(errorState(result.error, stateValue(memberships())));
+      return result;
+    } catch (error) {
+      const classified = unknownStoreError(error);
+      memberships.set(errorState(classified, stateValue(memberships())));
+      return { ok: false, error: classified };
+    }
   }
 }
 
@@ -177,6 +220,55 @@ function wakeTarget(member: DenConversationMembership): DenDeliveryTargetIdentit
   const direct = member.wake_target ?? member.wakeTarget ?? member.target_identity ?? member.targetIdentity;
   if (isWakeTarget(direct)) return direct;
   return null;
+}
+
+function wakeReason(
+  policy: string,
+  identity: string,
+  mentions: ReadonlySet<string>,
+  body: string,
+  senderIdentity: string,
+): 'mention' | 'wake' | null {
+  const normalizedIdentity = identity.toLowerCase();
+  const normalizedPolicy = policy.toLowerCase();
+  if (normalizedPolicy === 'never' || normalizedPolicy === 'substantive_digest') return null;
+  if (normalizedPolicy === 'all_human_messages') return 'wake';
+  if (normalizedPolicy === 'all_messages_except_self') return senderIdentity.toLowerCase() === normalizedIdentity ? null : 'wake';
+  if (normalizedPolicy === 'direct_questions_only') return mentions.has(normalizedIdentity) && body.includes('?') ? 'mention' : null;
+  return mentions.has(normalizedIdentity) ? 'mention' : null;
+}
+
+function membershipRequest(
+  member: DenConversationMembership,
+  patch: { readonly wakePolicy: string; readonly membershipStatus: string },
+): DenConversationPutMembershipRequest {
+  const identity = membershipIdentity(member);
+  const type = member.member_type ?? member.memberType ?? 'agent';
+  return {
+    member_type: type,
+    member_identity: identity,
+    profile_identity: member.profile_identity ?? member.profileIdentity ?? (type === 'agent' ? identity : null),
+    membership_status: patch.membershipStatus,
+    wake_policy: patch.wakePolicy,
+    can_send: member.can_send ?? member.canSend ?? true,
+    can_react: member.can_react ?? member.canReact ?? true,
+    can_invite: false,
+    membership_purpose: 'ordinary',
+    settings: member.settings ?? {},
+  };
+}
+
+function reconcileMembership(state: AsyncState<readonly DenConversationMembership[]>, updated: DenConversationMembership): AsyncState<readonly DenConversationMembership[]> {
+  const previous = stateValue(state) ?? [];
+  const next = previous.some((member) => sameMembership(member, updated))
+    ? previous.map((member) => sameMembership(member, updated) ? updated : member)
+    : [...previous, updated];
+  return resultState({ ok: true, value: next }, previous);
+}
+
+function sameMembership(left: DenConversationMembership, right: DenConversationMembership): boolean {
+  if (left.id !== undefined && right.id !== undefined) return left.id === right.id;
+  return membershipIdentity(left) === membershipIdentity(right) && (left.channel_id ?? left.channelId) === (right.channel_id ?? right.channelId);
 }
 
 function isWakeTarget(value: unknown): value is DenDeliveryTargetIdentity {

@@ -99,8 +99,17 @@ const memberships = [
     member_identity: 'codex',
     member_type: 'agent',
     membership_status: 'active',
-    wake_policy: 'normal',
+    wake_policy: 'mentions_only',
     wake_target: { profile: 'codex', instance_id: 'codex@den-srv' },
+  },
+  {
+    id: 703,
+    channel_id: 7,
+    member_identity: 'always-agent',
+    member_type: 'agent',
+    membership_status: 'active',
+    wake_policy: 'all_human_messages',
+    wake_target: { profile: 'always-agent', instance_id: 'always-agent@den-srv' },
   },
   { id: 702, channel_id: 7, member_identity: 'patch', member_type: 'user', membership_status: 'active', wake_policy: 'mentions_only' },
 ];
@@ -249,6 +258,20 @@ export async function mockDenServices(page: Page): Promise<void> {
   }));
   await page.route('**/api/v1/conversation/channels?**', (route) => json(route, channelListFor(route)));
   await page.route('**/api/v1/conversation/memberships?**', (route) => json(route, membershipListFor(route)));
+  await page.route('**/api/v1/conversation/channels/7/memberships', (route) => {
+    const body = route.request().postDataJSON() as Readonly<Record<string, unknown>>;
+    const identity = typeof body['member_identity'] === 'string' ? body['member_identity'] : 'unknown-agent';
+    return json(route, {
+      id: identity === 'fixture-agent' ? 704 : 701,
+      channel_id: 7,
+      member_identity: identity,
+      member_type: typeof body['member_type'] === 'string' ? body['member_type'] : 'agent',
+      profile_identity: typeof body['profile_identity'] === 'string' ? body['profile_identity'] : identity,
+      membership_status: typeof body['membership_status'] === 'string' ? body['membership_status'] : 'active',
+      wake_policy: typeof body['wake_policy'] === 'string' ? body['wake_policy'] : 'mentions_only',
+      wake_target: { profile: identity, instance_id: `${identity}@den-srv` },
+    });
+  });
   await page.route('**/api/v1/conversation/channels/7/messages', (route) => {
     if (route.request().method() === 'POST') {
       const body = route.request().postDataJSON() as Readonly<Record<string, unknown>>;

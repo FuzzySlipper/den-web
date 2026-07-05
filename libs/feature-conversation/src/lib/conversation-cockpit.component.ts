@@ -18,6 +18,32 @@ import { ArtifactEvidenceComponent, type ArtifactEvidenceItem } from '@den-web/f
 import { ARTIFACTS_STORE, CONVERSATION_STORE, PREFERENCES_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
 import { conversationCockpitStyles } from './conversation-cockpit.styles';
 
+interface WakePolicyOption {
+  readonly value: string;
+  readonly label: string;
+}
+
+interface MembershipStatusOption {
+  readonly value: string;
+  readonly label: string;
+}
+
+const wakePolicyOptions: readonly WakePolicyOption[] = [
+  { value: 'never', label: 'Never' },
+  { value: 'mentions_only', label: 'Mentions only' },
+  { value: 'direct_questions_only', label: 'Direct questions' },
+  { value: 'substantive_digest', label: 'Substantive digest' },
+  { value: 'all_human_messages', label: 'All human messages' },
+  { value: 'all_messages_except_self', label: 'All except self' },
+];
+
+const membershipStatusOptions: readonly MembershipStatusOption[] = [
+  { value: 'active', label: 'Active' },
+  { value: 'muted', label: 'Muted' },
+  { value: 'left', label: 'Left' },
+  { value: 'banned', label: 'Banned' },
+];
+
 @Component({
   selector: 'den-conversation-cockpit',
   standalone: true,
@@ -79,19 +105,74 @@ import { conversationCockpitStyles } from './conversation-cockpit.styles';
                     <p class="state">No participants</p>
                   } @else {
                     @for (member of membershipItems(); track participantKey(member)) {
-                      <div class="participant">
+                      <button
+                        type="button"
+                        class="participant"
+                        [attr.aria-pressed]="isEditingMember(member)"
+                        [disabled]="memberType(member) !== 'agent' || memberSaving()"
+                        (click)="editMember(member)"
+                      >
                         <div class="participant-line">
                           <strong>{{ memberIdentity(member) }}</strong>
                           <span class="kind">{{ memberType(member) }}</span>
                         </div>
                         <span class="muted">{{ memberStatus(member) }} · {{ memberWakePolicy(member) }}</span>
-                      </div>
+                      </button>
                     }
                   }
                 }
                 @default { <p class="state">Select a channel</p> }
               }
             </div>
+
+            @let editedMember = editingMember();
+            @if (editedMember) {
+              <form class="participant-editor" aria-label="Edit participant activation" (submit)="saveMember($event)">
+                <strong>{{ memberIdentity(editedMember) }}</strong>
+                <label>
+                  <span>Wake</span>
+                  <select aria-label="Participant wake policy" [value]="editingWakePolicy()" [disabled]="memberSaving()" (change)="setEditingWakePolicy($event)">
+                    @for (option of wakePolicyOptions; track option.value) {
+                      <option [value]="option.value" [selected]="option.value === editingWakePolicy()">{{ option.label }}</option>
+                    }
+                  </select>
+                </label>
+                <label>
+                  <span>Status</span>
+                  <select aria-label="Participant membership status" [value]="editingMembershipStatus()" [disabled]="memberSaving()" (change)="setEditingMembershipStatus($event)">
+                    @for (option of membershipStatusOptions; track option.value) {
+                      <option [value]="option.value" [selected]="option.value === editingMembershipStatus()">{{ option.label }}</option>
+                    }
+                  </select>
+                </label>
+                <div class="participant-actions">
+                  <button type="submit" [disabled]="memberSaving()">{{ memberSaving() ? 'Saving' : 'Done' }}</button>
+                  <button type="button" [disabled]="memberSaving()" (click)="cancelMemberEdit()">Cancel</button>
+                </div>
+              </form>
+            }
+
+            <form class="agent-routing" aria-label="Agent participant routing controls" (submit)="joinAgent($event)">
+              <input
+                aria-label="Agent identity to join"
+                placeholder="agent identity"
+                [value]="inviteIdentity()"
+                [disabled]="!selectedChannelId() || inviteSaving()"
+                (input)="setInviteIdentity($event)"
+              />
+              <select aria-label="New agent wake policy" [value]="inviteWakePolicy()" [disabled]="!selectedChannelId() || inviteSaving()" (change)="setInviteWakePolicy($event)">
+                @for (option of wakePolicyOptions; track option.value) {
+                  <option [value]="option.value" [selected]="option.value === inviteWakePolicy()">{{ option.label }}</option>
+                }
+              </select>
+              <button type="submit" [disabled]="!selectedChannelId() || inviteSaving() || inviteIdentity().trim().length === 0">
+                {{ inviteSaving() ? 'Joining' : 'Add agent' }}
+              </button>
+            </form>
+
+            @if (participantError()) {
+              <p class="state error participant-error">{{ participantError() }}</p>
+            }
           </section>
         </aside>
 
@@ -166,6 +247,16 @@ export class ConversationCockpitComponent {
   protected readonly draft = signal('');
   protected readonly mentionQuery = signal<string | null>(null);
   protected readonly sending = signal(false);
+  protected readonly editingMember = signal<DenConversationMembership | null>(null);
+  protected readonly editingWakePolicy = signal('mentions_only');
+  protected readonly editingMembershipStatus = signal('active');
+  protected readonly memberSaving = signal(false);
+  protected readonly inviteIdentity = signal('');
+  protected readonly inviteWakePolicy = signal('mentions_only');
+  protected readonly inviteSaving = signal(false);
+  protected readonly participantError = signal<string | null>(null);
+  protected readonly wakePolicyOptions = wakePolicyOptions;
+  protected readonly membershipStatusOptions = membershipStatusOptions;
   protected readonly preferences = this.preferencesStore.preferences;
   protected readonly selectedProjectId = this.workspace.selectedProjectId;
   protected readonly channels = this.conversation.channels;
@@ -219,6 +310,8 @@ export class ConversationCockpitComponent {
   });
 
   protected selectChannel(channelId: number): void {
+    this.cancelMemberEdit();
+    this.participantError.set(null);
     void this.conversation.selectChannel(channelId);
   }
 
@@ -287,6 +380,70 @@ export class ConversationCockpitComponent {
 
   protected participantKey(member: DenConversationMembership): string {
     return String(member.id ?? `${member.channel_id ?? member.channelId ?? 'channel'}:${membershipIdentity(member)}`);
+  }
+
+  protected editMember(member: DenConversationMembership | null): void {
+    if (!member || membershipType(member) !== 'agent') return;
+    this.participantError.set(null);
+    this.editingMember.set(member);
+    this.editingWakePolicy.set(membershipWakePolicy(member));
+    this.editingMembershipStatus.set(membershipStatus(member));
+  }
+
+  protected isEditingMember(member: DenConversationMembership): boolean {
+    const editing = this.editingMember();
+    return editing !== null && this.participantKey(editing) === this.participantKey(member);
+  }
+
+  protected setEditingWakePolicy(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLSelectElement) this.editingWakePolicy.set(target.value);
+  }
+
+  protected setEditingMembershipStatus(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLSelectElement) this.editingMembershipStatus.set(target.value);
+  }
+
+  protected cancelMemberEdit(): void {
+    this.editingMember.set(null);
+  }
+
+  protected saveMember(event: Event): void {
+    event.preventDefault();
+    const member = this.editingMember();
+    if (!member || this.memberSaving()) return;
+    this.memberSaving.set(true);
+    this.participantError.set(null);
+    void this.conversation.saveMembership(member, {
+      wakePolicy: this.editingWakePolicy(),
+      membershipStatus: this.editingMembershipStatus(),
+    }).then((result) => {
+      if (result.ok) this.editingMember.set(null);
+      else this.participantError.set(this.errorText(result.error));
+    }).finally(() => this.memberSaving.set(false));
+  }
+
+  protected setInviteIdentity(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLInputElement) this.inviteIdentity.set(target.value);
+  }
+
+  protected setInviteWakePolicy(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLSelectElement) this.inviteWakePolicy.set(target.value);
+  }
+
+  protected joinAgent(event: Event): void {
+    event.preventDefault();
+    const identity = this.inviteIdentity().trim();
+    if (!identity || this.inviteSaving()) return;
+    this.inviteSaving.set(true);
+    this.participantError.set(null);
+    void this.conversation.joinAgent(identity, this.inviteWakePolicy()).then((result) => {
+      if (result.ok) this.inviteIdentity.set('');
+      else this.participantError.set(this.errorText(result.error));
+    }).finally(() => this.inviteSaving.set(false));
   }
 
   protected channelLabel = conversationChannelLabel;

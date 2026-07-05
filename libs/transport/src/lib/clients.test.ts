@@ -31,6 +31,18 @@ describe('Den transport clients', () => {
     await clients.conversation.listChannels('den-web', { limit: 1 });
     await clients.conversation.listChannels(DEN_GLOBAL_PROJECT_ID, { limit: 100 });
     await clients.conversation.listMemberships({ channelId: 7, limit: 10 });
+    await clients.conversation.putMembership(7, {
+      member_type: 'agent',
+      member_identity: 'codex',
+      profile_identity: 'codex',
+      membership_status: 'active',
+      wake_policy: 'mentions_only',
+      can_send: true,
+      can_react: true,
+      can_invite: false,
+      membership_purpose: 'ordinary',
+      settings: {},
+    });
     await clients.conversation.listMessages(7, { afterId: 2, limit: 20 });
     await clients.conversation.postMessage(7, {
       sender_type: 'user',
@@ -72,6 +84,7 @@ describe('Den transport clients', () => {
       '/api/v1/conversation/channels?project_id=den-web&limit=1',
       '/api/v1/conversation/channels?limit=100&kind=system',
       '/api/v1/conversation/memberships?channel_id=7&limit=10',
+      '/api/v1/conversation/channels/7/memberships',
       '/api/v1/conversation/channels/7/messages?after_id=2&limit=20',
       '/api/v1/conversation/channels/7/messages',
       '/api/v1/timeline/channels/7/items?limit=1',

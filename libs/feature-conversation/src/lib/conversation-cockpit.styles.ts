@@ -51,7 +51,7 @@ export const conversationCockpitStyles = `
   .side-stack {
     display: grid;
     gap: 12px;
-    grid-template-rows: minmax(0, 1fr) minmax(180px, 0.9fr);
+    grid-template-rows: minmax(150px, 0.65fr) minmax(320px, 1.35fr);
     min-height: 0;
     overflow: hidden;
   }
@@ -66,7 +66,7 @@ export const conversationCockpitStyles = `
 
   .panel {
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
     min-height: 0;
     overflow: hidden;
   }
@@ -90,6 +90,8 @@ export const conversationCockpitStyles = `
   }
 
   button,
+  input,
+  select,
   textarea {
     font: inherit;
   }
@@ -131,9 +133,81 @@ export const conversationCockpitStyles = `
   .participant {
     border: 1px solid var(--den-border);
     border-radius: 6px;
+    background: transparent;
+    color: var(--den-text);
     display: grid;
     gap: 3px;
     padding: 7px 9px;
+    text-align: left;
+    width: 100%;
+  }
+
+  .participant[aria-pressed='true'] {
+    background: var(--den-selected);
+    border-color: var(--den-accent);
+  }
+
+  .participant:disabled {
+    cursor: default;
+    opacity: 0.72;
+  }
+
+  .participant-editor,
+  .agent-routing {
+    border-top: 1px solid var(--den-border);
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .participant-editor label {
+    display: grid;
+    gap: 4px;
+  }
+
+  .participant-editor label span {
+    color: var(--den-muted);
+    font-size: var(--den-font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .participant-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .agent-routing {
+    align-items: center;
+    grid-template-columns: 1fr;
+  }
+
+  .agent-routing input,
+  .agent-routing select,
+  .participant-editor select {
+    background: var(--den-input);
+    border: 1px solid var(--den-border);
+    border-radius: 6px;
+    box-sizing: border-box;
+    color: var(--den-text);
+    min-height: 34px;
+    min-width: 0;
+    padding: 0 9px;
+    width: 100%;
+  }
+
+  .agent-routing input {
+    grid-column: 1 / -1;
+  }
+
+  .agent-routing button {
+    justify-self: end;
+  }
+
+  .participant-error {
+    border-top: 1px solid var(--den-border);
+    margin: 0;
+    padding: 8px 10px;
   }
 
   .participant-line,

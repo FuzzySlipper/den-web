@@ -1,6 +1,6 @@
 import type { ClassifiedError, DenResult } from '@den-web/protocol';
 
-export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 export interface HttpClientOptions {
   readonly fetchImpl?: typeof fetch;

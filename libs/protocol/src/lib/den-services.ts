@@ -163,6 +163,10 @@ export interface DenConversationMembership {
   readonly wakePolicy?: string;
   readonly can_send?: boolean;
   readonly canSend?: boolean;
+  readonly can_react?: boolean;
+  readonly canReact?: boolean;
+  readonly can_invite?: boolean;
+  readonly canInvite?: boolean;
   readonly settings?: Readonly<Record<string, unknown>> | null;
   readonly agent_instance_id?: string | null;
   readonly agentInstanceId?: string | null;
@@ -172,6 +176,19 @@ export interface DenConversationMembership {
   readonly wakeTarget?: DenDeliveryTargetIdentity | null;
   readonly updated_at?: string | null;
   readonly updatedAt?: string | null;
+}
+
+export interface DenConversationPutMembershipRequest {
+  readonly member_type: string;
+  readonly member_identity: string;
+  readonly profile_identity?: string | null;
+  readonly membership_status: string;
+  readonly wake_policy: string;
+  readonly can_send?: boolean;
+  readonly can_react?: boolean;
+  readonly can_invite?: boolean;
+  readonly membership_purpose: string;
+  readonly settings?: Readonly<Record<string, unknown>> | null;
 }
 
 export interface DenChannelMessage {

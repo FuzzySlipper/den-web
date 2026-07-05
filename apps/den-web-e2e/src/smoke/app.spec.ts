@@ -182,6 +182,7 @@ test('updates task status with the web UI actor', async ({ page }) => {
 
   await page.goto('/');
   await page.getByRole('button', { name: /#4177 Long detail fixture task/ }).click();
+  await expect(page.getByLabel('Task detail').getByRole('heading', { name: /#4177 Long detail fixture task/ })).toBeVisible();
   await expect(page.getByLabel('Task status', { exact: true })).toHaveValue('in_progress');
   await page.getByLabel('Task status', { exact: true }).selectOption('review');
 
@@ -207,13 +208,18 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await expect(page.getByLabel('Channels').getByRole('button', { name: /#den-web/ })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('Channels').getByRole('button', { name: /#ops/ })).toBeVisible();
   await expect(page.getByLabel('Channel participants').getByText('codex')).toBeVisible();
+  await expect(page.getByLabel('Channel participants').getByText('always-agent')).toBeVisible();
   await expect(page.getByLabel('Channel chat').getByText(/Jul 1|Jul 2|Jul 3/).first()).toBeVisible();
   await expect(page.getByLabel('Channel chat').getByText('unknown time')).toHaveCount(0);
   await expect(page.getByLabel('Channel chat').locator('.sender', { hasText: 'timeline' })).toHaveCount(0);
 
   const conversationRequests: unknown[] = [];
   const deliveryRequests: unknown[] = [];
+  const membershipRequests: unknown[] = [];
   page.on('request', (request) => {
+    if (request.method() === 'PUT' && request.url().includes('/api/v1/conversation/channels/7/memberships')) {
+      membershipRequests.push(request.postDataJSON());
+    }
     if (request.method() === 'POST' && request.url().includes('/api/v1/conversation/channels/7/messages')) {
       conversationRequests.push(request.postDataJSON());
     }
@@ -221,6 +227,28 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
       deliveryRequests.push(request.postDataJSON());
     }
   });
+
+  await page.getByLabel('Channel participants').getByRole('button', { name: /codex/ }).click();
+  await expect(page.getByLabel('Participant wake policy')).toHaveValue('mentions_only');
+  await page.getByLabel('Participant membership status').selectOption('active');
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByLabel('Agent identity to join').fill('fixture-agent');
+  await page.getByLabel('New agent wake policy').selectOption('direct_questions_only');
+  await page.getByRole('button', { name: 'Add agent' }).click();
+  await expect(page.getByLabel('Channel participants').getByText('fixture-agent')).toBeVisible();
+  await expect.poll(() => membershipRequests).toEqual([
+    expect.objectContaining({
+      member_identity: 'codex',
+      membership_status: 'active',
+      wake_policy: 'mentions_only',
+    }),
+    expect.objectContaining({
+      member_identity: 'fixture-agent',
+      membership_status: 'active',
+      wake_policy: 'direct_questions_only',
+    }),
+  ]);
+
   const composer = page.getByLabel('Conversation message');
   await composer.fill('Line one');
   await page.keyboard.press('Shift+Enter');
@@ -241,9 +269,15 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
     source_kind: 'den_web_channel_post',
     dedupe_key: expect.stringMatching(/^patch:/),
   }]);
-  await expect.poll(() => deliveryRequests).toEqual([{
+  await expect.poll(() => deliveryRequests.length).toBe(2);
+  expect(deliveryRequests).toEqual([{
     target_identity: { profile: 'codex', instance_id: 'codex@den-srv' },
     idempotency_key: expect.stringMatching(/^mention:7:codex:/),
+    source_ref: 'conversation:channels/7/messages/72',
+    channel_message_id: 72,
+  }, {
+    target_identity: { profile: 'always-agent', instance_id: 'always-agent@den-srv' },
+    idempotency_key: expect.stringMatching(/^wake:7:always-agent:/),
     source_ref: 'conversation:channels/7/messages/72',
     channel_message_id: 72,
   }]);

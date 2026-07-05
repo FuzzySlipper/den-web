@@ -335,8 +335,17 @@ describe('successor signal stores', () => {
         member_identity: 'codex',
         member_type: 'agent',
         membership_status: 'active',
+        wake_policy: 'mentions_only',
         wake_target: { profile: 'codex', instance_id: 'codex@den-srv' },
       }]),
+      putMembership: async (_channelId, body) => ok({
+        id: 1,
+        channel_id: 10,
+        member_identity: body.member_identity,
+        member_type: body.member_type,
+        membership_status: body.membership_status,
+        wake_policy: body.wake_policy,
+      }),
       listMessages: async () => ok([channelMessageFixture({ id: 4 })]),
       postMessage: async (_channelId, body) => {
         postedBodies.push(body);
@@ -397,6 +406,14 @@ describe('successor signal stores', () => {
         profile_identity: 'codex',
         agent_instance_id: 'codex@legacy',
       }]),
+      putMembership: async (_channelId, body) => ok({
+        id: 1,
+        channel_id: 10,
+        member_identity: body.member_identity,
+        member_type: body.member_type,
+        membership_status: body.membership_status,
+        wake_policy: body.wake_policy,
+      }),
       listMessages: async () => ok([]),
       postMessage: async (_channelId, body) => ok(channelMessageFixture({ id: 6, body: body.body })),
     }, {
@@ -415,6 +432,131 @@ describe('successor signal stores', () => {
     expect(deliveryBodies).toEqual([]);
   });
 
+  it('wakes all-human-message participants without requiring mentions', async () => {
+    const deliveryBodies: unknown[] = [];
+    const store = createConversationStore({
+      listChannels: async () => ok([{ id: 10, slug: 'den-web', project_id: 'den-web' }]),
+      listMemberships: async () => ok([{
+        id: 1,
+        channel_id: 10,
+        member_identity: 'codex',
+        member_type: 'agent',
+        membership_status: 'active',
+        wake_policy: 'all_human_messages',
+        wake_target: { profile: 'codex', instance_id: 'codex@den-srv' },
+      }]),
+      putMembership: async (_channelId, body) => ok({
+        id: 1,
+        channel_id: 10,
+        member_identity: body.member_identity,
+        member_type: body.member_type,
+        membership_status: body.membership_status,
+        wake_policy: body.wake_policy,
+      }),
+      listMessages: async () => ok([]),
+      postMessage: async (_channelId, body) => ok(channelMessageFixture({ id: 8, sender_identity: body.sender_identity, body: body.body })),
+    }, {
+      listChannelItems: async () => ok(timelineFixture()),
+      streamChannelItems: () => ({ close: () => undefined }),
+    }, {
+      createIntent: async (body) => {
+        deliveryBodies.push(body);
+        return ok({ id: 1, state: 'pending' });
+      },
+    });
+
+    await store.refreshChannels('den-web');
+    await store.sendMessage('patch', 'No mention needed', 'phase-3');
+
+    expect(deliveryBodies).toEqual([{
+      target_identity: { profile: 'codex', instance_id: 'codex@den-srv' },
+      idempotency_key: expect.stringMatching(/^wake:10:codex:/),
+      source_ref: 'conversation:channels/10/messages/8',
+      channel_message_id: 8,
+    }]);
+  });
+
+  it('saves and joins conversation agent memberships', async () => {
+    const putBodies: unknown[] = [];
+    const store = createConversationStore({
+      listChannels: async () => ok([{ id: 10, slug: 'den-web', project_id: 'den-web' }]),
+      listMemberships: async () => ok([{
+        id: 1,
+        channel_id: 10,
+        member_identity: 'codex',
+        member_type: 'agent',
+        profile_identity: 'codex',
+        membership_status: 'active',
+        wake_policy: 'mentions_only',
+        can_send: true,
+        can_react: true,
+        can_invite: false,
+        settings: {},
+      }]),
+      putMembership: async (channelId, body) => {
+        putBodies.push({ channelId, body });
+        return ok({
+          id: body.member_identity === 'new-agent' ? 2 : 1,
+          channel_id: channelId,
+          member_identity: body.member_identity,
+          member_type: body.member_type,
+          profile_identity: body.profile_identity,
+          membership_status: body.membership_status,
+          wake_policy: body.wake_policy,
+        });
+      },
+      listMessages: async () => ok([]),
+      postMessage: async (_channelId, body) => ok(channelMessageFixture({ id: 9, body: body.body })),
+    }, {
+      listChannelItems: async () => ok(timelineFixture()),
+      streamChannelItems: () => ({ close: () => undefined }),
+    }, {
+      createIntent: async () => ok({ id: 1, state: 'pending' }),
+    });
+
+    await store.refreshChannels('den-web');
+    const member = stateValue(store.memberships())?.[0];
+    expect(member).toBeDefined();
+    if (!member) return;
+    await store.saveMembership(member, { wakePolicy: 'all_human_messages', membershipStatus: 'muted' });
+    await store.joinAgent('new-agent', 'direct_questions_only');
+
+    expect(putBodies).toEqual([
+      {
+        channelId: 10,
+        body: {
+          member_type: 'agent',
+          member_identity: 'codex',
+          profile_identity: 'codex',
+          membership_status: 'muted',
+          wake_policy: 'all_human_messages',
+          can_send: true,
+          can_react: true,
+          can_invite: false,
+          membership_purpose: 'ordinary',
+          settings: {},
+        },
+      },
+      {
+        channelId: 10,
+        body: {
+          member_type: 'agent',
+          member_identity: 'new-agent',
+          profile_identity: 'new-agent',
+          membership_status: 'active',
+          wake_policy: 'direct_questions_only',
+          can_send: true,
+          can_react: true,
+          can_invite: false,
+          membership_purpose: 'ordinary',
+          settings: {},
+        },
+      },
+    ]);
+    expect(stateValue(store.memberships())?.map((membership) => membership.member_identity)).toEqual(['codex', 'new-agent']);
+    expect(stateValue(store.memberships())?.[0]?.wake_policy).toBe('all_human_messages');
+  });
+
   it('selects the top channel whenever conversation project channels refresh', async () => {
     let projectId = 'den-web';
     const store = createConversationStore({
@@ -425,6 +567,14 @@ describe('successor signal stores', () => {
           ]
         : [{ id: 20, slug: 'asha', project_id: 'asha' }]),
       listMemberships: async (options) => ok([{ id: 1, channel_id: options?.channelId, member_identity: 'codex', member_type: 'agent' }]),
+      putMembership: async (_channelId, body) => ok({
+        id: 1,
+        channel_id: 10,
+        member_identity: body.member_identity,
+        member_type: body.member_type,
+        membership_status: body.membership_status,
+        wake_policy: body.wake_policy,
+      }),
       listMessages: async (channelId) => ok([channelMessageFixture({ id: channelId, channel_id: channelId })]),
       postMessage: async (_channelId, body) => ok(channelMessageFixture({ id: 5, body: body.body })),
     }, {
