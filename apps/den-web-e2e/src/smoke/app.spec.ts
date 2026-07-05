@@ -240,8 +240,8 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   }]);
   await expect.poll(() => deliveryRequests).toEqual([{
     target_identity: { profile: 'codex', instance_id: 'codex@den-srv' },
-    idempotency_key: expect.stringMatching(/^wake:7:codex:/),
-    source_ref: '/api/v1/conversation/channels/7/messages/72',
+    idempotency_key: expect.stringMatching(/^mention:7:codex:/),
+    source_ref: 'conversation:channels/7/messages/72',
     channel_message_id: 72,
   }]);
 

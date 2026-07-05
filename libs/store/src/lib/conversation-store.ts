@@ -158,10 +158,10 @@ export function createConversationStore(conversation: ConversationTransportPort,
       if (!mentions.has(identity.toLowerCase())) return;
       const target = wakeTarget(member);
       if (!target) return;
-      const sourceRef = `/api/v1/conversation/channels/${channelId}/messages/${message.id}`;
+      const sourceRef = `conversation:channels/${channelId}/messages/${message.id}`;
       await delivery.createIntent({
         target_identity: target,
-        idempotency_key: `wake:${channelId}:${target.profile}:${Date.now()}${message.id}`,
+        idempotency_key: `mention:${channelId}:${target.profile}:${message.id}-${Date.now()}`,
         source_ref: sourceRef,
         channel_message_id: message.id,
       });
@@ -176,24 +176,12 @@ function mentionedIdentities(body: string): ReadonlySet<string> {
 function wakeTarget(member: DenConversationMembership): DenDeliveryTargetIdentity | null {
   const direct = member.wake_target ?? member.wakeTarget ?? member.target_identity ?? member.targetIdentity;
   if (isWakeTarget(direct)) return direct;
-  const settingsTarget = recordValue(member.settings, 'wake_target') ?? recordValue(member.settings, 'target_identity');
-  if (isWakeTarget(settingsTarget)) return settingsTarget;
-  const profile = member.profile_identity ?? member.profileIdentity ?? member.member_identity ?? member.memberIdentity;
-  const instanceId = member.agent_instance_id ?? member.agentInstanceId ?? stringValue(recordValue(member.settings, 'agent_instance_id'));
-  return profile && instanceId ? { profile, instance_id: instanceId } : null;
+  return null;
 }
 
 function isWakeTarget(value: unknown): value is DenDeliveryTargetIdentity {
   if (!isRecord(value)) return false;
   return typeof value['profile'] === 'string' && typeof value['instance_id'] === 'string';
-}
-
-function recordValue(record: Readonly<Record<string, unknown>> | null | undefined, key: string): unknown {
-  return record?.[key];
-}
-
-function stringValue(value: unknown): string | null {
-  return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {

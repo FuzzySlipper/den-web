@@ -357,10 +357,41 @@ describe('successor signal stores', () => {
     }]);
     expect(deliveryBodies).toEqual([{
       target_identity: { profile: 'codex', instance_id: 'codex@den-srv' },
-      idempotency_key: expect.stringMatching(/^wake:10:codex:/),
-      source_ref: '/api/v1/conversation/channels/10/messages/5',
+      idempotency_key: expect.stringMatching(/^mention:10:codex:/),
+      source_ref: 'conversation:channels/10/messages/5',
       channel_message_id: 5,
     }]);
+  });
+
+  it('does not guess wake targets from legacy agent instance fields', async () => {
+    const deliveryBodies: unknown[] = [];
+    const store = createConversationStore({
+      listChannels: async () => ok([{ id: 10, slug: 'den-web', project_id: 'den-web' }]),
+      listMemberships: async () => ok([{
+        id: 1,
+        channel_id: 10,
+        member_identity: 'codex',
+        member_type: 'agent',
+        membership_status: 'active',
+        profile_identity: 'codex',
+        agent_instance_id: 'codex@legacy',
+      }]),
+      listMessages: async () => ok([]),
+      postMessage: async (_channelId, body) => ok(channelMessageFixture({ id: 6, body: body.body })),
+    }, {
+      listChannelItems: async () => ok(timelineFixture()),
+      streamChannelItems: () => ({ close: () => undefined }),
+    }, {
+      createIntent: async (body) => {
+        deliveryBodies.push(body);
+        return ok({ id: 1, state: 'pending' });
+      },
+    });
+
+    await store.refreshChannels('den-web');
+    await store.sendMessage('codex', 'Hello @codex', 'phase-3');
+
+    expect(deliveryBodies).toEqual([]);
   });
 
   it('selects the top channel whenever conversation project channels refresh', async () => {
