@@ -36,6 +36,25 @@ const nestedTask = {
   unfinished_dependency_count: 1,
   subtask_count: 0,
 };
+const longDescription = Array.from(
+  { length: 44 },
+  (_, index) => `Long detail paragraph ${index + 1}. This fixture gives the task detail panel enough content to require internal scrolling without moving the workspace shell.`,
+).join('\n\n');
+const longDetailTask = {
+  id: 4177,
+  project_id: 'den-web',
+  title: 'Long detail fixture task',
+  status: 'in_progress',
+  priority: 2,
+  assigned_to: 'codex',
+  parent_id: null,
+  tags: ['fixture', 'scroll'],
+  availability: 'available',
+  dependency_count: 0,
+  unfinished_dependency_count: 0,
+  subtask_count: 0,
+  description: `${longDescription}\n\nLong detail bottom sentinel.`,
+};
 const extraTasks = Array.from({ length: 80 }, (_, index) => ({
   id: 4300 + index,
   project_id: 'den-web',
@@ -50,7 +69,7 @@ const extraTasks = Array.from({ length: 80 }, (_, index) => ({
   unfinished_dependency_count: 0,
   subtask_count: 0,
 }));
-const tasks = [primaryTask, nestedTask, ...extraTasks];
+const tasks = [primaryTask, nestedTask, longDetailTask, ...extraTasks];
 const ashaTask = {
   id: 4100,
   project_id: 'asha',
@@ -193,6 +212,12 @@ export async function mockDenServices(page: Page): Promise<void> {
   await page.route('**/api/v1/projects/den-web/tasks/4001', (route) => json(route, {
     task: nestedTask,
     dependencies: [primaryTask],
+    subtasks: [],
+    recent_messages: [],
+  }));
+  await page.route('**/api/v1/projects/den-web/tasks/4177', (route) => json(route, {
+    task: longDetailTask,
+    dependencies: [],
     subtasks: [],
     recent_messages: [],
   }));

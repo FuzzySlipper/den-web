@@ -63,6 +63,12 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
         min-width: 0;
       }
 
+      .task-detail {
+        display: grid;
+        grid-template-rows: minmax(0, 1fr);
+        overflow: hidden;
+      }
+
       .task-list {
         border-right: 1px solid var(--den-border);
         display: grid;
@@ -190,8 +196,10 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
       }
 
       .detail-body {
+        box-sizing: border-box;
         display: grid;
         gap: 18px;
+        height: 100%;
         min-height: 0;
         overflow: auto;
         padding: 20px;
@@ -390,7 +398,7 @@ const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review',
         }
 
         .task-cockpit.show-detail .task-detail {
-          display: block;
+          display: grid;
         }
 
         .toolbar {

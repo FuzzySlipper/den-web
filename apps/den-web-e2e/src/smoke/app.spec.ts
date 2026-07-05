@@ -52,6 +52,30 @@ test('scrolls long task lists inside the task list panel', async ({ page }) => {
   await expect(page.getByRole('button', { name: /#4379 Long task list fixture 80/ })).toBeVisible();
 });
 
+test('scrolls long task detail inside the detail panel', async ({ page }) => {
+  await mockDenServices(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/');
+
+  await page.getByRole('button', { name: /#4177 Long detail fixture task/ }).click();
+
+  const detailBody = page.locator('.task-detail .detail-body');
+  await expect(page.getByLabel('Task detail').getByRole('heading', { name: /#4177 Long detail fixture task/ })).toBeVisible();
+  await expect(async () => {
+    const metrics = await detailBody.evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+    }));
+    expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight + 300);
+  }).toPass();
+
+  await detailBody.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+
+  await expect(page.getByText('Long detail bottom sentinel.')).toBeVisible();
+});
+
 test('clicks through task references across projects', async ({ page }) => {
   await mockDenServices(page);
   await page.goto('/');
