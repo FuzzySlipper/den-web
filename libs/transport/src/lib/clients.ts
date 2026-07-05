@@ -4,6 +4,7 @@ import type {
   DenConversationMembership,
   DenConversationPostMessageRequest,
   DenDeliveryIntent,
+  DenDeliveryIntentRequest,
   DenDiscussion,
   DenDocPublishRequest,
   DenDocPublishResponse,
@@ -23,9 +24,11 @@ import type {
   DenTaskDetail,
   DenTaskSummary,
   DenTaskUpdateRequest,
+  DenTimelineItem,
   DenTimelineResponse,
   RuntimeApiConfig,
 } from '@den-web/protocol';
+import type { EventStreamEvent, EventStreamPort } from '@den-web/platform';
 import { defaultRuntimeApiConfig, DEN_GLOBAL_PROJECT_ID } from '@den-web/protocol';
 import { DenHttpClient, joinUrl, query } from './http';
 
@@ -47,6 +50,7 @@ export interface DenTransportClients {
 export function createDenTransportClients(
   config: RuntimeApiConfig = defaultRuntimeApiConfig,
   http = new DenHttpClient(),
+  eventStream?: EventStreamPort,
 ): DenTransportClients {
   return {
     projects: new ProjectsTransport(config, http),
@@ -56,7 +60,7 @@ export function createDenTransportClients(
     documents: new DocumentsTransport(config, http),
     librarian: new LibrarianTransport(config, http),
     conversation: new ConversationTransport(config, http),
-    timeline: new TimelineTransport(config, http),
+    timeline: new TimelineTransport(config, http, eventStream),
     observation: new ObservationTransport(config, http),
     delivery: new DeliveryTransport(config, http),
     docPublish: new DocPublishTransport(config, http),
@@ -247,7 +251,7 @@ export class ConversationTransport {
 }
 
 export class TimelineTransport {
-  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient, private readonly eventStream?: EventStreamPort) {}
 
   listChannelItems(channelId: number, options: { readonly limit?: number; readonly after?: string } = {}): Promise<DenResult<DenTimelineResponse>> {
     return this.http.json(joinUrl(this.config.timelineApiBase, `/channels/${channelId}/items${query(options)}`));
@@ -255,6 +259,32 @@ export class TimelineTransport {
 
   streamUrl(channelId: number, options: { readonly after?: string; readonly includeDebug?: boolean } = {}): string {
     return joinUrl(this.config.timelineApiBase, `/channels/${channelId}/stream${query({ after: options.after, include_debug: options.includeDebug })}`);
+  }
+
+  streamChannelItems(
+    channelId: number,
+    options: {
+      readonly after?: string;
+      readonly onItem: (item: DenTimelineItem) => void;
+      readonly onRefresh?: () => void;
+      readonly onError?: () => void;
+    },
+  ): { readonly close: () => void } {
+    if (!this.eventStream) return { close: () => undefined };
+    const streamOptions: { readonly after?: string; readonly includeDebug?: boolean } = options.after ? { after: options.after } : {};
+    const eventOptions: Parameters<EventStreamPort['open']>[1] = {
+      events: ['timeline_item', 'timeline_refresh', 'heartbeat'],
+      onEvent: (event: EventStreamEvent) => {
+        if (event.type === 'timeline_item') {
+          const parsed = parseTimelineItem(event.data);
+          if (parsed) options.onItem(parsed);
+        } else if (event.type === 'timeline_refresh') {
+          options.onRefresh?.();
+        }
+      },
+      ...(options.onError ? { onError: options.onError } : {}),
+    };
+    return this.eventStream.open(this.streamUrl(channelId, streamOptions), eventOptions);
   }
 }
 
@@ -273,8 +303,17 @@ export class ObservationTransport {
 export class DeliveryTransport {
   constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
 
-  createIntent(body: unknown): Promise<DenResult<DenDeliveryIntent>> {
+  createIntent(body: DenDeliveryIntentRequest): Promise<DenResult<DenDeliveryIntent>> {
     return this.http.json(joinUrl(this.config.deliveryApiBase, '/intents'), { method: 'POST', body });
+  }
+}
+
+function parseTimelineItem(data: string): DenTimelineItem | null {
+  try {
+    const parsed = JSON.parse(data) as unknown;
+    return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as DenTimelineItem : null;
+  } catch {
+    return null;
   }
 }
 

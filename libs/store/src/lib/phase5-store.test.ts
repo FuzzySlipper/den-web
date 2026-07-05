@@ -83,7 +83,7 @@ describe('phase 5 stores', () => {
     store.setTheme('dark');
     store.setHighContrast(true);
 
-    expect(store.preferences()).toEqual({ density: 'compact', theme: 'dark', highContrast: true });
+    expect(store.preferences()).toEqual({ density: 'compact', theme: 'dark', highContrast: true, conversationSenderIdentity: 'web-ui' });
     expect(storage.getItem('den-web.preferences.v2')).toContain('compact');
     expect(classes.has('den-compact')).toBe(true);
     expect(classes.has('den-dark')).toBe(true);

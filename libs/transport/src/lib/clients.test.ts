@@ -43,7 +43,10 @@ describe('Den transport clients', () => {
     await clients.timeline.listChannelItems(7, { limit: 1 });
     await clients.observation.lane({ limit: 1 });
     await clients.observation.activeWork();
-    await clients.delivery.createIntent({ kind: 'wake' });
+    await clients.delivery.createIntent({
+      target_identity: { profile: 'codex', instance_id: 'codex@den-srv' },
+      idempotency_key: 'wake:7:codex:k1',
+    });
     await clients.docPublish.preview({ source: { document_project_id: 'den-web', document_slug: 'successor-brief' }, requested_by: 'den-web' });
     await clients.docPublish.publish({ source: { document_project_id: 'den-web', document_slug: 'successor-brief' }, requested_by: 'den-web' });
     await clients.artifacts.resolve('den-artifact://art_123');

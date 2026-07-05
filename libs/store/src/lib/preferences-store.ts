@@ -8,6 +8,7 @@ export interface DenWebPreferences {
   readonly density: DensityPreference;
   readonly theme: ThemePreference;
   readonly highContrast: boolean;
+  readonly conversationSenderIdentity: string;
 }
 
 export interface PreferencesStore {
@@ -15,11 +16,12 @@ export interface PreferencesStore {
   readonly setDensity: (density: DensityPreference) => void;
   readonly setTheme: (theme: ThemePreference) => void;
   readonly setHighContrast: (enabled: boolean) => void;
+  readonly setConversationSenderIdentity: (identity: string) => void;
   readonly apply: () => void;
 }
 
 const key = 'den-web.preferences.v2';
-const defaults: DenWebPreferences = { density: 'comfortable', theme: 'light', highContrast: false };
+const defaults: DenWebPreferences = { density: 'comfortable', theme: 'light', highContrast: false, conversationSenderIdentity: 'web-ui' };
 
 export function createPreferencesStore(storage: KeyValueStoragePort, effects: DocumentEffectsPort): PreferencesStore {
   const preferences = signal(loadPreferences(storage));
@@ -35,6 +37,10 @@ export function createPreferencesStore(storage: KeyValueStoragePort, effects: Do
     setDensity: (density) => persist({ ...preferences(), density }),
     setTheme: (theme) => persist({ ...preferences(), theme }),
     setHighContrast: (highContrast) => persist({ ...preferences(), highContrast }),
+    setConversationSenderIdentity: (conversationSenderIdentity) => persist({
+      ...preferences(),
+      conversationSenderIdentity: normalizeSenderIdentity(conversationSenderIdentity),
+    }),
     apply: () => applyPreferences(effects, preferences()),
   };
 }
@@ -49,10 +55,15 @@ function loadPreferences(storage: KeyValueStoragePort): DenWebPreferences {
       density: parsed['density'] === 'compact' ? 'compact' : 'comfortable',
       theme: parsed['theme'] === 'dark' ? 'dark' : 'light',
       highContrast: parsed['highContrast'] === true,
+      conversationSenderIdentity: normalizeSenderIdentity(parsed['conversationSenderIdentity']),
     };
   } catch {
     return defaults;
   }
+}
+
+function normalizeSenderIdentity(value: unknown): string {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : defaults.conversationSenderIdentity;
 }
 
 function applyPreferences(effects: DocumentEffectsPort, preferences: DenWebPreferences): void {

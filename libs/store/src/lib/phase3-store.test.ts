@@ -305,9 +305,17 @@ describe('successor signal stores', () => {
 
   it('loads conversation messages and timeline projections by selected channel', async () => {
     const postedBodies: unknown[] = [];
+    const deliveryBodies: unknown[] = [];
     const store = createConversationStore({
       listChannels: async () => ok([{ id: 10, slug: 'den-web', project_id: 'den-web' }]),
-      listMemberships: async () => ok([{ id: 1, channel_id: 10, member_identity: 'codex', member_type: 'agent', membership_status: 'active' }]),
+      listMemberships: async () => ok([{
+        id: 1,
+        channel_id: 10,
+        member_identity: 'codex',
+        member_type: 'agent',
+        membership_status: 'active',
+        wake_target: { profile: 'codex', instance_id: 'codex@den-srv' },
+      }]),
       listMessages: async () => ok([channelMessageFixture({ id: 4 })]),
       postMessage: async (_channelId, body) => {
         postedBodies.push(body);
@@ -315,22 +323,43 @@ describe('successor signal stores', () => {
       },
     }, {
       listChannelItems: async () => ok(timelineFixture()),
+      streamChannelItems: (_channelId, options) => {
+        options.onItem({ timeline_id: 'msg:6', source_domain: 'conversation', source_id: '6', event_kind: 'channel_message', actor: { identity: 'codex' }, body: 'streamed', occurred_at: '2026-07-02T00:03:00Z' });
+        return { close: () => undefined };
+      },
+    }, {
+      createIntent: async (body) => {
+        deliveryBodies.push(body);
+        return ok({ id: 1, state: 'pending' });
+      },
     });
 
     await store.refreshChannels('den-web');
     await store.selectChannel(10);
-    await store.sendMessage('codex', 'Hello', 'phase-3');
+    const stop = store.streamChannel(10);
+    stop();
+    await store.sendMessage('codex', 'Hello @codex', 'phase-3');
 
     expect(store.messages().kind).toBe('data');
     expect(store.memberships().kind).toBe('data');
     expect(store.timeline().kind).toBe('data');
+    expect(stateValue(store.timeline())?.find((item) => item.id === 'msg:6')).toMatchObject({
+      sender: 'codex',
+      createdAt: '2026-07-02T00:03:00Z',
+    });
     expect(postedBodies).toEqual([{
       sender_type: 'user',
       sender_identity: 'codex',
-      body: 'Hello',
+      body: 'Hello @codex',
       message_kind: 'human_text',
       source_kind: 'den_web_channel_post',
       dedupe_key: 'phase-3',
+    }]);
+    expect(deliveryBodies).toEqual([{
+      target_identity: { profile: 'codex', instance_id: 'codex@den-srv' },
+      idempotency_key: expect.stringMatching(/^wake:10:codex:/),
+      source_ref: '/api/v1/conversation/channels/10/messages/5',
+      channel_message_id: 5,
     }]);
   });
 
@@ -348,6 +377,9 @@ describe('successor signal stores', () => {
       postMessage: async (_channelId, body) => ok(channelMessageFixture({ id: 5, body: body.body })),
     }, {
       listChannelItems: async () => ok(timelineFixture()),
+      streamChannelItems: () => ({ close: () => undefined }),
+    }, {
+      createIntent: async () => ok({ id: 1, state: 'pending' }),
     });
 
     await store.refreshChannels(projectId);

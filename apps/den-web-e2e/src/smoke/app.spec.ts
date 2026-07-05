@@ -194,19 +194,28 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await mockDenServices(page);
   await page.goto('/');
 
+  await page.getByRole('button', { name: 'Preferences' }).click();
+  await page.getByLabel('Conversation sender identity').fill('patch');
   await page.getByRole('button', { name: 'Conversation' }).click();
   await expect(page.getByText('Conversation fixture loaded')).toBeVisible();
   await expect(page.getByText('Timeline fixture loaded')).toBeVisible();
   await expect(page.getByText('Observation tool fixture loaded')).toBeVisible();
+  await expect(page.getByText('Stream fixture loaded')).toBeVisible();
   await expect(page.getByLabel('Channels').getByRole('button', { name: /#den-web/ })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('Channels').getByRole('button', { name: /#ops/ })).toBeVisible();
   await expect(page.getByLabel('Channel participants').getByText('codex')).toBeVisible();
   await expect(page.getByLabel('Channel chat').getByText(/Jul 1|Jul 2|Jul 3/).first()).toBeVisible();
+  await expect(page.getByLabel('Channel chat').getByText('unknown time')).toHaveCount(0);
+  await expect(page.getByLabel('Channel chat').locator('.sender', { hasText: 'timeline' })).toHaveCount(0);
 
   const conversationRequests: unknown[] = [];
+  const deliveryRequests: unknown[] = [];
   page.on('request', (request) => {
     if (request.method() === 'POST' && request.url().includes('/api/v1/conversation/channels/7/messages')) {
       conversationRequests.push(request.postDataJSON());
+    }
+    if (request.method() === 'POST' && request.url().includes('/api/v1/delivery/intents')) {
+      deliveryRequests.push(request.postDataJSON());
     }
   });
   const composer = page.getByLabel('Conversation message');
@@ -214,16 +223,26 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await page.keyboard.press('Shift+Enter');
   await page.keyboard.type('Line two');
   await expect(composer).toHaveValue('Line one\nLine two');
-  await composer.fill('Sent from fixture UI');
+  await composer.fill('@c');
+  await expect(page.getByRole('listbox', { name: 'Mention suggestions' }).getByText('codex')).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(composer).toHaveValue('@codex ');
+  await page.keyboard.type('Sent from fixture UI');
   await page.keyboard.press('Enter');
-  await expect(page.getByLabel('Channel chat').getByText('Sent from fixture UI')).toBeVisible();
+  await expect(page.getByLabel('Channel chat').getByText('@codex Sent from fixture UI')).toBeVisible();
   await expect.poll(() => conversationRequests).toEqual([{
     sender_type: 'user',
-    sender_identity: 'web-ui',
-    body: 'Sent from fixture UI',
+    sender_identity: 'patch',
+    body: '@codex Sent from fixture UI',
     message_kind: 'human_text',
     source_kind: 'den_web_channel_post',
-    dedupe_key: expect.stringMatching(/^web-ui:/),
+    dedupe_key: expect.stringMatching(/^patch:/),
+  }]);
+  await expect.poll(() => deliveryRequests).toEqual([{
+    target_identity: { profile: 'codex', instance_id: 'codex@den-srv' },
+    idempotency_key: expect.stringMatching(/^wake:7:codex:/),
+    source_ref: '/api/v1/conversation/channels/7/messages/72',
+    channel_message_id: 72,
   }]);
 
   await page.getByRole('button', { name: 'Notifications' }).click();

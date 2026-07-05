@@ -1,4 +1,4 @@
-import type { DenChannelMessage, DenConversationChannel, DenConversationMembership, DenTimelineResponse } from '@den-web/protocol';
+import type { DenChannelMessage, DenConversationChannel, DenConversationMembership, DenTimelineItem, DenTimelineResponse } from '@den-web/protocol';
 import { extractArtifactReferences, type ArtifactReference } from './artifacts';
 
 export type MessageBodySegment =
@@ -7,6 +7,9 @@ export type MessageBodySegment =
 
 export interface TimelineItemView {
   readonly id: string;
+  readonly cursor: string | null;
+  readonly sourceDomain: string | null;
+  readonly sourceId: string | null;
   readonly kind: string;
   readonly title: string;
   readonly createdAt: string | null;
@@ -59,8 +62,13 @@ export function conversationFeedItems(
   messages: readonly DenChannelMessage[],
   timeline: readonly TimelineItemView[],
 ): readonly ConversationFeedItem[] {
+  const timelineMessageIds = new Set(
+    timeline
+      .filter((item) => item.sourceDomain === 'conversation' && item.sourceId !== null)
+      .map((item) => item.sourceId),
+  );
   return [
-    ...messages.map((message) => ({
+    ...messages.filter((message) => !timelineMessageIds.has(String(message.id))).map((message) => ({
       id: `message:${message.id}`,
       source: 'message' as const,
       kind: channelMessageKind(message),
@@ -115,28 +123,36 @@ export function parseMessageBodySegments(body: string): readonly MessageBodySegm
 }
 
 export function timelineItems(response: DenTimelineResponse): readonly TimelineItemView[] {
-  return (response.items ?? []).map((item, index) => {
-    const record = asRecord(item);
-    const payload = asRecord(record['payload']);
-    return {
-      id: String(record['id'] ?? index),
-      kind: String(record['kind'] ?? record['type'] ?? payload['kind'] ?? payload['type'] ?? 'event'),
-      title: String(record['title'] ?? record['summary'] ?? payload['title'] ?? payload['summary'] ?? record['body'] ?? payload['body'] ?? 'Untitled event'),
-      body: String(record['body'] ?? payload['body'] ?? record['summary'] ?? payload['summary'] ?? record['title'] ?? payload['title'] ?? ''),
-      sender: String(
-        record['sender_identity']
-          ?? record['sender']
-          ?? record['agent_identity']
-          ?? payload['sender_identity']
-          ?? payload['sender']
-          ?? payload['agent_identity']
-          ?? record['source']
-          ?? 'timeline',
-      ),
-      createdAt: typeof record['created_at'] === 'string' ? record['created_at'] : null,
-      artifactRefs: extractArtifactReferences(record),
-    };
-  });
+  return (response.items ?? []).map(timelineItemView);
+}
+
+export function timelineItemView(item: DenTimelineItem, index = 0): TimelineItemView {
+  const record = asRecord(item);
+  const payload = asRecord(record['payload']);
+  const actor = asRecord(record['actor']);
+  const sourceDomain = stringValue(record['source_domain'] ?? record['sourceDomain']);
+  const sourceId = stringValue(record['source_id'] ?? record['sourceId']);
+  return {
+    id: String(record['timeline_id'] ?? record['timelineId'] ?? record['id'] ?? index),
+    cursor: stringValue(record['cursor']),
+    sourceDomain,
+    sourceId,
+    kind: stringValue(record['event_kind'] ?? record['eventKind'] ?? record['kind'] ?? record['type'] ?? payload['kind'] ?? payload['type']) ?? 'event',
+    title: stringValue(record['title'] ?? record['summary'] ?? payload['title'] ?? payload['summary'] ?? record['body'] ?? payload['body']) ?? 'Untitled event',
+    body: stringValue(record['body'] ?? payload['body'] ?? record['summary'] ?? payload['summary'] ?? record['title'] ?? payload['title']) ?? '',
+    sender: stringValue(
+      actor['identity']
+        ?? record['sender_identity']
+        ?? record['sender']
+        ?? record['agent_identity']
+        ?? payload['sender_identity']
+        ?? payload['sender']
+        ?? payload['agent_identity']
+        ?? record['source'],
+    ) ?? 'unknown',
+    createdAt: stringValue(record['occurred_at'] ?? record['occurredAt'] ?? record['created_at'] ?? record['createdAt']),
+    artifactRefs: extractArtifactReferences(record),
+  };
 }
 
 function compareFeedItems(left: ConversationFeedItem, right: ConversationFeedItem): number {
@@ -159,6 +175,10 @@ function stringMetadata(message: DenChannelMessage, key: string): string | null 
 
 function asRecord(value: unknown): Readonly<Record<string, unknown>> {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Readonly<Record<string, unknown>> : {};
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
 function cleanDetailText(value: string): string {

@@ -93,21 +93,29 @@ const systemChannels = [
   { id: 99, slug: 'agent-commons', name: 'agent-commons', kind: 'system' },
 ];
 const memberships = [
-  { id: 701, channel_id: 7, member_identity: 'codex', member_type: 'agent', membership_status: 'active', wake_policy: 'normal' },
+  {
+    id: 701,
+    channel_id: 7,
+    member_identity: 'codex',
+    member_type: 'agent',
+    membership_status: 'active',
+    wake_policy: 'normal',
+    wake_target: { profile: 'codex', instance_id: 'codex@den-srv' },
+  },
   { id: 702, channel_id: 7, member_identity: 'patch', member_type: 'user', membership_status: 'active', wake_policy: 'mentions_only' },
 ];
 const channelMessages = [{ id: 71, channel_id: 7, sender_identity: 'codex', sender_type: 'agent', body: 'Conversation fixture loaded', created_at: '2026-07-02T00:00:00Z' }];
 const agentCommonsMessages = [{ id: 990, channel_id: 99, sender_identity: 'codex', sender_type: 'agent', body: 'Agent commons fixture loaded', created_at: '2026-07-02T00:00:00Z' }];
 const timeline = {
   items: [
-    { id: 'tl-1', kind: 'message', title: 'Timeline fixture loaded', created_at: '2026-07-02T00:01:00Z' },
-    { id: 'tl-2', kind: 'observation_tool_call', title: 'Observation tool fixture loaded', sender_identity: 'den-mcp-runner', created_at: '2026-07-02T00:02:00Z' },
+    { timeline_id: 'tl-1', cursor: 'cursor-1', event_kind: 'channel_message', body: 'Timeline fixture loaded', actor: { identity: 'codex' }, occurred_at: '2026-07-02T00:01:00Z' },
+    { timeline_id: 'tl-2', cursor: 'cursor-2', event_kind: 'observation_tool_call', body: 'Observation tool fixture loaded', actor: { identity: 'den-mcp-runner' }, occurred_at: '2026-07-02T00:02:00Z' },
   ],
-  next_cursor: null,
+  next_cursor: 'cursor-2',
 };
 const agentCommonsTimeline = {
-  items: [{ id: 'tl-99', kind: 'message', title: 'Agent commons timeline loaded', created_at: '2026-07-02T00:01:00Z' }],
-  next_cursor: null,
+  items: [{ timeline_id: 'tl-99', cursor: 'cursor-99', event_kind: 'channel_message', body: 'Agent commons timeline loaded', actor: { identity: 'codex' }, occurred_at: '2026-07-02T00:01:00Z' }],
+  next_cursor: 'cursor-99',
 };
 const artifactRef = 'den-artifact://art_fixture_image';
 const artifactMetadata = {
@@ -270,6 +278,28 @@ export async function mockDenServices(page: Page): Promise<void> {
   await page.route('**/api/v1/timeline/channels/7/items?**', (route) => json(route, timeline));
   await page.route('**/api/v1/timeline/channels/8/items?**', (route) => json(route, { items: [], next_cursor: null }));
   await page.route('**/api/v1/timeline/channels/99/items?**', (route) => json(route, agentCommonsTimeline));
+  await page.route('**/api/v1/timeline/channels/7/stream', (route) => timelineStream(route));
+  await page.route('**/api/v1/timeline/channels/7/stream?**', (route) => eventStream(route, [
+    { type: 'stream_open', data: { channel_id: 7 } },
+    {
+      type: 'timeline_item',
+      data: {
+        timeline_id: 'tl-stream-1',
+        cursor: 'cursor-stream-1',
+        source_domain: 'conversation',
+        source_id: '73',
+        event_kind: 'channel_message',
+        actor: { identity: 'patch' },
+        body: 'Stream fixture loaded',
+        occurred_at: '2026-07-02T00:04:00Z',
+      },
+    },
+  ]));
+  await page.route('**/api/v1/timeline/channels/8/stream', (route) => eventStream(route, [{ type: 'stream_open', data: { channel_id: 8 } }]));
+  await page.route('**/api/v1/timeline/channels/8/stream?**', (route) => eventStream(route, [{ type: 'stream_open', data: { channel_id: 8 } }]));
+  await page.route('**/api/v1/timeline/channels/99/stream', (route) => eventStream(route, [{ type: 'stream_open', data: { channel_id: 99 } }]));
+  await page.route('**/api/v1/timeline/channels/99/stream?**', (route) => eventStream(route, [{ type: 'stream_open', data: { channel_id: 99 } }]));
+  await page.route('**/api/v1/delivery/intents', (route) => json(route, { id: 'intent-1', state: 'pending' }));
   await page.route('**/api/v1/user-notifications?**', (route) => json(route, notifications));
   await page.route('**/api/v1/user-notifications/read', (route) => json(route, { marked: 1 }));
   await page.route('**/api/v1/projects/den-web/messages?**', (route) => json(route, messagesFor(route)));
@@ -330,5 +360,32 @@ function json(route: Route, body: unknown): Promise<void> {
   return route.fulfill({
     contentType: 'application/json',
     body: JSON.stringify(body),
+  });
+}
+
+function timelineStream(route: Route): Promise<void> {
+  return eventStream(route, [
+    { type: 'stream_open', data: { channel_id: 7 } },
+    {
+      type: 'timeline_item',
+      data: {
+        timeline_id: 'tl-stream-1',
+        cursor: 'cursor-stream-1',
+        source_domain: 'conversation',
+        source_id: '73',
+        event_kind: 'channel_message',
+        actor: { identity: 'patch' },
+        body: 'Stream fixture loaded',
+        occurred_at: '2026-07-02T00:04:00Z',
+      },
+    },
+  ]);
+}
+
+function eventStream(route: Route, events: readonly { readonly type: string; readonly data: unknown }[]): Promise<void> {
+  return route.fulfill({
+    contentType: 'text/event-stream',
+    headers: { 'Cache-Control': 'no-cache' },
+    body: events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event.data)}\n\n`).join(''),
   });
 }

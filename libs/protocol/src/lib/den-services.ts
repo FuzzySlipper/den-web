@@ -163,6 +163,13 @@ export interface DenConversationMembership {
   readonly wakePolicy?: string;
   readonly can_send?: boolean;
   readonly canSend?: boolean;
+  readonly settings?: Readonly<Record<string, unknown>> | null;
+  readonly agent_instance_id?: string | null;
+  readonly agentInstanceId?: string | null;
+  readonly target_identity?: DenDeliveryTargetIdentity | null;
+  readonly targetIdentity?: DenDeliveryTargetIdentity | null;
+  readonly wake_target?: DenDeliveryTargetIdentity | null;
+  readonly wakeTarget?: DenDeliveryTargetIdentity | null;
   readonly updated_at?: string | null;
   readonly updatedAt?: string | null;
 }
@@ -189,8 +196,46 @@ export interface DenConversationPostMessageRequest {
 }
 
 export interface DenTimelineResponse {
-  readonly items?: readonly unknown[];
+  readonly items?: readonly DenTimelineItem[];
   readonly next_cursor?: string | null;
+  readonly nextCursor?: string | null;
+}
+
+export interface DenTimelineItem {
+  readonly id?: string | number;
+  readonly timeline_id?: string;
+  readonly timelineId?: string;
+  readonly cursor?: string | null;
+  readonly kind?: string;
+  readonly type?: string;
+  readonly event_kind?: string;
+  readonly eventKind?: string;
+  readonly render_kind?: string;
+  readonly renderKind?: string;
+  readonly source_domain?: string;
+  readonly sourceDomain?: string;
+  readonly source_id?: string;
+  readonly sourceId?: string;
+  readonly title?: string | null;
+  readonly body?: string | null;
+  readonly summary?: string | null;
+  readonly created_at?: string;
+  readonly createdAt?: string;
+  readonly occurred_at?: string;
+  readonly occurredAt?: string;
+  readonly sender_identity?: string;
+  readonly sender?: string;
+  readonly agent_identity?: string;
+  readonly actor?: {
+    readonly type?: string;
+    readonly identity?: string;
+    readonly profile_identity?: string | null;
+    readonly profileIdentity?: string | null;
+    readonly agent_instance_id?: string | null;
+    readonly agentInstanceId?: string | null;
+  } | null;
+  readonly payload?: Readonly<Record<string, unknown>> | null;
+  readonly metadata?: Readonly<Record<string, unknown>> | string | null;
 }
 
 export interface DenObservationLane {
@@ -218,9 +263,28 @@ export interface DenObservationSourceHealth {
   readonly detail?: string | null;
 }
 
+export interface DenDeliveryTargetIdentity {
+  readonly profile: string;
+  readonly instance_id: string;
+  readonly session_key?: string;
+}
+
+export interface DenDeliveryIntentRequest {
+  readonly target_identity: DenDeliveryTargetIdentity;
+  readonly idempotency_key: string;
+  readonly ttl_seconds?: number;
+  readonly source_ref?: string;
+  readonly channel_message_id?: number;
+}
+
 export interface DenDeliveryIntent {
-  readonly id?: string;
+  readonly id?: string | number;
+  readonly state?: string;
   readonly status?: string;
+  readonly target_identity?: DenDeliveryTargetIdentity;
+  readonly idempotency_key?: string;
+  readonly source_ref?: string | null;
+  readonly channel_message_id?: number | null;
 }
 
 export interface DenLibrarianQueryRequest {

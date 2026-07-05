@@ -15,7 +15,7 @@ import {
   type ConversationFeedItem,
 } from '@den-web/domain';
 import { ArtifactEvidenceComponent, type ArtifactEvidenceItem } from '@den-web/feature-artifacts';
-import { ARTIFACTS_STORE, CONVERSATION_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
+import { ARTIFACTS_STORE, CONVERSATION_STORE, PREFERENCES_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
 import { conversationCockpitStyles } from './conversation-cockpit.styles';
 
 @Component({
@@ -134,6 +134,13 @@ import { conversationCockpitStyles } from './conversation-cockpit.styles';
               (input)="setDraft($event)"
               (keydown)="handleComposerKeydown($event)"
             ></textarea>
+            @if (mentionSuggestions().length > 0) {
+              <div class="mention-menu" role="listbox" aria-label="Mention suggestions">
+                @for (identity of mentionSuggestions(); track identity) {
+                  <div class="mention-option" role="option">{{ identity }}</div>
+                }
+              </div>
+            }
             <button type="submit" class="send-button" [disabled]="!selectedChannelId() || sending() || draft().trim().length === 0">
               {{ sending() ? 'Sending' : 'Send' }}
             </button>
@@ -147,6 +154,7 @@ export class ConversationCockpitComponent {
   private readonly workspace = inject(WORKSPACE_STORE);
   private readonly conversation = inject(CONVERSATION_STORE);
   private readonly artifacts = inject(ARTIFACTS_STORE);
+  private readonly preferencesStore = inject(PREFERENCES_STORE);
   private loadedProjectId: string | null = null;
   private latestScrollKey = '';
   private scrollAnchor: ElementRef<HTMLElement> | null = null;
@@ -156,7 +164,9 @@ export class ConversationCockpitComponent {
   }
 
   protected readonly draft = signal('');
+  protected readonly mentionQuery = signal<string | null>(null);
   protected readonly sending = signal(false);
+  protected readonly preferences = this.preferencesStore.preferences;
   protected readonly selectedProjectId = this.workspace.selectedProjectId;
   protected readonly channels = this.conversation.channels;
   protected readonly messages = this.conversation.messages;
@@ -168,6 +178,15 @@ export class ConversationCockpitComponent {
   protected readonly membershipItems = computed(() => stateValue(this.memberships()) ?? []);
   protected readonly timelineItems = computed(() => stateValue(this.timeline()) ?? []);
   protected readonly feedItems = computed(() => conversationFeedItems(this.messageItems(), this.timelineItems()));
+  protected readonly participantIdentities = computed(() => uniqueParticipantIdentities(this.membershipItems()));
+  protected readonly mentionSuggestions = computed(() => {
+    const query = this.mentionQuery();
+    if (query === null) return [];
+    const normalized = query.toLowerCase();
+    return this.participantIdentities()
+      .filter((identity) => identity.toLowerCase().startsWith(normalized))
+      .slice(0, 6);
+  });
   protected readonly selectedChannelLabel = computed(() => conversationChannelLabel(this.conversation.selectedChannel(), '#select-channel'));
   protected readonly channelsError = computed(() => errorOf(this.channels()));
   protected readonly messagesError = computed(() => errorOf(this.messages()));
@@ -192,12 +211,22 @@ export class ConversationCockpitComponent {
     }
   });
 
+  private readonly streamEffect = effect((onCleanup) => {
+    const channelId = this.selectedChannelId();
+    if (!channelId) return;
+    const stop = this.conversation.streamChannel(channelId);
+    onCleanup(() => stop());
+  });
+
   protected selectChannel(channelId: number): void {
     void this.conversation.selectChannel(channelId);
   }
 
   protected setDraft(event: Event): void {
-    if (event.target instanceof HTMLTextAreaElement) this.draft.set(event.target.value);
+    if (event.target instanceof HTMLTextAreaElement) {
+      this.draft.set(event.target.value);
+      this.mentionQuery.set(mentionAtCursor(event.target)?.query ?? null);
+    }
   }
 
   protected send(event: Event): void {
@@ -206,6 +235,11 @@ export class ConversationCockpitComponent {
   }
 
   protected handleComposerKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Tab' && event.target instanceof HTMLTextAreaElement && this.mentionSuggestions().length > 0) {
+      event.preventDefault();
+      this.applyMentionCompletion(event.target, this.mentionSuggestions()[0] ?? '');
+      return;
+    }
     if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
     event.preventDefault();
     this.sendDraft();
@@ -216,9 +250,26 @@ export class ConversationCockpitComponent {
     if (!body || !this.selectedChannelId() || this.sending()) return;
     this.sending.set(true);
     this.draft.set('');
-    void this.conversation.sendMessage('web-ui', body, `web-ui:${Date.now()}`).finally(() => {
+    this.mentionQuery.set(null);
+    const sender = this.preferences().conversationSenderIdentity;
+    void this.conversation.sendMessage(sender, body, `${sender}:${Date.now()}`).finally(() => {
       this.sending.set(false);
       this.scheduleScroll('sent');
+    });
+  }
+
+  private applyMentionCompletion(textarea: HTMLTextAreaElement, identity: string): void {
+    if (!identity) return;
+    const mention = mentionAtCursor(textarea);
+    if (!mention) return;
+    const value = textarea.value;
+    const next = `${value.slice(0, mention.start)}@${identity} ${value.slice(mention.end)}`;
+    const caret = mention.start + identity.length + 2;
+    this.draft.set(next);
+    this.mentionQuery.set(null);
+    queueMicrotask(() => {
+      textarea.value = next;
+      textarea.setSelectionRange(caret, caret);
     });
   }
 
@@ -281,4 +332,20 @@ export class ConversationCockpitComponent {
 
 function errorOf<T>(state: { readonly kind: string; readonly error?: T }): T | null {
   return state.kind === 'error' && state.error ? state.error : null;
+}
+
+function uniqueParticipantIdentities(members: readonly DenConversationMembership[]): readonly string[] {
+  return [...new Set(members.map(membershipIdentity).filter((identity) => identity !== 'unknown'))].sort((left, right) => left.localeCompare(right));
+}
+
+function mentionAtCursor(textarea: HTMLTextAreaElement): { readonly start: number; readonly end: number; readonly query: string } | null {
+  const caret = textarea.selectionStart;
+  const before = textarea.value.slice(0, caret);
+  const match = /(^|\s)@([A-Za-z0-9_.-]*)$/.exec(before);
+  if (!match) return null;
+  return {
+    start: caret - (match[2]?.length ?? 0) - 1,
+    end: textarea.selectionEnd,
+    query: match[2] ?? '',
+  };
 }

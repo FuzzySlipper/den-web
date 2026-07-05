@@ -38,6 +38,19 @@ export interface PopupPort {
   readonly open: (url: string, target: string, features?: string) => void;
 }
 
+export interface EventStreamEvent {
+  readonly type: string;
+  readonly data: string;
+}
+
+export interface EventStreamPort {
+  readonly open: (url: string, options: {
+    readonly events: readonly string[];
+    readonly onEvent: (event: EventStreamEvent) => void;
+    readonly onError?: () => void;
+  }) => { readonly close: () => void };
+}
+
 export const browserClock: ClockPort = {
   now: () => new Date(),
   setTimeout: (callback, delayMs) => window.setTimeout(callback, delayMs),
@@ -83,5 +96,23 @@ export const browserUrlSync = (): UrlSyncPort => ({
 export const browserPopup = (): PopupPort => ({
   open: (url, target, features) => {
     window.open(url, target, features);
+  },
+});
+
+export const browserEventStream = (): EventStreamPort => ({
+  open: (url, options) => {
+    const source = new EventSource(url);
+    const removers = options.events.map((eventType) => {
+      const listener = (event: MessageEvent<string>): void => options.onEvent({ type: eventType, data: event.data });
+      source.addEventListener(eventType, listener);
+      return (): void => source.removeEventListener(eventType, listener);
+    });
+    if (options.onError) source.onerror = () => options.onError?.();
+    return {
+      close: () => {
+        for (const remove of removers) remove();
+        source.close();
+      },
+    };
   },
 });

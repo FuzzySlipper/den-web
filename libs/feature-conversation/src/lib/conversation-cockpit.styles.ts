@@ -206,6 +206,7 @@ export const conversationCockpitStyles = `
     gap: 8px;
     grid-template-columns: minmax(0, 1fr) auto;
     padding: 10px;
+    position: relative;
   }
 
   textarea {
@@ -227,6 +228,33 @@ export const conversationCockpitStyles = `
     align-self: end;
     min-height: 36px;
     padding: 0 14px;
+  }
+
+  .mention-menu {
+    background: var(--den-panel);
+    border: 1px solid var(--den-border-strong);
+    border-radius: 8px;
+    bottom: calc(100% - 4px);
+    box-shadow: 0 10px 22px rgb(0 0 0 / 16%);
+    display: grid;
+    left: 10px;
+    max-height: 180px;
+    min-width: 220px;
+    overflow: auto;
+    padding: 4px;
+    position: absolute;
+    z-index: 3;
+  }
+
+  .mention-option {
+    border-radius: 6px;
+    color: var(--den-text);
+    font-size: var(--den-font-size-md);
+    padding: 6px 8px;
+  }
+
+  .mention-option:first-child {
+    background: var(--den-selected);
   }
 
   .error {

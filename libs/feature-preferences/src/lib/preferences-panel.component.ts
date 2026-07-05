@@ -9,7 +9,8 @@ import { PREFERENCES_STORE } from '@den-web/store';
     h2 { margin: 0; font-size: var(--den-font-size-xl); }
     .panel { background: var(--den-panel); border: 1px solid var(--den-border); border-radius: 8px; padding: 12px; display: grid; gap: 12px; max-width: 520px; }
     label { display: flex; align-items: center; gap: 10px; color: var(--den-text); }
-    select { min-height: 36px; border: 1px solid var(--den-border); border-radius: 6px; padding: 0 10px; font: inherit; }
+    input[type='text'], select { min-height: 36px; border: 1px solid var(--den-border); border-radius: 6px; padding: 0 10px; font: inherit; }
+    input[type='text'] { background: var(--den-input); color: var(--den-text); min-width: 220px; }
     .muted { color: var(--den-muted); font-size: var(--den-font-size-md); }
   `],
   template: `
@@ -31,6 +32,10 @@ import { PREFERENCES_STORE } from '@den-web/store';
           <input type="checkbox" [checked]="preferences().highContrast" (change)="setContrast($event)" />
           High contrast
         </label>
+        <label>
+          Conversation sender
+          <input type="text" aria-label="Conversation sender identity" [value]="preferences().conversationSenderIdentity" (input)="setConversationSender($event)" />
+        </label>
         <p class="muted">Preferences persist through the platform storage port and apply through document effects.</p>
       </div>
     </section>
@@ -47,5 +52,8 @@ export class PreferencesPanelComponent {
   }
   protected setContrast(event: Event): void {
     if (event.target instanceof HTMLInputElement) this.store.setHighContrast(event.target.checked);
+  }
+  protected setConversationSender(event: Event): void {
+    if (event.target instanceof HTMLInputElement) this.store.setConversationSenderIdentity(event.target.value);
   }
 }

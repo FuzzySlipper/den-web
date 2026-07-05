@@ -1,6 +1,17 @@
 import { computed, signal, type Signal } from '@angular/core';
-import { timelineItems, type TimelineItemView } from '@den-web/domain';
-import type { DenChannelMessage, DenConversationChannel, DenConversationMembership, DenConversationPostMessageRequest, DenResult, DenTimelineResponse } from '@den-web/protocol';
+import { membershipIdentity, timelineItems, timelineItemView, type TimelineItemView } from '@den-web/domain';
+import type {
+  DenChannelMessage,
+  DenConversationChannel,
+  DenConversationMembership,
+  DenConversationPostMessageRequest,
+  DenDeliveryIntent,
+  DenDeliveryIntentRequest,
+  DenDeliveryTargetIdentity,
+  DenResult,
+  DenTimelineItem,
+  DenTimelineResponse,
+} from '@den-web/protocol';
 import { errorState, idleState, loadingState, resultState, stateValue, type AsyncState, unknownStoreError } from './async-state';
 
 export interface ConversationTransportPort {
@@ -12,6 +23,16 @@ export interface ConversationTransportPort {
 
 export interface TimelineTransportPort {
   readonly listChannelItems: (channelId: number, options?: { readonly limit?: number; readonly after?: string }) => Promise<DenResult<DenTimelineResponse>>;
+  readonly streamChannelItems: (channelId: number, options: {
+    readonly after?: string;
+    readonly onItem: (item: DenTimelineItem) => void;
+    readonly onRefresh?: () => void;
+    readonly onError?: () => void;
+  }) => { readonly close: () => void };
+}
+
+export interface DeliveryTransportPort {
+  readonly createIntent: (body: DenDeliveryIntentRequest) => Promise<DenResult<DenDeliveryIntent>>;
 }
 
 export interface ConversationStore {
@@ -23,21 +44,24 @@ export interface ConversationStore {
   readonly selectedChannel: Signal<DenConversationChannel | null>;
   readonly refreshChannels: (projectId: string) => Promise<void>;
   readonly selectChannel: (channelId: number) => Promise<void>;
+  readonly streamChannel: (channelId: number) => () => void;
   readonly sendMessage: (senderIdentity: string, body: string, idempotencyKey: string) => Promise<void>;
 }
 
-export function createConversationStore(conversation: ConversationTransportPort, timeline: TimelineTransportPort): ConversationStore {
+export function createConversationStore(conversation: ConversationTransportPort, timeline: TimelineTransportPort, delivery: DeliveryTransportPort): ConversationStore {
   const channels = signal<AsyncState<readonly DenConversationChannel[]>>(idleState());
   const messages = signal<AsyncState<readonly DenChannelMessage[]>>(idleState());
   const memberships = signal<AsyncState<readonly DenConversationMembership[]>>(idleState());
   const timelineState = signal<AsyncState<readonly TimelineItemView[]>>(idleState());
   const selectedChannelId = signal<number | null>(null);
+  let timelineCursor: string | null = null;
 
   const loadChannel = async (channelId: number): Promise<void> => {
     const previousMessages = stateValue(messages());
     const previousMemberships = stateValue(memberships());
     const previousTimeline = stateValue(timelineState());
     selectedChannelId.set(channelId);
+    timelineCursor = null;
     messages.set(loadingState(previousMessages));
     memberships.set(loadingState(previousMemberships));
     timelineState.set(loadingState(previousTimeline));
@@ -49,7 +73,12 @@ export function createConversationStore(conversation: ConversationTransportPort,
       ]);
       messages.set(resultState(messageResult, previousMessages));
       memberships.set(resultState(membershipResult, previousMemberships));
-      timelineState.set(timelineResult.ok ? resultState({ ok: true, value: timelineItems(timelineResult.value) }, previousTimeline) : resultState(timelineResult, previousTimeline));
+      if (timelineResult.ok) {
+        timelineCursor = timelineResult.value.next_cursor ?? timelineResult.value.nextCursor ?? null;
+        timelineState.set(resultState({ ok: true, value: timelineItems(timelineResult.value) }, previousTimeline));
+      } else {
+        timelineState.set(resultState(timelineResult, previousTimeline));
+      }
     } catch (error) {
       const classified = unknownStoreError(error);
       messages.set(errorState(classified, previousMessages));
@@ -82,6 +111,15 @@ export function createConversationStore(conversation: ConversationTransportPort,
       }
     },
     selectChannel: loadChannel,
+    streamChannel: (channelId) => {
+      const streamOptions: Parameters<TimelineTransportPort['streamChannelItems']>[1] = {
+        onItem: (item) => mergeTimelineItem(item),
+        onRefresh: () => void loadChannel(channelId),
+        ...(timelineCursor ? { after: timelineCursor } : {}),
+      };
+      const subscription = timeline.streamChannelItems(channelId, streamOptions);
+      return () => subscription.close();
+    },
     sendMessage: async (senderIdentity, body, idempotencyKey) => {
       const channelId = selectedChannelId();
       if (channelId === null) return;
@@ -96,9 +134,68 @@ export function createConversationStore(conversation: ConversationTransportPort,
       if (result.ok) {
         const current = stateValue(messages()) ?? [];
         messages.set(resultState({ ok: true, value: [...current, result.value] }));
+        await wakeMentionedParticipants(channelId, result.value, body);
       } else {
         messages.set(errorState(result.error, stateValue(messages())));
       }
     },
   };
+
+  function mergeTimelineItem(item: DenTimelineItem): void {
+    const previous = stateValue(timelineState()) ?? [];
+    const nextItem = timelineItemView(item, previous.length);
+    timelineCursor = nextItem.cursor ?? timelineCursor;
+    const withoutDuplicate = previous.filter((existing) => existing.id !== nextItem.id);
+    timelineState.set(resultState({ ok: true, value: [...withoutDuplicate, nextItem] }, previous));
+  }
+
+  async function wakeMentionedParticipants(channelId: number, message: DenChannelMessage, body: string): Promise<void> {
+    const mentions = mentionedIdentities(body);
+    if (mentions.size === 0) return;
+    const members = stateValue(memberships()) ?? [];
+    await Promise.all(members.map(async (member) => {
+      const identity = membershipIdentity(member);
+      if (!mentions.has(identity.toLowerCase())) return;
+      const target = wakeTarget(member);
+      if (!target) return;
+      const sourceRef = `/api/v1/conversation/channels/${channelId}/messages/${message.id}`;
+      await delivery.createIntent({
+        target_identity: target,
+        idempotency_key: `wake:${channelId}:${target.profile}:${Date.now()}${message.id}`,
+        source_ref: sourceRef,
+        channel_message_id: message.id,
+      });
+    }));
+  }
+}
+
+function mentionedIdentities(body: string): ReadonlySet<string> {
+  return new Set([...body.matchAll(/@([A-Za-z0-9_.-]+)/g)].map((match) => (match[1] ?? '').toLowerCase()).filter(Boolean));
+}
+
+function wakeTarget(member: DenConversationMembership): DenDeliveryTargetIdentity | null {
+  const direct = member.wake_target ?? member.wakeTarget ?? member.target_identity ?? member.targetIdentity;
+  if (isWakeTarget(direct)) return direct;
+  const settingsTarget = recordValue(member.settings, 'wake_target') ?? recordValue(member.settings, 'target_identity');
+  if (isWakeTarget(settingsTarget)) return settingsTarget;
+  const profile = member.profile_identity ?? member.profileIdentity ?? member.member_identity ?? member.memberIdentity;
+  const instanceId = member.agent_instance_id ?? member.agentInstanceId ?? stringValue(recordValue(member.settings, 'agent_instance_id'));
+  return profile && instanceId ? { profile, instance_id: instanceId } : null;
+}
+
+function isWakeTarget(value: unknown): value is DenDeliveryTargetIdentity {
+  if (!isRecord(value)) return false;
+  return typeof value['profile'] === 'string' && typeof value['instance_id'] === 'string';
+}
+
+function recordValue(record: Readonly<Record<string, unknown>> | null | undefined, key: string): unknown {
+  return record?.[key];
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }

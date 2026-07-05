@@ -18,6 +18,7 @@ import {
   parseMessageBodySegments,
   parseNotificationReadCache,
   taskMatchesStatusFilter,
+  timelineItems,
   visibleTaskRows,
 } from '../index';
 import type {
@@ -31,6 +32,7 @@ import type {
   DenObservationLane,
   DenTaskDetail,
   DenTaskSummary,
+  DenTimelineResponse,
 } from '@den-web/protocol';
 
 describe('successor task domain fixtures', () => {
@@ -255,6 +257,29 @@ describe('successor conversation and observation fixtures', () => {
     );
 
     expect(feed.map((item) => item.body)).toEqual(['Observation event', 'Channel message']);
+  });
+
+  it('projects den-services timeline actor and occurred time into chat rows', () => {
+    const response: DenTimelineResponse = {
+      items: [{
+        timeline_id: 'tl-1',
+        cursor: 'cursor-1',
+        event_kind: 'channel_message',
+        actor: { identity: 'codex' },
+        body: 'Timeline message',
+        occurred_at: '2026-07-02T00:03:00Z',
+      }],
+      next_cursor: 'cursor-1',
+    };
+
+    expect(timelineItems(response)[0]).toMatchObject({
+      id: 'tl-1',
+      cursor: 'cursor-1',
+      kind: 'channel_message',
+      sender: 'codex',
+      body: 'Timeline message',
+      createdAt: '2026-07-02T00:03:00Z',
+    });
   });
 
   it('marks the agents overview degraded when an observation source is unhealthy', () => {
