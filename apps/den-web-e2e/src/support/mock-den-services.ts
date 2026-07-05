@@ -215,12 +215,24 @@ export async function mockDenServices(page: Page): Promise<void> {
     subtasks: [],
     recent_messages: [],
   }));
-  await page.route('**/api/v1/projects/den-web/tasks/4177', (route) => json(route, {
-    task: longDetailTask,
-    dependencies: [],
-    subtasks: [],
-    recent_messages: [],
-  }));
+  await page.route('**/api/v1/projects/den-web/tasks/4177', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      const body = route.request().postDataJSON() as { readonly status?: string };
+      await json(route, {
+        task: { ...longDetailTask, status: body.status ?? longDetailTask.status },
+        dependencies: [],
+        subtasks: [],
+        recent_messages: [],
+      });
+      return;
+    }
+    await json(route, {
+      task: longDetailTask,
+      dependencies: [],
+      subtasks: [],
+      recent_messages: [],
+    });
+  });
   await page.route('**/api/v1/projects/asha/tasks/4100', (route) => json(route, {
     task: ashaTask,
     dependencies: [],

@@ -22,7 +22,7 @@ export interface TasksStore {
   readonly query: Signal<string>;
   readonly flat: Signal<boolean>;
   readonly rows: Signal<readonly FlatTaskRow[]>;
-  readonly refresh: (projectId: string) => Promise<void>;
+  readonly refresh: (projectId: string, options?: { readonly quiet?: boolean }) => Promise<void>;
   readonly selectTask: (projectId: string, taskId: number) => Promise<void>;
   readonly updateTaskStatus: (projectId: string, taskId: number, status: string) => Promise<DenResult<DenTaskDetail>>;
   readonly updateTaskDescription: (projectId: string, taskId: number, description: string) => Promise<DenResult<DenTaskDetail>>;
@@ -45,13 +45,16 @@ export function createTasksStore(transport: TasksTransportPort, messagesTranspor
     query: query.asReadonly(),
     flat: flat.asReadonly(),
     rows: computed(() => visibleTaskRows(stateValue(tasks()) ?? [], { filter: filter(), query: query(), flat: flat() })),
-    refresh: async (projectId) => {
+    refresh: async (projectId, options = {}) => {
       const previous = stateValue(tasks());
-      tasks.set(loadingState(previous));
+      if (!options.quiet || previous === undefined) tasks.set(loadingState(previous));
       try {
         const result = await transport.listTasks(projectId, { tree: true });
+        if (options.quiet && !result.ok && previous !== undefined) return;
         tasks.set(resultState(result, previous));
+        if (result.ok) reconcileSelectedTaskFromList(result.value);
       } catch (error) {
+        if (options.quiet && previous !== undefined) return;
         tasks.set(errorState(unknownStoreError(error), previous));
       }
     },
@@ -92,6 +95,14 @@ export function createTasksStore(transport: TasksTransportPort, messagesTranspor
       selectedTask.set(errorState(classified, previous));
       return { ok: false, error: classified };
     }
+  }
+
+  function reconcileSelectedTaskFromList(nextTasks: readonly DenTaskSummary[]): void {
+    const previous = stateValue(selectedTask());
+    if (!previous) return;
+    const nextTask = nextTasks.find((task) => task.id === previous.task.id);
+    if (!nextTask) return;
+    selectedTask.set(resultState({ ok: true, value: { ...previous, task: { ...previous.task, ...nextTask } } }, previous));
   }
 }
 

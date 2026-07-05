@@ -1,5 +1,5 @@
 import { InjectionToken, makeEnvironmentProviders, type EnvironmentProviders } from '@angular/core';
-import { browserClock, browserDocumentEffects, browserStorage } from '@den-web/platform';
+import { browserClock, browserDocumentEffects, browserStorage, type ClockPort } from '@den-web/platform';
 import type { RuntimeApiConfig } from '@den-web/protocol';
 import { defaultRuntimeApiConfig } from '@den-web/protocol';
 import { createDenTransportClients, type DenTransportClients } from '@den-web/transport';
@@ -17,6 +17,7 @@ import { createTasksStore, type TasksStore } from './tasks-store';
 import { createWorkspaceStore, type WorkspaceStore } from './workspace-store';
 
 export const DEN_RUNTIME_CONFIG = new InjectionToken<RuntimeApiConfig>('DEN_RUNTIME_CONFIG');
+export const DEN_CLOCK = new InjectionToken<ClockPort>('DEN_CLOCK');
 export const DEN_TRANSPORT_CLIENTS = new InjectionToken<DenTransportClients>('DEN_TRANSPORT_CLIENTS');
 export const WORKSPACE_STORE = new InjectionToken<WorkspaceStore>('WORKSPACE_STORE');
 export const TASKS_STORE = new InjectionToken<TasksStore>('TASKS_STORE');
@@ -34,6 +35,7 @@ export const PREFERENCES_STORE = new InjectionToken<PreferencesStore>('PREFERENC
 export function provideDenStoreKernel(config: RuntimeApiConfig = defaultRuntimeApiConfig): EnvironmentProviders {
   return makeEnvironmentProviders([
     { provide: DEN_RUNTIME_CONFIG, useValue: config },
+    { provide: DEN_CLOCK, useValue: browserClock },
     {
       provide: DEN_TRANSPORT_CLIENTS,
       useFactory: (runtimeConfig: RuntimeApiConfig) => createDenTransportClients(runtimeConfig),
@@ -41,8 +43,8 @@ export function provideDenStoreKernel(config: RuntimeApiConfig = defaultRuntimeA
     },
     {
       provide: WORKSPACE_STORE,
-      useFactory: (clients: DenTransportClients) => createWorkspaceStore(clients.projects, browserClock),
-      deps: [DEN_TRANSPORT_CLIENTS],
+      useFactory: (clients: DenTransportClients, clock: ClockPort) => createWorkspaceStore(clients.projects, clock),
+      deps: [DEN_TRANSPORT_CLIENTS, DEN_CLOCK],
     },
     {
       provide: TASKS_STORE,

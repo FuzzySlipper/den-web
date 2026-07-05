@@ -11,7 +11,7 @@ import {
 } from '@den-web/domain';
 import { ArtifactEvidenceComponent, type ArtifactEvidenceItem } from '@den-web/feature-artifacts';
 import type { DenMessage, DenTaskDetail, DenTaskSummary } from '@den-web/protocol';
-import { ARTIFACTS_STORE, NAVIGATION_STORE, stateValue, TASKS_STORE, WORKSPACE_STORE } from '@den-web/store';
+import { ARTIFACTS_STORE, DEN_CLOCK, NAVIGATION_STORE, stateValue, TASKS_STORE, WORKSPACE_STORE } from '@den-web/store';
 
 interface FilterOption {
   readonly value: string;
@@ -33,6 +33,7 @@ const filterOptions: readonly FilterOption[] = [
 ];
 
 const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review', 'blocked', 'done', 'cancelled'];
+const taskListQuietRefreshMs = 15000;
 
 @Component({
   selector: 'den-task-cockpit',
@@ -651,6 +652,7 @@ export class TaskCockpitComponent {
   private readonly taskStore = inject(TASKS_STORE);
   private readonly artifacts = inject(ARTIFACTS_STORE);
   private readonly navigation = inject(NAVIGATION_STORE);
+  private readonly clock = inject(DEN_CLOCK);
   private loadedProjectId: string | null = null;
   private keepDetailPaneForProjectChange = false;
 
@@ -690,6 +692,26 @@ export class TaskCockpitComponent {
     queueMicrotask(() => void this.taskStore.refresh(projectId));
   });
 
+  private readonly quietRefreshEffect = effect((onCleanup) => {
+    const projectId = this.selectedProjectId();
+    if (!projectId) return;
+    let stopped = false;
+    let timer: number | null = null;
+    const schedule = (): void => {
+      timer = this.clock.setTimeout(() => {
+        if (stopped) return;
+        void this.taskStore.refresh(projectId, { quiet: true }).finally(() => {
+          if (!stopped) schedule();
+        });
+      }, taskListQuietRefreshMs);
+    };
+    schedule();
+    onCleanup(() => {
+      stopped = true;
+      if (timer !== null) this.clock.clearTimeout(timer);
+    });
+  });
+
   private readonly autoSelectEffect = effect(() => {
     const projectId = this.selectedProjectId();
     const firstTaskId = this.rows()[0]?.task.id;
@@ -711,7 +733,8 @@ export class TaskCockpitComponent {
   protected setFilter(event: Event): void {
     const target = event.target;
     if (!(target instanceof HTMLSelectElement)) return;
-    this.taskStore.setFilter(this.filters.find((option) => option.value === target.value)?.filter ?? 'active');
+    const option = this.filters.find((filterOption) => filterOption.value === target.value);
+    this.taskStore.setFilter(option ? option.filter : 'active');
   }
 
   protected setFlat(event: Event): void {

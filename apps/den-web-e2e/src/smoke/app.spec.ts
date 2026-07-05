@@ -172,17 +172,22 @@ test('updates task status with the web UI actor', async ({ page }) => {
   await mockDenServices(page);
   let patchBody: unknown = null;
   page.on('request', (request) => {
-    if (request.method() === 'PATCH' && request.url().includes('/api/v1/projects/den-web/tasks/3993')) {
+    if (request.method() === 'PATCH' && request.url().includes('/api/v1/projects/den-web/tasks/4177')) {
       patchBody = request.postDataJSON();
     }
   });
 
   await page.goto('/');
+  await page.getByRole('button', { name: /#4177 Long detail fixture task/ }).click();
   await expect(page.getByLabel('Task status', { exact: true })).toHaveValue('in_progress');
   await page.getByLabel('Task status', { exact: true }).selectOption('review');
 
   await expect.poll(() => patchBody).toEqual({ agent: 'web-ui', status: 'review' });
   await expect(page.getByLabel('Task status', { exact: true })).toHaveValue('review');
+  await page.getByLabel('Task status', { exact: true }).selectOption('done');
+  await expect(page.locator('.task-list').getByRole('button', { name: /#4177 Long detail fixture task/ })).toHaveCount(0);
+  await page.getByLabel('Task status filter').selectOption('__all');
+  await expect(page.locator('.task-list').getByRole('button', { name: /#4177 Long detail fixture task/ })).toBeVisible();
 });
 
 test('renders inherited feature tabs through successor fixtures', async ({ page }) => {

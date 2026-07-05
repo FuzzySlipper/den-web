@@ -171,6 +171,38 @@ describe('successor signal stores', () => {
     ]);
   });
 
+  it('quietly refreshes task lists and reconciles selected task status', async () => {
+    let resolveQuietRefresh: ((result: DenResult<readonly DenTaskSummary[]>) => void) | null = null;
+    let refreshCount = 0;
+    const store = createTasksStore({
+      listTasks: async () => {
+        refreshCount += 1;
+        if (refreshCount === 1) return ok([taskFixture({ id: 3992, status: 'in_progress' })]);
+        return new Promise<DenResult<readonly DenTaskSummary[]>>((resolve) => {
+          resolveQuietRefresh = resolve;
+        });
+      },
+      getTask: async (_projectId, taskId) => ok(taskDetailFixture({
+        task: taskFixture({ id: taskId, status: 'in_progress' }),
+      })),
+      updateTask: async () => ok(undefined),
+    }, {
+      listMessages: async () => ok([]),
+    });
+
+    await store.refresh('den-web');
+    await store.selectTask('den-web', 3992);
+    const quietRefresh = store.refresh('den-web', { quiet: true });
+
+    expect(store.tasks().kind).toBe('data');
+    resolveQuietRefresh?.(ok([taskFixture({ id: 3992, status: 'done' })]));
+    await quietRefresh;
+
+    expect(store.tasks().kind).toBe('data');
+    expect(store.rows().map((row) => row.task.id)).toEqual([]);
+    expect(stateValue(store.selectedTask())?.task.status).toBe('done');
+  });
+
   it('loads task-scoped messages into selected task details', async () => {
     const store = createTasksStore({
       listTasks: async () => ok([taskFixture({ id: 4104, status: 'review' })]),
