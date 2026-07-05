@@ -290,7 +290,7 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await page.getByRole('button', { name: 'Messages' }).click();
   await expect(page.getByText('Message fixture loaded')).toBeVisible();
   await page.getByRole('button', { name: /Handoff/ }).click();
-  await expect(page.getByRole('region', { name: 'Messages' }).getByText('Message fixture loaded', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Message thread').getByText('Message fixture loaded', { exact: true })).toBeVisible();
   await expect(async () => {
     const metrics = await page.getByLabel('Message inbox').evaluate((element) => ({
       clientHeight: element.clientHeight,
