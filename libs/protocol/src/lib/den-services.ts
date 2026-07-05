@@ -179,6 +179,15 @@ export interface DenChannelMessage {
   readonly created_at?: string;
 }
 
+export interface DenConversationPostMessageRequest {
+  readonly sender_type: string;
+  readonly sender_identity: string;
+  readonly body: string;
+  readonly message_kind: string;
+  readonly source_kind: string;
+  readonly dedupe_key: string;
+}
+
 export interface DenTimelineResponse {
   readonly items?: readonly unknown[];
   readonly next_cursor?: string | null;

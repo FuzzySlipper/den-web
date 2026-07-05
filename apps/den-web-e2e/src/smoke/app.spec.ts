@@ -197,9 +197,29 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await expect(page.getByLabel('Channels').getByRole('button', { name: /#ops/ })).toBeVisible();
   await expect(page.getByLabel('Channel participants').getByText('codex')).toBeVisible();
   await expect(page.getByLabel('Channel chat').getByText(/Jul 1|Jul 2|Jul 3/).first()).toBeVisible();
-  await page.getByLabel('Conversation message').fill('Sent from fixture UI');
-  await page.getByRole('button', { name: 'Send' }).click();
+
+  const conversationRequests: unknown[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().includes('/api/v1/conversation/channels/7/messages')) {
+      conversationRequests.push(request.postDataJSON());
+    }
+  });
+  const composer = page.getByLabel('Conversation message');
+  await composer.fill('Line one');
+  await page.keyboard.press('Shift+Enter');
+  await page.keyboard.type('Line two');
+  await expect(composer).toHaveValue('Line one\nLine two');
+  await composer.fill('Sent from fixture UI');
+  await page.keyboard.press('Enter');
   await expect(page.getByLabel('Channel chat').getByText('Sent from fixture UI')).toBeVisible();
+  await expect.poll(() => conversationRequests).toEqual([{
+    sender_type: 'user',
+    sender_identity: 'web-ui',
+    body: 'Sent from fixture UI',
+    message_kind: 'human_text',
+    source_kind: 'den_web_channel_post',
+    dedupe_key: expect.stringMatching(/^web-ui:/),
+  }]);
 
   await page.getByRole('button', { name: 'Notifications' }).click();
   await expect(page.getByText('Notification fixture loaded')).toBeVisible();

@@ -272,11 +272,15 @@ describe('successor signal stores', () => {
   });
 
   it('loads conversation messages and timeline projections by selected channel', async () => {
+    const postedBodies: unknown[] = [];
     const store = createConversationStore({
       listChannels: async () => ok([{ id: 10, slug: 'den-web', project_id: 'den-web' }]),
       listMemberships: async () => ok([{ id: 1, channel_id: 10, member_identity: 'codex', member_type: 'agent', membership_status: 'active' }]),
       listMessages: async () => ok([channelMessageFixture({ id: 4 })]),
-      postMessage: async (_channelId, body) => ok(channelMessageFixture({ id: 5, body: body.body })),
+      postMessage: async (_channelId, body) => {
+        postedBodies.push(body);
+        return ok(channelMessageFixture({ id: 5, body: body.body }));
+      },
     }, {
       listChannelItems: async () => ok(timelineFixture()),
     });
@@ -288,6 +292,14 @@ describe('successor signal stores', () => {
     expect(store.messages().kind).toBe('data');
     expect(store.memberships().kind).toBe('data');
     expect(store.timeline().kind).toBe('data');
+    expect(postedBodies).toEqual([{
+      sender_type: 'user',
+      sender_identity: 'codex',
+      body: 'Hello',
+      message_kind: 'human_text',
+      source_kind: 'den_web_channel_post',
+      dedupe_key: 'phase-3',
+    }]);
   });
 
   it('selects the top channel whenever conversation project channels refresh', async () => {

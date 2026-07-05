@@ -231,8 +231,22 @@ export async function mockDenServices(page: Page): Promise<void> {
   await page.route('**/api/v1/conversation/memberships?**', (route) => json(route, membershipListFor(route)));
   await page.route('**/api/v1/conversation/channels/7/messages', (route) => {
     if (route.request().method() === 'POST') {
-      const body = route.request().postDataJSON() as { readonly body?: string; readonly sender?: string };
-      return json(route, { id: 72, channel_id: 7, sender_identity: body.sender ?? 'web-ui', sender_type: 'user', body: body.body ?? '', created_at: '2026-07-02T00:03:00Z' });
+      const body = route.request().postDataJSON() as Readonly<Record<string, unknown>>;
+      if ('sender' in body) {
+        return route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: { code: 'bad_request', message: 'unknown field "sender"' } }),
+        });
+      }
+      return json(route, {
+        id: 72,
+        channel_id: 7,
+        sender_identity: typeof body['sender_identity'] === 'string' ? body['sender_identity'] : 'web-ui',
+        sender_type: typeof body['sender_type'] === 'string' ? body['sender_type'] : 'user',
+        body: typeof body['body'] === 'string' ? body['body'] : '',
+        created_at: '2026-07-02T00:03:00Z',
+      });
     }
     return json(route, channelMessages);
   });

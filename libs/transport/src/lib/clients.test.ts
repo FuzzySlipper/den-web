@@ -32,7 +32,14 @@ describe('Den transport clients', () => {
     await clients.conversation.listChannels(DEN_GLOBAL_PROJECT_ID, { limit: 100 });
     await clients.conversation.listMemberships({ channelId: 7, limit: 10 });
     await clients.conversation.listMessages(7, { afterId: 2, limit: 20 });
-    await clients.conversation.postMessage(7, { sender: 'web-ui', body: 'hello', idempotency_key: 'k1' });
+    await clients.conversation.postMessage(7, {
+      sender_type: 'user',
+      sender_identity: 'web-ui',
+      body: 'hello',
+      message_kind: 'human_text',
+      source_kind: 'den_web_channel_post',
+      dedupe_key: 'k1',
+    });
     await clients.timeline.listChannelItems(7, { limit: 1 });
     await clients.observation.lane({ limit: 1 });
     await clients.observation.activeWork();
@@ -116,5 +123,37 @@ describe('Den transport clients', () => {
     expect(clients.timeline.streamUrl(7, { after: 'cursor-1', includeDebug: true })).toBe(
       '/api/v1/timeline/channels/7/stream?after=cursor-1&include_debug=true',
     );
+  });
+
+  it('posts conversation messages with den-services request fields and idempotency header', async () => {
+    let observedBody: unknown = null;
+    let observedIdempotencyKey: string | null = null;
+    const http = new DenHttpClient({
+      fetchImpl: async (_input, init) => {
+        observedBody = typeof init?.body === 'string' ? JSON.parse(init.body) : null;
+        observedIdempotencyKey = new Headers(init?.headers).get('Idempotency-Key');
+        return Response.json({ id: 1, channel_id: 7, sender_identity: 'web-ui', sender_type: 'user', body: 'hello' }, { status: 201 });
+      },
+    });
+    const clients = createDenTransportClients(defaultRuntimeApiConfig, http);
+
+    await clients.conversation.postMessage(7, {
+      sender_type: 'user',
+      sender_identity: 'web-ui',
+      body: 'hello',
+      message_kind: 'human_text',
+      source_kind: 'den_web_channel_post',
+      dedupe_key: 'web-ui:1',
+    });
+
+    expect(observedIdempotencyKey).toBe('web-ui:1');
+    expect(observedBody).toEqual({
+      sender_type: 'user',
+      sender_identity: 'web-ui',
+      body: 'hello',
+      message_kind: 'human_text',
+      source_kind: 'den_web_channel_post',
+      dedupe_key: 'web-ui:1',
+    });
   });
 });

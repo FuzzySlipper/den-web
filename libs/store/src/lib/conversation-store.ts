@@ -1,13 +1,13 @@
 import { computed, signal, type Signal } from '@angular/core';
 import { timelineItems, type TimelineItemView } from '@den-web/domain';
-import type { DenChannelMessage, DenConversationChannel, DenConversationMembership, DenResult, DenTimelineResponse } from '@den-web/protocol';
+import type { DenChannelMessage, DenConversationChannel, DenConversationMembership, DenConversationPostMessageRequest, DenResult, DenTimelineResponse } from '@den-web/protocol';
 import { errorState, idleState, loadingState, resultState, stateValue, type AsyncState, unknownStoreError } from './async-state';
 
 export interface ConversationTransportPort {
   readonly listChannels: (projectId: string, options?: { readonly limit?: number; readonly kind?: string }) => Promise<DenResult<readonly DenConversationChannel[]>>;
   readonly listMemberships: (options?: { readonly channelId?: number; readonly projectId?: string; readonly includeLeft?: boolean; readonly limit?: number }) => Promise<DenResult<readonly DenConversationMembership[]>>;
   readonly listMessages: (channelId: number, options?: { readonly afterId?: number; readonly limit?: number }) => Promise<DenResult<readonly DenChannelMessage[]>>;
-  readonly postMessage: (channelId: number, body: { readonly sender: string; readonly body: string; readonly idempotency_key: string }) => Promise<DenResult<DenChannelMessage>>;
+  readonly postMessage: (channelId: number, body: DenConversationPostMessageRequest) => Promise<DenResult<DenChannelMessage>>;
 }
 
 export interface TimelineTransportPort {
@@ -23,7 +23,7 @@ export interface ConversationStore {
   readonly selectedChannel: Signal<DenConversationChannel | null>;
   readonly refreshChannels: (projectId: string) => Promise<void>;
   readonly selectChannel: (channelId: number) => Promise<void>;
-  readonly sendMessage: (sender: string, body: string, idempotencyKey: string) => Promise<void>;
+  readonly sendMessage: (senderIdentity: string, body: string, idempotencyKey: string) => Promise<void>;
 }
 
 export function createConversationStore(conversation: ConversationTransportPort, timeline: TimelineTransportPort): ConversationStore {
@@ -82,10 +82,17 @@ export function createConversationStore(conversation: ConversationTransportPort,
       }
     },
     selectChannel: loadChannel,
-    sendMessage: async (sender, body, idempotencyKey) => {
+    sendMessage: async (senderIdentity, body, idempotencyKey) => {
       const channelId = selectedChannelId();
       if (channelId === null) return;
-      const result = await conversation.postMessage(channelId, { sender, body, idempotency_key: idempotencyKey });
+      const result = await conversation.postMessage(channelId, {
+        sender_type: 'user',
+        sender_identity: senderIdentity,
+        body,
+        message_kind: 'human_text',
+        source_kind: 'den_web_channel_post',
+        dedupe_key: idempotencyKey,
+      });
       if (result.ok) {
         const current = stateValue(messages()) ?? [];
         messages.set(resultState({ ok: true, value: [...current, result.value] }));

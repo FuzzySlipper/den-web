@@ -2,6 +2,7 @@ import type {
   DenChannelMessage,
   DenConversationChannel,
   DenConversationMembership,
+  DenConversationPostMessageRequest,
   DenDeliveryIntent,
   DenDiscussion,
   DenDocPublishRequest,
@@ -236,8 +237,12 @@ export class ConversationTransport {
     return this.http.json(joinUrl(this.config.conversationApiBase, `/channels/${channelId}/messages${query({ after_id: options.afterId, limit: options.limit })}`));
   }
 
-  postMessage(channelId: number, body: { readonly sender: string; readonly body: string; readonly idempotency_key: string }): Promise<DenResult<DenChannelMessage>> {
-    return this.http.json(joinUrl(this.config.conversationApiBase, `/channels/${channelId}/messages`), { method: 'POST', body });
+  postMessage(channelId: number, body: DenConversationPostMessageRequest): Promise<DenResult<DenChannelMessage>> {
+    return this.http.json(joinUrl(this.config.conversationApiBase, `/channels/${channelId}/messages`), {
+      method: 'POST',
+      body,
+      headers: { 'Idempotency-Key': body.dedupe_key },
+    });
   }
 }
 

@@ -132,6 +132,7 @@ import { conversationCockpitStyles } from './conversation-cockpit.styles';
               [disabled]="!selectedChannelId() || sending()"
               [value]="draft()"
               (input)="setDraft($event)"
+              (keydown)="handleComposerKeydown($event)"
             ></textarea>
             <button type="submit" class="send-button" [disabled]="!selectedChannelId() || sending() || draft().trim().length === 0">
               {{ sending() ? 'Sending' : 'Send' }}
@@ -201,6 +202,16 @@ export class ConversationCockpitComponent {
 
   protected send(event: Event): void {
     event.preventDefault();
+    this.sendDraft();
+  }
+
+  protected handleComposerKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+    event.preventDefault();
+    this.sendDraft();
+  }
+
+  private sendDraft(): void {
     const body = this.draft().trim();
     if (!body || !this.selectedChannelId() || this.sending()) return;
     this.sending.set(true);
