@@ -28,9 +28,21 @@ import type {
   DenTimelineResponse,
   RuntimeApiConfig,
 } from '@den-web/protocol';
-import type { EventStreamEvent, EventStreamPort } from '@den-web/platform';
 import { defaultRuntimeApiConfig, DEN_GLOBAL_PROJECT_ID } from '@den-web/protocol';
 import { DenHttpClient, joinUrl, query } from './http';
+
+interface EventStreamEvent {
+  readonly type: string;
+  readonly data: string;
+}
+
+interface EventStreamPort {
+  readonly open: (url: string, options: {
+    readonly events: readonly string[];
+    readonly onEvent: (event: EventStreamEvent) => void;
+    readonly onError?: () => void;
+  }) => { readonly close: () => void };
+}
 
 export interface DenTransportClients {
   readonly projects: ProjectsTransport;
