@@ -15,6 +15,8 @@ export interface FlatTaskRow {
   readonly depth: number;
 }
 
+export type TaskSortMode = 'priority' | 'id';
+
 const terminalStatuses = new Set(['done', 'cancelled']);
 
 export function taskMatchesStatusFilter(task: DenTaskSummary, filter: TaskStatusFilter): boolean {
@@ -72,6 +74,16 @@ export function buildTaskTree(tasks: readonly DenTaskSummary[]): readonly TaskNo
   return build(null);
 }
 
+export function sortTaskRows(tasks: readonly DenTaskSummary[], mode: TaskSortMode): readonly DenTaskSummary[] {
+  return [...tasks].sort((left, right) => compareTasks(left, right, mode));
+}
+
+export function sortTaskTree(nodes: readonly TaskNode[], mode: TaskSortMode): readonly TaskNode[] {
+  return [...nodes]
+    .sort((left, right) => compareTasks(left.task, right.task, mode))
+    .map((node) => ({ ...node, children: sortTaskTree(node.children, mode) }));
+}
+
 export function flattenTaskTree(nodes: readonly TaskNode[]): readonly FlatTaskRow[] {
   const rows: FlatTaskRow[] = [];
   const visit = (node: TaskNode, parent: DenTaskSummary | null, depth: number): void => {
@@ -106,17 +118,18 @@ export function taskSearchText(task: DenTaskSummary): string {
 
 export function visibleTaskRows(
   tasks: readonly DenTaskSummary[],
-  options: { readonly filter?: TaskStatusFilter; readonly query?: string; readonly flat?: boolean } = {},
+  options: { readonly filter?: TaskStatusFilter; readonly query?: string; readonly flat?: boolean; readonly sort?: TaskSortMode } = {},
 ): readonly FlatTaskRow[] {
   const matches = (task: DenTaskSummary): boolean => taskMatchesStatusFilter(task, options.filter ?? null) && taskSearchMatches(task, options.query ?? '');
+  const sort = options.sort ?? 'priority';
   if (options.flat) {
     const taskById = new Map(tasks.map((task) => [task.id, task]));
-    return tasks
+    return sortTaskRows(tasks, sort)
       .filter(matches)
       .map((task) => ({ task, parent: task.parent_id ? taskById.get(task.parent_id) ?? null : null, depth: 0 }));
   }
 
-  return flattenTaskTree(filterTaskTree(buildTaskTree(tasks), matches));
+  return flattenTaskTree(sortTaskTree(filterTaskTree(buildTaskTree(tasks), matches), sort));
 }
 
 function filterTaskTree(nodes: readonly TaskNode[], matches: (task: DenTaskSummary) => boolean): readonly TaskNode[] {
@@ -126,4 +139,13 @@ function filterTaskTree(nodes: readonly TaskNode[], matches: (task: DenTaskSumma
     if (matches(node.task) || children.length > 0) filtered.push({ task: node.task, children });
   }
   return filtered;
+}
+
+function compareTasks(left: DenTaskSummary, right: DenTaskSummary, mode: TaskSortMode): number {
+  if (mode === 'id') return left.id - right.id;
+  return taskPriority(left) - taskPriority(right) || left.id - right.id;
+}
+
+function taskPriority(task: DenTaskSummary): number {
+  return task.priority ?? Number.MAX_SAFE_INTEGER;
 }

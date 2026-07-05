@@ -7,6 +7,7 @@ import {
   extractArtifactReferences,
   formatArtifactByteCount,
   type ArtifactReference,
+  type TaskSortMode,
   type TaskStatusFilter,
 } from '@den-web/domain';
 import { ArtifactEvidenceComponent, type ArtifactEvidenceItem } from '@den-web/feature-artifacts';
@@ -16,6 +17,11 @@ import { ARTIFACTS_STORE, DEN_CLOCK, NAVIGATION_STORE, stateValue, TASKS_STORE, 
 interface FilterOption {
   readonly value: string;
   readonly filter: TaskStatusFilter;
+  readonly label: string;
+}
+
+interface SortOption {
+  readonly value: TaskSortMode;
   readonly label: string;
 }
 
@@ -30,6 +36,11 @@ const filterOptions: readonly FilterOption[] = [
   { value: 'blocked', filter: 'blocked', label: 'Blocked' },
   { value: 'waiting_on_dependencies', filter: 'waiting_on_dependencies', label: 'Waiting' },
   { value: 'done', filter: 'done', label: 'Done' },
+];
+
+const sortOptions: readonly SortOption[] = [
+  { value: 'priority', label: 'Priority' },
+  { value: 'id', label: 'ID' },
 ];
 
 const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review', 'blocked', 'done', 'cancelled'];
@@ -108,7 +119,7 @@ const taskListQuietRefreshMs = 15000;
         border-bottom: 1px solid var(--den-border);
         display: grid;
         gap: 10px;
-        grid-template-columns: 1fr auto auto;
+        grid-template-columns: minmax(130px, 1fr) minmax(110px, auto) minmax(90px, auto) auto;
         padding: 12px;
       }
 
@@ -459,6 +470,11 @@ const taskListQuietRefreshMs = 15000;
               <option [value]="option.value">{{ option.label }}</option>
             }
           </select>
+          <select aria-label="Task sort" [value]="sortMode()" (change)="setSortMode($event)">
+            @for (option of sortOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
           <label>
             <input type="checkbox" [checked]="flat()" (change)="setFlat($event)" />
             Flat
@@ -657,11 +673,13 @@ export class TaskCockpitComponent {
   private keepDetailPaneForProjectChange = false;
 
   protected readonly filters = filterOptions;
+  protected readonly sortOptions = sortOptions;
   protected readonly selectedProjectId = this.workspace.selectedProjectId;
   protected readonly tasks = this.taskStore.tasks;
   protected readonly selectedTask = this.taskStore.selectedTask;
   protected readonly rows = this.taskStore.rows;
   protected readonly query = this.taskStore.query;
+  protected readonly sortMode = this.taskStore.sortMode;
   protected readonly flat = this.taskStore.flat;
   protected readonly statuses = editableStatuses;
   protected readonly descriptionEditorOpen = signal(false);
@@ -735,6 +753,13 @@ export class TaskCockpitComponent {
     if (!(target instanceof HTMLSelectElement)) return;
     const option = this.filters.find((filterOption) => filterOption.value === target.value);
     this.taskStore.setFilter(option ? option.filter : 'active');
+  }
+
+  protected setSortMode(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) return;
+    const option = this.sortOptions.find((sortOption) => sortOption.value === target.value);
+    if (option) this.taskStore.setSortMode(option.value);
   }
 
   protected setFlat(event: Event): void {

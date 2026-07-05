@@ -1,5 +1,5 @@
 import { computed, signal, type Signal } from '@angular/core';
-import { visibleTaskRows, type FlatTaskRow, type TaskStatusFilter } from '@den-web/domain';
+import { visibleTaskRows, type FlatTaskRow, type TaskSortMode, type TaskStatusFilter } from '@den-web/domain';
 import type { DenMessage, DenResult, DenTaskDetail, DenTaskSummary, DenTaskUpdateRequest } from '@den-web/protocol';
 import { errorState, idleState, loadingState, resultState, stateValue, type AsyncState, unknownStoreError } from './async-state';
 
@@ -19,6 +19,7 @@ export interface TasksStore {
   readonly tasks: Signal<AsyncState<readonly DenTaskSummary[]>>;
   readonly selectedTask: Signal<AsyncState<DenTaskDetail>>;
   readonly filter: Signal<TaskStatusFilter>;
+  readonly sortMode: Signal<TaskSortMode>;
   readonly query: Signal<string>;
   readonly flat: Signal<boolean>;
   readonly rows: Signal<readonly FlatTaskRow[]>;
@@ -27,6 +28,7 @@ export interface TasksStore {
   readonly updateTaskStatus: (projectId: string, taskId: number, status: string) => Promise<DenResult<DenTaskDetail>>;
   readonly updateTaskDescription: (projectId: string, taskId: number, description: string) => Promise<DenResult<DenTaskDetail>>;
   readonly setFilter: (filter: TaskStatusFilter) => void;
+  readonly setSortMode: (mode: TaskSortMode) => void;
   readonly setQuery: (query: string) => void;
   readonly setFlat: (flat: boolean) => void;
 }
@@ -35,6 +37,7 @@ export function createTasksStore(transport: TasksTransportPort, messagesTranspor
   const tasks = signal<AsyncState<readonly DenTaskSummary[]>>(idleState());
   const selectedTask = signal<AsyncState<DenTaskDetail>>(idleState());
   const filter = signal<TaskStatusFilter>('active');
+  const sortMode = signal<TaskSortMode>('priority');
   const query = signal('');
   const flat = signal(false);
 
@@ -42,9 +45,10 @@ export function createTasksStore(transport: TasksTransportPort, messagesTranspor
     tasks: tasks.asReadonly(),
     selectedTask: selectedTask.asReadonly(),
     filter: filter.asReadonly(),
+    sortMode: sortMode.asReadonly(),
     query: query.asReadonly(),
     flat: flat.asReadonly(),
-    rows: computed(() => visibleTaskRows(stateValue(tasks()) ?? [], { filter: filter(), query: query(), flat: flat() })),
+    rows: computed(() => visibleTaskRows(stateValue(tasks()) ?? [], { filter: filter(), query: query(), flat: flat(), sort: sortMode() })),
     refresh: async (projectId, options = {}) => {
       const previous = stateValue(tasks());
       if (!options.quiet || previous === undefined) tasks.set(loadingState(previous));
@@ -74,6 +78,7 @@ export function createTasksStore(transport: TasksTransportPort, messagesTranspor
     updateTaskStatus: (projectId, taskId, status) => updateTask(projectId, taskId, { status }),
     updateTaskDescription: (projectId, taskId, description) => updateTask(projectId, taskId, { description }),
     setFilter: (nextFilter) => filter.set(nextFilter),
+    setSortMode: (nextMode) => sortMode.set(nextMode),
     setQuery: (nextQuery) => query.set(nextQuery),
     setFlat: (nextFlat) => flat.set(nextFlat),
   };

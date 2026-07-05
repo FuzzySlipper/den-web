@@ -141,6 +141,27 @@ describe('successor signal stores', () => {
     expect(store.rows()[0]?.parent?.id).toBe(10);
   });
 
+  it('switches task list sorting between priority and id', async () => {
+    const store = createTasksStore({
+      listTasks: async () => ok([
+        taskFixture({ id: 4100, title: 'Earlier low priority', priority: 5 }),
+        taskFixture({ id: 4200, title: 'Middle priority', priority: 3 }),
+        taskFixture({ id: 5000, title: 'Later high priority', priority: 1 }),
+      ]),
+      getTask: async (_projectId, taskId) => ok(taskDetailFixture({ task: taskFixture({ id: taskId }) })),
+      updateTask: async () => ok(undefined),
+    }, {
+      listMessages: async () => ok([]),
+    });
+
+    await store.refresh('den-web');
+
+    expect(store.sortMode()).toBe('priority');
+    expect(store.rows().map((row) => row.task.id)).toEqual([5000, 4200, 4100]);
+    store.setSortMode('id');
+    expect(store.rows().map((row) => row.task.id)).toEqual([4100, 4200, 5000]);
+  });
+
   it('reconciles task edits into selected detail and list state', async () => {
     const patches: unknown[] = [];
     const store = createTasksStore({

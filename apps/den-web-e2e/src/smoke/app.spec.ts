@@ -11,6 +11,9 @@ test('boots the successor task cockpit', async ({ page }) => {
   await expect(page.getByRole('button', { name: /Den Web den-web/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Asha Studio asha/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Global _global/ })).toBeVisible();
+  await expect(page.getByLabel('Task sort')).toHaveValue('priority');
+  await page.getByLabel('Task sort').selectOption('id');
+  await expect(page.getByLabel('Task sort')).toHaveValue('id');
   await expect(page.getByRole('button', { name: 'Projects' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Spaces' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /#3993 Den Web Angular/ })).toBeVisible();

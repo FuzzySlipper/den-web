@@ -67,6 +67,16 @@ describe('successor task domain fixtures', () => {
     expect(flatRows).toHaveLength(1);
     expect(flatRows[0]?.parent?.id).toBe(10);
   });
+
+  it('sorts task rows by priority by default and by id on demand', () => {
+    const earlierLowPriority = taskFixture({ id: 4100, title: 'Earlier low priority', priority: 5 });
+    const middlePriority = taskFixture({ id: 4200, title: 'Middle priority', priority: 3 });
+    const laterHighPriority = taskFixture({ id: 5000, title: 'Later high priority', priority: 1 });
+
+    expect(visibleTaskRows([earlierLowPriority, middlePriority, laterHighPriority]).map((row) => row.task.id)).toEqual([5000, 4200, 4100]);
+    expect(visibleTaskRows([earlierLowPriority, middlePriority, laterHighPriority], { sort: 'id' }).map((row) => row.task.id)).toEqual([4100, 4200, 5000]);
+    expect(visibleTaskRows([middlePriority, earlierLowPriority, laterHighPriority], { sort: 'priority' }).map((row) => row.task.id)).toEqual([5000, 4200, 4100]);
+  });
 });
 
 function taskFixture(overrides: Partial<DenTaskSummary> = {}): DenTaskSummary {
@@ -75,6 +85,7 @@ function taskFixture(overrides: Partial<DenTaskSummary> = {}): DenTaskSummary {
     project_id: 'den-web',
     title: 'Example task',
     status: 'planned',
+    priority: 3,
     assigned_to: 'codex',
     parent_id: null,
     tags: ['successor'],
