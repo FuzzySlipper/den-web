@@ -83,10 +83,7 @@ export function createDocumentsStore(transport: DocumentsTransportPort): Documen
     updateDocumentContent: async (projectId, slug, contentMarkdown) => {
       const previousDetail = stateValue(detail());
       try {
-        const result = await transport.updateDocument(projectId, slug, {
-          agent: documentUpdateAgent,
-          content_markdown: contentMarkdown,
-        });
+        const result = await transport.updateDocument(projectId, slug, documentContentUpdateRequest(slug, contentMarkdown, previousDetail));
         if (!result.ok) {
           detail.set(errorState(result.error, previousDetail));
           return result;
@@ -107,6 +104,17 @@ export function createDocumentsStore(transport: DocumentsTransportPort): Documen
   };
 }
 
+function documentContentUpdateRequest(slug: string, contentMarkdown: string, previous: DenDocumentDetail | undefined): DenDocumentUpdateRequest {
+  return {
+    agent: documentUpdateAgent,
+    title: previous?.title ?? slug,
+    content_markdown: contentMarkdown,
+    ...(previous?.doc_type ? { doc_type: previous.doc_type } : {}),
+    ...(previous?.tags ? { tags: previous.tags } : {}),
+    ...(previous?.summary ? { summary: previous.summary } : {}),
+  };
+}
+
 function reconcileDocumentDetail(
   projectId: string,
   slug: string,
@@ -120,7 +128,7 @@ function reconcileDocumentDetail(
   return {
     ...base,
     ...(isDocumentSummary(value) ? value : {}),
-    content_markdown: isDocumentDetail(value) ? value.content_markdown ?? contentMarkdown : contentMarkdown,
+    content_markdown: contentMarkdown,
   };
 }
 
@@ -141,8 +149,4 @@ function toDocumentSummary(document: DenDocumentDetail): DenDocumentSummary {
 
 function isDocumentSummary(value: DenDocumentDetail | DenDocumentSummary | undefined): value is DenDocumentSummary {
   return typeof value === 'object' && value !== null && 'slug' in value;
-}
-
-function isDocumentDetail(value: DenDocumentDetail | DenDocumentSummary | undefined): value is DenDocumentDetail {
-  return isDocumentSummary(value) && ('content_markdown' in value || 'content' in value);
 }

@@ -81,7 +81,7 @@ describe('Den transport clients', () => {
       '/api/v1/projects/den-web/messages?task_id=3991&limit=10',
       '/api/v1/projects/den-web/messages/threads/42',
       '/api/v1/user-notifications?read_for_agent=web-ui&limit=5',
-      '/api/v1/projects/den-web/documents/successor-brief',
+      '/api/v1/projects/den-web/documents',
       '/api/v1/projects/_global/documents',
       '/api/v1/projects/den-web/documents/successor-brief/discussion',
       '/api/v1/projects/den-web/agent-guidance/entries?include_global=true',

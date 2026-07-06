@@ -155,10 +155,11 @@ export function createGuidanceStore(guidance: GuidanceTransportPort, documents: 
       if (!entry) {
         return { ok: false, error: { kind: 'unknown', message: 'No guidance entry selected' } };
       }
-      const result = await documents.updateDocument(entry.document_project_id, entry.document_slug, {
-        agent: documentUpdateAgent,
-        content_markdown: contentMarkdown,
-      });
+      const result = await documents.updateDocument(
+        entry.document_project_id,
+        entry.document_slug,
+        documentContentUpdateRequest(entry.document_slug, contentMarkdown, previous),
+      );
       if (!result.ok) {
         selectedDocument.set(errorState(result.error, previous));
         return result;
@@ -167,6 +168,17 @@ export function createGuidanceStore(guidance: GuidanceTransportPort, documents: 
       selectedDocument.set(resultState({ ok: true, value: nextDetail }, previous));
       return { ok: true, value: nextDetail };
     },
+  };
+}
+
+function documentContentUpdateRequest(slug: string, contentMarkdown: string, previous: DenDocumentDetail | undefined): DenDocumentUpdateRequest {
+  return {
+    agent: documentUpdateAgent,
+    title: previous?.title ?? slug,
+    content_markdown: contentMarkdown,
+    ...(previous?.doc_type ? { doc_type: previous.doc_type } : {}),
+    ...(previous?.tags ? { tags: previous.tags } : {}),
+    ...(previous?.summary ? { summary: previous.summary } : {}),
   };
 }
 
@@ -187,14 +199,10 @@ function reconcileDocumentDetail(
   return {
     ...base,
     ...(isDocumentSummary(value) ? value : {}),
-    content_markdown: isDocumentDetail(value) ? value.content_markdown ?? contentMarkdown : contentMarkdown,
+    content_markdown: contentMarkdown,
   };
 }
 
 function isDocumentSummary(value: DenDocumentDetail | DenDocumentSummary | undefined): value is DenDocumentSummary {
   return typeof value === 'object' && value !== null && 'slug' in value;
-}
-
-function isDocumentDetail(value: DenDocumentDetail | DenDocumentSummary | undefined): value is DenDocumentDetail {
-  return isDocumentSummary(value) && ('content_markdown' in value || 'content' in value);
 }

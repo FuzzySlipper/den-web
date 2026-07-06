@@ -121,7 +121,12 @@ export interface DenDocumentDetail extends DenDocumentSummary {
 
 export interface DenDocumentUpdateRequest {
   readonly agent?: string;
+  readonly title?: string;
+  readonly content?: string;
   readonly content_markdown?: string;
+  readonly doc_type?: string;
+  readonly tags?: readonly string[] | null;
+  readonly summary?: string | null;
 }
 
 export interface DenGuidanceEntry {

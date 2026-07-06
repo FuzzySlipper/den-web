@@ -357,16 +357,23 @@ export async function mockDenServices(page: Page): Promise<void> {
     contentType: 'image/png',
     body: artifactPng,
   }));
-  await page.route('**/api/v1/projects/den-web/documents', (route) => json(route, documents));
-  await page.route('**/api/v1/projects/_global/documents', (route) => json(route, globalDocuments));
-  await page.route('**/api/v1/projects/den-web/documents/successor-brief', async (route) => {
-    if (route.request().method() === 'PATCH') {
-      const body = route.request().postDataJSON() as { readonly content_markdown?: string };
-      await json(route, { ...documentDetail, content_markdown: body.content_markdown ?? documentDetail.content_markdown });
+  await page.route('**/api/v1/projects/den-web/documents', async (route) => {
+    if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON() as { readonly slug?: string; readonly content?: string };
+      await json(route, { ...documentDetail, slug: body.slug ?? 'successor-brief', content: body.content ?? documentDetail.content_markdown });
       return;
     }
-    await json(route, documentDetail);
+    await json(route, documents);
   });
+  await page.route('**/api/v1/projects/_global/documents', async (route) => {
+    if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON() as { readonly slug?: string; readonly content?: string };
+      await json(route, { ...globalDocumentDetail, slug: body.slug ?? 'global-brief', content: body.content ?? globalDocumentDetail.content_markdown });
+      return;
+    }
+    await json(route, globalDocuments);
+  });
+  await page.route('**/api/v1/projects/den-web/documents/successor-brief', (route) => json(route, documentDetail));
   await page.route('**/api/v1/projects/den-web/documents/a-very-long-document-slug-used-to-keep-the-list-row-height-stable', (route) => json(route, longDocumentDetail));
   await page.route('**/api/v1/projects/den-web/documents/successor-brief/discussion', (route) => json(route, discussion));
   await page.route('**/api/v1/projects/den-web/documents/a-very-long-document-slug-used-to-keep-the-list-row-height-stable/discussion', (route) => json(route, discussion));

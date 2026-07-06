@@ -347,26 +347,28 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   expect(publicationRequests[0]).not.toHaveProperty('document');
   expect(publicationRequests[1]).not.toHaveProperty('document');
 
-  let documentPatchBody: unknown = null;
+  let documentStoreBody: unknown = null;
   page.on('request', (request) => {
-    if (request.method() === 'PATCH' && request.url().includes('/api/v1/projects/den-web/documents/successor-brief')) {
-      documentPatchBody = request.postDataJSON();
+    if (request.method() === 'POST' && request.url().endsWith('/api/v1/projects/den-web/documents')) {
+      documentStoreBody = request.postDataJSON();
     }
   });
   await page.getByLabel('Document content').getByRole('button', { name: 'Edit' }).click();
   await page.getByLabel('Markdown editor').fill('# Successor Brief\n\nEdited document fixture.');
   await page.getByRole('button', { name: 'Done' }).click();
-  await expect.poll(() => documentPatchBody).toEqual({
-    agent: 'web-ui',
-    content_markdown: '# Successor Brief\n\nEdited document fixture.',
+  await expect.poll(() => documentStoreBody).toEqual({
+    slug: 'successor-brief',
+    title: 'Successor Brief',
+    content: '# Successor Brief\n\nEdited document fixture.',
+    tags: ['successor'],
   });
   await expect(page.getByLabel('Document content').getByText('Edited document fixture.')).toBeVisible();
 
-  let guidanceDocumentPatchBody: unknown = null;
+  let guidanceDocumentStoreBody: unknown = null;
   let guidanceEntryPostBody: unknown = null;
   page.on('request', (request) => {
-    if (request.method() === 'PATCH' && request.url().includes('/api/v1/projects/den-web/documents/successor-brief')) {
-      guidanceDocumentPatchBody = request.postDataJSON();
+    if (request.method() === 'POST' && request.url().endsWith('/api/v1/projects/den-web/documents')) {
+      guidanceDocumentStoreBody = request.postDataJSON();
     }
     if (request.method() === 'POST' && request.url().includes('/api/v1/projects/den-web/agent-guidance/entries')) {
       guidanceEntryPostBody = request.postDataJSON();
@@ -388,9 +390,11 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await page.getByLabel('Guidance document').getByRole('button', { name: 'Edit' }).click();
   await page.getByLabel('Markdown editor').fill('# Successor Brief\n\nEdited guidance fixture.');
   await page.getByRole('button', { name: 'Done' }).click();
-  await expect.poll(() => guidanceDocumentPatchBody).toEqual({
-    agent: 'web-ui',
-    content_markdown: '# Successor Brief\n\nEdited guidance fixture.',
+  await expect.poll(() => guidanceDocumentStoreBody).toEqual({
+    slug: 'successor-brief',
+    title: 'Successor Brief',
+    content: '# Successor Brief\n\nEdited guidance fixture.',
+    tags: ['successor'],
   });
   await expect(page.getByLabel('Guidance document').getByText('Edited guidance fixture.')).toBeVisible();
   await page.getByLabel('Workspaces').getByRole('button', { name: /Global/ }).click();

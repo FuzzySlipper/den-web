@@ -187,9 +187,9 @@ export class DocumentsTransport {
   }
 
   updateDocument(projectId: string, slug: string, body: DenDocumentUpdateRequest): Promise<DenResult<DenDocumentDetail | DenDocumentSummary | undefined>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(slug)}`), {
-      method: 'PATCH',
-      body,
+    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/documents`), {
+      method: 'POST',
+      body: documentStoreBody(slug, body),
     });
   }
 
@@ -224,6 +224,24 @@ export class GuidanceTransport {
       method: 'DELETE',
     });
   }
+}
+
+function documentStoreBody(slug: string, body: DenDocumentUpdateRequest): {
+  readonly slug: string;
+  readonly title: string;
+  readonly content: string;
+  readonly doc_type?: string;
+  readonly tags?: readonly string[];
+  readonly summary?: string;
+} {
+  return {
+    slug,
+    title: body.title?.trim() || slug,
+    content: body.content_markdown ?? body.content ?? '',
+    ...(body.doc_type ? { doc_type: body.doc_type } : {}),
+    ...(body.tags ? { tags: body.tags } : {}),
+    ...(body.summary ? { summary: body.summary } : {}),
+  };
 }
 
 export class ArtifactsTransport {

@@ -308,7 +308,11 @@ describe('successor signal stores', () => {
 
     expect(stateValue(store.detail())?.content_markdown).toBe('# New body');
     expect(stateValue(store.documents())?.[0]?.title).toBe('Successor Brief');
-    expect(patches).toEqual([{ agent: 'web-ui', content_markdown: '# New body' }]);
+    expect(patches).toEqual([{
+      agent: 'web-ui',
+      title: 'Successor Brief',
+      content_markdown: '# New body',
+    }]);
   });
 
   it('loads and edits project guidance entries with referenced document content', async () => {
@@ -364,7 +368,11 @@ describe('successor signal stores', () => {
         notes: 'trimmed',
       },
     }]);
-    expect(documentPatches).toEqual([{ agent: 'web-ui', content_markdown: '# Edited guidance' }]);
+    expect(documentPatches).toEqual([{
+      agent: 'web-ui',
+      title: 'Successor Brief',
+      content_markdown: '# Edited guidance',
+    }]);
     expect(store.selectedEntry()).toBeNull();
   });
 
