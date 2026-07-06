@@ -139,17 +139,21 @@ test('routes den-services owner APIs to their service targets with service token
     listen(guidance.server),
   ]);
   t.after(() => Promise.all([projects.server, tasks.server, messages.server, artifacts.server, guidance.server].map(server => new Promise(resolve => server.close(resolve)))));
+  const serviceEnvDir = await fs.mkdtemp(path.join(os.tmpdir(), 'den-web-service-env-'));
+  const guidanceEnvPath = path.join(serviceEnvDir, 'guidance.env');
+  await fs.writeFile(guidanceEnvPath, 'DEN_GUIDANCE_SERVICE_TOKEN=guidance-token\n');
+  t.after(() => fs.rm(serviceEnvDir, { recursive: true, force: true }));
   const baseUrl = await startServer(t, {
     DEN_PROJECTS_TARGET: `http://127.0.0.1:${projectsPort}`,
     DEN_TASKS_TARGET: `http://127.0.0.1:${tasksPort}`,
     DEN_MESSAGES_TARGET: `http://127.0.0.1:${messagesPort}`,
     DEN_ARTIFACTS_TARGET: `http://127.0.0.1:${artifactsPort}`,
     DEN_GUIDANCE_TARGET: `http://127.0.0.1:${guidancePort}`,
+    DEN_GUIDANCE_ENV_PATH: guidanceEnvPath,
     DEN_PROJECTS_SERVICE_TOKEN: 'projects-token',
     DEN_TASKS_SERVICE_TOKEN: 'tasks-token',
     DEN_MESSAGES_SERVICE_TOKEN: 'messages-token',
     DEN_ARTIFACTS_SERVICE_TOKEN: 'artifacts-token',
-    DEN_GUIDANCE_SERVICE_TOKEN: 'guidance-token',
   });
   assert.equal((await request(`${baseUrl}/api/v1/projects`)).status, 200);
   assert.equal((await request(`${baseUrl}/api/v1/projects/den-web/tasks?limit=1`)).status, 200);

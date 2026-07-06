@@ -5,8 +5,11 @@ import * as http from 'node:http';
 import * as path from 'node:path';
 import * as url from 'node:url';
 
+const servicesEnvDir = process.env.DEN_SERVICES_ENV_DIR ?? '/etc/den-services';
 const envFile = readEnvFile(process.env.GATEWAY_ENV_PATH ?? path.join(path.dirname(url.fileURLToPath(import.meta.url)), 'gateway.env'));
+const guidanceEnvFile = readEnvFile(process.env.DEN_GUIDANCE_ENV_PATH ?? path.join(servicesEnvDir, 'guidance.env'));
 const setting = (key, fallback = '') => envFile[key] ?? process.env[key] ?? fallback;
+const guidanceSetting = (key, fallback = '') => setting(key, guidanceEnvFile[key] ?? fallback);
 const publicSetting = (key, fallback = '') => process.env[key] ?? fallback;
 
 const port = Number.parseInt(process.env.PORT ?? '18080', 10);
@@ -22,7 +25,7 @@ const targets = {
   tasks: setting('DEN_TASKS_TARGET', 'http://127.0.0.1:8092'),
   messages: setting('DEN_MESSAGES_TARGET', 'http://127.0.0.1:8093'),
   documents: setting('DEN_DOCUMENTS_TARGET', 'http://127.0.0.1:8094'),
-  guidance: setting('DEN_GUIDANCE_TARGET', 'http://127.0.0.1:8097'),
+  guidance: guidanceSetting('DEN_GUIDANCE_TARGET', 'http://127.0.0.1:8097'),
   review: setting('DEN_REVIEW_TARGET', 'http://127.0.0.1:8096'),
   artifacts: setting('DEN_ARTIFACTS_TARGET', 'http://127.0.0.1:8090'),
   librarian: setting('DEN_LIBRARIAN_TARGET', 'http://127.0.0.1:8098'),
@@ -35,7 +38,7 @@ const tokens = {
   tasks: setting('DEN_TASKS_SERVICE_TOKEN', serviceToken),
   messages: setting('DEN_MESSAGES_SERVICE_TOKEN', serviceToken),
   documents: setting('DEN_DOCUMENTS_SERVICE_TOKEN', serviceToken),
-  guidance: setting('DEN_GUIDANCE_SERVICE_TOKEN', serviceToken),
+  guidance: guidanceSetting('DEN_GUIDANCE_SERVICE_TOKEN', serviceToken),
   review: setting('DEN_REVIEW_SERVICE_TOKEN', serviceToken),
   artifacts: setting('DEN_ARTIFACTS_SERVICE_TOKEN', serviceToken),
   librarian: setting('DEN_LIBRARIAN_SERVICE_TOKEN', serviceToken),
