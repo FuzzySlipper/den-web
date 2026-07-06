@@ -12,6 +12,11 @@ import type {
   DenDocumentDetail,
   DenDocumentSummary,
   DenDocumentUpdateRequest,
+  DenGuidanceDeleteResponse,
+  DenGuidanceEntry,
+  DenGuidanceEntryListResponse,
+  DenGuidanceEntryRequest,
+  DenGuidancePacket,
   DenArtifactMetadata,
   DenLibrarianQueryRequest,
   DenLibrarianQueryResponse,
@@ -58,6 +63,7 @@ export interface DenTransportClients {
   readonly delivery: DeliveryTransport;
   readonly docPublish: DocPublishTransport;
   readonly artifacts: ArtifactsTransport;
+  readonly guidance: GuidanceTransport;
 }
 
 export function createDenTransportClients(
@@ -78,6 +84,7 @@ export function createDenTransportClients(
     delivery: new DeliveryTransport(config, http),
     docPublish: new DocPublishTransport(config, http),
     artifacts: new ArtifactsTransport(config, http),
+    guidance: new GuidanceTransport(config, http),
   };
 }
 
@@ -188,6 +195,34 @@ export class DocumentsTransport {
 
   getDiscussion(projectId: string, slug: string): Promise<DenResult<DenDiscussion>> {
     return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(slug)}/discussion`));
+  }
+}
+
+export class GuidanceTransport {
+  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+
+  listEntries(projectId: string, options: { readonly includeGlobal?: boolean } = {}): Promise<DenResult<DenGuidanceEntryListResponse>> {
+    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/agent-guidance/entries${query({ include_global: options.includeGlobal })}`));
+  }
+
+  resolve(projectId: string, options: { readonly includeContent?: boolean; readonly includeHidden?: boolean } = {}): Promise<DenResult<DenGuidancePacket>> {
+    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/agent-guidance${query({
+      include_content: options.includeContent,
+      include_hidden: options.includeHidden,
+    })}`));
+  }
+
+  addEntry(projectId: string, body: DenGuidanceEntryRequest): Promise<DenResult<DenGuidanceEntry>> {
+    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/agent-guidance/entries`), {
+      method: 'POST',
+      body,
+    });
+  }
+
+  deleteEntry(projectId: string, entryId: number): Promise<DenResult<DenGuidanceDeleteResponse>> {
+    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/agent-guidance/entries/${entryId}`), {
+      method: 'DELETE',
+    });
   }
 }
 

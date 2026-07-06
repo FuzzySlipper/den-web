@@ -193,6 +193,30 @@ const ashaDocuments = [{ project_id: 'asha', slug: 'asha-brief', title: 'Asha Br
 const ashaDocumentDetail = { ...ashaDocuments[0], content_markdown: '# Asha Brief\n\nAsha document fixture loaded.', tags: ['space'] };
 const globalDocuments = [{ project_id: '_global', slug: 'global-brief', title: 'Global Brief', updated_at: '2026-07-02T00:00:00Z' }];
 const globalDocumentDetail = { ...globalDocuments[0], content_markdown: '# Global Brief\n\nGlobal document fixture loaded.', tags: ['global'] };
+const projectGuidanceEntry = {
+  id: 601,
+  project_id: 'den-web',
+  document_project_id: 'den-web',
+  document_slug: 'successor-brief',
+  importance: 'required',
+  audience: ['planner', 'runner'],
+  sort_order: 10,
+  notes: 'Project guidance fixture',
+  created_at: '2026-07-02T00:00:00Z',
+  updated_at: '2026-07-02T00:00:00Z',
+};
+const globalGuidanceEntry = {
+  id: 602,
+  project_id: '_global',
+  document_project_id: '_global',
+  document_slug: 'global-brief',
+  importance: 'important',
+  audience: ['all'],
+  sort_order: 1,
+  notes: 'Global guidance fixture',
+  created_at: '2026-07-02T00:00:00Z',
+  updated_at: '2026-07-02T00:00:00Z',
+};
 const discussion = { comments: [{ id: 1, author_identity: 'codex', body_markdown: 'Discussion fixture loaded', parent_comment_id: null, created_at: '2026-07-02T00:00:00Z' }] };
 const publication = {
   publication_id: 'pub-1',
@@ -351,6 +375,20 @@ export async function mockDenServices(page: Page): Promise<void> {
   await page.route('**/api/v1/projects/asha/documents/asha-brief/discussion', (route) => json(route, discussion));
   await page.route('**/api/v1/projects/_global/documents/global-brief', (route) => json(route, globalDocumentDetail));
   await page.route('**/api/v1/projects/_global/documents/global-brief/discussion', (route) => json(route, discussion));
+  await page.route('**/api/v1/projects/den-web/agent-guidance', (route) => json(route, guidancePacket('den-web', [projectGuidanceEntry, globalGuidanceEntry])));
+  await page.route('**/api/v1/projects/den-web/agent-guidance?**', (route) => json(route, guidancePacket('den-web', [projectGuidanceEntry, globalGuidanceEntry])));
+  await page.route('**/api/v1/projects/_global/agent-guidance', (route) => json(route, guidancePacket('_global', [globalGuidanceEntry])));
+  await page.route('**/api/v1/projects/_global/agent-guidance?**', (route) => json(route, guidancePacket('_global', [globalGuidanceEntry])));
+  await page.route('**/api/v1/projects/den-web/agent-guidance/entries/*', async (route) => {
+    if (route.request().method() === 'DELETE') {
+      await json(route, { deleted: true, message: 'Agent guidance entry deleted.' });
+      return;
+    }
+    await route.fallback();
+  });
+  await page.route('**/api/v1/projects/den-web/agent-guidance/entries', guidanceEntriesRoute);
+  await page.route('**/api/v1/projects/den-web/agent-guidance/entries?**', guidanceEntriesRoute);
+  await page.route('**/api/v1/projects/_global/agent-guidance/entries?**', (route) => json(route, { entries: [globalGuidanceEntry], count: 1 }));
   await page.route('**/api/v1/blog/publications/preview', (route) => json(route, publication));
   await page.route('**/api/v1/blog/publications', (route) => json(route, { ...publication, status: 'published', dry_run: false }));
   await page.route('**/api/v1/projects/den-web/librarian/query', (route) => json(route, { answer: 'Librarian fixture loaded', sources: [{ title: 'fixture' }] }));
@@ -377,6 +415,49 @@ function membershipListFor(route: Route): unknown {
 function messagesFor(route: Route): unknown {
   const url = new URL(route.request().url());
   return url.searchParams.get('task_id') === '3993' ? taskMessages : messages;
+}
+
+async function guidanceEntriesRoute(route: Route): Promise<void> {
+  if (route.request().method() === 'POST') {
+    const body = route.request().postDataJSON() as { readonly importance?: string; readonly audience?: readonly string[]; readonly sort_order?: number; readonly notes?: string };
+    await json(route, {
+      ...projectGuidanceEntry,
+      importance: body.importance ?? projectGuidanceEntry.importance,
+      audience: body.audience ?? projectGuidanceEntry.audience,
+      sort_order: body.sort_order ?? projectGuidanceEntry.sort_order,
+      notes: body.notes ?? projectGuidanceEntry.notes,
+    });
+    return;
+  }
+  await json(route, { entries: [projectGuidanceEntry, globalGuidanceEntry], count: 2 });
+}
+
+function guidancePacket(projectId: string, entries: readonly (typeof projectGuidanceEntry)[]): unknown {
+  return {
+    project_id: projectId,
+    resolved_at: '2026-07-02T00:00:00Z',
+    sources: entries.map((entry) => ({
+      entry_id: entry.id,
+      source_scope: entry.project_id,
+      document_project_id: entry.document_project_id,
+      document_slug: entry.document_slug,
+      document_title: entry.document_slug === 'global-brief' ? 'Global Brief' : 'Successor Brief',
+      document_type: 'reference',
+      document_updated_at: '2026-07-02T00:00:00Z',
+      visibility: 'normal',
+      tags: entry.document_slug === 'global-brief' ? ['global'] : ['successor'],
+      importance: entry.importance,
+      audience: entry.audience,
+      sort_order: entry.sort_order,
+      notes: entry.notes,
+      content_bytes: 64,
+    })),
+    skipped_sources: [],
+    content_sha256: 'fixture',
+    content_bytes: 128,
+    truncated: false,
+    incomplete: false,
+  };
 }
 
 function json(route: Route, body: unknown): Promise<void> {

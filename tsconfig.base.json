@@ -29,6 +29,7 @@
       "@den-web/feature-artifacts": ["libs/feature-artifacts/src/index.ts"],
       "@den-web/feature-conversation": ["libs/feature-conversation/src/index.ts"],
       "@den-web/feature-documents": ["libs/feature-documents/src/index.ts"],
+      "@den-web/feature-guidance": ["libs/feature-guidance/src/index.ts"],
       "@den-web/feature-librarian": ["libs/feature-librarian/src/index.ts"],
       "@den-web/feature-messages": ["libs/feature-messages/src/index.ts"],
       "@den-web/feature-notifications": ["libs/feature-notifications/src/index.ts"],

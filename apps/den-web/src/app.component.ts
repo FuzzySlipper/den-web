@@ -4,6 +4,7 @@ import { RouterOutlet } from '@angular/router';
 import { AgentsOverviewComponent } from '@den-web/feature-agents';
 import { ConversationCockpitComponent } from '@den-web/feature-conversation';
 import { DocumentsPanelComponent } from '@den-web/feature-documents';
+import { GuidancePanelComponent } from '@den-web/feature-guidance';
 import { LibrarianPanelComponent } from '@den-web/feature-librarian';
 import { MessagesInboxComponent } from '@den-web/feature-messages';
 import { NotificationsPanelComponent } from '@den-web/feature-notifications';
@@ -25,6 +26,7 @@ const tabs: readonly TabItem[] = [
   { id: 'notifications', label: 'Notifications' },
   { id: 'messages', label: 'Messages' },
   { id: 'documents', label: 'Documents' },
+  { id: 'guidance', label: 'Guidance' },
   { id: 'librarian', label: 'Librarian' },
   { id: 'agents', label: 'Agents' },
   { id: 'preferences', label: 'Preferences' },
@@ -35,6 +37,7 @@ const tabs: readonly TabItem[] = [
     AgentsOverviewComponent,
     ConversationCockpitComponent,
     DocumentsPanelComponent,
+    GuidancePanelComponent,
     LibrarianPanelComponent,
     MessagesInboxComponent,
     NotificationsPanelComponent,
@@ -190,6 +193,7 @@ const tabs: readonly TabItem[] = [
             @case ('notifications') { <den-notifications-panel /> }
             @case ('messages') { <den-messages-inbox /> }
             @case ('documents') { <den-documents-panel /> }
+            @case ('guidance') { <den-guidance-panel /> }
             @case ('librarian') { <den-librarian-panel /> }
             @case ('agents') { <den-agents-overview /> }
             @case ('preferences') { <den-preferences-panel /> }

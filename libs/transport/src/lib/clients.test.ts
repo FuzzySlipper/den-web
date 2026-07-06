@@ -27,6 +27,10 @@ describe('Den transport clients', () => {
     await clients.documents.updateDocument('den-web', 'successor-brief', { content_markdown: '# Updated' });
     await clients.documents.listDocuments(DEN_GLOBAL_PROJECT_ID);
     await clients.documents.getDiscussion('den-web', 'successor-brief');
+    await clients.guidance.listEntries('den-web', { includeGlobal: true });
+    await clients.guidance.resolve('den-web', { includeContent: false });
+    await clients.guidance.addEntry('den-web', { document_project_id: 'den-web', document_slug: 'successor-brief', importance: 'required' });
+    await clients.guidance.deleteEntry('den-web', 601);
     await clients.librarian.query('den-web', { query: 'successor' });
     await clients.conversation.listChannels('den-web', { limit: 1 });
     await clients.conversation.listChannels(DEN_GLOBAL_PROJECT_ID, { limit: 100 });
@@ -80,6 +84,10 @@ describe('Den transport clients', () => {
       '/api/v1/projects/den-web/documents/successor-brief',
       '/api/v1/projects/_global/documents',
       '/api/v1/projects/den-web/documents/successor-brief/discussion',
+      '/api/v1/projects/den-web/agent-guidance/entries?include_global=true',
+      '/api/v1/projects/den-web/agent-guidance?include_content=false',
+      '/api/v1/projects/den-web/agent-guidance/entries',
+      '/api/v1/projects/den-web/agent-guidance/entries/601',
       '/api/v1/projects/den-web/librarian/query',
       '/api/v1/conversation/channels?project_id=den-web&limit=1',
       '/api/v1/conversation/channels?limit=100&kind=system',

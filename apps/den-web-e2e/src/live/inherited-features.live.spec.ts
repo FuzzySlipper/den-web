@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { writeEvidencePacket } from './support/artifact-collector';
 import { requireLiveRun } from './support/live-gate';
 
-const featureTabs = ['Conversation', 'Notifications', 'Messages', 'Documents', 'Librarian', 'Agents', 'Preferences'] as const;
+const featureTabs = ['Conversation', 'Notifications', 'Messages', 'Documents', 'Guidance', 'Librarian', 'Agents', 'Preferences'] as const;
 
 test.describe('live inherited features', () => {
   requireLiveRun();

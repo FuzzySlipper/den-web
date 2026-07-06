@@ -124,6 +124,77 @@ export interface DenDocumentUpdateRequest {
   readonly content_markdown?: string;
 }
 
+export interface DenGuidanceEntry {
+  readonly id: number;
+  readonly project_id: string;
+  readonly document_project_id: string;
+  readonly document_slug: string;
+  readonly importance: string;
+  readonly audience?: readonly string[] | null;
+  readonly sort_order: number;
+  readonly notes?: string | null;
+  readonly created_at?: string;
+  readonly updated_at?: string;
+}
+
+export interface DenGuidanceEntryListResponse {
+  readonly entries: readonly DenGuidanceEntry[];
+  readonly count: number;
+}
+
+export interface DenGuidanceEntryRequest {
+  readonly document_project_id?: string;
+  readonly document_slug: string;
+  readonly importance?: string;
+  readonly audience?: readonly string[];
+  readonly sort_order?: number;
+  readonly notes?: string;
+}
+
+export interface DenGuidanceDeleteResponse {
+  readonly deleted: boolean;
+  readonly message?: string;
+}
+
+export interface DenGuidancePacket {
+  readonly project_id: string;
+  readonly resolved_at?: string;
+  readonly sources?: readonly DenGuidanceSource[];
+  readonly skipped_sources?: readonly DenGuidanceSkippedSource[];
+  readonly content_markdown?: string;
+  readonly content_sha256?: string;
+  readonly content_bytes?: number;
+  readonly truncated?: boolean;
+  readonly incomplete?: boolean;
+}
+
+export interface DenGuidanceSource {
+  readonly entry_id: number;
+  readonly source_scope: string;
+  readonly document_project_id: string;
+  readonly document_slug: string;
+  readonly document_title?: string;
+  readonly document_type?: string;
+  readonly document_updated_at?: string;
+  readonly visibility?: string;
+  readonly tags?: readonly string[] | null;
+  readonly importance: string;
+  readonly audience?: readonly string[] | null;
+  readonly sort_order: number;
+  readonly notes?: string | null;
+  readonly content_bytes?: number;
+}
+
+export interface DenGuidanceSkippedSource {
+  readonly entry_id: number;
+  readonly source_scope: string;
+  readonly document_project_id: string;
+  readonly document_slug: string;
+  readonly importance: string;
+  readonly reason: string;
+  readonly required: boolean;
+}
+
 export interface DenDiscussion {
   readonly comments?: readonly DenDiscussionComment[];
 }

@@ -1,6 +1,6 @@
 import { signal, type Signal } from '@angular/core';
 
-export type DenWebTab = 'tasks' | 'conversation' | 'notifications' | 'messages' | 'documents' | 'librarian' | 'agents' | 'preferences';
+export type DenWebTab = 'tasks' | 'conversation' | 'notifications' | 'messages' | 'documents' | 'guidance' | 'librarian' | 'agents' | 'preferences';
 
 export interface MessageThreadNavigationTarget {
   readonly projectId: string;

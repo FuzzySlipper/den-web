@@ -6,6 +6,7 @@ import type {
   DenDiscussion,
   DenDocumentDetail,
   DenDocumentSummary,
+  DenGuidanceEntry,
   DenNotification,
   DenObservationLane,
   DenProject,
@@ -20,6 +21,7 @@ import {
   createAgentsStore,
   createConversationStore,
   createDocumentsStore,
+  createGuidanceStore,
   createNotificationsStore,
   createTasksStore,
   createWorkspaceStore,
@@ -307,6 +309,63 @@ describe('successor signal stores', () => {
     expect(stateValue(store.detail())?.content_markdown).toBe('# New body');
     expect(stateValue(store.documents())?.[0]?.title).toBe('Successor Brief');
     expect(patches).toEqual([{ agent: 'web-ui', content_markdown: '# New body' }]);
+  });
+
+  it('loads and edits project guidance entries with referenced document content', async () => {
+    const guidanceBodies: unknown[] = [];
+    const documentPatches: unknown[] = [];
+    const store = createGuidanceStore({
+      listEntries: async (_projectId, options) => ok({
+        entries: options?.includeGlobal ? [guidanceEntryFixture(), guidanceEntryFixture({ id: 2, project_id: DEN_GLOBAL_PROJECT_ID, document_project_id: DEN_GLOBAL_PROJECT_ID, document_slug: 'global-brief' })] : [guidanceEntryFixture()],
+        count: options?.includeGlobal ? 2 : 1,
+      }),
+      resolve: async (projectId) => ok({
+        project_id: projectId,
+        sources: [{ entry_id: 1, source_scope: 'den-web', document_project_id: 'den-web', document_slug: 'successor-brief', document_title: 'Successor Brief', importance: 'required', sort_order: 10 }],
+        skipped_sources: [],
+      }),
+      addEntry: async (projectId, body) => {
+        guidanceBodies.push({ projectId, body });
+        return ok(guidanceEntryFixture({
+          importance: body.importance ?? 'important',
+          audience: body.audience ?? [],
+          sort_order: body.sort_order ?? 0,
+          notes: body.notes ?? '',
+        }));
+      },
+      deleteEntry: async (projectId, entryId) => ok({ deleted: projectId === 'den-web' && entryId === 1 }),
+    }, {
+      getDocument: async (projectId, slug) => ok(documentDetailFixture({ project_id: projectId, slug, content_markdown: 'old guidance' })),
+      updateDocument: async (_projectId, _slug, patch) => {
+        documentPatches.push(patch);
+        return ok(documentDetailFixture({ content_markdown: patch.content_markdown }));
+      },
+    });
+
+    await store.refresh('den-web');
+    expect(stateValue(store.entries())?.map((entry) => entry.project_id)).toEqual(['den-web', DEN_GLOBAL_PROJECT_ID]);
+
+    const entry = stateValue(store.entries())?.[0];
+    expect(entry).toBeDefined();
+    if (!entry) return;
+    await store.selectEntry(entry);
+    await store.saveEntry('den-web', entry, { importance: 'important', audience: ['all'], sortOrder: 20, notes: 'trimmed' });
+    await store.updateSelectedDocumentContent('# Edited guidance');
+    await store.deleteEntry('den-web', entry);
+
+    expect(guidanceBodies).toEqual([{
+      projectId: 'den-web',
+      body: {
+        document_project_id: 'den-web',
+        document_slug: 'successor-brief',
+        importance: 'important',
+        audience: ['all'],
+        sort_order: 20,
+        notes: 'trimmed',
+      },
+    }]);
+    expect(documentPatches).toEqual([{ agent: 'web-ui', content_markdown: '# Edited guidance' }]);
+    expect(store.selectedEntry()).toBeNull();
   });
 
   it('persists optimistic notification read state through the storage port', async () => {
@@ -659,6 +718,20 @@ function documentSummaryFixture(overrides: Partial<DenDocumentSummary> = {}): De
 
 function documentDetailFixture(overrides: Partial<DenDocumentDetail> = {}): DenDocumentDetail {
   return { ...documentSummaryFixture(), content_markdown: '# Successor Brief', ...overrides };
+}
+
+function guidanceEntryFixture(overrides: Partial<DenGuidanceEntry> = {}): DenGuidanceEntry {
+  return {
+    id: 1,
+    project_id: 'den-web',
+    document_project_id: 'den-web',
+    document_slug: 'successor-brief',
+    importance: 'required',
+    audience: ['planner'],
+    sort_order: 10,
+    notes: 'Project guidance',
+    ...overrides,
+  };
 }
 
 function discussionFixture(overrides: Partial<DenDiscussion> = {}): DenDiscussion {

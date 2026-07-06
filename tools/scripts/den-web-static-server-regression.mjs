@@ -130,32 +130,39 @@ test('routes den-services owner APIs to their service targets with service token
   const tasks = service([]);
   const messages = service([]);
   const artifacts = service({ artifact_id: 'art_fixture' });
-  const [projectsPort, tasksPort, messagesPort, artifactsPort] = await Promise.all([
+  const guidance = service({ entries: [], count: 0 });
+  const [projectsPort, tasksPort, messagesPort, artifactsPort, guidancePort] = await Promise.all([
     listen(projects.server),
     listen(tasks.server),
     listen(messages.server),
     listen(artifacts.server),
+    listen(guidance.server),
   ]);
-  t.after(() => Promise.all([projects.server, tasks.server, messages.server, artifacts.server].map(server => new Promise(resolve => server.close(resolve)))));
+  t.after(() => Promise.all([projects.server, tasks.server, messages.server, artifacts.server, guidance.server].map(server => new Promise(resolve => server.close(resolve)))));
   const baseUrl = await startServer(t, {
     DEN_PROJECTS_TARGET: `http://127.0.0.1:${projectsPort}`,
     DEN_TASKS_TARGET: `http://127.0.0.1:${tasksPort}`,
     DEN_MESSAGES_TARGET: `http://127.0.0.1:${messagesPort}`,
     DEN_ARTIFACTS_TARGET: `http://127.0.0.1:${artifactsPort}`,
+    DEN_GUIDANCE_TARGET: `http://127.0.0.1:${guidancePort}`,
     DEN_PROJECTS_SERVICE_TOKEN: 'projects-token',
     DEN_TASKS_SERVICE_TOKEN: 'tasks-token',
     DEN_MESSAGES_SERVICE_TOKEN: 'messages-token',
     DEN_ARTIFACTS_SERVICE_TOKEN: 'artifacts-token',
+    DEN_GUIDANCE_SERVICE_TOKEN: 'guidance-token',
   });
   assert.equal((await request(`${baseUrl}/api/v1/projects`)).status, 200);
   assert.equal((await request(`${baseUrl}/api/v1/projects/den-web/tasks?limit=1`)).status, 200);
   assert.equal((await request(`${baseUrl}/api/v1/user-notifications?limit=1`)).status, 200);
   assert.equal((await request(`${baseUrl}/api/v1/artifacts/resolve?ref=den-artifact%3A%2F%2Fart_fixture`)).status, 200);
+  assert.equal((await request(`${baseUrl}/api/v1/projects/den-web/agent-guidance/entries?include_global=true`)).status, 200);
   assert.equal(projects.observed[0].url, '/v1/projects');
   assert.equal(tasks.observed[0].authorization, 'Bearer tasks-token');
   assert.equal(messages.observed[0].authorization, 'Bearer messages-token');
   assert.equal(artifacts.observed[0].url, '/v1/artifacts/resolve?ref=den-artifact%3A%2F%2Fart_fixture');
   assert.equal(artifacts.observed[0].authorization, 'Bearer artifacts-token');
+  assert.equal(guidance.observed[0].url, '/v1/projects/den-web/agent-guidance/entries?include_global=true');
+  assert.equal(guidance.observed[0].authorization, 'Bearer guidance-token');
 });
 
 test('routes Gateway successor APIs with route-specific tokens and headers', async t => {

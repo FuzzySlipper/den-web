@@ -362,6 +362,42 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   });
   await expect(page.getByLabel('Document content').getByText('Edited document fixture.')).toBeVisible();
 
+  let guidanceDocumentPatchBody: unknown = null;
+  let guidanceEntryPostBody: unknown = null;
+  page.on('request', (request) => {
+    if (request.method() === 'PATCH' && request.url().includes('/api/v1/projects/den-web/documents/successor-brief')) {
+      guidanceDocumentPatchBody = request.postDataJSON();
+    }
+    if (request.method() === 'POST' && request.url().includes('/api/v1/projects/den-web/agent-guidance/entries')) {
+      guidanceEntryPostBody = request.postDataJSON();
+    }
+  });
+  await page.getByRole('button', { name: 'Guidance' }).click();
+  await expect(page.getByLabel('Guidance entries').getByText('Successor Brief')).toBeVisible();
+  await expect(page.getByLabel('Guidance entries').getByText('Global Brief')).toBeVisible();
+  await page.getByLabel('Guidance entries').getByRole('button', { name: /Successor Brief/ }).click();
+  await expect(page.getByLabel('Guidance importance', { exact: true })).toHaveValue('required');
+  await page.getByLabel('Guidance audience', { exact: true }).fill('all, runner');
+  await page.getByRole('button', { name: 'Save entry' }).click();
+  await expect.poll(() => guidanceEntryPostBody).toMatchObject({
+    document_project_id: 'den-web',
+    document_slug: 'successor-brief',
+    importance: 'required',
+    audience: ['all', 'runner'],
+  });
+  await page.getByLabel('Guidance document').getByRole('button', { name: 'Edit' }).click();
+  await page.getByLabel('Markdown editor').fill('# Successor Brief\n\nEdited guidance fixture.');
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect.poll(() => guidanceDocumentPatchBody).toEqual({
+    agent: 'web-ui',
+    content_markdown: '# Successor Brief\n\nEdited guidance fixture.',
+  });
+  await expect(page.getByLabel('Guidance document').getByText('Edited guidance fixture.')).toBeVisible();
+  await page.getByLabel('Workspaces').getByRole('button', { name: /Global/ }).click();
+  await expect(page.getByLabel('Guidance entries').getByText('Global Brief')).toBeVisible();
+  await expect(page.getByLabel('Guidance entries').getByText('Successor Brief')).toHaveCount(0);
+  await page.getByLabel('Workspaces').getByRole('button', { name: /Den Web/ }).click();
+
   await page.getByRole('button', { name: 'Librarian' }).click();
   await page.getByLabel('Librarian query').fill('phase 5');
   await page.getByRole('button', { name: 'Query' }).click();

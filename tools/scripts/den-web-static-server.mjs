@@ -22,6 +22,7 @@ const targets = {
   tasks: setting('DEN_TASKS_TARGET', 'http://127.0.0.1:8092'),
   messages: setting('DEN_MESSAGES_TARGET', 'http://127.0.0.1:8093'),
   documents: setting('DEN_DOCUMENTS_TARGET', 'http://127.0.0.1:8094'),
+  guidance: setting('DEN_GUIDANCE_TARGET', 'http://127.0.0.1:8097'),
   review: setting('DEN_REVIEW_TARGET', 'http://127.0.0.1:8096'),
   artifacts: setting('DEN_ARTIFACTS_TARGET', 'http://127.0.0.1:8090'),
   librarian: setting('DEN_LIBRARIAN_TARGET', 'http://127.0.0.1:8098'),
@@ -34,6 +35,7 @@ const tokens = {
   tasks: setting('DEN_TASKS_SERVICE_TOKEN', serviceToken),
   messages: setting('DEN_MESSAGES_SERVICE_TOKEN', serviceToken),
   documents: setting('DEN_DOCUMENTS_SERVICE_TOKEN', serviceToken),
+  guidance: setting('DEN_GUIDANCE_SERVICE_TOKEN', serviceToken),
   review: setting('DEN_REVIEW_SERVICE_TOKEN', serviceToken),
   artifacts: setting('DEN_ARTIFACTS_SERVICE_TOKEN', serviceToken),
   librarian: setting('DEN_LIBRARIAN_SERVICE_TOKEN', serviceToken),
@@ -201,6 +203,9 @@ function proxyApi(req, res, pathname, search) {
   }
   if (pathname === '/api/v1/documents' || pathname.startsWith('/api/v1/documents/') || pathname.startsWith('/api/v1/discussion-threads') || /^\/api\/v1\/projects\/[^/]+\/documents(?:\/|$)/.test(pathname)) {
     return proxy(targets.documents, req, res, rewrite, tokens.documents);
+  }
+  if (pathname === '/api/v1/guidance/document-references' || /^\/api\/v1\/projects\/[^/]+\/agent-guidance(?:\/|$)/.test(pathname)) {
+    return proxy(targets.guidance, req, res, rewrite, tokens.guidance);
   }
   if (pathname.startsWith('/api/v1/review/') || /^\/api\/v1\/projects\/[^/]+\/tasks\/[0-9]+\/review(?:\/|$)/.test(pathname) || /^\/api\/v1\/tasks\/[0-9]+\/review(?:\/|$)/.test(pathname)) {
     return proxy(targets.review, req, res, rewrite, tokens.review);
