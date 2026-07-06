@@ -29,8 +29,11 @@ const importanceOptions = ['required', 'important'] as const;
 
       .list,
       .detail {
+        display: grid;
+        grid-template-rows: minmax(0, 1fr);
         min-height: 0;
         min-width: 0;
+        overflow: hidden;
       }
 
       .list {
@@ -73,8 +76,10 @@ const importanceOptions = ['required', 'important'] as const;
       }
 
       .rows {
+        align-content: start;
         display: grid;
         gap: 8px;
+        grid-auto-rows: max-content;
         padding: 10px;
       }
 
@@ -142,14 +147,29 @@ const importanceOptions = ['required', 'important'] as const;
       }
 
       .detail-body {
-        display: grid;
+        display: flex;
+        flex-direction: column;
         gap: 16px;
+        overflow: hidden;
         padding: 20px;
       }
 
       .section {
         border: 1px solid var(--den-border);
         border-radius: 8px;
+      }
+
+      .document-section {
+        flex: 1 1 auto;
+        grid-template-rows: auto minmax(0, 1fr);
+        min-height: 220px;
+        overflow: hidden;
+      }
+
+      .document-content {
+        min-height: 0;
+        overflow: auto;
+        padding-right: 4px;
       }
 
       .section-head {
@@ -328,7 +348,7 @@ const importanceOptions = ['required', 'important'] as const;
               Importance
               <select aria-label="New guidance importance" [value]="addImportance()" (change)="setAddImportance($event)">
                 @for (importance of importanceValues; track importance) {
-                  <option [value]="importance">{{ importance }}</option>
+                  <option [value]="importance" [selected]="addImportance() === importance">{{ importance }}</option>
                 }
               </select>
             </label>
@@ -374,7 +394,7 @@ const importanceOptions = ['required', 'important'] as const;
                       Importance
                       <select aria-label="Guidance importance" [value]="editImportance()" (change)="setEditImportance($event)">
                         @for (importance of importanceValues; track importance) {
-                          <option [value]="importance">{{ importance }}</option>
+                          <option [value]="importance" [selected]="editImportance() === importance">{{ importance }}</option>
                         }
                       </select>
                     </label>
@@ -401,21 +421,23 @@ const importanceOptions = ['required', 'important'] as const;
               }
             </section>
 
-            <section class="section" aria-label="Guidance document">
+            <section class="section document-section" aria-label="Guidance document">
               <div class="section-head">
                 <span class="section-title">Document</span>
                 <button type="button" (click)="openEditor()" [disabled]="!selectedDocumentValue()">Edit</button>
               </div>
-              @switch (selectedDocument().kind) {
-                @case ('idle') { <p class="state">Select a guidance entry</p> }
-                @case ('loading') { <p class="state">Loading document</p> }
-                @case ('error') { <p class="state error">{{ errorText(documentError()) }}</p> }
-                @case ('data') {
-                  @if (selectedDocumentValue(); as document) {
-                    <den-markdown-view aria-label="Guidance document content" [content]="documentBody(document)" />
+              <div class="document-content">
+                @switch (selectedDocument().kind) {
+                  @case ('idle') { <p class="state">Select a guidance entry</p> }
+                  @case ('loading') { <p class="state">Loading document</p> }
+                  @case ('error') { <p class="state error">{{ errorText(documentError()) }}</p> }
+                  @case ('data') {
+                    @if (selectedDocumentValue(); as document) {
+                      <den-markdown-view aria-label="Guidance document content" [content]="documentBody(document)" />
+                    }
                   }
                 }
-              }
+              </div>
             </section>
 
             @if (skippedSources().length > 0) {
@@ -646,16 +668,24 @@ function splitAudience(value: string): readonly string[] {
 }
 
 function normalizeAudience(audience: readonly string[]): readonly string[] {
-  if (audience.length !== 1) return audience;
+  if (audience.length === 0) return audience;
+  if (audience.length > 1) {
+    const joined = audience.join(',');
+    return parseAudienceJson(joined) ?? audience;
+  }
   const first = audience[0];
   if (first === undefined) return audience;
-  const raw = first.trim();
-  if (!raw.startsWith('[')) return audience;
+  return parseAudienceJson(first) ?? audience;
+}
+
+function parseAudienceJson(value: string): readonly string[] | null {
+  const raw = value.trim();
+  if (!raw.startsWith('[') || !raw.endsWith(']')) return null;
   try {
     const parsed: unknown = JSON.parse(raw);
-    return isStringArray(parsed) ? parsed : audience;
+    return isStringArray(parsed) ? parsed : null;
   } catch {
-    return audience;
+    return null;
   }
 }
 
