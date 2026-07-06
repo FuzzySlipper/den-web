@@ -490,7 +490,7 @@ export class GuidancePanelComponent {
 
   protected selectEntry(entry: DenGuidanceEntry): void {
     this.editImportance.set(entry.importance === 'required' ? 'required' : 'important');
-    this.editAudience.set((entry.audience ?? []).join(', '));
+    this.editAudience.set(this.audienceLabel(entry.audience));
     this.editSortOrder.set(entry.sort_order);
     this.editNotes.set(entry.notes ?? '');
     this.operationError.set(null);
@@ -515,7 +515,7 @@ export class GuidancePanelComponent {
   }
 
   protected audienceLabel(audience: readonly string[] | null | undefined): string {
-    return (audience ?? []).join(', ');
+    return normalizeAudience(audience ?? []).join(', ');
   }
 
   protected canAdd(): boolean {
@@ -643,6 +643,24 @@ export class GuidancePanelComponent {
 
 function splitAudience(value: string): readonly string[] {
   return value.split(',').map((part) => part.trim()).filter(Boolean);
+}
+
+function normalizeAudience(audience: readonly string[]): readonly string[] {
+  if (audience.length !== 1) return audience;
+  const first = audience[0];
+  if (first === undefined) return audience;
+  const raw = first.trim();
+  if (!raw.startsWith('[')) return audience;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return isStringArray(parsed) ? parsed : audience;
+  } catch {
+    return audience;
+  }
+}
+
+function isStringArray(value: unknown): value is readonly string[] {
+  return Array.isArray(value) && value.every((item: unknown) => typeof item === 'string');
 }
 
 function toImportance(value: string): (typeof importanceOptions)[number] {
