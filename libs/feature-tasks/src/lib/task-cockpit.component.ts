@@ -194,13 +194,25 @@ const taskListQuietRefreshMs = 15000;
       }
 
       .badge {
+        align-items: center;
         border: 1px solid var(--den-border);
         border-radius: 999px;
         color: var(--den-muted);
+        display: inline-flex;
         flex: 0 0 auto;
         font-size: var(--den-font-size-xs);
+        gap: 5px;
         padding: 2px 7px;
       }
+
+      .status-icon { font-size: var(--den-font-size-xs); line-height: 1; }
+      .status-icon--planned { color: var(--den-muted); }
+      .status-icon--in-progress { color: var(--den-accent); }
+      .status-icon--review { color: var(--den-warning); }
+      .status-icon--blocked { color: var(--den-danger); }
+      .status-icon--done,
+      .status-icon--cancelled,
+      .status-icon--unknown { color: var(--den-border-strong); }
 
       .waiting {
         border-color: var(--den-warning-border);
@@ -508,7 +520,15 @@ const taskListQuietRefreshMs = 15000;
                       (click)="selectTask(row.task)"
                     >
                       <span class="row-title">
-                        <span class="badge">#{{ row.task.id }}</span>
+                        <span class="badge">
+                          <span
+                            [class]="statusIconClass(row.task.status)"
+                            role="img"
+                            [attr.aria-label]="statusLabel(row.task.status || 'unknown')"
+                            [attr.title]="statusLabel(row.task.status || 'unknown')"
+                          >{{ statusIcon(row.task.status) }}</span>
+                          #{{ row.task.id }}
+                        </span>
                         <strong>{{ row.task.title || 'Untitled task' }}</strong>
                       </span>
                     </button>
@@ -548,6 +568,16 @@ const taskListQuietRefreshMs = 15000;
               <div class="detail-head">
                 <h3>#{{ detail.task.id }} {{ detail.task.title || 'Untitled task' }}</h3>
                 <div class="meta">{{ detail.task.project_id || selectedProjectId() }}</div>
+              </div>
+
+              <div class="tag-strip" style="display: flex; flex-wrap: wrap; gap: 6px;" aria-label="Task tags">
+                @if ((detail.task.tags ?? []).length === 0) {
+                  <span class="state">No tags</span>
+                } @else {
+                  @for (tag of detail.task.tags; track tag) {
+                    <span class="badge">{{ tag }}</span>
+                  }
+                }
               </div>
 
               <div class="detail-grid">
@@ -824,6 +854,44 @@ export class TaskCockpitComponent {
 
   protected statusLabel(status: string): string {
     return status.replace(/_/g, ' ');
+  }
+
+  protected statusIconClass(status: string | null | undefined): string {
+    switch (status) {
+      case 'planned':
+        return 'status-icon status-icon--planned';
+      case 'in_progress':
+        return 'status-icon status-icon--in-progress';
+      case 'review':
+        return 'status-icon status-icon--review';
+      case 'blocked':
+        return 'status-icon status-icon--blocked';
+      case 'done':
+        return 'status-icon status-icon--done';
+      case 'cancelled':
+        return 'status-icon status-icon--cancelled';
+      default:
+        return 'status-icon status-icon--unknown';
+    }
+  }
+
+  protected statusIcon(status: string | null | undefined): string {
+    switch (status) {
+      case 'planned':
+        return '○';
+      case 'in_progress':
+        return '●';
+      case 'review':
+        return '◆';
+      case 'blocked':
+        return '■';
+      case 'done':
+        return '✓';
+      case 'cancelled':
+        return '×';
+      default:
+        return '?';
+    }
   }
 
   protected openMessage(message: DenMessage): void {
