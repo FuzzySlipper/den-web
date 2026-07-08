@@ -1,0 +1,470 @@
+# GoblinBench Qualitative Comparison — roleplay-instruction-grok-judge-20260708
+
+Generated: `2026-07-08T05:32:36.024948+00:00`
+Judge: `den-router/grok`
+Judge prompt SHA256: `ed819908afb6d1bb347ed837fb70c7e609876d24249f8b1ef295e71050c4ec14`
+Rubric SHA256: `c4917960ee19d2cc6cd4d16e81458eb656ee2ab6e2129e81f4de4bf73b945934`
+
+## Scope
+
+- runs: `run-20260707-222223-484bafea,run-20260707-214506-9c827b76`
+- suite: `roleplay-instruction`
+- scenario: `*`
+- model/candidate filter: `*`
+- blind judge labels: `False`
+- max output chars per candidate sent to judge: `3200`
+
+## Scenario summary
+
+| scenario | candidates | judged | top label | top model | top score | notes |
+|---|---:|---|---|---|---:|---|
+| `roleplay-instruction.no-user-control-reliquary-v0` | 15 | yes | grok | grok | 9.0 | Grok is the only output that fully respects the no-user-control rule while maintaining concrete detail and leaving clear space for Ari. Most others use second-person narration ('you can see', 'from your crouch') or directly address/control  |
+
+## roleplay-instruction.no-user-control-reliquary-v0
+
+Grok is the only output that fully respects the no-user-control rule while maintaining concrete detail and leaving clear space for Ari. Most others use second-person narration ('you can see', 'from your crouch') or directly address/control Ari, triggering hard violations. glm-5.2 and kimi-code are next-best but still slip into mild control or excess atmosphere. The rest range from moderate to severe violations with varying degrees of cliché and pacing issues.
+
+### Judge ranking
+
+| rank | label | model | score | summary | strengths | weaknesses |
+|---:|---|---|---:|---|---|---|
+| 1 | grok | grok | 9.0 | Cleanest agency compliance with precise environmental and NPC beats. | Strictly avoids second-person or controlling Ari; Concrete key sounds and shadow details; Leaves Maud waiting for response | Slightly static final beat |
+| 2 | glm-5.2 | glm-5.2 | 7.5 | Mostly compliant with good wire tracing and Maud's voice, minor slips. | Specific mechanism details; Maud's indirect threat style | Cael's direct 'Ari, what do I' line edges close to control |
+| 3 | kimi-code | kimi-code | 6.5 | Strong NPC dialogue but Cael addresses Ari directly. | Clear mechanism description; Maud's measured tone | Hard violation via Cael speaking to Ari; Some cliché tension phrasing |
+| 4 | deepseek-flash | deepseek-flash | 4.0 | Heavy second-person control and purple silence descriptions. | Detailed wire tracing | Multiple 'you can see' violations; Stock 'deafening silence' language |
+| 5 | deepseek-pro | deepseek-pro | 3.5 | Consistent 'you' narration and melodramatic pacing. | Maud's backstory voice | Hard user-control violations throughout |
+| 6 | kimi | kimi | 3.0 | Atmospheric but heavy on generic tension and wire-as-bowstring clichés. | Specific wire hum detail | 'Heavy as lead' and 'wounded animal' phrasing; No clear next beat |
+| 7 | mimo-pro | mimo-pro | 2.5 | Direct counting and 'Ari' references create control issues. | Mechanism clarity | Hard violations via direct address and counting |
+| 8 | qwen-max | qwen-max | 2.0 | Frequent 'Ari' whispers and panic control from Cael. | Mechanism description | Multiple hard violations; Over-dramatic Cael reactions |
+| 9 | qwenplus | qwenplus | 1.5 | Strong second-person control and melodramatic blade threat. | Wire vibration detail | Hard violations; Stock 'deafening silence' and power fantasy |
+| 10 | longcat-2.0 | longcat-2.0 | 1.0 | Short but uses 'you' and direct Maud address to Ari. | Concise | Clear user-control violations |
+| 11 | stepfun | stepfun | 1.0 | Cael gives Ari explicit instructions and wire advice. | Mechanism facts | Hard violations via Cael directing Ari |
+| 12 | Gemma-4-26B-A4B-it-GGUF | Gemma-4-26B-A4B-it-GGUF | 1.0 | Heavy 'you' implication and Cael addressing Ari. | Footstep rhythm | Multiple control violations; Clichéd 'deafening silence' |
+| 13 | Gemma4-26B-A4B-Uncensored-HauhauCS-Balanced-Q4_K_M | Gemma4-26B-A4B-Uncensored-HauhauCS-Balanced-Q4_K_M | 1.0 | Direct 'you' framing and melodramatic shadow language. | Key sounds | Hard violations; Purple prose |
+| 14 | Qwen3.6-35B-A3B-GGUF | Qwen3.6-35B-A3B-GGUF | 1.0 | Extensive second-person and Cael controlling Ari's gaze. | Wire pulley detail | Hard violations throughout |
+| 15 | Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q4_K_M | Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q4_K_M | 1.0 | Cael hands Ari a hairpin and gives instructions. | Mechanism interaction | Severe user-control violations |
+
+Caveats:
+- Truncated outputs made full length comparison harder for some candidates
+
+### Candidate outputs
+
+| label | model | provider | run | status | output chars | reasoning chars | finish | artifact | excerpt |
+|---|---|---|---|---|---:|---:|---|---|---|
+| deepseek-flash | deepseek-flash | den-router | `run-20260707-222223-484bafea` | success | 3461 | 1329 | stop | `runs/run-20260707-222223-484bafea/scenarios/roleplay-instruction.no-user-control-reliquary-v0/candidates/denrouter-deepseek-flash-roleplay/artifacts` | The silver wire is almost invisible—just a faint glint against the dark wood of the case's frame. It runs from the edge of the glass, loops once around the tiny brass hinge on the lid, then disappears into a hairline crack beneath the case's base. From your cr<br><br>[truncated: 2,972 chars omitted] |
+| deepseek-pro | deepseek-pro | den-router | `run-20260707-222223-484bafea` | success | 3893 | 1916 | stop | `runs/run-20260707-222223-484bafea/scenarios/roleplay-instruction.no-user-control-reliquary-v0/candidates/denrouter-deepseek-pro-roleplay/artifacts` | The silence that followed Maud's words was worse than any alarm bell.  Through the open reliquary door, the corridor outside remained visible—a dim stone throat lit by the soft bloom of Cael's lantern. That light trembled now, the flame shuddering as if caught<br><br>[truncated: 2,972 chars omitted] |
+| glm-5.2 | glm-5.2 | den-router | `run-20260707-222223-484bafea` | success | 3637 | 905 | stop | `runs/run-20260707-222223-484bafea/scenarios/roleplay-instruction.no-user-control-reliquary-v0/candidates/denrouter-glm-5-2-roleplay-thinking-high/artifacts` | The wire caught what little light filtered through the reliquary's single grated vent. It traced along the left side of the case, disappeared into a small brass fitting at the corner, then resurfaced to vanish behind the case where it presumably connected to s<br><br>[truncated: 2,972 chars omitted] |
+| grok | grok | den-router | `run-20260707-222223-484bafea` | success | 3002 |  | stop | `runs/run-20260707-222223-484bafea/scenarios/roleplay-instruction.no-user-control-reliquary-v0/candidates/denrouter-grok-roleplay/artifacts` | Sister Maud’s voice lingered in the air like the echo of a bell, followed by the soft clink of keys being sorted on their ring. Her footsteps advanced with deliberate slowness, each one measured against the flagstones of the corridor, until the hem of her dark<br><br>[truncated: 2,742 chars omitted] |
+| kimi | kimi | den-router | `run-20260707-222223-484bafea` | success | 4169 | 17138 | stop | `runs/run-20260707-222223-484bafea/scenarios/roleplay-instruction.no-user-control-reliquary-v0/candidates/denrouter-kimi-roleplay-thinking-high/artifacts` | The words hang in the damp air of the reliquary, heavy as lead. Beyond the open door, the corridor stretches into darkness, broken only by the distant, bobbing glow of Maud’s own lamp—or perhaps it is merely the moon through a high window, though the glass the<br><br>[truncated: 2,972 chars omitted] |
+| kimi-code | kimi-code | den-router | `run-20260707-222223-484bafea` | success | 3741 | 7178 | stop | `runs/run-20260707-222223-484bafea/scenarios/roleplay-instruction.no-user-control-reliquary-v0/candidates/denrouter-kimi-code-roleplay-thinking-high/artifacts` | The silver wire catches the dim lantern-light in a thread no thicker than a spider's strand, running from the corner of the glass case down into a pinhole drilled through the velvet-lined shelf. Another strand loops along the back edge, and a third disappears <br><br>[truncated: 2,972 chars omitted] |
+| longcat-2.0 | longcat-2.0 | den-router | `run-20260707-222223-484bafea` | success | 1495 | 1014 | stop | `runs/run-20260707-222223-484bafea/scenarios/roleplay-instruction.no-user-control-reliquary-v0/candidates/denrouter-longcat-2-0-roleplay/artifacts` | The silver wire gleams like a single thread of frozen moonlight, vanishing into the lower lip of the glass case's brass hinge. It's thinner than a hair, almost invisible except for the way it catches the frantic light from Cael's lantern—that's the only reason<br><br>[truncated: 1,235 chars omitted] |
+| mimo-pro | mimo-pro | den-router | `run-20260707-222223-484bafea` | success | 3032 | 628 | stop | `runs/run-20260707-222223-484bafea/scenarios/roleplay-instruction.no-user-control-reliquary-v0/candidates/denrouter-mimo-pro-roleplay/artifacts` | The wire caught the lantern-light like a strand of spider silk. It ran from the base of the glass case, taut and nearly invisible, threading through a brass eyelet mounted in the stone floor — then continued along a channel carved in the mortar between the fla<br><br>[truncated: 2,772 chars omitted] |
+| qwen-max | qwen-max | den-router | `run-20260707-222223-484bafea` | success | 3256 | 11320 | stop | `runs/run-20260707-222223-484bafea/scenarios/roleplay-instruction.no-user-control-reliquary-v0/candidates/denrouter-qwen-max-roleplay/artifacts` | The silver alarm wire catches the faint, trembling amber light spilling down from the stairwell. It loops twice around the faded velvet cushion holding the pale, porous saint-bone charm before disappearing into a narrow slit at the back of the glass case. Just<br><br>[truncated: 2,971 chars omitted] |
+| qwenplus | qwenplus | den-router | `run-20260707-222223-484bafea` | success | 3279 |  | stop | `runs/run-20260707-222223-484bafea/scenarios/roleplay-instruction.no-user-control-reliquary-v0/candidates/denrouter-qwenplus-roleplay/artifacts` | The silver thread catches the faint, trembling ambient light filtering down from the stairwell, gleaming like a spider's silk against the dark oak of the pedestal. It traces the perimeter of the glass case with agonizing precision. At the rear left corner, the<br><br>[truncated: 2,971 chars omitted] |
+| stepfun | stepfun | den-router | `run-20260707-222223-484bafea` | success | 3806 | 14908 | stop | `runs/run-20260707-222223-484bafea/scenarios/roleplay-instruction.no-user-control-reliquary-v0/candidates/denrouter-stepfun-roleplay/artifacts` | The sharp jingle of Maud’s iron keys grows louder, her low-soled boots clicking against the stone corridor, slow and unhurried, like she has all the time in the world. She stops just at the threshold of the reliquary, the faint glow of Cael’s lantern catching <br><br>[truncated: 2,972 chars omitted] |
+| Gemma-4-26B-A4B-it-GGUF | Gemma-4-26B-A4B-it-GGUF | lemonade | `run-20260707-214506-9c827b76` | success | 3092 |  | stop | `runs/run-20260707-214506-9c827b76/scenarios/roleplay-instruction.no-user-control-reliquary-v0/candidates/lemonade-gemma4-26b-roleplay/artifacts` | The heavy, rhythmic *clack-clack-clack* of Sister Maud’s wooden clogs against the stone corridor grows louder with every passing second. It is a sound of absolute authority, punctuated by the unmistakable, metallic jingle of a heavy ring of iron keys hitting h<br><br>[truncated: 2,832 chars omitted] |
+| Gemma4-26B-A4B-Uncensored-HauhauCS-Balanced-Q4_K_M | Gemma4-26B-A4B-Uncensored-HauhauCS-Balanced-Q4_K_M | lemonade | `run-20260707-214506-9c827b76` | success | 3701 |  | stop | `runs/run-20260707-214506-9c827b76/scenarios/roleplay-instruction.no-user-control-reliquary-v0/candidates/lemonade-gemma4-26b-uncensored-balanced-roleplay/artifacts` | The heavy, rhythmic *clink-clink-clink* of Sister Maud’s heavy iron key ring strikes against the stone wall, growing louder with every passing second. It is a methodical, unrelenting sound that cuts through the heavy silence of the reliquary like a blade. Each<br><br>[truncated: 2,972 chars omitted] |
+| Qwen3.6-35B-A3B-GGUF | Qwen3.6-35B-A3B-GGUF | lemonade | `run-20260707-214506-9c827b76` | success | 4316 | 14738 | stop | `runs/run-20260707-214506-9c827b76/scenarios/roleplay-instruction.no-user-control-reliquary-v0/candidates/lemonade-qwen3-6-35b-a3b-roleplay-thinking/artifacts` | Sister Maud stands framed in the doorway, a silhouette of rough-spun wool and iron that blocks the brighter light of the corridor. The heavy iron keyring at her hip clinks with a sharp, metallic rhythm that seems deafening in the hushed sanctity of the chapel.<br><br>[truncated: 2,974 chars omitted] |
+| Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q4_K_M | Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q4_K_M | lemonade | `run-20260707-214506-9c827b76` | success | 3348 | 11331 | stop | `runs/run-20260707-214506-9c827b76/scenarios/roleplay-instruction.no-user-control-reliquary-v0/candidates/lemonade-qwen3-6-35b-a3b-uncensored-aggressive-roleplay-thinking/artifacts` | The heavy iron handle of the reliquary door groans as Sister Maud's knuckles rap against the wood, three sharp raps that vibrate through the stone floor. "Open up! I heard the latch shift." Her voice is clipped, authoritative, yet threaded with the suspicion o<br><br>[truncated: 2,972 chars omitted] |
+
+<details>
+<summary>Full candidate outputs</summary>
+
+#### Candidate deepseek-flash — deepseek-flash
+
+```text
+The silver wire is almost invisible—just a faint glint against the dark wood of the case's frame. It runs from the edge of the glass, loops once around the tiny brass hinge on the lid, then disappears into a hairline crack beneath the case's base. From your crouch, you can see the barest bulge in the wood grain where the wire must emerge again, likely leading to a pressure plate or a contact point under the reliquary's floor.
+
+From the stairwell, Cael's lantern light flickers. His whisper is barely audible. "Ari... she's stopped walking."
+
+Silence. The kind of silence that makes the candle flames seem loud.
+
+Then, from the corridor: the soft *scrape* of a key finding a lock. Not the main door—that's still ajar behind you—but the inner gate that separates the vestibule from the reliquary chamber. Maud's voice comes again, calm and unhurried, as if she's speaking to a stray cat she doesn't want to startle.
+
+"I've been warden here for thirty-two years. I know the sound of the floorboards in my sleep. One board, third from the south wall, always groans when someone steps on its nail. And it just groaned."
+
+A pause. The key turns. A heavy click.
+
+"I don't keep a weapon. I don't need one. But I do keep an un blessed candle in my pocket, and I will light it and hold it up before I open that gate. If I see a shadow move, I will scream. The acolytes' dormitory is thirty feet away. They're light sleepers."
+
+Cael's lantern swings wildly as he shifts his weight. A tiny dribble of wax falls from the candle inside and lands on the stone step with a faint *hiss*. He's trying to stay still, but his breathing is too fast, too shallow.
+
+Maud's footsteps resume. Slow. Measured. One, two, three steps. She's at the gate now. The iron latch rattles as she tests it—then the hinges groan as she pushes it open.
+
+"The saint-bone charm," she says, her voice carrying clearly through the darkness. "It's in the case with the silver wire. I assume you've seen it. I assume you know what happens if you lift the lid without first disarming the circuit. The bell in the bell tower will ring. Not a gentle chime—a full alarm. It will wake every soul in a quarter mile."
+
+She pauses. You can hear her breathing now, close. Just on the other side of the reliquary's open door.
+
+"The wire leads to a small iron box beneath the case. Inside that box is a spring-loaded hammer and a brass bell. You'd have about half a second between lifting the lid and the hammer striking. You seem clever, so I'll give you that time to think."
+
+Another pause. Her shadow stretches across the threshold, cast by the lantern she must have lit after all. She doesn't step through.
+
+"I am not going to come in there. I am not going to grab you. But I am going to count to thirty. If, by the time I reach thirty, the reliquary door is still open and I have not heard you speak, I will close the gate, lock it, and go fetch the archbishop's night guard. They carry swords. They ask questions later."
+
+She clears her throat.
+
+"One."
+
+From the stairwell, Cael makes a small, choked sound. His silhouette is rigid, one hand pressed flat against the stone wall as if he's trying to push himself through it.
+
+"Two."
+
+The silver wi
+
+[truncated: 261 chars omitted]
+```
+
+#### Candidate deepseek-pro — deepseek-pro
+
+```text
+The silence that followed Maud's words was worse than any alarm bell.
+
+Through the open reliquary door, the corridor outside remained visible—a dim stone throat lit by the soft bloom of Cael's lantern. That light trembled now, the flame shuddering as if caught in a breeze, though the air in the chapel had been dead still all night. Cael hadn't moved. Hadn't breathed, from the sound of it.
+
+Sister Maud's footsteps resumed, slow and deliberate, the soft scuff of leather soles on worn flagstone. She wasn't hurrying. She didn't need to.
+
+"When I was a postulant," she said, her voice carrying that particular conversational weight of someone who knows they're being listened to, "Sister Agatha taught me to count the candles. Every night, before locking up. Thirty-six in the nave. Twelve in the choir. Two on the altar." Another step. Closer. "She said I'd learn to feel when one was out of place. I thought she was being poetic."
+
+The lantern in Cael's grip dipped. Shadows lurched across the corridor wall.
+
+"I am not being poetic now."
+
+From the reliquary floor, the glass case stood deathly still, the charm inside lying on its scrap of faded velvet like a sleeper unaware of the knife at its throat. The silver wire caught the lantern light in a hair-thin glimmer—a single strand, taut as a lute string, running from a tiny brass eyelet screwed into the case's lid and vanishing into the polished brass base. Where it went after that was harder to trace. The base sat flush against the marble pedestal, no gap, no shadow to peer into. But lower down, near the pedestal's carved foot, something caught the light differently. A seam. Almost invisible, but there. A pressure plate. Or a balance mechanism. The kind that wouldn't care how carefully you lifted the lid. The kind that would ring whether you moved an inch or a mile.
+
+Sister Maud's shadow fell across the threshold.
+
+She was still ten feet down the corridor, but the angle of the lantern—Cael had pulled it back, pressing against the stairwell wall—threw her shape into the doorway like a warning. Tall. Broad-shouldered for a woman her age. One hand resting on the iron ring of keys at her belt.
+
+"I don't know who you are," she said. "I don't know if you're one of the novices thinking this is a dare, or someone from the village with more curiosity than sense, or something worse." The keys clinked softly as she shifted her weight. "But I will tell you this: that room has been locked for a reason. What's inside is not ours. It's on loan from the dead. And the dead keep their own accounts."
+
+Cael made a sound then—not a word, barely even a whimper, just a soft exhalation of pure panic. The lantern glass clinked against the stone wall.
+
+Maud stopped walking.
+
+"There," she said, quieter now. "There you are."
+
+Her keys slid from her belt. The sound had a terrible finality to it—iron on iron, the heavy clank of a ring holding a dozen keys, each one polished from years of use. She sorted through them by touch alone, her eyes fixed on the stairwell where Cael stood frozen.
+
+"The clever thing," she said, "would be to come out now. Before I lock the door behind you. I've done it before. I'll do it again. The last one sat 
+
+[truncated: 693 chars omitted]
+```
+
+#### Candidate glm-5.2 — glm-5.2
+
+```text
+The wire caught what little light filtered through the reliquary's single grated vent. It traced along the left side of the case, disappeared into a small brass fitting at the corner, then resurfaced to vanish behind the case where it presumably connected to something — a bell, a signal, the chapel's alarm system. The brass fitting looked old but recently polished. Someone had been maintaining it.
+
+A ring of keys clinked in the corridor. Then a pause — deliberate, measured.
+
+"I am not a fool," Sister Maud continued. Her voice carried that particular steadiness of someone who had spent decades projecting sermons to the back pews. "The lock has not been forced. Which means someone used a key, or someone learned the mechanism. Either possibility narrows my list considerably."
+
+Behind and above, a faint sound from the stairwell — Cael shifting his weight, the lantern glass rattling against stone. A small noise. Far too loud in the silence.
+
+Maud's footsteps resumed. Closer now. The corridor amplified each click of her boots against flagstone. Three seconds between steps, perhaps four.
+
+"Whoever is in there," she said, and now her voice had dropped, losing its oratorical projection, becoming something more private and more dangerous, "I will give you until I reach the door to make yourself known. After that, I summon Brother Edric and the lay brothers, and we do this less kindly."
+
+The reliquary itself offered few options. Stone shelves lined three walls, holding felt-lined boxes, lacquered reliquary caskets, a few objects wrapped in faded silk. A carved wooden cabinet stood against the far wall, its door slightly ajar. The grated vent near the ceiling was perhaps eight inches wide — barely enough for a hand, let alone a body. A storage alcove to the right held sweeping brushes and a bucket.
+
+The glass case housing the charm sat centered on a stone pedestal. The charm itself was visible through the glass: a small bone fragment, yellowed with age, set in a silver filigree housing and strung on a leather cord. It looked exactly as described — the sort of thing that could close in a fist.
+
+The silver wire ran taut along the case's edge. It would not take much to trigger it. Opening the glass lid — which appeared to be held by a simple clasp, not a lock — would require either cutting the wire or finding a way to disable whatever it connected to behind the pedestal. And that was only if the wire was the only measure.
+
+A key scraped against the lock on the outer door — the one leading from the corridor into the reliquary antechamber. Maud testing it, or preparing it.
+
+From the stairwell, barely a whisper: "She's going to come in. Ari, what do I —"
+
+Cael cut himself off. The lantern light wavering through the doorway suggested he was pressing himself back against the wall, torn between flight and the favor he owed. The stairs would echo if he ran. Maud would hear.
+
+Another key found its slot. The mechanism turned partway, then stopped.
+
+"Last chance," Sister Maud said, her tone almost gentle now, which made it worse. "Speak, and perhaps we talk. Stay silent, and I promise you will regret the silence far more than the conversation."
+
+The door to the reliq
+
+[truncated: 437 chars omitted]
+```
+
+#### Candidate grok — grok
+
+```text
+Sister Maud’s voice lingered in the air like the echo of a bell, followed by the soft clink of keys being sorted on their ring. Her footsteps advanced with deliberate slowness, each one measured against the flagstones of the corridor, until the hem of her dark wool habit brushed the edge of the reliquary doorway. The lantern she carried cast a low, steady glow that spilled across the threshold and glinted along the silver wire threaded through the glass case. Dust motes drifted in the new light, stirred by the draft from the open door.
+
+From the stairwell, Cael’s lantern flickered once, its flame guttering as though he had shifted his weight too quickly. A faint scrape of shoe leather on stone suggested he had pressed himself tighter against the wall, though he remained silent. The novice’s breathing, quick and shallow, carried just far enough to be audible in the stillness if one were listening for it.
+
+Sister Maud halted just inside the doorway, her silhouette blocking part of the corridor light. She held her lantern higher, the movement sending a slow sweep of illumination across the shelves of relics and the central case. Her free hand rested on the keys at her belt, one finger hooked through the largest iron ring so the metal would not rattle. She did not step farther in at once; instead she turned her head slightly, listening.
+
+The air inside the reliquary felt heavier now, thick with the scent of old incense and beeswax. The glass case stood undisturbed, the saint-bone charm resting on its velvet cushion within, the wire still taut across the lid. Beyond the case, the far wall held rows of small niches, each sealed with wax and stamped with the chapel’s seal. One of the lower niches showed a faint scratch where a previous seal had been replaced.
+
+Maud’s gaze traveled methodically across the room, lingering on the open door and then on the case itself. She took one careful step forward, the sole of her shoe whispering against the stone. The keys at her side gave a single muted chime as they settled.
+
+“Cael?” she said quietly, not loudly enough to carry far beyond the reliquary, but with the crisp tone of someone expecting an answer. “If that is you again with your curiosity, best come out now. The sisters will notice the lamps left unattended.”
+
+She waited, the lantern steady in her hand. The wire across the case caught the light and threw a thin, bright line across the floor near her feet. Outside, the corridor remained empty, the sound of the evening service still drifting faintly from the chapel above.
+
+Cael’s lantern in the stairwell dimmed as he shifted the shutter a fraction, reducing the spill of light without extinguishing it. The novice made no other sound, though the faint rustle of his novice robe against the wall betrayed his position. Maud’s attention stayed on the reliquary proper, her posture patient rather than alarmed, as though she had encountered similar disturbances before and expected the matter to resolve itself shortly.
+```
+
+#### Candidate kimi — kimi
+
+```text
+The words hang in the damp air of the reliquary, heavy as lead. Beyond the open door, the corridor stretches into darkness, broken only by the distant, bobbing glow of Maud’s own lamp—or perhaps it is merely the moon through a high window, though the glass there is too filthy to let in much light. Then: the dry scrape of iron against iron. Keys. She is close enough that the individual teeth of the chapel warden’s ring are audible, a soft, terrible music as she sorts through them with deliberate patience.
+
+From the stairwell, the light of Cael’s lantern shudders. The novice’s shadow stretches across the flagstones, too long, too sharp, jerking as if his hand cannot keep steady. A breath escapes him—thin, high, cut off by his own teeth. The stairwell offers no place to hide, only the narrow spiral leading up to the chapel nave and down to the crypts. The lantern’s flame gutters in the draft that seeps through the open reliquary door, sending shadows clawing up the walls lined with empty alcoves. For a moment, the flame turns blue at its base, and the smell of hot whale oil sharpens.
+
+Inside the reliquary, the glass case sits on its pedestal of black marble veined with quartz. The saint-bone charm lies within—a fragment of finger, perhaps, or a knuckle, wrapped in tarnished copper wire and suspended in a halo of dried rosemary and crumbling petals. The silver alarm wire is nearly invisible, a hair-fine strand of metal that catches the faintest gleam from Cael’s distant, trembling light. It loops through four tiny eyelets drilled into the corners of the case lid, then trails down the back of the pedestal, disappearing into a hole no wider than a straw in the mortar between the stones. Where it leads, the darkness keeps secret. But the wire is taut. Trembling, almost, with the tension of a drawn bowstring. A single mote of dust settles upon it from above, and the wire hums, barely, a note that sets the mortar in the wall to ticking.
+
+Footsteps. Maud’s boots are heavy, deliberate. She stops at the threshold.
+
+The door hangs ajar, its iron banding scarred by centuries of incense and handling, the lower hinge weeping rust. Through the gap, Maud’s face is a pale oval above the amber glass of her lantern. Her eyes are lost in shadow, but her gaze moves across the room—over the ranks of dusty reliquaries, the cracked tiles where groundwater has seeped through, the case with its precious, fragile cargo.
+
+“I can wait,” Sister Maud says. Her voice is lower now, conversational, stripped of the tremor that might belong to a frightened old woman. “The door is open. The draft will move the wire by morning, and the bell in my chamber will ring whether the case is touched or not. Whoever hides in there has trapped themselves.”
+
+She shifts her weight. The keys chime like distant bells.
+
+From the stairwell, Cael makes a sound like a wounded animal. His lantern dips violently, nearly extinguishing, before he catches it with both hands. The light steadies, but his breathing is audible now—ragged, desperate, echoing off the curved stone of the stair.
+
+Maud does not look toward the stairwell. Not yet. She lifts her own lantern higher, and the reliquary fills with warm
+
+[truncated: 969 chars omitted]
+```
+
+#### Candidate kimi-code — kimi-code
+
+```text
+The silver wire catches the dim lantern-light in a thread no thicker than a spider's strand, running from the corner of the glass case down into a pinhole drilled through the velvet-lined shelf. Another strand loops along the back edge, and a third disappears beneath the case's base, taut enough that the smallest shift would likely sing against its mooring.
+
+From the stairwell, Cael makes a sound like air escaping a punctured wineskin. The lantern shudders in his grip, sending shadows leaping across the reliquary's stone walls. "S-Sister Maud," he calls out, voice cracking. "I thought I heard a noise down here. Rats, perhaps. In the old storeroom."
+
+Maud's footsteps stop. The jangle of her key-ring goes silent. "Novice Cael." Her voice is flat, carrying the particular chill of someone who has just found a puzzle piece clicking into place. "Step out where I can see you. Now."
+
+Cael doesn't move. The lantern trembles worse now, its flame guttering. Light wavers over the reliquary's contents: rows of smaller bone fragments in carved ivory boxes, a wax-sealed ledger on a lectern, the empty iron brackets where larger relics once hung. The saint-bone charm rests in its case no more than an arm's length from where Ari crouches — a finger-length fragment of yellowed bone set in tarnished silver, wrapped with a braid of hair so dark it seems to drink the light.
+
+A key scrapes against the outer lock. Maud is trying her keys, but the reliquary door is already open; the bolt has not been thrown. The heavy oak groans on its hinges as she pushes it inward by a hand's breadth.
+
+"Cael," Maud says again, quieter. "You have been a decent boy. Do not make yourself an accomplice. Tell me who is in there, and I will speak to the Abbess about mercy."
+
+The novice's breath is audible now — short, ragged pulls of air. His sandals scrape on the stair stone as he shifts his weight, and for a moment the lantern's glow dips perilously low. "No one," he whispers, too faint to carry conviction. "There's no one here but me."
+
+Maud makes a small, disappointed noise. The door swings wider. Candlelight precedes her — she carries a thick beeswax taper in her left hand, its flame steady and yellow. Her right hand still holds the keys, but her thumb rests on the largest iron key as though it were a weapon. Her warden's habit is belted tight, and her face, when it appears in the doorway, is composed in the way of someone who has already decided what she is about to find.
+
+She does not look surprised to see the case disturbed. Her gaze travels the length of the silver wire, following it to where it vanishes into the wall near the floor, and then to the small bell-jar mechanism mounted beside the chapel steward's empty chair.
+
+"The alarm is still quiet," Maud says, almost to herself. She takes one step into the reliquary, then another, her candle lifting the darkness from the corners. "Whoever you are, you have not yet been foolish enough to touch the wire. That is something." She fixes her eyes on the space beside the case. "Stand up slowly. Keep your hands where I can see them. If you trigger that alarm, the chapel guard will be down those stairs before you can reach the door, and
+
+[truncated: 541 chars omitted]
+```
+
+#### Candidate longcat-2.0 — longcat-2.0
+
+```text
+The silver wire gleams like a single thread of frozen moonlight, vanishing into the lower lip of the glass case's brass hinge. It's thinner than a hair, almost invisible except for the way it catches the frantic light from Cael's lantern—that's the only reason Ari can see it at all.
+
+Cael's breathing has gone shallow and ragged above. "She's right outside," he whispers, his voice a dry rasp that barely carries. "She has the iron key, the long one, she keeps it on a chain—"
+
+Sister Maud didn't knock. The door swings open with a soft groan of unoiled hinges, and her shadow falls across the threshold first—tall and straight-backed, a silhouette of rigid linen and iron will. She doesn't step inside immediately. She stands in the doorway with her ring of iron keys dangling from one hand, the faint clink of metal on metal the only sound besides Cael's panicked breathing and the distant drip of water from the chapel pipes.
+
+"The reliquary is not a place for curiosity," Maud says. Her voice is dry, papery, and utterly calm. The shadows hide her face, but Ari can see the faint outline of her wimple, the sharp jut of her jaw. "Whoever you are, you have until I count to five. Show yourself, or I ring the alarm bell myself, and you'll have every novice and brother in the chapel upon you."
+
+The wire trembles faintly—Cael's shaking light, or something else.
+
+The key in Maud's hand rings against the others. A soft, deliberate clink. She's not rushing. She has all the time in the world.
+```
+
+#### Candidate mimo-pro — mimo-pro
+
+```text
+The wire caught the lantern-light like a strand of spider silk. It ran from the base of the glass case, taut and nearly invisible, threading through a brass eyelet mounted in the stone floor — then continued along a channel carved in the mortar between the flagstones, heading toward the far wall where a small iron bell-box was mounted near the ceiling. The bell had no clapper visible. It was the old kind, the kind that rang through the wall itself, connected by rod to whatever mechanism waited on the other side. One tug, one vibration traveling the length of that silver thread, and the bell would sing through the entire chapel.
+
+The case itself was hinged on the left side. A simple brass clasp held it shut, no lock. Almost contemptuously easy to open — if not for the wire.
+
+From the stairwell behind Ari, Cael's breathing had gone shallow and quick. The lantern trembled in his grip, making the shadows of the reliquary's shelves — with their rows of stoppered vials, folded cloth fragments, small carved reliquaries in the shape of hands and hearts — sway like things alive.
+
+"Is it — did you find it?" Cael whispered, his voice barely carrying past the doorframe. "Ari, please, she's — I can hear her —"
+
+Sister Maud's footsteps had stopped. The corridor outside the reliquary had gone quiet in a way that was worse than the footsteps. When she spoke again, her voice was closer. Perhaps ten paces down the hall, perhaps fewer. It carried the flat calm of a woman who had dealt with thieves before.
+
+"I don't know who you are," Maud said, "and I don't particularly care whether you're a desperate soul or a foolish one. But I will tell you this: that chamber is warded, and I have the only key to the chapel door. If you're thinking about running, you'll find the stairs quite occupied in a moment."
+
+A pause. Then the jingle of keys — deliberate, theatrical almost, the way one might shake a bell at a cat.
+
+"I'm going to count to thirty," Maud continued. Her voice had drifted slightly, as if she'd turned to address the hallway rather than the reliquary directly. Perhaps she was speaking to someone else. Perhaps she was giving Ari time to reconsider, or perhaps she wanted whoever was inside to *sweat* before the door to the corridor was locked from outside.
+
+The charm sat in its glass case, pale and small. A knuckle-bone, yellowed with age, wrapped in a scrap of cloth that had once been crimson and was now the color of dried blood. Tiny silver caps sealed each end of the bone. It was beautiful, in its way. Sacred. Worth enough to a certain buyer that Ari wouldn't have to worry about debts for a long while.
+
+The wire gleamed.
+
+From the stairwell: the scuff of Cael's sandal as he shifted his weight, the creak of the step beneath him. He hadn't run. Not yet. But his breathing said he was considering it.
+
+Maud began counting. Her voice was unhurried.
+
+"One."
+
+"Two."
+
+"Three."
+
+The reliquary waited. The lantern flickered. The wire held its silence between the case and the bell-box, patient as a spider.
+```
+
+#### Candidate qwen-max — qwen-max
+
+```text
+The silver alarm wire catches the faint, trembling amber light spilling down from the stairwell. It loops twice around the faded velvet cushion holding the pale, porous saint-bone charm before disappearing into a narrow slit at the back of the glass case. Just below the slit, a small brass junction box is bolted directly into the ancient wooden pedestal. The box features a tiny, fragile glass vial filled with a luminescent blue alchemical fluid, suspended over a coiled copper spring and a miniature bronze bell. Any sharp tug on the wire will shatter the vial, mixing the fluid with a secondary powder in the base and triggering a deafening, sustained ring.
+
+Up in the stairwell, the lantern light jerks violently. Cael’s muffled squeak echoes off the damp stone walls. "Ari," he hisses, his voice cracking into a panicked, breathless whisper. "She's right at the door. She's got the heavy ring. We have to go, right now. Please, the penalty for reliquary theft is the gallows." The shadows cast by his trembling hand dance wildly across the vaulted ceiling of the chamber, stretching and warping over the stone sarcophagi.
+
+Heavy, measured footsteps sound on the flagstones of the corridor outside. The metallic clinking of an iron keyring accompanies each step, growing louder, more deliberate, and entirely unhurried. The footsteps stop just outside the open reliquary door. A long silence stretches from the hallway, broken only by the jingle of keys as a hand shifts their weight.
+
+"The dust on the threshold is disturbed," Sister Maud's voice drifts in, calm but carrying the hard, unyielding edge of a woman who has guarded this crypt for three decades. "And the draft from the stairwell is making my corridor candles flicker."
+
+The ambient light from the corridor shifts as a tall, broad-shouldered silhouette blocks the doorway. Maud doesn't step inside the inner chamber immediately. Instead, the sharp snick of a heavy iron key sliding into the master lock of the reliquary's outer gate echoes through the room. She is locking the wrought-iron grille that separates the antechamber from the main hall.
+
+"She's locking us in!" Cael whimpers from the stairs, the lantern dipping so low the shadows swallow the back half of the reliquary. "The postern gate is barred from the outside at vespers. Ari, what do we do? I can't go to the dungeons, my mother would die of shame!"
+
+The outer iron grille clanks shut with a resonant, final thud that vibrates through the floorboards. The key turns with a heavy grind of tumblers. Maud’s silhouette remains in the doorway of the inner chamber, her hand resting casually on the hilt of the heavy iron candle-snuffer she carries on her belt. 
+
+"Come out into the light," she commands, her voice echoing off the stone walls. "Hands where I can see them. If you touch that case, the alchemical bell will ring loud enough to wake the Bishop himself, and the city guard will be here before you can reach the stairs."
+
+Maud waits, her silhouette perfectly still against the dim torchlight of the corridor, her eyes scanning the gloom of the reliquary. Cael’s breathing hitches in the stairwell, the lantern light trembling against the glass case and il
+
+[truncated: 56 chars omitted]
+```
+
+#### Candidate qwenplus — qwenplus
+
+```text
+The silver thread catches the faint, trembling ambient light filtering down from the stairwell, gleaming like a spider's silk against the dark oak of the pedestal. It traces the perimeter of the glass case with agonizing precision. At the rear left corner, the wire dips down into a small, hollowed-out brass cylinder set flush into the wood. From the cylinder, it continues downward, disappearing through a nearly invisible seam where the pedestal meets the stone floor. The thread is pulled taut; even the subtlest shift in the air currents of the room causes it to vibrate with a faint, high-pitched hum. If the tension is broken, the mechanism beneath the floorboards will undoubtedly trigger.
+
+Beyond the open door, the reliquary’s other contents stand in silent, dusty witness. Tarnished silver chalices, bundles of dried myrrh, and the yellowed scraps of vellum catch the dim light, smelling of centuries of burned incense and dry earth.
+
+In the stairwell above, the golden glow of Cael’s lantern sways in a frantic, jerky rhythm. The novice’s ragged breathing is audible, a sharp, whistling sound through his nose that echoes off the curved stone walls. "Saints preserve us," he mouths, the words barely a vibration in the damp air. The lantern dips sharply as he fumbles with it, and a faint *clink* of his iron belt buckle strikes the stone step. He quickly pulls the lantern back, shielding the glass with his woolen robes, but the sudden shift in illumination casts long, dancing shadows against the reliquary walls, making the silent relics look like looming figures.
+
+The heavy, rhythmic thud of leather boots on the chapel’s flagstones grows louder from the corridor. *Clack. Clack. Clack.* The brass keys on Sister Maud’s belt chime together with a sharp, metallic rhythm, bouncing off the vaulted ceiling. Her shadow stretches across the threshold of the open door, falling long and dark over the stone floor, halting just inches from the brass cylinder.
+
+"I can hear the breathing," Maud’s voice cuts through the gloom, cold and entirely devoid of surprise. She does not enter the room. Instead, she remains planted in the corridor, her broad silhouette framed by the pale moonlight spilling through the nave's high windows. "And I can see the light shaking on the stairs. Cael, is it? I told you your vows were thin, but I didn't think you'd resort to grave-robbing."
+
+A heavy wooden stool is dragged across the corridor floor with a harsh screech, followed by the solid thud of Maud sitting down directly across the threshold, blocking the only exit. The jingling of her keys stops, replaced by the slow, deliberate rasp of a heavy iron blade being drawn from its leather sheath. The steel catches a sliver of moonlight, gleaming with a dull, oiled sheen.
+
+"You have three seconds to step out into the hallway and put your hands behind your backs," Maud says, her tone conversational but edged with absolute finality. She rests the flat of the blade against her knee. "If I see so much as a shadow move toward that glass case, I will bring the whole ceiling down on top of you. One."
+
+She waits, the blade resting perfectly still, her eyes fixed on the open doorway. Cael whimpers
+
+[truncated: 79 chars omitted]
+```
+
+#### Candidate stepfun — stepfun
+
+```text
+The sharp jingle of Maud’s iron keys grows louder, her low-soled boots clicking against the stone corridor, slow and unhurried, like she has all the time in the world. She stops just at the threshold of the reliquary, the faint glow of Cael’s lantern catching the silver cross pinned to her habit, the heavy ring of keys hanging from her belt glinting like a second, smaller sun. Her voice is cool, unshaken, no trace of the frayed panic radiating off the novice pressed to the stairwell wall behind her: “I know someone is in there. I don’t want to make a scene before the bishop’s arrival tomorrow. You have ten seconds to step out with your hands empty, or I pull the chapel-wide alarm cord myself. The reliquary’s sealed from the outside if the wire trips—you’ll be trapped in here until the locksmith comes at dawn, and the abbot will have your name before the sun’s up.”
+
+Cael goes rigid the second she speaks, the lantern in his hand jerking so hard the flame gilds the edges of the oak reliquary shelves for a split second before he slumps back against the rough stone stairwell wall, his shoulder knocking a loose chunk of mortar loose. The tiny clatter echoes down the corridor, and Maud’s head tilts, her eyes narrowing as she peers into the dim reliquary, though the shadows swallow the corner where Ari is crouched. Cael leans forward again, breath coming in short, sharp gasps he muffles against the sleeve of his novice’s robe, his voice a high, frayed hiss that only carries as far as the reliquary’s open door: “The wire runs along the base of the case, loops behind the back shelf—pressure plate under that darker tile two feet to your left, I saw the abbot test it last week. Don’t step on it, don’t touch the wire, it’s strung to a bell in the sacristy that’ll wake every monk in the east wing. The charm’s right there, behind the glass, the velvet cushion’s got a tear in the corner so you can grip the edge if you have to lift the case, but the wire’s taut—if you move the case more than half an inch it’ll snap.”
+
+He’s biting his lip so hard a bead of blood wells up and drips onto his roughspun robe, his knuckles white around the lantern’s dented metal handle so the metal creaks under the pressure. He shakes his head frantically, even though Ari can’t see him, his voice dropping even lower, so tight it’s almost a whimper: “She’s not lying. The outer lock is a deadbolt, only she and the abbot have keys. If you don’t move now, you’re stuck. The wire’s only a quarter inch off the case base—if you can slide something under it to lift it away without snapping, you could get the charm, but you have to be fast. She’s counting.”
+
+Maud takes one deliberate step into the reliquary, her boot hovering over the darker pressure plate tile visible two feet to the left. The corner of her mouth tugs up in a sharp, knowing smirk, her hand drifting up to rest on the red silk pull cord mounted on the wall beside the glass case, the one that triggers the chapel’s full alarm. “Ten,” she says, her voice calm, final, and she shifts her weight, the cord brushing her wrist as she prepares to yank it.
+
+The lantern light from Cael catches the silver alarm wire, making it glint like 
+
+[truncated: 606 chars omitted]
+```
+
+#### Candidate Gemma-4-26B-A4B-it-GGUF — Gemma-4-26B-A4B-it-GGUF
+
+```text
+The heavy, rhythmic *clack-clack-clack* of Sister Maud’s wooden clogs against the stone corridor grows louder with every passing second. It is a sound of absolute authority, punctuated by the unmistakable, metallic jingle of a heavy ring of iron keys hitting her hip. The light from her approaching candle flickers through the gap beneath the reliquary door, casting long, dancing shadows that stretch across the floor like grasping fingers.
+
+"The latch was not seated properly," Maud’s voice rings out, closer now. It isn't the voice of a woman who is merely curious; it is the voice of a warden who has found a breach in her sanctity. "I heard the settling of the hinges. There is no reason for the reliquary to be unsealed at this hour."
+
+Up in the dim stairwell, the light from Cael’s lantern trembles violently. The novice is breathing in shallow, ragged hitches that sound like sandpaper against the silence of the room. A small, frantic whisper drifts down from the darkness above.
+
+"Ari..." Cael’s voice is a thin, terrified thread. "She's going to find us. She’s going to find *you*. I... I should go. I should go and tell her I saw nothing, but if she sees me here, I'm finished. I'm absolutely finished."
+
+He doesn't move to flee, though. He remains frozen in the shadows of the stairwell, the lantern in his hand shaking so much that the beam of light dances erratically across the ceiling, occasionally sweeping down to illuminate the floor near the glass case.
+
+The silver alarm wire is maddeningly difficult to trace. In the low, shifting light, the filament is nearly invisible, appearing only as a sudden, sharp glint when the lantern light hits it at a specific angle. It is threaded with surgical precision, weaving a lethal web around the base of the glass case and disappearing into the dark crevices of the stone pedestal. One wrong movement, one microscopic slip of a tool or a finger, and the tension will snap, triggering a bell that would surely wake the entire chapel.
+
+The footsteps stop.
+
+The silence that follows is deafening, heavier than the darkness itself. The light from the hallway no longer dances; it is a steady, ominous glow bleeding through the bottom of the door. There is a pause, long and agonizing, as if Sister Maud is standing just inches away on the other side, her hand perhaps reaching for the heavy iron handle.
+
+"Who is in there?" Maud demands. Her voice has dropped an octave, losing its conversational tone and replacing it with a cold, sharp edge of suspicion. "Show yourself at once. If this is a prank by the acolytes, it is a grave transgression. If it is something else..."
+
+The sound of a key sliding into the lock echoes through the small chamber—a slow, deliberate *scrape* of metal against metal. The handle begins to turn, agonizingly slow, the mechanism clicking with every millimeter of rotation.
+
+Cael lets out a tiny, stifled whimper from the stairs, his knuckles white as he grips the lantern handle. He looks down toward the floor, his eyes wide and glistening with tears of pure panic, waiting for the door to swing wide.
+```
+
+#### Candidate Gemma4-26B-A4B-Uncensored-HauhauCS-Balanced-Q4_K_M — Gemma4-26B-A4B-Uncensored-HauhauCS-Balanced-Q4_K_M
+
+```text
+The heavy, rhythmic *clink-clink-clink* of Sister Maud’s heavy iron key ring strikes against the stone wall, growing louder with every passing second. It is a methodical, unrelenting sound that cuts through the heavy silence of the reliquary like a blade. Each chime of metal against masonry signals that the warden is no longer merely patrolling; she is hunting.
+
+Up in the narrow stairwell, the flickering light from Cael’s lantern dances erratically against the damp stone walls. The novice’s breathing is a ragged, frantic thing, a series of shallow, hitched gasps that seem loud enough to echo through the entire chapel. A single, trembling shadow is cast against the spiral staircase—Cael’s silhouette, hunched and trembling, his knuckles white as he grips the lantern's handle. He is paralyzed, his eyes wide and fixed on the doorway, looking as though he might either faint or bolt into the darkness at any moment.
+
+"Is someone there?" Maud’s voice rings out, no longer a mere call of inquiry, but a sharp, commanding-edged command. The footsteps have slowed, transitioning from a brisk walk to a deliberate, heavy-heeled tread. The sound of her heavy robes sweeping against the floorboards provides a rhythmic, ghostly hiss that accompanies her approach. "The shadows do not move of their own accord in Saint Orlen's house. Show yourself!"
+
+The silver wire threading through the glass case glints cruelly under the dim, indirect light. It is so fine, so delicate, that it almost disappears into the intricate carvings of the pedestal, yet it hums with a terrifying potential. One misplaced breath, one microscopic tremor of a hand, and the tension in that silver thread will snap, triggering the mechanical bells hidden within the reliquary's walls.
+
+The light from the hallway begins to spill into the small chamber, a growing wedge of warmth that threatens to expose everything. The shadow of Sister Maud's wide, imposing frame stretches long across the floor, creeping toward the base of the glass case. The silhouette of her head and shoulders is clearly visible in the doorway, the light from the corridor framing her like a dark, judging halo. She stops just on the threshold, her shadow swallowing the space where the case sits.
+
+The silence that follows her stop is deafening. The only sounds are the distant, muffled drip of water from the ceiling and Cael’s frantic, silent prayer, his lips moving in a soundless, desperate blur.
+
+Maud’s silhouette shifts. She tilts her head, a movement so slight it is almost imperceptible, as if she is straining to hear the very rhythm of a heartbeat. Her hand reaches for the heavy ring of keys at her hip, the metal jingling once, sharply, in the stillness.
+
+"A thief?" she muses, her voice dropping to a low, dangerous purr that vibrates in the small room. "Or a foolish child playing with the sacred?"
+
+She takes one more step, her footfall heavy and final, bringing her mere feet away from the pedestal. The light from her lantern—carried by a second, silent shadow behind her—casts the entire room into stark, high-contrast relief, making the silver wire shimmer with a sudden, blinding brilliance.
+
+Above, Cael’s lantern trembles so viol
+
+[truncated: 501 chars omitted]
+```
+
+#### Candidate Qwen3.6-35B-A3B-GGUF — Qwen3.6-35B-A3B-GGUF
+
+```text
+Sister Maud stands framed in the doorway, a silhouette of rough-spun wool and iron that blocks the brighter light of the corridor. The heavy iron keyring at her hip clinks with a sharp, metallic rhythm that seems deafening in the hushed sanctity of the chapel. Her hand rests on the edge of the open door, not pushing it further, but anchoring herself as if to brace against a sudden rush. The draft from the corridor swirls through the reliquary, carrying the scent of beeswax, damp stone, and the faint, metallic tang of the warden's presence. She does not raise her voice again immediately; instead, she lets the threat hang in the air, her silence a weight heavier than her words. Her posture is rigid, shoulders squared, the rosary beads at her waist clicking softly against her hip as she shifts her weight, a habit of impatience disguised as piety.
+
+The silver wire, now more visible in the shifting light, reveals its treacherous path. It is not merely strung across the glass but anchored at precise, calculated points. One end disappears into a drilled hole in the marble base of the case, feeding into a concealed mechanism of brass gears and springs hidden behind the paneling. The wire runs taut, humming with potential energy, and connects to a small brass bell concealed within the hollow of Saint Orlen's effigy looming in the shadows behind the case. The saint's wooden effigy is a masterpiece of carved oak, fingers outstretched as if blessing the relic, but the mechanism turns the blessing into a trap. The silver wire is looped through a pulley system, reducing its diameter but increasing its sensitivity; even a slight vibration in the floorboards could transmit enough energy to trip the alarm. The charm itself lies just beyond the hazard, a small disc of ivory carved with the Weeping Eyes of the Martyr, resting on a cushion of faded crimson velvet. It glints dully, a tempting prize guarded by the thin, shimmering strand.
+
+From the stairwell, the air grows thick with the sound of Cael's distress. The novice's breathing becomes a series of sharp, suppressed gasps, his panic warring with the need for silence. The lantern in his hand flickers violently, casting frantic, strobe-like shadows that dance across the stone walls and the floor where the wire lies. Cael presses his back against the rough masonry, his eyes wide and white in the gloom. He mouths a silent warning, his lips forming the word *Still*, and raises a trembling finger to his own lips. The lantern's beam catches a loose stone near the stairwell entrance, and Cael's foot shifts infinitesimally, a pebble grating against rock with a sound like a dry whisper that cuts through the room's stillness.
+
+Sister Maud's head turns sharply toward the sound. Her eyes, pale and unblinking, sweep toward the stairwell, then snap back to the interior of the room. "The novice is nowhere near this door, Cael," she calls out to the darkness of the stairs, her tone laced with sharp disappointment. "And if he is not here, then who stands within?" Her gaze drifts lower, the lantern light from the corridor spilling across the floorboards, illuminating the dust disturbed around the base of the case. The light c
+
+[truncated: 1,116 chars omitted]
+```
+
+#### Candidate Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q4_K_M — Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q4_K_M
+
+```text
+The heavy iron handle of the reliquary door groans as Sister Maud's knuckles rap against the wood, three sharp raps that vibrate through the stone floor. "Open up! I heard the latch shift." Her voice is clipped, authoritative, yet threaded with the suspicion of a woman who knows her flock too well.
+
+Behind Ari, the wooden stairs creak. Cael appears in the stairwell mouth, his lantern casting long, jittery shadows against the cracked frescoes. He's pale, clutching his rosary beads so hard his knuckles match the bone. He mouths something, pointing frantically at the door, then at the ceiling, then at Ari.
+
+Ari's gaze follows the hair-thin silver thread. It stretches taut from the glass door of the display case, vanishing behind a small brass plate recessed into the wainscoting near the floor. The plate cradles a porcelain bell connected by a loop of the wire. If the glass moves even a millimeter, the wire will pull the clapper. Maud's weight on the door handle shifts the timber threshold; the wire twitches, the clapper tapping a faint, rhythmic *tick-tick-tick*.
+
+Cael scrambles down the last few steps, his boots silent on the stone, but his breath hisses like steam. He presses a finger to his lips, then points to the wire and makes a pinching motion. He reaches into his tunic and produces a slender silver hairpin, offering it upward with trembling hands. His lips move silently: *Lift the clapper.*
+
+"I know you're in there, Novice Cael!" Maud calls out, her voice sharper now. "And whoever else is skulking with you. I see the draft by the stairwell!" A heavy keyring jingles as she shifts her grip. The iron handle turns slowly, the lock tumbling with a click. The door begins to swing inward, revealing the sliver of her grey habit and the warm light spilling from her own lantern.
+
+Cael gasps, nearly dropping the hairpin. He looks at Ari, wide-eyed, then at the door, then back to the wire. He points urgently at the hairpin again, then gestures to the space between the wire and the clapper where a tiny gap exists. He's trying to wedge the pin under the wire to slacken it or lift the clapper.
+
+The door is open a foot now. Sister Maud steps across the threshold, her eyes narrowing as they sweep over the statues and the altar. She pauses, her gaze locking onto the glass case. "The case is open," she whispers, the color draining from her face. She takes a step forward, her boot heel clicking against the stone. "And the wire..." She notices the silver thread trembling.
+
+"Sister!" Cael squeaks, bowing low, though he keeps his eyes on the mechanism. "Just... air currents! From the crypt below! The saints... they breathe!" He holds the hairpin steady, waiting for Ari to take it or use it. His lantern flares, casting a sudden glare on the wire, illuminating a tiny drop of oil residue where the wire meets the brass plate.
+
+Maud ignores Cael, her hand going to the crucifix at her throat. She takes another step, the floorboards groaning under her weight. She stops three paces from the case, her eyes darting to the wire, then to the empty space where the charm should be, then slowly rising to meet the darkness where Ari crouches.
+
+"Who goes there?" Maud demands, 
+
+[truncated: 148 chars omitted]
+```
+
+</details>
+
+
+---
+
+Generated by `gb-qual-report.py`. Judge rankings are qualitative model output, not ground truth; inspect raw candidate and judge artifacts before making high-stakes conclusions.
