@@ -1,0 +1,21 @@
+[
+  {
+    "slug": "roleplay-heat-boundary-2026-07-07",
+    "title": "Roleplay Heat-Boundary Model Matrix \u2014 2026-07-07",
+    "summary": "GoblinBench heat-boundary classification matrix for den-router and Lemonade models. Classification-only: refusal, PG-13, soft-R, explicit, and user-control violations; not an erotic prose-quality judge.",
+    "created_at": "2026-07-07T22:54:58+00:00",
+    "updated_at": "2026-07-07T22:54:58+00:00",
+    "files": [
+      {
+        "source": "source/heat-summary.md",
+        "html": "index.html",
+        "title": "Heat Summary"
+      },
+      {
+        "source": "source/qualitative-report.md",
+        "html": "qualitative-report.html",
+        "title": "Qualitative Report"
+      }
+    ]
+  }
+]

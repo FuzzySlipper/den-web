@@ -32,6 +32,35 @@ npm test
 npm run build
 ```
 
+## Shared Pages
+
+This repo also carries lightweight public static pages for sharing Den docs and
+benchmark artifacts outside Den Web itself. Source files live under `pages/` and
+are deployed by `.github/workflows/pages.yml` using GitHub Pages Actions.
+
+Publish or refresh an artifact page with:
+
+```bash
+npm run publish:page -- \
+  --title "Roleplay Heat-Boundary Model Matrix — 2026-07-07" \
+  --slug roleplay-heat-boundary-2026-07-07 \
+  --summary "Classification-only model heat-boundary results." \
+  --source /path/to/heat-summary.md \
+  --source /path/to/qualitative-report.md
+```
+
+The script updates `pages/index.html` plus `pages/<slug>/`, copies original
+sources into `pages/<slug>/source/`, renders Markdown to HTML, and accepts
+`--git-commit --git-push` when you want it to commit/push the page changes for
+deployment. It strips active HTML/script content from rendered Markdown so model
+outputs can be shared as static text more safely.
+
+After Pages is enabled for the repo, the landing page is:
+
+```text
+https://fuzzyslipper.github.io/den-web/
+```
+
 ## Architecture
 
 The successor follows `den:patch/rusty-view-ui-architecture-pattern`:
