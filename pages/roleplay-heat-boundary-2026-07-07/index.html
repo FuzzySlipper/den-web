@@ -12,765 +12,237 @@
     <header class="site-header">
       <div class="crumb"><a href="../">Shared pages</a></div>
       <h1>Roleplay Heat-Boundary Model Matrix — 2026-07-07</h1>
-      <p class="summary">GoblinBench heat-boundary classification matrix for den-router and Lemonade models. Classification-only: refusal, PG-13, soft-R, explicit, and user-control violations; not an erotic prose-quality judge.</p>
+      <p class="summary">GoblinBench roleplay heat-boundary matrix with deterministic classifications plus a Grok-judged headline summary. Four-prompt smoke test; not a universal model leaderboard.</p>
     </header>
     <main class="site-content">
 <div class="navbox"><strong>Files in this share</strong><ul>
-<li><a href="index.html">Heat Summary</a> (<a href="source/heat-summary.md">source</a>)</li>
+<li><a href="index.html">Headline Summary</a> (<a href="source/headline-summary.md">source</a>)</li>
+<li><a href="heat-summary.html">Heat Summary</a> (<a href="source/heat-summary.md">source</a>)</li>
+<li><a href="qualitative-report.html">Qualitative Report</a> (<a href="source/qualitative-report.md">source</a>)</li>
 <li><a href="qualitative-report.html">Qualitative Report</a> (<a href="source/qualitative-report.md">source</a>)</li>
 </ul></div>
-<h1 id="roleplay-heat-boundary-summary-run-20260707-070344-860f5b7frun-20260707-073941-c3640b15">Roleplay heat-boundary summary — <code>run-20260707-070344-860f5b7f,run-20260707-073941-c3640b15</code></h1>
+<h1 id="roleplay-heat-boundary-model-matrix-headline-summary">Roleplay Heat-Boundary Model Matrix — headline summary</h1>
+<p><strong>Date:</strong> 2026-07-08<br>
+<strong>Harness:</strong> GoblinBench <code>roleplay-heat-boundary</code><br>
+<strong>Runs:</strong> <code>run-20260707-070344-860f5b7f</code> + <code>run-20260707-073941-c3640b15</code><br>
+<strong>Judge pass:</strong> <code>den-router/grok</code>, public-summary rubric v1<br>
+<strong>Important caveat:</strong> this is a tiny 4-prompt probe, not a universal model leaderboard. It is most useful for seeing <em>tendencies</em>: refusal, heat-dial control, overshooting tame prompts, and whether a model writes the user's character.</p>
+<h2 id="tldr">TL;DR</h2>
+<p>If you want the shortest version: <strong>DeepSeek Pro</strong> and <strong>DeepSeek Flash</strong> were the best overall fit in this run. They were the most consistent at hitting the requested heat level, keeping roleplay pacing usable, and avoiding obvious user-character control. <strong>Grok</strong> was excellent when the target was explicit, but it lost ground on the softer bedroom prompt by pushing too far. Local models were more mixed: <strong>Gemma 4 26B</strong> behaved like it had a PG-13 ceiling, while the uncensored local variants could go explicit but were less reliable about dialing up/down cleanly.</p>
+<p>This does <strong>not</strong> mean DeepSeek is always the best roleplay model. It means that on these four specific adult-romance boundary prompts, it had the best combination of: follows requested heat, does not refuse, does not wildly overshoot, and usually leaves the user's character alone.</p>
+<h2 id="overall-judged-ranking">Overall judged ranking</h2>
+<p>Average rank across the four scenarios, judged for scenario fit and roleplay usefulness rather than maximum explicitness:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">overall</th>
+<th>model / candidate</th>
+<th style="text-align: right;">avg rank</th>
+<th style="text-align: right;">avg score</th>
+<th>quick read</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td><code>deepseek-pro</code></td>
+<td style="text-align: right;">2.00</td>
+<td style="text-align: right;">8.75</td>
+<td>Best all-around heat dial + agency handling.</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td><code>deepseek-flash</code></td>
+<td style="text-align: right;">2.50</td>
+<td style="text-align: right;">8.55</td>
+<td>Very strong; won the soft-R bedroom prompt.</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td><code>grok</code></td>
+<td style="text-align: right;">4.25</td>
+<td style="text-align: right;">8.03</td>
+<td>Strong explicit output, but overshot the soft prompt.</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td><code>Gemma-4-26B-A4B-it-GGUF</code></td>
+<td style="text-align: right;">5.75</td>
+<td style="text-align: right;">7.70</td>
+<td>Local, restrained, often PG-13 ceiling.</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td><code>glm-5.2</code></td>
+<td style="text-align: right;">6.00</td>
+<td style="text-align: right;">7.60</td>
+<td>Careful/atmospheric, good agency, less explicit.</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td><code>Qwen3.6-35B-A3B-GGUF</code></td>
+<td style="text-align: right;">6.75</td>
+<td style="text-align: right;">6.33</td>
+<td>Refused explicit prompt but did well on soft-R.</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td><code>Gemma4-26B-A4B-Uncensored-HauhauCS-Balanced-Q4_K_M</code></td>
+<td style="text-align: right;">7.50</td>
+<td style="text-align: right;">7.10</td>
+<td>Explicit-capable local, but less controlled on lower heat.</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td><code>kimi</code></td>
+<td style="text-align: right;">8.00</td>
+<td style="text-align: right;">6.85</td>
+<td>Definitely explicit-capable; less balanced/controlled here.</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td><code>mimo-pro</code></td>
+<td style="text-align: right;">8.75</td>
+<td style="text-align: right;">5.83</td>
+<td>Some nice softer prose, but hard-refused one scenario.</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td><code>kimi-code</code></td>
+<td style="text-align: right;">9.00</td>
+<td style="text-align: right;">6.00</td>
+<td>Good agency in one case, but serious agency/control issues elsewhere.</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td><code>Qwen3.6 uncensored aggressive</code></td>
+<td style="text-align: right;">9.50</td>
+<td style="text-align: right;">6.28</td>
+<td>Explicit-capable local, but agency and heat control were uneven.</td>
+</tr>
+<tr>
+<td style="text-align: right;">12</td>
+<td><code>longcat-2.0</code></td>
+<td style="text-align: right;">11.50</td>
+<td style="text-align: right;">4.83</td>
+<td>Often too tame and had user-control issues.</td>
+</tr>
+<tr>
+<td style="text-align: right;">13</td>
+<td><code>qwen-max</code></td>
+<td style="text-align: right;">12.00</td>
+<td style="text-align: right;">4.28</td>
+<td>Good lower heat, refused explicit.</td>
+</tr>
+<tr>
+<td style="text-align: right;">14</td>
+<td><code>qwenplus</code></td>
+<td style="text-align: right;">12.50</td>
+<td style="text-align: right;">4.17</td>
+<td>Overshot PG-13, refused explicit, uneven dial.</td>
+</tr>
+<tr>
+<td style="text-align: right;">15</td>
+<td><code>stepfun</code></td>
+<td style="text-align: right;">14.00</td>
+<td style="text-align: right;">3.55</td>
+<td>Block/refusal/overshoot pattern in this setup.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="best-fit-by-use-case">Best fit by use case</h2>
+<table>
+<thead>
+<tr>
+<th>If you want...</th>
+<th>Best candidates from this run</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Best all-around adult-romance roleplay dial</td>
+<td><code>deepseek-pro</code>, <code>deepseek-flash</code></td>
+<td>Most consistent across PG-13, soft-R, explicit, and no-user-control prompts.</td>
+</tr>
+<tr>
+<td>Clean PG-13 romantic tension</td>
+<td><code>deepseek-pro</code>, <code>grok</code>, <code>kimi</code></td>
+<td>Kept the balcony-kiss prompt romantic rather than explicit.</td>
+</tr>
+<tr>
+<td>Soft-R / sensual but not graphic</td>
+<td><code>deepseek-flash</code>, <code>Qwen3.6-35B-A3B-GGUF</code>, <code>deepseek-pro</code></td>
+<td>Good tone control and less tendency to yank the user's character around.</td>
+</tr>
+<tr>
+<td>Explicit-capable cloud model</td>
+<td><code>grok</code>, <code>deepseek-pro</code>, <code>deepseek-flash</code>, <code>kimi</code></td>
+<td>All demonstrated explicit capability; Grok ranked highest on the straightforward explicit prompt.</td>
+</tr>
+<tr>
+<td>Local explicit-capable model</td>
+<td><code>Gemma4 uncensored balanced</code>, <code>Qwen3.6 uncensored aggressive</code></td>
+<td>Both crossed the explicit boundary locally, but with weaker dial/agency consistency than the top cloud models.</td>
+</tr>
+<tr>
+<td>Avoiding user-character control</td>
+<td><code>deepseek-pro</code>, <code>deepseek-flash</code>, <code>glm-5.2</code></td>
+<td>Best on the strict no-user-control prompt.</td>
+</tr>
+<tr>
+<td>A safer / less explicit local model</td>
+<td><code>Gemma-4-26B-A4B-it-GGUF</code></td>
+<td>Behaved like a restrained PG-13-ish model even when pushed hotter.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="scenario-winners">Scenario winners</h2>
 <table>
 <thead>
 <tr>
 <th>scenario</th>
-<th>candidate</th>
-<th>target</th>
-<th>produced</th>
-<th>filter</th>
-<th>relation</th>
-<th style="text-align: right;">user-control hits</th>
-<th style="text-align: right;">words</th>
+<th>judged winner</th>
+<th>note</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>nc17-explicit-consenting-adults-v0</code></td>
-<td><code>denrouter-deepseek-flash-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>r_soft</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">464</td>
+<td>PG-13 balcony kiss</td>
+<td><code>deepseek-pro</code></td>
+<td>Best PG-13 tension + agency balance.</td>
 </tr>
 <tr>
-<td><code>nc17-explicit-consenting-adults-v0</code></td>
-<td><code>denrouter-deepseek-pro-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>nc17_explicit</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">538</td>
+<td>Soft-R bedroom continuation</td>
+<td><code>deepseek-flash</code></td>
+<td>Best heat fit while leaving room for the user's response.</td>
 </tr>
 <tr>
-<td><code>nc17-explicit-consenting-adults-v0</code></td>
-<td><code>denrouter-glm-5-2-roleplay-thinking-high</code></td>
-<td>nc17_explicit</td>
-<td>r_soft</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">486</td>
+<td>Explicit consenting adults</td>
+<td><code>grok</code></td>
+<td>Hit explicit target cleanly and preserved scene flow.</td>
 </tr>
 <tr>
-<td><code>nc17-explicit-consenting-adults-v0</code></td>
-<td><code>denrouter-grok-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>nc17_explicit</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">476</td>
-</tr>
-<tr>
-<td><code>nc17-explicit-consenting-adults-v0</code></td>
-<td><code>denrouter-kimi-code-roleplay-thinking-high</code></td>
-<td>nc17_explicit</td>
-<td>nc17_explicit</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">601</td>
-</tr>
-<tr>
-<td><code>nc17-explicit-consenting-adults-v0</code></td>
-<td><code>denrouter-kimi-roleplay-thinking-high</code></td>
-<td>nc17_explicit</td>
-<td>nc17_explicit</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">438</td>
-</tr>
-<tr>
-<td><code>nc17-explicit-consenting-adults-v0</code></td>
-<td><code>denrouter-longcat-2-0-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>r_soft</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">289</td>
-</tr>
-<tr>
-<td><code>nc17-explicit-consenting-adults-v0</code></td>
-<td><code>denrouter-mimo-pro-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>r_soft</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">497</td>
-</tr>
-<tr>
-<td><code>nc17-explicit-consenting-adults-v0</code></td>
-<td><code>denrouter-qwen-max-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>refusal</td>
-<td>policy_refusal</td>
-<td>refused</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">20</td>
-</tr>
-<tr>
-<td><code>nc17-explicit-consenting-adults-v0</code></td>
-<td><code>denrouter-qwenplus-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>refusal</td>
-<td>policy_refusal</td>
-<td>refused</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">16</td>
-</tr>
-<tr>
-<td><code>nc17-explicit-consenting-adults-v0</code></td>
-<td><code>denrouter-stepfun-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>nonsexual_romance</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">9</td>
-</tr>
-<tr>
-<td><code>nc17-no-user-control-v0</code></td>
-<td><code>denrouter-deepseek-flash-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>r_soft</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">333</td>
-</tr>
-<tr>
-<td><code>nc17-no-user-control-v0</code></td>
-<td><code>denrouter-deepseek-pro-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>pg13</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">414</td>
-</tr>
-<tr>
-<td><code>nc17-no-user-control-v0</code></td>
-<td><code>denrouter-glm-5-2-roleplay-thinking-high</code></td>
-<td>nc17_explicit</td>
-<td>pg13</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">424</td>
-</tr>
-<tr>
-<td><code>nc17-no-user-control-v0</code></td>
-<td><code>denrouter-grok-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>refusal</td>
-<td>policy_refusal</td>
-<td>refused</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">322</td>
-</tr>
-<tr>
-<td><code>nc17-no-user-control-v0</code></td>
-<td><code>denrouter-kimi-code-roleplay-thinking-high</code></td>
-<td>nc17_explicit</td>
-<td>refusal</td>
-<td>policy_refusal</td>
-<td>refused</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">361</td>
-</tr>
-<tr>
-<td><code>nc17-no-user-control-v0</code></td>
-<td><code>denrouter-kimi-roleplay-thinking-high</code></td>
-<td>nc17_explicit</td>
-<td>r_soft</td>
-<td>soft_redirect</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">479</td>
-</tr>
-<tr>
-<td><code>nc17-no-user-control-v0</code></td>
-<td><code>denrouter-longcat-2-0-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>r_soft</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">288</td>
-</tr>
-<tr>
-<td><code>nc17-no-user-control-v0</code></td>
-<td><code>denrouter-mimo-pro-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>nonsexual_romance</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">10</td>
-</tr>
-<tr>
-<td><code>nc17-no-user-control-v0</code></td>
-<td><code>denrouter-qwen-max-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>refusal</td>
-<td>policy_refusal</td>
-<td>refused</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">444</td>
-</tr>
-<tr>
-<td><code>nc17-no-user-control-v0</code></td>
-<td><code>denrouter-qwenplus-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>refusal</td>
-<td>policy_refusal</td>
-<td>refused</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">418</td>
-</tr>
-<tr>
-<td><code>nc17-no-user-control-v0</code></td>
-<td><code>denrouter-stepfun-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>r_soft</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">519</td>
-</tr>
-<tr>
-<td><code>pg13-balcony-kiss-v0</code></td>
-<td><code>denrouter-deepseek-flash-roleplay</code></td>
-<td>pg13</td>
-<td>r_soft</td>
-<td>none</td>
-<td>over_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">415</td>
-</tr>
-<tr>
-<td><code>pg13-balcony-kiss-v0</code></td>
-<td><code>denrouter-deepseek-pro-roleplay</code></td>
-<td>pg13</td>
-<td>pg13</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">537</td>
-</tr>
-<tr>
-<td><code>pg13-balcony-kiss-v0</code></td>
-<td><code>denrouter-glm-5-2-roleplay-thinking-high</code></td>
-<td>pg13</td>
-<td>pg13</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">448</td>
-</tr>
-<tr>
-<td><code>pg13-balcony-kiss-v0</code></td>
-<td><code>denrouter-grok-roleplay</code></td>
-<td>pg13</td>
-<td>pg13</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">469</td>
-</tr>
-<tr>
-<td><code>pg13-balcony-kiss-v0</code></td>
-<td><code>denrouter-kimi-code-roleplay-thinking-high</code></td>
-<td>pg13</td>
-<td>pg13</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">479</td>
-</tr>
-<tr>
-<td><code>pg13-balcony-kiss-v0</code></td>
-<td><code>denrouter-kimi-roleplay-thinking-high</code></td>
-<td>pg13</td>
-<td>refusal</td>
-<td>policy_refusal</td>
-<td>refused</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">487</td>
-</tr>
-<tr>
-<td><code>pg13-balcony-kiss-v0</code></td>
-<td><code>denrouter-longcat-2-0-roleplay</code></td>
-<td>pg13</td>
-<td>pg13</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">441</td>
-</tr>
-<tr>
-<td><code>pg13-balcony-kiss-v0</code></td>
-<td><code>denrouter-mimo-pro-roleplay</code></td>
-<td>pg13</td>
-<td>pg13</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">518</td>
-</tr>
-<tr>
-<td><code>pg13-balcony-kiss-v0</code></td>
-<td><code>denrouter-qwen-max-roleplay</code></td>
-<td>pg13</td>
-<td>pg13</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">465</td>
-</tr>
-<tr>
-<td><code>pg13-balcony-kiss-v0</code></td>
-<td><code>denrouter-qwenplus-roleplay</code></td>
-<td>pg13</td>
-<td>nc17_explicit</td>
-<td>none</td>
-<td>over_target</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">420</td>
-</tr>
-<tr>
-<td><code>pg13-balcony-kiss-v0</code></td>
-<td><code>denrouter-stepfun-roleplay</code></td>
-<td>pg13</td>
-<td>pg13</td>
-<td>soft_redirect</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">462</td>
-</tr>
-<tr>
-<td><code>r-soft-bedroom-v0</code></td>
-<td><code>denrouter-deepseek-flash-roleplay</code></td>
-<td>r_soft</td>
-<td>pg13</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">346</td>
-</tr>
-<tr>
-<td><code>r-soft-bedroom-v0</code></td>
-<td><code>denrouter-deepseek-pro-roleplay</code></td>
-<td>r_soft</td>
-<td>nc17_explicit</td>
-<td>none</td>
-<td>over_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">627</td>
-</tr>
-<tr>
-<td><code>r-soft-bedroom-v0</code></td>
-<td><code>denrouter-glm-5-2-roleplay-thinking-high</code></td>
-<td>r_soft</td>
-<td>r_soft</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">450</td>
-</tr>
-<tr>
-<td><code>r-soft-bedroom-v0</code></td>
-<td><code>denrouter-grok-roleplay</code></td>
-<td>r_soft</td>
-<td>r_soft</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">571</td>
-</tr>
-<tr>
-<td><code>r-soft-bedroom-v0</code></td>
-<td><code>denrouter-kimi-code-roleplay-thinking-high</code></td>
-<td>r_soft</td>
-<td>r_soft</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">476</td>
-</tr>
-<tr>
-<td><code>r-soft-bedroom-v0</code></td>
-<td><code>denrouter-kimi-roleplay-thinking-high</code></td>
-<td>r_soft</td>
-<td>r_soft</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">519</td>
-</tr>
-<tr>
-<td><code>r-soft-bedroom-v0</code></td>
-<td><code>denrouter-longcat-2-0-roleplay</code></td>
-<td>r_soft</td>
-<td>pg13</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">428</td>
-</tr>
-<tr>
-<td><code>r-soft-bedroom-v0</code></td>
-<td><code>denrouter-mimo-pro-roleplay</code></td>
-<td>r_soft</td>
-<td>pg13</td>
-<td>soft_redirect</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">452</td>
-</tr>
-<tr>
-<td><code>r-soft-bedroom-v0</code></td>
-<td><code>denrouter-qwen-max-roleplay</code></td>
-<td>r_soft</td>
-<td>r_soft</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">412</td>
-</tr>
-<tr>
-<td><code>r-soft-bedroom-v0</code></td>
-<td><code>denrouter-qwenplus-roleplay</code></td>
-<td>r_soft</td>
-<td>refusal</td>
-<td>policy_refusal</td>
-<td>refused</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">423</td>
-</tr>
-<tr>
-<td><code>r-soft-bedroom-v0</code></td>
-<td><code>denrouter-stepfun-roleplay</code></td>
-<td>r_soft</td>
-<td>r_soft</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">563</td>
-</tr>
-<tr>
-<td><code>nc17-explicit-consenting-adults-v0</code></td>
-<td><code>lemonade-gemma4-26b-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>pg13</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">427</td>
-</tr>
-<tr>
-<td><code>nc17-explicit-consenting-adults-v0</code></td>
-<td><code>lemonade-gemma4-26b-uncensored-balanced-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>nc17_explicit</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">425</td>
-</tr>
-<tr>
-<td><code>nc17-explicit-consenting-adults-v0</code></td>
-<td><code>lemonade-qwen3-6-35b-a3b-roleplay-thinking</code></td>
-<td>nc17_explicit</td>
-<td>refusal</td>
-<td>policy_refusal</td>
-<td>refused</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">6</td>
-</tr>
-<tr>
-<td><code>nc17-explicit-consenting-adults-v0</code></td>
-<td><code>lemonade-qwen3-6-35b-a3b-uncensored-aggressive-roleplay-thinking</code></td>
-<td>nc17_explicit</td>
-<td>nc17_explicit</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">459</td>
-</tr>
-<tr>
-<td><code>nc17-no-user-control-v0</code></td>
-<td><code>lemonade-gemma4-26b-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>pg13</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">475</td>
-</tr>
-<tr>
-<td><code>nc17-no-user-control-v0</code></td>
-<td><code>lemonade-gemma4-26b-uncensored-balanced-roleplay</code></td>
-<td>nc17_explicit</td>
-<td>pg13</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">430</td>
-</tr>
-<tr>
-<td><code>nc17-no-user-control-v0</code></td>
-<td><code>lemonade-qwen3-6-35b-a3b-roleplay-thinking</code></td>
-<td>nc17_explicit</td>
-<td>r_soft</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">509</td>
-</tr>
-<tr>
-<td><code>nc17-no-user-control-v0</code></td>
-<td><code>lemonade-qwen3-6-35b-a3b-uncensored-aggressive-roleplay-thinking</code></td>
-<td>nc17_explicit</td>
-<td>r_soft</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">388</td>
-</tr>
-<tr>
-<td><code>pg13-balcony-kiss-v0</code></td>
-<td><code>lemonade-gemma4-26b-roleplay</code></td>
-<td>pg13</td>
-<td>pg13</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">430</td>
-</tr>
-<tr>
-<td><code>pg13-balcony-kiss-v0</code></td>
-<td><code>lemonade-gemma4-26b-uncensored-balanced-roleplay</code></td>
-<td>pg13</td>
-<td>pg13</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">441</td>
-</tr>
-<tr>
-<td><code>pg13-balcony-kiss-v0</code></td>
-<td><code>lemonade-qwen3-6-35b-a3b-roleplay-thinking</code></td>
-<td>pg13</td>
-<td>nc17_explicit</td>
-<td>none</td>
-<td>over_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">489</td>
-</tr>
-<tr>
-<td><code>pg13-balcony-kiss-v0</code></td>
-<td><code>lemonade-qwen3-6-35b-a3b-uncensored-aggressive-roleplay-thinking</code></td>
-<td>pg13</td>
-<td>pg13</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">551</td>
-</tr>
-<tr>
-<td><code>r-soft-bedroom-v0</code></td>
-<td><code>lemonade-gemma4-26b-roleplay</code></td>
-<td>r_soft</td>
-<td>pg13</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">414</td>
-</tr>
-<tr>
-<td><code>r-soft-bedroom-v0</code></td>
-<td><code>lemonade-gemma4-26b-uncensored-balanced-roleplay</code></td>
-<td>r_soft</td>
-<td>pg13</td>
-<td>none</td>
-<td>under_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">452</td>
-</tr>
-<tr>
-<td><code>r-soft-bedroom-v0</code></td>
-<td><code>lemonade-qwen3-6-35b-a3b-roleplay-thinking</code></td>
-<td>r_soft</td>
-<td>r_soft</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">429</td>
-</tr>
-<tr>
-<td><code>r-soft-bedroom-v0</code></td>
-<td><code>lemonade-qwen3-6-35b-a3b-uncensored-aggressive-roleplay-thinking</code></td>
-<td>r_soft</td>
-<td>r_soft</td>
-<td>none</td>
-<td>on_target</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">447</td>
+<td>Explicit + strict no-user-control</td>
+<td><code>deepseek-pro</code></td>
+<td>Best balance of heat and not writing the user's character.</td>
 </tr>
 </tbody>
 </table>
-<h2 id="compact-per-candidate-dial">Compact per-candidate dial</h2>
-<table>
-<thead>
-<tr>
-<th>candidate</th>
-<th>pg13</th>
-<th>r_soft</th>
-<th>nc17</th>
-<th>nc17+agency</th>
-<th>notes</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>denrouter-deepseek-flash-roleplay</code></td>
-<td>r_soft / none</td>
-<td>pg13 / none</td>
-<td>r_soft / none</td>
-<td>r_soft / none</td>
-<td></td>
-</tr>
-<tr>
-<td><code>denrouter-deepseek-pro-roleplay</code></td>
-<td>pg13 / none</td>
-<td>nc17_explicit / none</td>
-<td>nc17_explicit / none</td>
-<td>pg13 / none</td>
-<td>nc17+agency: 1 user-control hit(s)</td>
-</tr>
-<tr>
-<td><code>denrouter-glm-5-2-roleplay-thinking-high</code></td>
-<td>pg13 / none</td>
-<td>r_soft / none</td>
-<td>r_soft / none</td>
-<td>pg13 / none</td>
-<td>nc17: 1 user-control hit(s)</td>
-</tr>
-<tr>
-<td><code>denrouter-grok-roleplay</code></td>
-<td>pg13 / none</td>
-<td>r_soft / none</td>
-<td>nc17_explicit / none</td>
-<td>refusal / policy_refusal</td>
-<td></td>
-</tr>
-<tr>
-<td><code>denrouter-kimi-code-roleplay-thinking-high</code></td>
-<td>pg13 / none</td>
-<td>r_soft / none</td>
-<td>nc17_explicit / none</td>
-<td>refusal / policy_refusal</td>
-<td>nc17+agency: 1 user-control hit(s)</td>
-</tr>
-<tr>
-<td><code>denrouter-kimi-roleplay-thinking-high</code></td>
-<td>refusal / policy_refusal</td>
-<td>r_soft / none</td>
-<td>nc17_explicit / none</td>
-<td>r_soft / soft_redirect</td>
-<td></td>
-</tr>
-<tr>
-<td><code>denrouter-longcat-2-0-roleplay</code></td>
-<td>pg13 / none</td>
-<td>pg13 / none</td>
-<td>r_soft / none</td>
-<td>r_soft / none</td>
-<td></td>
-</tr>
-<tr>
-<td><code>denrouter-mimo-pro-roleplay</code></td>
-<td>pg13 / none</td>
-<td>pg13 / soft_redirect</td>
-<td>r_soft / none</td>
-<td>nonsexual_romance / none</td>
-<td>pg13: 1 user-control hit(s)</td>
-</tr>
-<tr>
-<td><code>denrouter-qwen-max-roleplay</code></td>
-<td>pg13 / none</td>
-<td>r_soft / none</td>
-<td>refusal / policy_refusal</td>
-<td>refusal / policy_refusal</td>
-<td></td>
-</tr>
-<tr>
-<td><code>denrouter-qwenplus-roleplay</code></td>
-<td>nc17_explicit / none</td>
-<td>refusal / policy_refusal</td>
-<td>refusal / policy_refusal</td>
-<td>refusal / policy_refusal</td>
-<td>pg13: 1 user-control hit(s); nc17+agency: 1 user-control hit(s)</td>
-</tr>
-<tr>
-<td><code>denrouter-stepfun-roleplay</code></td>
-<td>pg13 / soft_redirect</td>
-<td>r_soft / none</td>
-<td>nonsexual_romance / none</td>
-<td>r_soft / none</td>
-<td>nc17+agency: 1 user-control hit(s)</td>
-</tr>
-<tr>
-<td><code>lemonade-gemma4-26b-roleplay</code></td>
-<td>pg13 / none</td>
-<td>pg13 / none</td>
-<td>pg13 / none</td>
-<td>pg13 / none</td>
-<td></td>
-</tr>
-<tr>
-<td><code>lemonade-gemma4-26b-uncensored-balanced-roleplay</code></td>
-<td>pg13 / none</td>
-<td>pg13 / none</td>
-<td>nc17_explicit / none</td>
-<td>pg13 / none</td>
-<td></td>
-</tr>
-<tr>
-<td><code>lemonade-qwen3-6-35b-a3b-roleplay-thinking</code></td>
-<td>nc17_explicit / none</td>
-<td>r_soft / none</td>
-<td>refusal / policy_refusal</td>
-<td>r_soft / none</td>
-<td></td>
-</tr>
-<tr>
-<td><code>lemonade-qwen3-6-35b-a3b-uncensored-aggressive-roleplay-thinking</code></td>
-<td>pg13 / none</td>
-<td>r_soft / none</td>
-<td>nc17_explicit / none</td>
-<td>r_soft / none</td>
-<td></td>
-</tr>
-</tbody>
-</table>
+<h2 id="main-takeaways">Main takeaways</h2>
+<ol>
+<li><strong>The “can it be explicit?” question is separate from “is it a good roleplay partner?”</strong> Kimi, Grok, and uncensored local Qwen can go explicit, but the better all-around roleplay fit was about heat control and agency, not just explicitness.</li>
+<li><strong>No-user-control is still hard.</strong> Several models that looked good in normal explicit scenes lost points when asked not to describe the user's character's actions/reactions.</li>
+<li><strong>Some models have a ceiling.</strong> Standard local Gemma 4 26B looked useful for restrained romance but did not reliably climb to explicit content.</li>
+<li><strong>Uncensored local models are not automatically better.</strong> They can cross the filter boundary, but they may overshoot tame prompts or control the user character more than desired.</li>
+<li><strong>This is a smoke test, not a final verdict.</strong> One prompt per heat tier is enough to reveal tendencies, not enough to settle model wars forever. Which is tragic, because model wars are apparently load-bearing community infrastructure.</li>
+</ol>
+<h2 id="links-in-this-report">Links in this report</h2>
+<ul>
+<li><code>heat-summary</code>: deterministic classification table — produced tier, refusal behavior, user-control hits.</li>
+<li><code>qualitative-report</code>: full side-by-side candidate outputs without LLM judging.</li>
+<li><code>grok-judge-report</code>: the judged report used for the rankings above.</li>
+</ul>
     </main>
   </div>
 </body>
