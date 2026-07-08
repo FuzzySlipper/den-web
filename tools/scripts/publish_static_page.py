@@ -30,6 +30,73 @@ ROOT = Path(__file__).resolve().parents[2]
 PAGES_DIR = ROOT / "pages"
 MANIFEST = PAGES_DIR / "pages-manifest.json"
 STYLE = PAGES_DIR / "assets" / "page-style.css"
+STYLE_CSS = """:root {
+  color-scheme: light dark;
+  --bg:#101217;
+  --panel:#181c24;
+  --panel-2:#202636;
+  --text:#f3f5f7;
+  --muted:#aeb6c2;
+  --line:#303747;
+  --accent:#a78bfa;
+  --code:#0b0d12;
+  --shadow: 0 18px 40px rgb(0 0 0 / 0.24);
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow-wrap: anywhere; }
+a { color: var(--accent); text-underline-offset: 0.18em; }
+.site-shell { max-width: 1180px; margin: 0 auto; padding: 28px 18px 64px; }
+.site-header { border-bottom: 1px solid var(--line); margin-bottom: 24px; padding-bottom: 18px; }
+.crumb { color: var(--muted); font-size: 0.9rem; margin-bottom: 8px; }
+h1, h2, h3 { line-height: 1.18; overflow-wrap: anywhere; }
+h1 { margin: 0 0 10px; font-size: clamp(2rem, 5vw, 3.4rem); }
+h2 { margin-top: 2rem; }
+.summary { color: var(--muted); font-size: 1.08rem; max-width: 80ch; }
+.card-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); }
+.card, .navbox { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.card h2, .card h3 { margin-top: 0; }
+.navbox { margin: 18px 0 24px; }
+.navbox ul { margin: 8px 0 0; padding-left: 22px; }
+.table-scroll { border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); margin: 18px 0; max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
+.table-scroll:focus { outline: 2px solid var(--accent); outline-offset: 3px; }
+.table-scroll table { margin: 0; }
+table { border-collapse: separate; border-spacing: 0; width: 100%; }
+th, td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 7px 9px; text-align: left; vertical-align: top; }
+th:first-child, td:first-child { border-left: 0; }
+th:last-child, td:last-child { border-right: 0; }
+tr:last-child td { border-bottom: 0; }
+th { background: var(--panel-2); position: sticky; top: 0; z-index: 1; }
+pre, code { background: var(--code); border-radius: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { padding: 0.12em 0.25em; word-break: break-word; }
+pre { overflow: auto; padding: 14px; white-space: pre-wrap; }
+blockquote { border-left: 4px solid var(--line); color: var(--muted); margin-left: 0; padding-left: 14px; }
+details { border: 1px solid var(--line); border-radius: 10px; margin: 12px 0; padding: 10px 12px; }
+summary { cursor: pointer; }
+.meta { color: var(--muted); font-size: 0.9rem; }
+
+@media (max-width: 760px) {
+  body { font-size: 15px; line-height: 1.5; }
+  .site-shell { padding: 18px 10px 42px; }
+  .site-header { margin-bottom: 18px; padding-bottom: 14px; }
+  h1 { font-size: clamp(1.65rem, 9vw, 2.25rem); }
+  h2 { font-size: 1.28rem; }
+  h3 { font-size: 1.08rem; }
+  .summary { font-size: 1rem; }
+  .card, .navbox { border-radius: 12px; padding: 12px; }
+  .navbox ul { padding-left: 18px; }
+  .table-scroll { margin-left: -10px; margin-right: -10px; border-left: 0; border-right: 0; border-radius: 0; box-shadow: none; }
+  .table-scroll::before { content: "Swipe table →"; display: block; color: var(--muted); font-size: 0.78rem; letter-spacing: 0.02em; padding: 7px 10px; text-transform: uppercase; }
+  table { min-width: 980px; font-size: 0.86rem; }
+  th, td { padding: 6px 7px; }
+  th:not(:first-child):not(:last-child), td:not(:first-child):not(:last-child) { white-space: nowrap; }
+  th:first-child, td:first-child { background: var(--panel); box-shadow: 1px 0 0 var(--line); left: 0; max-width: 42vw; min-width: 9rem; position: sticky; white-space: normal; z-index: 2; }
+  th:first-child { background: var(--panel-2); z-index: 3; }
+  td:last-child, th:last-child { min-width: 18rem; white-space: normal; }
+  pre { margin-left: -10px; margin-right: -10px; border-radius: 0; font-size: 0.82rem; }
+}
+"""
+
 
 
 def main() -> int:
@@ -55,7 +122,8 @@ def main() -> int:
     for index, src in enumerate(sources):
         source_name = unique_name(src.name, used_source_names)
         copied_source = source_dir / source_name
-        shutil.copy2(src, copied_source)
+        if src != copied_source:
+            shutil.copy2(src, copied_source)
         html_name = "index.html" if index == 0 else unique_name(f"{src.stem}.html", used_html_names)
         out_html = page_dir / html_name
         if src.suffix.lower() in {".html", ".htm"}:
@@ -126,34 +194,7 @@ def parse_args() -> argparse.Namespace:
 def ensure_site_assets() -> None:
     (PAGES_DIR / "assets").mkdir(parents=True, exist_ok=True)
     if not STYLE.exists():
-        STYLE.write_text(
-            """:root { color-scheme: light dark; --bg:#101217; --panel:#181c24; --text:#f3f5f7; --muted:#aeb6c2; --line:#303747; --accent:#a78bfa; --code:#0b0d12; }
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-a { color: var(--accent); }
-.site-shell { max-width: 1180px; margin: 0 auto; padding: 28px 18px 64px; }
-.site-header { border-bottom: 1px solid var(--line); margin-bottom: 24px; padding-bottom: 18px; }
-.crumb { color: var(--muted); font-size: 0.9rem; margin-bottom: 8px; }
-h1, h2, h3 { line-height: 1.18; }
-h1 { margin: 0 0 10px; font-size: clamp(2rem, 5vw, 3.4rem); }
-.summary { color: var(--muted); font-size: 1.08rem; max-width: 80ch; }
-.card-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-.card, .navbox { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
-.card h2, .card h3 { margin-top: 0; }
-.navbox { margin: 18px 0 24px; }
-.navbox ul { margin: 8px 0 0; padding-left: 22px; }
-table { border-collapse: collapse; display: block; margin: 18px 0; overflow-x: auto; width: 100%; }
-th, td { border: 1px solid var(--line); padding: 7px 9px; text-align: left; vertical-align: top; }
-th { background: #222836; position: sticky; top: 0; }
-pre, code { background: var(--code); border-radius: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-code { padding: 0.12em 0.25em; }
-pre { overflow: auto; padding: 14px; }
-blockquote { border-left: 4px solid var(--line); color: var(--muted); margin-left: 0; padding-left: 14px; }
-details { border: 1px solid var(--line); border-radius: 10px; margin: 12px 0; padding: 10px 12px; }
-.meta { color: var(--muted); font-size: 0.9rem; }
-""",
-            encoding="utf-8",
-        )
+        STYLE.write_text(STYLE_CSS, encoding="utf-8")
     nojekyll = PAGES_DIR / ".nojekyll"
     if not nojekyll.exists():
         nojekyll.write_text("", encoding="utf-8")
@@ -231,7 +272,23 @@ def sanitize_rendered_html(rendered: str) -> str:
     rendered = re.sub(r"<\s*(script|style|iframe|object|embed|svg|math)\b[^>]*?/?>", "", rendered, flags=re.I)
     rendered = re.sub(r"\s+on[a-zA-Z0-9_-]+\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)", "", rendered)
     rendered = re.sub(r"\s+(href|src)\s*=\s*(['\"])\s*javascript:[^'\"]*\2", r' \1="#"', rendered, flags=re.I)
-    return rendered
+    return wrap_tables(rendered)
+
+
+def wrap_tables(rendered: str) -> str:
+    """Wrap rendered Markdown tables in a mobile-scroll container.
+
+    Python-Markdown emits bare ``<table>`` nodes. They are readable on desktop,
+    but benchmark reports have many wide model-comparison tables that are painful
+    on a phone. A lightweight wrapper gives mobile browsers a clear horizontal
+    scroll region without altering the source Markdown.
+    """
+    return re.sub(
+        r"(?<!<div class=\"table-scroll\" tabindex=\"0\" role=\"region\" aria-label=\"Scrollable table\">\n)(<table>.*?</table>)",
+        r'<div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable table">\n\1\n</div>',
+        rendered,
+        flags=re.S,
+    )
 
 
 def fallback_markdown(text: str) -> str:
