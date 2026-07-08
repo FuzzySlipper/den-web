@@ -1,5 +1,29 @@
 [
   {
+    "slug": "roleplay-prose-instruction-2026-07-08",
+    "title": "Roleplay Prose + Instruction Matrix \u2014 2026-07-08",
+    "summary": "GoblinBench SFW roleplay prose and no-user-control instruction-following matrix for the same 15-model roleplay candidate set. Grok-judged headline summary plus full outputs.",
+    "created_at": "2026-07-08T05:35:39+00:00",
+    "updated_at": "2026-07-08T05:35:39+00:00",
+    "files": [
+      {
+        "source": "source/headline-summary.md",
+        "html": "index.html",
+        "title": "Headline Summary"
+      },
+      {
+        "source": "source/qualitative-report.md",
+        "html": "qualitative-report.html",
+        "title": "Qualitative Report"
+      },
+      {
+        "source": "source/qualitative-report.md",
+        "html": "qualitative-report.html",
+        "title": "Qualitative Report"
+      }
+    ]
+  },
+  {
     "slug": "roleplay-heat-boundary-2026-07-07",
     "title": "Roleplay Heat-Boundary Model Matrix \u2014 2026-07-07",
     "summary": "GoblinBench roleplay heat-boundary matrix with deterministic classifications plus a Grok-judged headline summary. Four-prompt smoke test; not a universal model leaderboard.",

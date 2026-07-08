@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index,follow">
+  <title>Roleplay Prose + Instruction Matrix — 2026-07-08</title>
+  <link rel="stylesheet" href="../assets/page-style.css">
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="crumb"><a href="../">Shared pages</a></div>
+      <h1>Roleplay Prose + Instruction Matrix — 2026-07-08</h1>
+      <p class="summary">GoblinBench SFW roleplay prose and no-user-control instruction-following matrix for the same 15-model roleplay candidate set. Grok-judged headline summary plus full outputs.</p>
+    </header>
+    <main class="site-content">
+<div class="navbox"><strong>Files in this share</strong><ul>
+<li><a href="index.html">Headline Summary</a> (<a href="source/headline-summary.md">source</a>)</li>
+<li><a href="qualitative-report.html">Qualitative Report</a> (<a href="source/qualitative-report.md">source</a>)</li>
+<li><a href="qualitative-report.html">Qualitative Report</a> (<a href="source/qualitative-report.md">source</a>)</li>
+</ul></div>
+<h1 id="roleplay-prose-instruction-following-matrix-headline-summary">Roleplay prose + instruction-following matrix — headline summary</h1>
+<p><strong>Date:</strong> 2026-07-08<br>
+<strong>Harness:</strong> GoblinBench <code>roleplay-prose</code> + <code>roleplay-instruction</code><br>
+<strong>Candidate matrix:</strong> same 15-model roleplay matrix used for heat-boundary run<br>
+<strong>Runs:</strong> prose <code>run-20260707-211807-146e78c8</code> + <code>run-20260707-211808-c1866247</code>; instruction <code>run-20260707-222223-484bafea</code> + <code>run-20260707-214506-9c827b76</code><br>
+<strong>Judge pass:</strong> <code>den-router/grok</code>, roleplay prose rubric v1<br>
+<strong>Important caveat:</strong> the judge is one model, the sample is small, and roleplay taste is subjective. Treat this as a map of tendencies, not a final model-war constitution.</p>
+<h2 id="tldr">TL;DR</h2>
+<p>For <strong>general prose quality</strong>, the judged top tier was <strong>DeepSeek Pro</strong>, <strong>GLM 5.2</strong>, <strong>DeepSeek Flash</strong>, and <strong>Grok</strong>. DeepSeek Pro had the best aggregate rank across seven prose prompts; GLM 5.2 was often restrained and concrete; DeepSeek Flash had several scenario wins; Grok was excellent in multiple scenes but had one notable bad miss on an orbital prompt.</p>
+<p>For <strong>strict “do not write my character” instruction following</strong>, the result was much sharper: <strong>Grok was the only model the judge considered fully clean</strong> on the reliquary probe. GLM 5.2 and Kimi-code were next, but still had slips. Most other models defaulted to second-person narration or wrote some version of Ari’s perceptions/actions.</p>
+<p>So the practical read is:</p>
+<ul>
+<li><strong>Best overall prose:</strong> <code>deepseek-pro</code></li>
+<li><strong>Best prose restraint / quiet detail:</strong> <code>glm-5.2</code></li>
+<li><strong>Best instruction-following / no user control:</strong> <code>grok</code></li>
+<li><strong>Strong but uneven:</strong> <code>deepseek-flash</code>, <code>grok</code>, <code>kimi</code></li>
+<li><strong>Local models:</strong> usable in places, but not competitive here on the no-user-control probe</li>
+</ul>
+<h2 id="prose-quality-aggregate-ranking">Prose-quality aggregate ranking</h2>
+<p>Average rank across seven SFW prose scenarios:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">overall</th>
+<th>model / candidate</th>
+<th style="text-align: right;">avg rank</th>
+<th style="text-align: right;">avg score</th>
+<th>quick read</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td><code>deepseek-pro</code></td>
+<td style="text-align: right;">3.14</td>
+<td style="text-align: right;">8.07</td>
+<td>Best overall prose balance; multiple wins.</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td><code>glm-5.2</code></td>
+<td style="text-align: right;">4.29</td>
+<td style="text-align: right;">7.53</td>
+<td>Restrained, concrete, good at quiet scenes.</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td><code>deepseek-flash</code></td>
+<td style="text-align: right;">4.43</td>
+<td style="text-align: right;">7.54</td>
+<td>Several excellent scenes; one poor anti-slop result hurt aggregate.</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td><code>grok</code></td>
+<td style="text-align: right;">4.86</td>
+<td style="text-align: right;">7.34</td>
+<td>Strong voice/subtext, but one large miss.</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td><code>longcat-2.0</code></td>
+<td style="text-align: right;">7.29</td>
+<td style="text-align: right;">6.11</td>
+<td>Decent middle tier; sometimes too generic.</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td><code>kimi</code></td>
+<td style="text-align: right;">8.14</td>
+<td style="text-align: right;">6.10</td>
+<td>Can be strong, but inconsistent.</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td><code>Qwen3.6 uncensored aggressive</code></td>
+<td style="text-align: right;">8.29</td>
+<td style="text-align: right;">5.87</td>
+<td>Some useful scenes, but uneven.</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td><code>Qwen3.6-35B-A3B-GGUF</code></td>
+<td style="text-align: right;">8.29</td>
+<td style="text-align: right;">5.79</td>
+<td>Won one anti-slop scene, otherwise mixed.</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td><code>qwen-max</code></td>
+<td style="text-align: right;">8.71</td>
+<td style="text-align: right;">5.70</td>
+<td>Often serviceable but not standout.</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td><code>mimo-pro</code></td>
+<td style="text-align: right;">8.86</td>
+<td style="text-align: right;">5.80</td>
+<td>Mid/low; some softer prose strengths.</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td><code>Gemma-4-26B-A4B-it-GGUF</code></td>
+<td style="text-align: right;">9.00</td>
+<td style="text-align: right;">5.54</td>
+<td>Local and restrained, but less strong overall.</td>
+</tr>
+<tr>
+<td style="text-align: right;">12</td>
+<td><code>qwenplus</code></td>
+<td style="text-align: right;">9.71</td>
+<td style="text-align: right;">5.23</td>
+<td>Uneven; one good orbital anti-slop result.</td>
+</tr>
+<tr>
+<td style="text-align: right;">13</td>
+<td><code>Gemma4 uncensored balanced</code></td>
+<td style="text-align: right;">11.29</td>
+<td style="text-align: right;">4.74</td>
+<td>Did not shine on these SFW prose probes.</td>
+</tr>
+<tr>
+<td style="text-align: right;">14</td>
+<td><code>stepfun</code></td>
+<td style="text-align: right;">11.86</td>
+<td style="text-align: right;">4.29</td>
+<td>A couple of decent moments, generally weak.</td>
+</tr>
+<tr>
+<td style="text-align: right;">15</td>
+<td><code>kimi-code</code></td>
+<td style="text-align: right;">11.86</td>
+<td style="text-align: right;">4.24</td>
+<td>Good in one orbital scene, poor elsewhere.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="prose-scenario-winners">Prose scenario winners</h2>
+<table>
+<thead>
+<tr>
+<th>scenario</th>
+<th>winner</th>
+<th>what it tested</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Orbital maintenance v0</td>
+<td><code>deepseek-flash</code></td>
+<td>first-person technical intimacy / subtext</td>
+</tr>
+<tr>
+<td>Orbital maintenance v1</td>
+<td><code>deepseek-pro</code></td>
+<td>anti-slop orbital variant</td>
+</tr>
+<tr>
+<td>Rainy inn minimal</td>
+<td><code>glm-5.2</code></td>
+<td>default prose tendency with little steering</td>
+</tr>
+<tr>
+<td>Rainy inn v0</td>
+<td><code>deepseek-pro</code></td>
+<td>quiet third-person scene continuation</td>
+</tr>
+<tr>
+<td>Rainy inn v1</td>
+<td><code>Qwen3.6-35B-A3B-GGUF</code></td>
+<td>anti-cliche constrained prose</td>
+</tr>
+<tr>
+<td>Train platform v0</td>
+<td><code>deepseek-flash</code></td>
+<td>subtext / guarded conversation</td>
+</tr>
+<tr>
+<td>Train platform v1</td>
+<td><code>grok</code></td>
+<td>anti-slop train-platform variant</td>
+</tr>
+</tbody>
+</table>
+<h2 id="no-user-control-instruction-probe">No-user-control instruction probe</h2>
+<p>This was the harshest and probably most practically useful result for roleplayers. The prompt explicitly said not to write Ari’s actions, dialogue, thoughts, feelings, reactions, decisions, body language, or internal state.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">rank</th>
+<th>model / candidate</th>
+<th style="text-align: right;">score</th>
+<th>quick read</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td><code>grok</code></td>
+<td style="text-align: right;">9.0</td>
+<td>Cleanest agency compliance; precise environment and NPC beats.</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td><code>glm-5.2</code></td>
+<td style="text-align: right;">7.5</td>
+<td>Mostly compliant; good wire tracing and Maud voice; minor slips.</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td><code>kimi-code</code></td>
+<td style="text-align: right;">6.5</td>
+<td>Strong NPC dialogue, but Cael addresses Ari directly.</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td><code>deepseek-flash</code></td>
+<td style="text-align: right;">4.0</td>
+<td>Heavy second-person control.</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td><code>deepseek-pro</code></td>
+<td style="text-align: right;">3.5</td>
+<td>Good prose model, but failed the strict agency contract here.</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td><code>kimi</code></td>
+<td style="text-align: right;">3.0</td>
+<td>Slipped into controlling / directing the player character.</td>
+</tr>
+<tr>
+<td style="text-align: right;">7-15</td>
+<td>remaining models</td>
+<td style="text-align: right;">1.0-2.5</td>
+<td>Mostly significant user-control violations.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="takeaways-for-roleplayers">Takeaways for roleplayers</h2>
+<ol>
+<li><strong>Good prose and good instruction-following are not the same skill.</strong> DeepSeek Pro won the prose aggregate but did poorly on strict no-user-control.</li>
+<li><strong>Grok looks unusually good for players who hate being written for.</strong> It won the dedicated no-user-control probe clearly.</li>
+<li><strong>GLM 5.2 is a sleeper for quiet, restrained prose.</strong> It ranked second overall in prose and second on no-user-control.</li>
+<li><strong>Anti-slop prompting changes winners.</strong> Qwen3.6 won one anti-cliche rainy inn variant despite being mid-pack overall.</li>
+<li><strong>Local models were less competitive here than in the heat-boundary run.</strong> They can be usable, but this matrix did not show them matching the best cloud models for prose/instruction balance.</li>
+<li><strong>The no-user-control probe probably deserves more scenarios.</strong> One reliquary scene was enough to expose widespread failure, but not enough to fully characterize every model’s agency discipline.</li>
+</ol>
+<h2 id="links-in-this-report">Links in this report</h2>
+<ul>
+<li><code>prose judged report</code>: full side-by-side outputs and Grok judgements for all seven prose scenarios.</li>
+<li><code>instruction judged report</code>: full side-by-side outputs and Grok judgement for the no-user-control reliquary scenario.</li>
+</ul>
+    </main>
+  </div>
+</body>
+</html>
