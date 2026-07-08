@@ -50,10 +50,13 @@ def main() -> int:
     ensure_site_assets()
 
     rendered_files: list[dict[str, str]] = []
+    used_source_names: set[str] = set()
+    used_html_names: set[str] = {"index.html"}
     for index, src in enumerate(sources):
-        copied_source = source_dir / src.name
+        source_name = unique_name(src.name, used_source_names)
+        copied_source = source_dir / source_name
         shutil.copy2(src, copied_source)
-        html_name = "index.html" if index == 0 else f"{src.stem}.html"
+        html_name = "index.html" if index == 0 else unique_name(f"{src.stem}.html", used_html_names)
         out_html = page_dir / html_name
         if src.suffix.lower() in {".html", ".htm"}:
             raw = src.read_text(encoding="utf-8", errors="replace")
@@ -73,7 +76,7 @@ def main() -> int:
                 ),
                 encoding="utf-8",
             )
-        rendered_files.append({"source": f"source/{src.name}", "html": html_name, "title": title_from_name(src)})
+        rendered_files.append({"source": f"source/{source_name}", "html": html_name, "title": title_from_name(src)})
 
     # If the first source became index.html, add links to every rendered sibling/source.
     write_page_nav(page_dir / "index.html", args.title, args.summary, rendered_files)
@@ -308,6 +311,19 @@ def looks_like_full_html(text: str) -> bool:
 
 def title_from_name(path: Path) -> str:
     return path.stem.replace("-", " ").replace("_", " ").title()
+
+
+def unique_name(filename: str, used: set[str]) -> str:
+    """Return a filename unique within this publish operation."""
+    candidate = filename
+    stem = Path(filename).stem
+    suffix = Path(filename).suffix
+    counter = 2
+    while candidate in used:
+        candidate = f"{stem}-{counter}{suffix}"
+        counter += 1
+    used.add(candidate)
+    return candidate
 
 
 def slugify(value: str) -> str:
