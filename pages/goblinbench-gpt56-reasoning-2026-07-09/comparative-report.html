@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index,follow">
+  <title>GoblinBench GPT-5.6 reasoning matrix — 2026-07-09</title>
+  <link rel="stylesheet" href="../assets/page-style.css">
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="crumb"><a href="../">Shared pages</a></div>
+      <h1>GoblinBench GPT-5.6 reasoning matrix — 2026-07-09</h1>
+      <p class="summary">GPT-5.6 Terra/Luna/Sol medium vs high reasoning on GoblinBench tool-calling, deceptive tool-use, hallucination/grounding, and codebase analysis.</p>
+    </header>
+    <main class="site-content">
+<h1 id="codebase-analysis-benchmark-den-core-v1">Codebase Analysis Benchmark — den-core-v1</h1>
+<p><em>Generated: 2026-07-09T23:39:17.949984</em>
+<em>Gold issues: 12</em></p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable table">
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Recall</th>
+<th>TP</th>
+<th>FP</th>
+<th>Decoy hits</th>
+<th>Bonus</th>
+<th>Evidence</th>
+<th>Severity cal</th>
+<th>Duration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>gpt-5.6-terra-test-only-reasoning-medium</td>
+<td>67%</td>
+<td>8</td>
+<td>1</td>
+<td>0</td>
+<td>7</td>
+<td>64%</td>
+<td>12%</td>
+<td>66s</td>
+</tr>
+<tr>
+<td>gpt-5.6-terra-test-only-reasoning-high</td>
+<td>0%</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+<td>66%</td>
+<td>0%</td>
+<td>91s</td>
+</tr>
+<tr>
+<td>gpt-5.6-luna-test-only-reasoning-medium</td>
+<td>0%</td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>33%</td>
+<td>0%</td>
+<td>56s</td>
+</tr>
+<tr>
+<td>gpt-5.6-luna-test-only-reasoning-high</td>
+<td>25%</td>
+<td>3</td>
+<td>0</td>
+<td>0</td>
+<td>8</td>
+<td>63%</td>
+<td>9%</td>
+<td>90s</td>
+</tr>
+<tr>
+<td>gpt-5.6-sol-test-only-reasoning-medium</td>
+<td>67%</td>
+<td>8</td>
+<td>0</td>
+<td>0</td>
+<td>14</td>
+<td>65%</td>
+<td>9%</td>
+<td>154s</td>
+</tr>
+<tr>
+<td>gpt-5.6-sol-test-only-reasoning-high</td>
+<td>0%</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>5</td>
+<td>66%</td>
+<td>0%</td>
+<td>221s</td>
+</tr>
+<tr>
+<td>## Issue Coverage Matrix</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable table">
+<table>
+<thead>
+<tr>
+<th>Gold Issue</th>
+<th>Severity</th>
+<th>gpt-5.6-terra-test-only-reasoning-medium</th>
+<th>gpt-5.6-terra-test-only-reasoning-high</th>
+<th>gpt-5.6-luna-test-only-reasoning-medium</th>
+<th>gpt-5.6-luna-test-only-reasoning-high</th>
+<th>gpt-5.6-sol-test-only-reasoning-medium</th>
+<th>gpt-5.6-sol-test-only-reasoning-high</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>| <strong>contract-paging-mismatch</strong> | high | ✓ | · | · | · | ✓ | · |
+| <strong>worker-release-before-completion</strong> | high | ✓ | · | · | ✓ | ✓ | · |
+| <strong>stale-review-verdict</strong> | medium | ✓ | · | · | · | ✓ | · |
+| <strong>hardcoded-lan-ip</strong> | medium | · | · | · | · | · | · |
+| <strong>exception-in-background-loop</strong> | critical | ✓ | · | · | ✓ | ✓ | · |
+| <strong>core-mcp-boundary-leak</strong> | medium | · | · | · | · | · | · |
+| <strong>health-check-ignores-db</strong> | medium | ✓ | · | · | · | · | · |
+| <strong>tool-schema-description-mismatch</strong> | medium | ✓ | · | · | · | ✓ | · |
+| <strong>singleton-cache-no-lock</strong> | low | ✓ | · | · | · | ✓ | · |
+| <strong>documentation-contradiction</strong> | low | ~ | · | · | · | ✓ | · |
+| <strong>missing-404-test</strong> | low | · | · | · | · | · | · |
+| <strong>assignment-release-null-state</strong> | medium | · | · | · | ✓ | ✓ | · |</p>
+<h2 id="qualitative-assessment">Qualitative Assessment</h2>
+<h3 id="gpt-56-terra-test-only-reasoning-medium">gpt-5.6-terra-test-only-reasoning-medium</h3>
+<h3 id="gpt-56-terra-test-only-reasoning-high">gpt-5.6-terra-test-only-reasoning-high</h3>
+<h3 id="gpt-56-luna-test-only-reasoning-medium">gpt-5.6-luna-test-only-reasoning-medium</h3>
+<h3 id="gpt-56-luna-test-only-reasoning-high">gpt-5.6-luna-test-only-reasoning-high</h3>
+<h3 id="gpt-56-sol-test-only-reasoning-medium">gpt-5.6-sol-test-only-reasoning-medium</h3>
+<h3 id="gpt-56-sol-test-only-reasoning-high">gpt-5.6-sol-test-only-reasoning-high</h3>
+<hr>
+<h2 id="role-routing-recommendation">Role Routing Recommendation</h2>
+<ul>
+<li><strong>Planner/Architect:</strong> gpt-5.6-terra-test-only-reasoning-medium (highest recall + evidence quality)</li>
+<li><strong>Reviewer:</strong> gpt-5.6-terra-test-only-reasoning-medium (good recall + bonus/real-finding awareness)</li>
+<li><strong>Operator:</strong> gpt-5.6-terra-test-only-reasoning-high (fewer false positives, tradeoff awareness)</li>
+<li><strong>Cheap triage:</strong> gpt-5.6-terra-test-only-reasoning-high (best value for cost)</li>
+</ul>
+<hr>
+<p><em>Report generated by codebase-analysis-runner.py</em></p>
+    </main>
+  </div>
+</body>
+</html>

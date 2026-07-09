@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index,follow">
+  <title>GoblinBench GPT-5.6 reasoning matrix — 2026-07-09</title>
+  <link rel="stylesheet" href="../assets/page-style.css">
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="crumb"><a href="../">Shared pages</a></div>
+      <h1>GoblinBench GPT-5.6 reasoning matrix — 2026-07-09</h1>
+      <p class="summary">GPT-5.6 Terra/Luna/Sol medium vs high reasoning on GoblinBench tool-calling, deceptive tool-use, hallucination/grounding, and codebase analysis.</p>
+    </header>
+    <main class="site-content">
+<div class="navbox"><strong>Files in this share</strong><ul>
+<li><a href="index.html">Summary</a> (<a href="source/summary.md">source</a>)</li>
+<li><a href="tool-calling-combined-grid.html">Tool Calling Combined Grid</a> (<a href="source/tool-calling-combined-grid.html">source</a>)</li>
+<li><a href="deceptive-tool-calling-combined-grid.html">Deceptive Tool Calling Combined Grid</a> (<a href="source/deceptive-tool-calling-combined-grid.html">source</a>)</li>
+<li><a href="hallucination-grounding-combined-grid.html">Hallucination Grounding Combined Grid</a> (<a href="source/hallucination-grounding-combined-grid.html">source</a>)</li>
+<li><a href="comparative-report.html">Comparative Report</a> (<a href="source/comparative-report.md">source</a>)</li>
+<li><a href="codebase-analysis-combined-report.html">Codebase Analysis Combined Report</a> (<a href="source/codebase-analysis-combined-report.md">source</a>)</li>
+<li><a href="run-ids.html">Run Ids</a> (<a href="source/run-ids.tsv">source</a>)</li>
+</ul></div>
+<h1 id="goblinbench-gpt-56-reasoning-effort-matrix-2026-07-09">GoblinBench GPT-5.6 reasoning-effort matrix — 2026-07-09</h1>
+<p>New-model extension of the July 09 general complex agentic-fitness matrix. This run tests the three GPT-5.6 variants at <code>reasoning_effort=medium</code> and <code>reasoning_effort=high</code>, then generates combined old+new report grids.</p>
+<p>Public-reader headline: <strong>medium/high reasoning did not lift the GPT-5.6 family above the earlier best models on the store-backed agentic suites.</strong> The best GPT-5.6 rows tie the old <code>gpt-5.5-test-only</code> store-backed score, but still trail <code>glm-5.2</code>, <code>qwen-max</code>, <code>deepseek-pro</code>, and <code>kimi-code</code>. Codebase analysis showed a more dramatic effort swing, but mostly in the wrong direction: several high-effort rows collapsed to 0% recall.</p>
+<h2 id="run-ids">Run IDs</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable table">
+<table>
+<thead>
+<tr>
+<th>suite</th>
+<th>run id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>tool-call-behavior</td>
+<td><code>run-20260709-155659-8524c128</code></td>
+</tr>
+<tr>
+<td>mcp-tools</td>
+<td><code>run-20260709-155911-ff552350</code></td>
+</tr>
+<tr>
+<td>mcp-tools-hard</td>
+<td><code>run-20260709-160206-a711d202</code></td>
+</tr>
+<tr>
+<td>mcp-session</td>
+<td><code>run-20260709-160412-d443ac3c</code></td>
+</tr>
+<tr>
+<td>den-mcp-ambiguity</td>
+<td><code>run-20260709-160507-2e93e598</code></td>
+</tr>
+<tr>
+<td>den-mcp-ambiguity-hinted</td>
+<td><code>run-20260709-160943-d5f78f82</code></td>
+</tr>
+<tr>
+<td>autonomy-calibration</td>
+<td><code>run-20260709-161246-2b3885ab</code></td>
+</tr>
+<tr>
+<td>evidence-grounding</td>
+<td><code>run-20260709-161348-30b7f62e</code></td>
+</tr>
+<tr>
+<td>codebase-analysis Mode A</td>
+<td><code>runs/requested-regression-matrix-20260709-gpt56-reasoning/codebase-analysis-den-core-v1</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="store-backed-aggregate-new-gpt-56-rows-only">Store-backed aggregate — new GPT-5.6 rows only</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable table">
+<table>
+<thead>
+<tr>
+<th>Model variant</th>
+<th style="text-align: right;">Cells</th>
+<th style="text-align: right;">Passed</th>
+<th style="text-align: right;">Pass rate</th>
+<th style="text-align: right;">Avg sec/cell</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gpt-5.6-luna-test-only</code> medium</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">67.6%</td>
+<td style="text-align: right;">4.7</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-terra-test-only</code> medium</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">67.6%</td>
+<td style="text-align: right;">3.9</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-terra-test-only</code> high</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">67.6%</td>
+<td style="text-align: right;">4.8</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-luna-test-only</code> high</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">22</td>
+<td style="text-align: right;">64.7%</td>
+<td style="text-align: right;">5.2</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-sol-test-only</code> high</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">21</td>
+<td style="text-align: right;">61.8%</td>
+<td style="text-align: right;">6.6</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-sol-test-only</code> medium</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">20</td>
+<td style="text-align: right;">58.8%</td>
+<td style="text-align: right;">6.2</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Effort aggregate over all new store-backed cells:</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable table">
+<table>
+<thead>
+<tr>
+<th>Effort</th>
+<th style="text-align: right;">Cells</th>
+<th style="text-align: right;">Passed</th>
+<th style="text-align: right;">Pass rate</th>
+<th style="text-align: right;">Avg sec/cell</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>medium</td>
+<td style="text-align: right;">102</td>
+<td style="text-align: right;">66</td>
+<td style="text-align: right;">64.7%</td>
+<td style="text-align: right;">4.9</td>
+</tr>
+<tr>
+<td>high</td>
+<td style="text-align: right;">102</td>
+<td style="text-align: right;">66</td>
+<td style="text-align: right;">64.7%</td>
+<td style="text-align: right;">5.6</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>So for the store-backed tool/deceptive/grounding suites, <strong>high effort did not improve aggregate pass rate</strong> and was slightly slower.</p>
+<h2 id="store-backed-aggregate-old-new-leaderboard">Store-backed aggregate — old + new leaderboard</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable table">
+<table>
+<thead>
+<tr>
+<th>Model / variant</th>
+<th style="text-align: right;">Cells</th>
+<th style="text-align: right;">Passed</th>
+<th style="text-align: right;">Pass rate</th>
+<th style="text-align: right;">Avg sec/cell</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>glm-5.2</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">26</td>
+<td style="text-align: right;">76.5%</td>
+<td style="text-align: right;">12.2</td>
+</tr>
+<tr>
+<td><code>qwen-max</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">26</td>
+<td style="text-align: right;">76.5%</td>
+<td style="text-align: right;">17.3</td>
+</tr>
+<tr>
+<td><code>deepseek-pro</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">24</td>
+<td style="text-align: right;">70.6%</td>
+<td style="text-align: right;">14.5</td>
+</tr>
+<tr>
+<td><code>kimi-code</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">24</td>
+<td style="text-align: right;">70.6%</td>
+<td style="text-align: right;">19.1</td>
+</tr>
+<tr>
+<td><code>deepseek-flash</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">67.6%</td>
+<td style="text-align: right;">7.6</td>
+</tr>
+<tr>
+<td><code>gpt-5.5-test-only</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">67.6%</td>
+<td style="text-align: right;">7.2</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-luna-test-only</code> medium</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">67.6%</td>
+<td style="text-align: right;">4.7</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-terra-test-only</code> medium</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">67.6%</td>
+<td style="text-align: right;">3.9</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-terra-test-only</code> high</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">67.6%</td>
+<td style="text-align: right;">4.8</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-luna-test-only</code> high</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">22</td>
+<td style="text-align: right;">64.7%</td>
+<td style="text-align: right;">5.2</td>
+</tr>
+<tr>
+<td><code>mimo-pro</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">22</td>
+<td style="text-align: right;">64.7%</td>
+<td style="text-align: right;">11.0</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-sol-test-only</code> high</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">21</td>
+<td style="text-align: right;">61.8%</td>
+<td style="text-align: right;">6.6</td>
+</tr>
+<tr>
+<td><code>longcat-2.0</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">21</td>
+<td style="text-align: right;">61.8%</td>
+<td style="text-align: right;">15.0</td>
+</tr>
+<tr>
+<td><code>stepfun</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">21</td>
+<td style="text-align: right;">61.8%</td>
+<td style="text-align: right;">37.4</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-sol-test-only</code> medium</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">20</td>
+<td style="text-align: right;">58.8%</td>
+<td style="text-align: right;">6.2</td>
+</tr>
+<tr>
+<td><code>grok-4.5</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">20</td>
+<td style="text-align: right;">58.8%</td>
+<td style="text-align: right;">13.0</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="category-breakdown-new-gpt-56-rows">Category breakdown — new GPT-5.6 rows</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable table">
+<table>
+<thead>
+<tr>
+<th>Model variant</th>
+<th style="text-align: right;">Tool calling</th>
+<th style="text-align: right;">Deceptive/adversarial</th>
+<th style="text-align: right;">Hallucination/grounding</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gpt-5.6-terra</code> medium</td>
+<td style="text-align: right;">10/12</td>
+<td style="text-align: right;">8/16</td>
+<td style="text-align: right;">5/6</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-terra</code> high</td>
+<td style="text-align: right;">10/12</td>
+<td style="text-align: right;">8/16</td>
+<td style="text-align: right;">5/6</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-luna</code> medium</td>
+<td style="text-align: right;">9/12</td>
+<td style="text-align: right;">9/16</td>
+<td style="text-align: right;">5/6</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-luna</code> high</td>
+<td style="text-align: right;">9/12</td>
+<td style="text-align: right;">9/16</td>
+<td style="text-align: right;">4/6</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-sol</code> medium</td>
+<td style="text-align: right;">8/12</td>
+<td style="text-align: right;">8/16</td>
+<td style="text-align: right;">4/6</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-sol</code> high</td>
+<td style="text-align: right;">10/12</td>
+<td style="text-align: right;">7/16</td>
+<td style="text-align: right;">4/6</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Interpretation:</p>
+<ul>
+<li>Terra is the most balanced GPT-5.6 row in this matrix.</li>
+<li>Luna is slightly better on deceptive/adversarial tool-use but loses one grounding cell at high effort.</li>
+<li>Sol high improves basic tool-calling vs Sol medium, but loses one deceptive/adversarial cell.</li>
+<li>None of the GPT-5.6 rows break the current top store-backed band (<code>glm-5.2</code> / <code>qwen-max</code>).</li>
+</ul>
+<h2 id="codebase-analysis-mode-a-old-new">Codebase analysis Mode A — old + new</h2>
+<p>Judge: <code>deepseek-pro</code>. The GPT-5.6 codebase judge passes used findings-only extraction, so qualitative prose fields are sparse; recall/coverage are still derived from per-finding judge matches.</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable table">
+<table>
+<thead>
+<tr>
+<th>Model / variant</th>
+<th style="text-align: right;">Recall</th>
+<th style="text-align: right;">TP</th>
+<th style="text-align: right;">FP</th>
+<th style="text-align: right;">Bonus</th>
+<th style="text-align: right;">Evidence</th>
+<th style="text-align: right;">Duration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>deepseek-pro</code></td>
+<td style="text-align: right;">83%</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">94%</td>
+<td style="text-align: right;">159s</td>
+</tr>
+<tr>
+<td><code>kimi-code</code></td>
+<td style="text-align: right;">83%</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: right;">85%</td>
+<td style="text-align: right;">214s</td>
+</tr>
+<tr>
+<td><code>mimo-pro</code></td>
+<td style="text-align: right;">83%</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">51%</td>
+<td style="text-align: right;">248s</td>
+</tr>
+<tr>
+<td><code>glm-5.2</code></td>
+<td style="text-align: right;">75%</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">66%</td>
+<td style="text-align: right;">160s</td>
+</tr>
+<tr>
+<td><code>deepseek-flash</code></td>
+<td style="text-align: right;">67%</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">100%</td>
+<td style="text-align: right;">74s</td>
+</tr>
+<tr>
+<td><code>longcat-2.0</code></td>
+<td style="text-align: right;">67%</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">52%</td>
+<td style="text-align: right;">310s</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-terra</code> medium</td>
+<td style="text-align: right;">67%</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">64%</td>
+<td style="text-align: right;">66s</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-sol</code> medium</td>
+<td style="text-align: right;">67%</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">65%</td>
+<td style="text-align: right;">154s</td>
+</tr>
+<tr>
+<td><code>qwen-max</code></td>
+<td style="text-align: right;">58%</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">98%</td>
+<td style="text-align: right;">198s</td>
+</tr>
+<tr>
+<td><code>gpt-5.5-test-only</code></td>
+<td style="text-align: right;">33%</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">66%</td>
+<td style="text-align: right;">153s</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-luna</code> high</td>
+<td style="text-align: right;">25%</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">63%</td>
+<td style="text-align: right;">90s</td>
+</tr>
+<tr>
+<td><code>grok-4.5</code></td>
+<td style="text-align: right;">8%</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">100%</td>
+<td style="text-align: right;">76s</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-terra</code> high</td>
+<td style="text-align: right;">0%</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">66%</td>
+<td style="text-align: right;">91s</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-luna</code> medium</td>
+<td style="text-align: right;">0%</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">33%</td>
+<td style="text-align: right;">56s</td>
+</tr>
+<tr>
+<td><code>gpt-5.6-sol</code> high</td>
+<td style="text-align: right;">0%</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">66%</td>
+<td style="text-align: right;">221s</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>This is the most interesting result: <strong>medium reasoning is clearly better than high for Terra and Sol on this codebase-analysis fixture.</strong> High effort appears to wander into bonus/non-gold findings or otherwise misses the planted ledger issues.</p>
+<h2 id="artifacts">Artifacts</h2>
+<ul>
+<li>Combined tool-calling grid: <code>tool-calling-combined-grid.html</code></li>
+<li>Combined deceptive/adversarial grid: <code>deceptive-tool-calling-combined-grid.html</code></li>
+<li>Combined hallucination/grounding grid: <code>hallucination-grounding-combined-grid.html</code></li>
+<li>GPT-5.6 codebase report: <code>codebase-analysis-den-core-v1/comparative-report.md</code></li>
+<li>Old+new codebase report: <code>codebase-analysis-combined-report.md</code></li>
+<li>Run ledger: <code>run-ids.tsv</code></li>
+</ul>
+<h2 id="bottom-line">Bottom line</h2>
+<p>This does <strong>not</strong> support “just crank reasoning high” for these agentic evaluations. Medium/high tied on aggregate store-backed pass rate, and high was meaningfully worse in codebase-analysis for two of the three GPT-5.6 variants.</p>
+<p>Best GPT-5.6 setting from this run:</p>
+<ul>
+<li>Store-backed agentic suites: <code>terra</code> medium/high or <code>luna</code> medium are tied-ish.</li>
+<li>Codebase analysis: <code>terra</code> medium and <code>sol</code> medium are the only competitive GPT-5.6 rows.</li>
+<li>Overall practical pick: <strong><code>gpt-5.6-terra-test-only</code> at medium</strong> — tied top GPT-5.6 store-backed score, fastest among the 23/34 rows, and solid 67% codebase recall.</li>
+</ul>
+    </main>
+  </div>
+</body>
+</html>

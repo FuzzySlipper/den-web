@@ -1,5 +1,49 @@
 [
   {
+    "slug": "goblinbench-gpt56-reasoning-2026-07-09",
+    "title": "GoblinBench GPT-5.6 reasoning matrix \u2014 2026-07-09",
+    "summary": "GPT-5.6 Terra/Luna/Sol medium vs high reasoning on GoblinBench tool-calling, deceptive tool-use, hallucination/grounding, and codebase analysis.",
+    "created_at": "2026-07-09T23:42:00+00:00",
+    "updated_at": "2026-07-09T23:42:00+00:00",
+    "files": [
+      {
+        "source": "source/summary.md",
+        "html": "index.html",
+        "title": "Summary"
+      },
+      {
+        "source": "source/tool-calling-combined-grid.html",
+        "html": "tool-calling-combined-grid.html",
+        "title": "Tool Calling Combined Grid"
+      },
+      {
+        "source": "source/deceptive-tool-calling-combined-grid.html",
+        "html": "deceptive-tool-calling-combined-grid.html",
+        "title": "Deceptive Tool Calling Combined Grid"
+      },
+      {
+        "source": "source/hallucination-grounding-combined-grid.html",
+        "html": "hallucination-grounding-combined-grid.html",
+        "title": "Hallucination Grounding Combined Grid"
+      },
+      {
+        "source": "source/comparative-report.md",
+        "html": "comparative-report.html",
+        "title": "Comparative Report"
+      },
+      {
+        "source": "source/codebase-analysis-combined-report.md",
+        "html": "codebase-analysis-combined-report.html",
+        "title": "Codebase Analysis Combined Report"
+      },
+      {
+        "source": "source/run-ids.tsv",
+        "html": "run-ids.html",
+        "title": "Run Ids"
+      }
+    ]
+  },
+  {
     "slug": "goblinbench-regression-matrix-2026-07-09",
     "title": "GoblinBench regression matrix \u2014 2026-07-09",
     "summary": "Tool-calling, deceptive tool-use, hallucination/grounding, and codebase-analysis results for 10 den-router models.",

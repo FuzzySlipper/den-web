@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index,follow">
+  <title>GoblinBench GPT-5.6 reasoning matrix — 2026-07-09</title>
+  <link rel="stylesheet" href="../assets/page-style.css">
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="crumb"><a href="../">Shared pages</a></div>
+      <h1>GoblinBench GPT-5.6 reasoning matrix — 2026-07-09</h1>
+      <p class="summary">GPT-5.6 Terra/Luna/Sol medium vs high reasoning on GoblinBench tool-calling, deceptive tool-use, hallucination/grounding, and codebase analysis.</p>
+    </header>
+    <main class="site-content">
+<h1 id="codebase-analysis-benchmark-den-core-v1">Codebase Analysis Benchmark — den-core-v1</h1>
+<p><em>Generated: 2026-07-09T23:40:50.093618</em>
+<em>Gold issues: 12</em></p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable table">
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Recall</th>
+<th>TP</th>
+<th>FP</th>
+<th>Decoy hits</th>
+<th>Bonus</th>
+<th>Evidence</th>
+<th>Severity cal</th>
+<th>Duration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>qwen-max</td>
+<td>58%</td>
+<td>7</td>
+<td>0</td>
+<td>0</td>
+<td>6</td>
+<td>98%</td>
+<td>60%</td>
+<td>198s</td>
+</tr>
+<tr>
+<td>deepseek-flash</td>
+<td>67%</td>
+<td>8</td>
+<td>1</td>
+<td>0</td>
+<td>6</td>
+<td>100%</td>
+<td>25%</td>
+<td>74s</td>
+</tr>
+<tr>
+<td>deepseek-pro</td>
+<td>83%</td>
+<td>10</td>
+<td>0</td>
+<td>0</td>
+<td>5</td>
+<td>94%</td>
+<td>65%</td>
+<td>159s</td>
+</tr>
+<tr>
+<td>glm-5.2</td>
+<td>75%</td>
+<td>9</td>
+<td>0</td>
+<td>0</td>
+<td>6</td>
+<td>66%</td>
+<td>27%</td>
+<td>160s</td>
+</tr>
+<tr>
+<td>longcat-2.0</td>
+<td>67%</td>
+<td>8</td>
+<td>0</td>
+<td>0</td>
+<td>6</td>
+<td>52%</td>
+<td>29%</td>
+<td>310s</td>
+</tr>
+<tr>
+<td>grok-4.5</td>
+<td>8%</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>100%</td>
+<td>0%</td>
+<td>76s</td>
+</tr>
+<tr>
+<td>kimi-code</td>
+<td>83%</td>
+<td>10</td>
+<td>1</td>
+<td>0</td>
+<td>11</td>
+<td>85%</td>
+<td>40%</td>
+<td>214s</td>
+</tr>
+<tr>
+<td>gpt-5.5-test-only</td>
+<td>33%</td>
+<td>4</td>
+<td>0</td>
+<td>0</td>
+<td>5</td>
+<td>66%</td>
+<td>11%</td>
+<td>153s</td>
+</tr>
+<tr>
+<td>mimo-pro</td>
+<td>83%</td>
+<td>10</td>
+<td>0</td>
+<td>0</td>
+<td>8</td>
+<td>51%</td>
+<td>6%</td>
+<td>248s</td>
+</tr>
+<tr>
+<td>gpt-5.6-terra-test-only-reasoning-medium</td>
+<td>67%</td>
+<td>8</td>
+<td>1</td>
+<td>0</td>
+<td>7</td>
+<td>64%</td>
+<td>12%</td>
+<td>66s</td>
+</tr>
+<tr>
+<td>gpt-5.6-terra-test-only-reasoning-high</td>
+<td>0%</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+<td>66%</td>
+<td>0%</td>
+<td>91s</td>
+</tr>
+<tr>
+<td>gpt-5.6-luna-test-only-reasoning-medium</td>
+<td>0%</td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>33%</td>
+<td>0%</td>
+<td>56s</td>
+</tr>
+<tr>
+<td>gpt-5.6-luna-test-only-reasoning-high</td>
+<td>25%</td>
+<td>3</td>
+<td>0</td>
+<td>0</td>
+<td>8</td>
+<td>63%</td>
+<td>9%</td>
+<td>90s</td>
+</tr>
+<tr>
+<td>gpt-5.6-sol-test-only-reasoning-medium</td>
+<td>67%</td>
+<td>8</td>
+<td>0</td>
+<td>0</td>
+<td>14</td>
+<td>65%</td>
+<td>9%</td>
+<td>154s</td>
+</tr>
+<tr>
+<td>gpt-5.6-sol-test-only-reasoning-high</td>
+<td>0%</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>5</td>
+<td>66%</td>
+<td>0%</td>
+<td>221s</td>
+</tr>
+<tr>
+<td>## Issue Coverage Matrix</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable table">
+<table>
+<thead>
+<tr>
+<th>Gold Issue</th>
+<th>Severity</th>
+<th>qwen-max</th>
+<th>deepseek-flash</th>
+<th>deepseek-pro</th>
+<th>glm-5.2</th>
+<th>longcat-2.0</th>
+<th>grok-4.5</th>
+<th>kimi-code</th>
+<th>gpt-5.5-test-only</th>
+<th>mimo-pro</th>
+<th>gpt-5.6-terra-test-only-reasoning-medium</th>
+<th>gpt-5.6-terra-test-only-reasoning-high</th>
+<th>gpt-5.6-luna-test-only-reasoning-medium</th>
+<th>gpt-5.6-luna-test-only-reasoning-high</th>
+<th>gpt-5.6-sol-test-only-reasoning-medium</th>
+<th>gpt-5.6-sol-test-only-reasoning-high</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>| <strong>contract-paging-mismatch</strong> | high | · | · | · | · | · | · | · | · | ✓ | ✓ | · | · | · | ✓ | · |
+| <strong>worker-release-before-completion</strong> | high | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | ✓ | · |
+| <strong>stale-review-verdict</strong> | medium | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | ✓ | ✓ | · | · | · | ✓ | · |
+| <strong>hardcoded-lan-ip</strong> | medium | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | ✓ | · | · | · | · | · | · |
+| <strong>exception-in-background-loop</strong> | critical | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | ✓ | · |
+| <strong>core-mcp-boundary-leak</strong> | medium | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · |
+| <strong>health-check-ignores-db</strong> | medium | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | ✓ | ✓ | · | · | · | · | · |
+| <strong>tool-schema-description-mismatch</strong> | medium | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | ✓ | ✓ | · | · | · | ✓ | · |
+| <strong>singleton-cache-no-lock</strong> | low | · | ~ | · | ✓ | · | · | ✓ | · | ✓ | ✓ | · | · | · | ✓ | · |
+| <strong>documentation-contradiction</strong> | low | · | ✓ | ✓ | · | · | · | ✓ | ✓ | ✓ | ~ | · | · | · | ✓ | · |
+| <strong>missing-404-test</strong> | low | ✓ | · | ✓ | ✓ | ✓ | · | ✓ | ✓ | ✓ | · | · | · | · | · | · |
+| <strong>assignment-release-null-state</strong> | medium | · | · | ✓ | ✓ | ✓ | · | ✓ | · | · | · | · | · | ✓ | ✓ | · |</p>
+<h2 id="qualitative-assessment">Qualitative Assessment</h2>
+<h3 id="qwen-max">qwen-max</h3>
+<p><strong>Overall:</strong> Thorough analysis with strong evidence; correctly identified the critical background-loop failure and the premature worker release. Overrated severity of a few medium issues, and missed several gold-level problems (pagination mismatch, MCP boundary leak, documentation contradiction, assignment release idempotency). No false positives or decoy hits, and found six genuine bonus issues.</p>
+<p><strong>Best finding:</strong> Background Dispatch Loop Dies Silently on Transient Exceptions</p>
+<blockquote>
+<p>The RunBackgroundLoopAsync method lacks a top-level try/catch block inside the while loop. If DequeueBatchAsync throws an exception (e.g., SQLite 'database is locked'), the exception propagates out of the Task.Run delegate. The background task terminates silently, and the dispatch queue stops processing permanently.
+<em>Precisely identifies a critical operational fragility, connects it to the fire-and-forget pattern, and explains the concrete impact of a silent stoppage.</em></p>
+</blockquote>
+<p><strong>Key miss:</strong> contract-paging-mismatch</p>
+<blockquote>
+<p>The candidate did not detect the mixed offset/cursor pagination: MessageRoutes returns a nextCursor that no consumer reads, while TaskRepository uses offset-based paging. This breaks pagination for message listings, a high-severity API contract violation.</p>
+</blockquote>
+<h3 id="deepseek-flash">deepseek-flash</h3>
+<p><strong>Overall:</strong> Candidate demonstrated strong understanding of correctness and operational concerns, successfully identifying 8 of 12 gold issues. Several high-severity items were missed (paging mismatch, boundary leak, missing 404 test, idempotent release). One false positive on authentication, but no decoy hits. Six bonus findings add value. Evidence quality is consistently high.</p>
+<p><strong>Best finding:</strong> Worker release order violates atomicity</p>
+<blockquote>
+<p>// STEP 1: Release the assignment — makes the pool member available ... await WriteCompletionPacketAsync(assignmentId); // This happens AFTER the release
+<em>Clearly pinpoints the ordering defect with a direct code quote, explains the race window and potential for duplicate work, and proposes a concrete fix (write first, then release, ideally in a transaction).</em></p>
+</blockquote>
+<p><strong>Key miss:</strong> contract-paging-mismatch</p>
+<blockquote>
+<p>The gold high-severity issue about cursor/offset pagination mix-up in MessageRoutes was not detected. This can cause clients to misinterpret pagination and miss or duplicate items, a significant API contract violation.</p>
+</blockquote>
+<h3 id="deepseek-pro">deepseek-pro</h3>
+<p><strong>Overall:</strong> The candidate demonstrates strong analysis, capturing 10 of 12 gold issues with high‑quality evidence. The two misses (pagination mismatch and cache race condition) are significant gaps. The additional five bonus findings are genuine and add value, with no false positives or decoy hits. Evidence is mostly direct code quotes, and severity calibration shows a slight tendency to overrate (especially missing‑404 and documentation issues) while underrating a few. Overall a thorough and accurate review.</p>
+<p><strong>Best finding:</strong> Dispatch background loop crashes silently on outer exception</p>
+<blockquote>
+<p>return Task.Run(async () =&gt; { while (!token.IsCancellationRequested) { var batch = await DequeueBatchAsync(10); ... } }, token);
+<em>This excerpt pinpoints the exact code location and clearly explains how an unhandled exception kills the dispatch loop permanently. The diagnosis is precise and the impact description (green health check masking failure) shows systemic understanding.</em></p>
+</blockquote>
+<p><strong>Key miss:</strong> contract-paging-mismatch</p>
+<blockquote>
+<p>The candidate did not identify the mixed cursor/offset pagination in MessageRoutes and the unused nextCursor. This is a high‑severity API design flaw that leads to broken client pagination and potential data inconsistencies.</p>
+</blockquote>
+<h3 id="glm-52">glm-5.2</h3>
+<h3 id="longcat-20">longcat-2.0</h3>
+<h3 id="grok-45">grok-4.5</h3>
+<p><strong>Overall:</strong> The candidate accurately pinpointed one high-severity ordering defect with strong evidence and a credible fix. However, it submitted only a single finding, missing 11 other gold issues including critical and medium severity items. The severity was overrated (critical vs. high). No false positives or decoy hits.</p>
+<p><strong>Best finding:</strong> Worker released to pool before completion is durable</p>
+<blockquote>
+<p>Release frees capacity and marks the assignment completed before the completion packet is written. ReleaseAssignmentAsync ignores prior state and never checks ReleaseNonce, so concurrent release/reassign can interleave.
+<em>Clearly articulates the root cause and concurrency risks, linking the ordering bug to the practical impact of duplicate work and corrupted state.</em></p>
+</blockquote>
+<p><strong>Key miss:</strong> exception-in-background-loop</p>
+<blockquote>
+<p>Critical issue: DispatchRepository.RunBackgroundLoopAsync uses a fire-and-forget Task.Run loop with no per-iteration exception handling, risking silent termination of the background dispatcher. Not mentioned by the candidate.</p>
+</blockquote>
+<h3 id="kimi-code">kimi-code</h3>
+<p><strong>Overall:</strong> The candidate uncovered the majority of gold issues with strong evidence. A few gold items (core layer leak, cursor consumer mismatch) were missed. The model slightly overrated severity on several medium/low issues. It also surfaced 11 genuine problems not in the gold ledger, showing thoroughness. One false positive flagged a documented 'not yet implemented' auth gap.</p>
+<p><strong>Best finding:</strong> Dispatch background loop is fire-and-forget and crashes silently</p>
+<blockquote>
+<p>RunBackgroundLoopAsync is invoked without awaiting or registering with IHostedService, and the per-iteration DequeueBatchAsync call is not wrapped in try/catch. A failure in polling aborts the entire loop silently.
+<em>This excerpt precisely links the fire-and-forget pattern to the silent crash risk, demonstrates clear root-cause analysis, and proposes an actionable architectural fix.</em></p>
+</blockquote>
+<p><strong>Key miss:</strong> core-mcp-boundary-leak</p>
+<blockquote>
+<p>The core domain model ProjectTask contains an MCP-specific field <code>McpToolProfile</code>, violating layering. The candidate did not flag this, missing an important maintenance and architectural concern.</p>
+</blockquote>
+<h3 id="gpt-55-test-only">gpt-5.5-test-only</h3>
+<h3 id="mimo-pro">mimo-pro</h3>
+<h3 id="gpt-56-terra-test-only-reasoning-medium">gpt-5.6-terra-test-only-reasoning-medium</h3>
+<h3 id="gpt-56-terra-test-only-reasoning-high">gpt-5.6-terra-test-only-reasoning-high</h3>
+<h3 id="gpt-56-luna-test-only-reasoning-medium">gpt-5.6-luna-test-only-reasoning-medium</h3>
+<h3 id="gpt-56-luna-test-only-reasoning-high">gpt-5.6-luna-test-only-reasoning-high</h3>
+<h3 id="gpt-56-sol-test-only-reasoning-medium">gpt-5.6-sol-test-only-reasoning-medium</h3>
+<h3 id="gpt-56-sol-test-only-reasoning-high">gpt-5.6-sol-test-only-reasoning-high</h3>
+<hr>
+<h2 id="role-routing-recommendation">Role Routing Recommendation</h2>
+<ul>
+<li><strong>Planner/Architect:</strong> deepseek-pro (highest recall + evidence quality)</li>
+<li><strong>Reviewer:</strong> deepseek-pro (good recall + bonus/real-finding awareness)</li>
+<li><strong>Operator:</strong> kimi-code (fewer false positives, tradeoff awareness)</li>
+<li><strong>Cheap triage:</strong> kimi-code (best value for cost)</li>
+</ul>
+<hr>
+<p><em>Report generated by codebase-analysis-runner.py</em></p>
+    </main>
+  </div>
+</body>
+</html>

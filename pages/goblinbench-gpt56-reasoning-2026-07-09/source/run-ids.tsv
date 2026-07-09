@@ -1,0 +1,9 @@
+tool-call-behavior	run-20260709-155659-8524c128	gpt-5.6 reasoning medium/high tool-call-behavior matrix 2026-07-09	runs/requested-regression-matrix-20260709-gpt56-reasoning/logs/01-tool-call-behavior.log
+mcp-tools	run-20260709-155911-ff552350	gpt-5.6 reasoning medium/high mcp-tools matrix 2026-07-09	runs/requested-regression-matrix-20260709-gpt56-reasoning/logs/02-mcp-tools.log
+mcp-tools-hard	run-20260709-160206-a711d202	gpt-5.6 reasoning medium/high deceptive mcp-tools-hard matrix 2026-07-09	runs/requested-regression-matrix-20260709-gpt56-reasoning/logs/03-mcp-tools-hard.log
+mcp-session	run-20260709-160412-d443ac3c	gpt-5.6 reasoning medium/high deceptive mcp-session matrix 2026-07-09	runs/requested-regression-matrix-20260709-gpt56-reasoning/logs/04-mcp-session.log
+den-mcp-ambiguity	run-20260709-160507-2e93e598	gpt-5.6 reasoning medium/high den-mcp-ambiguity baseline matrix 2026-07-09	runs/requested-regression-matrix-20260709-gpt56-reasoning/logs/05-den-mcp-ambiguity.log
+den-mcp-ambiguity-hinted	run-20260709-160943-d5f78f82	gpt-5.6 reasoning medium/high den-mcp-ambiguity hinted matrix 2026-07-09	runs/requested-regression-matrix-20260709-gpt56-reasoning/logs/06-den-mcp-ambiguity-hinted.log
+autonomy-calibration	run-20260709-161246-2b3885ab	gpt-5.6 reasoning medium/high autonomy-calibration matrix 2026-07-09	runs/requested-regression-matrix-20260709-gpt56-reasoning/logs/07-autonomy-calibration.log
+evidence-grounding	run-20260709-161348-30b7f62e	gpt-5.6 reasoning medium/high evidence-grounding matrix 2026-07-09	runs/requested-regression-matrix-20260709-gpt56-reasoning/logs/08-evidence-grounding.log
+codebase-analysis	runs/requested-regression-matrix-20260709-gpt56-reasoning/codebase-analysis-den-core-v1	gpt-5.6 reasoning medium/high codebase-analysis Mode A matrix 2026-07-09	runs/requested-regression-matrix-20260709-gpt56-reasoning/logs/09-codebase-analysis.log
