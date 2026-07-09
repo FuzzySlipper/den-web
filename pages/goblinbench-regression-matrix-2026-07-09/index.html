@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index,follow">
+  <title>GoblinBench regression matrix — 2026-07-09</title>
+  <link rel="stylesheet" href="../assets/page-style.css">
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="crumb"><a href="../">Shared pages</a></div>
+      <h1>GoblinBench regression matrix — 2026-07-09</h1>
+      <p class="summary">Tool-calling, deceptive tool-use, hallucination/grounding, and codebase-analysis results for 10 den-router models.</p>
+    </header>
+    <main class="site-content">
+<div class="navbox"><strong>Files in this share</strong><ul>
+<li><a href="index.html">Summary</a> (<a href="source/summary.md">source</a>)</li>
+<li><a href="tool-calling-grid.html">Tool Calling Grid</a> (<a href="source/tool-calling-grid.html">source</a>)</li>
+<li><a href="deceptive-tool-calling-grid.html">Deceptive Tool Calling Grid</a> (<a href="source/deceptive-tool-calling-grid.html">source</a>)</li>
+<li><a href="hallucination-grounding-grid.html">Hallucination Grounding Grid</a> (<a href="source/hallucination-grounding-grid.html">source</a>)</li>
+<li><a href="comparative-report.html">Comparative Report</a> (<a href="source/comparative-report.md">source</a>)</li>
+<li><a href="run-ids.html">Run Ids</a> (<a href="source/run-ids.tsv">source</a>)</li>
+</ul></div>
+<h1 id="goblinbench-requested-regression-matrix-2026-07-09">GoblinBench requested regression matrix — 2026-07-09</h1>
+<p>Broad rerun requested for tool calling, deceptive/adversarial tool use, hallucination/groundedness, and codebase analysis after older pre-store results were not present in the canonical GoblinBench DB.</p>
+<h2 id="scope">Scope</h2>
+<p>Models, all through den-router (<code>http://127.0.0.1:18082/v1</code>):</p>
+<p><code>qwen-max</code>, <code>deepseek-flash</code>, <code>deepseek-pro</code>, <code>glm-5.2</code>, <code>longcat-2.0</code>, <code>grok-4.5</code>, <code>kimi-code</code>, <code>gpt-5.5-test-only</code>, <code>stepfun</code>, <code>mimo-pro</code>.</p>
+<p>GoblinBench store run IDs:</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable table">
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Suites</th>
+<th>Run IDs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tool calling</td>
+<td><code>tool-call-behavior</code>, <code>mcp-tools</code></td>
+<td><code>run-20260709-015748-7b0b3d07</code>, <code>run-20260709-020836-b5316037</code></td>
+</tr>
+<tr>
+<td>Deceptive/adversarial tool calling</td>
+<td><code>mcp-tools-hard</code>, <code>mcp-session</code>, <code>den-mcp-ambiguity</code>, <code>den-mcp-ambiguity-hinted</code></td>
+<td><code>run-20260709-022522-2dc2d5b7</code>, <code>run-20260709-023650-bb33f5b7</code>, <code>run-20260709-024154-d40db14e</code>, <code>run-20260709-025630-57cbb6c6</code></td>
+</tr>
+<tr>
+<td>Hallucination/groundedness</td>
+<td><code>autonomy-calibration</code>, <code>evidence-grounding</code></td>
+<td><code>run-20260709-030955-be55681c</code>, <code>run-20260709-031746-33fc603d</code></td>
+</tr>
+<tr>
+<td>Codebase analysis</td>
+<td>Mode A <code>den-core-v1</code> fixture</td>
+<td><code>runs/requested-regression-matrix-20260709/codebase-analysis-den-core-v1/</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Generated HTML grid reports are mobile-friendlier than the previous static report shell: they include a viewport tag and horizontal swipe affordance for wide tables.</p>
+<h2 id="store-backed-aggregate-pass-rates">Store-backed aggregate pass rates</h2>
+<h3 id="by-suite">By suite</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable table">
+<table>
+<thead>
+<tr>
+<th>Suite</th>
+<th style="text-align: right;">Cells</th>
+<th style="text-align: right;">Passed</th>
+<th style="text-align: right;">Pass rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tool-call-behavior</code></td>
+<td style="text-align: right;">40</td>
+<td style="text-align: right;">37</td>
+<td style="text-align: right;">92.5%</td>
+</tr>
+<tr>
+<td><code>mcp-tools</code></td>
+<td style="text-align: right;">80</td>
+<td style="text-align: right;">75</td>
+<td style="text-align: right;">93.8%</td>
+</tr>
+<tr>
+<td><code>mcp-tools-hard</code></td>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">40.0%</td>
+</tr>
+<tr>
+<td><code>mcp-session</code></td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">90.0%</td>
+</tr>
+<tr>
+<td><code>den-mcp-ambiguity</code></td>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">25</td>
+<td style="text-align: right;">41.7%</td>
+</tr>
+<tr>
+<td><code>den-mcp-ambiguity-hinted</code></td>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">32</td>
+<td style="text-align: right;">53.3%</td>
+</tr>
+<tr>
+<td><code>autonomy-calibration</code></td>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">33.3%</td>
+</tr>
+<tr>
+<td><code>evidence-grounding</code></td>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">100.0%</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="by-model-across-all-store-backed-suites">By model across all store-backed suites</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable table">
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th style="text-align: right;">Cells</th>
+<th style="text-align: right;">Passed</th>
+<th style="text-align: right;">Pass rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>glm-5.2</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">26</td>
+<td style="text-align: right;">76.5%</td>
+</tr>
+<tr>
+<td><code>qwen-max</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">26</td>
+<td style="text-align: right;">76.5%</td>
+</tr>
+<tr>
+<td><code>deepseek-pro</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">24</td>
+<td style="text-align: right;">70.6%</td>
+</tr>
+<tr>
+<td><code>kimi-code</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">24</td>
+<td style="text-align: right;">70.6%</td>
+</tr>
+<tr>
+<td><code>deepseek-flash</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">67.6%</td>
+</tr>
+<tr>
+<td><code>gpt-5.5-test-only</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">67.6%</td>
+</tr>
+<tr>
+<td><code>mimo-pro</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">22</td>
+<td style="text-align: right;">64.7%</td>
+</tr>
+<tr>
+<td><code>longcat-2.0</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">21</td>
+<td style="text-align: right;">61.8%</td>
+</tr>
+<tr>
+<td><code>stepfun</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">21</td>
+<td style="text-align: right;">61.8%</td>
+</tr>
+<tr>
+<td><code>grok-4.5</code></td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">20</td>
+<td style="text-align: right;">58.8%</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="by-model-and-category">By model and category</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable table">
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th style="text-align: right;">Tool calling</th>
+<th style="text-align: right;">Deceptive tool calling</th>
+<th style="text-align: right;">Hallucination/grounding</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>qwen-max</code></td>
+<td style="text-align: right;">12/12 (100%)</td>
+<td style="text-align: right;">9/16 (56%)</td>
+<td style="text-align: right;">5/6 (83%)</td>
+</tr>
+<tr>
+<td><code>glm-5.2</code></td>
+<td style="text-align: right;">12/12 (100%)</td>
+<td style="text-align: right;">9/16 (56%)</td>
+<td style="text-align: right;">5/6 (83%)</td>
+</tr>
+<tr>
+<td><code>deepseek-flash</code></td>
+<td style="text-align: right;">12/12 (100%)</td>
+<td style="text-align: right;">7/16 (44%)</td>
+<td style="text-align: right;">4/6 (67%)</td>
+</tr>
+<tr>
+<td><code>longcat-2.0</code></td>
+<td style="text-align: right;">12/12 (100%)</td>
+<td style="text-align: right;">6/16 (38%)</td>
+<td style="text-align: right;">3/6 (50%)</td>
+</tr>
+<tr>
+<td><code>deepseek-pro</code></td>
+<td style="text-align: right;">11/12 (92%)</td>
+<td style="text-align: right;">9/16 (56%)</td>
+<td style="text-align: right;">4/6 (67%)</td>
+</tr>
+<tr>
+<td><code>kimi-code</code></td>
+<td style="text-align: right;">11/12 (92%)</td>
+<td style="text-align: right;">10/16 (63%)</td>
+<td style="text-align: right;">3/6 (50%)</td>
+</tr>
+<tr>
+<td><code>mimo-pro</code></td>
+<td style="text-align: right;">11/12 (92%)</td>
+<td style="text-align: right;">5/16 (31%)</td>
+<td style="text-align: right;">6/6 (100%)</td>
+</tr>
+<tr>
+<td><code>stepfun</code></td>
+<td style="text-align: right;">11/12 (92%)</td>
+<td style="text-align: right;">7/16 (44%)</td>
+<td style="text-align: right;">3/6 (50%)</td>
+</tr>
+<tr>
+<td><code>gpt-5.5-test-only</code></td>
+<td style="text-align: right;">10/12 (83%)</td>
+<td style="text-align: right;">9/16 (56%)</td>
+<td style="text-align: right;">4/6 (67%)</td>
+</tr>
+<tr>
+<td><code>grok-4.5</code></td>
+<td style="text-align: right;">10/12 (83%)</td>
+<td style="text-align: right;">7/16 (44%)</td>
+<td style="text-align: right;">3/6 (50%)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="codebase-analysis-mode-a-den-core-v1">Codebase analysis Mode A — <code>den-core-v1</code></h2>
+<p>Judge model: <code>deepseek-pro</code>. Gold ledger: 12 issues.</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable table">
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th style="text-align: right;">Recall</th>
+<th style="text-align: right;">TP</th>
+<th style="text-align: right;">FP</th>
+<th style="text-align: right;">Bonus</th>
+<th style="text-align: right;">Evidence</th>
+<th style="text-align: right;">Duration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>deepseek-pro</code></td>
+<td style="text-align: right;">83%</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">94%</td>
+<td style="text-align: right;">159s</td>
+</tr>
+<tr>
+<td><code>kimi-code</code></td>
+<td style="text-align: right;">83%</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: right;">85%</td>
+<td style="text-align: right;">214s</td>
+</tr>
+<tr>
+<td><code>mimo-pro</code></td>
+<td style="text-align: right;">83%</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">51%</td>
+<td style="text-align: right;">248s</td>
+</tr>
+<tr>
+<td><code>glm-5.2</code></td>
+<td style="text-align: right;">75%</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">66%</td>
+<td style="text-align: right;">160s</td>
+</tr>
+<tr>
+<td><code>deepseek-flash</code></td>
+<td style="text-align: right;">67%</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">100%</td>
+<td style="text-align: right;">74s</td>
+</tr>
+<tr>
+<td><code>longcat-2.0</code></td>
+<td style="text-align: right;">67%</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">52%</td>
+<td style="text-align: right;">310s</td>
+</tr>
+<tr>
+<td><code>qwen-max</code></td>
+<td style="text-align: right;">58%</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">98%</td>
+<td style="text-align: right;">198s</td>
+</tr>
+<tr>
+<td><code>gpt-5.5-test-only</code></td>
+<td style="text-align: right;">33%</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">66%</td>
+<td style="text-align: right;">153s</td>
+</tr>
+<tr>
+<td><code>grok-4.5</code></td>
+<td style="text-align: right;">8%</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">100%</td>
+<td style="text-align: right;">76s</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Notes:</p>
+<ul>
+<li><code>stepfun</code> returned only a 187-character response and no parseable <code>findings.json</code>, so it is a harness/model-output failure for this Mode A codebase report rather than a judged model-quality score.</li>
+<li>The judge returned findings-only fallback parses for <code>gpt-5.5-test-only</code> and <code>mimo-pro</code>; their leaderboard values are computed from the per-finding judge records, but they do not have the richer qualitative <code>scoring.overall_assessment</code> prose.</li>
+<li>The highest codebase-analysis recall tier is a three-way tie by recall (<code>deepseek-pro</code>, <code>kimi-code</code>, <code>mimo-pro</code>), but <code>deepseek-pro</code> has much stronger evidence/severity calibration than <code>mimo-pro</code> and fewer false positives than <code>kimi-code</code>.</li>
+</ul>
+<h2 id="artifacts">Artifacts</h2>
+<ul>
+<li>Tool calling grid: <code>tool-calling-grid.html</code></li>
+<li>Deceptive tool-calling grid: <code>deceptive-tool-calling-grid.html</code></li>
+<li>Hallucination/grounding grid: <code>hallucination-grounding-grid.html</code></li>
+<li>Codebase analysis report: <code>codebase-analysis-den-core-v1/comparative-report.md</code></li>
+<li>Run ID ledger: <code>run-ids.tsv</code></li>
+<li>Full logs: <code>logs/*.log</code></li>
+</ul>
+    </main>
+  </div>
+</body>
+</html>

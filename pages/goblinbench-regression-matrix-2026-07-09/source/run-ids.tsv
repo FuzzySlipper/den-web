@@ -1,0 +1,9 @@
+tool-call-behavior	run-20260709-015748-7b0b3d07	requested tool-call-behavior 10-model matrix 20260709	runs/requested-regression-matrix-20260709/logs/01-tool-call-behavior.log
+mcp-tools	run-20260709-020836-b5316037	requested mcp-tools 10-model matrix 20260709	runs/requested-regression-matrix-20260709/logs/02-mcp-tools.log
+mcp-tools-hard	run-20260709-022522-2dc2d5b7	requested deceptive mcp-tools-hard 10-model matrix 20260709	runs/requested-regression-matrix-20260709/logs/03-mcp-tools-hard.log
+mcp-session	run-20260709-023650-bb33f5b7	requested deceptive mcp-session 10-model matrix 20260709	runs/requested-regression-matrix-20260709/logs/04-mcp-session.log
+den-mcp-ambiguity	run-20260709-024154-d40db14e	requested den-mcp-ambiguity baseline 10-model matrix 20260709	runs/requested-regression-matrix-20260709/logs/05-den-mcp-ambiguity.log
+den-mcp-ambiguity-hinted	run-20260709-025630-57cbb6c6	requested den-mcp-ambiguity hinted 10-model matrix 20260709	runs/requested-regression-matrix-20260709/logs/06-den-mcp-ambiguity-hinted.log
+autonomy-calibration	run-20260709-030955-be55681c	requested autonomy-calibration 10-model matrix 20260709	runs/requested-regression-matrix-20260709/logs/07-autonomy-calibration.log
+evidence-grounding	run-20260709-031746-33fc603d	requested evidence-grounding 10-model matrix 20260709	runs/requested-regression-matrix-20260709/logs/08-evidence-grounding.log
+codebase-analysis	runs/requested-regression-matrix-20260709/codebase-analysis-den-core-v1	requested codebase-analysis Mode A 10-model matrix 20260709	runs/requested-regression-matrix-20260709/logs/09-codebase-analysis.log
