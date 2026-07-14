@@ -83,6 +83,7 @@ const taskListQuietRefreshMs = 15000;
 
       .task-list {
         border-right: 1px solid var(--den-border);
+        container-type: inline-size;
         display: grid;
         grid-template-rows: auto auto minmax(0, 1fr);
       }
@@ -397,6 +398,12 @@ const taskListQuietRefreshMs = 15000;
 
       .mobile-back {
         display: none;
+      }
+
+      @container (max-width: 440px) {
+        .toolbar {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
       }
 
       @media (max-width: 920px) {

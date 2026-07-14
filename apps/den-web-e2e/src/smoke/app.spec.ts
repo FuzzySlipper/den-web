@@ -55,6 +55,29 @@ test('scrolls long task lists inside the task list panel', async ({ page }) => {
   await expect(page.getByRole('button', { name: /#4379 Long task list fixture 80/ })).toBeVisible();
 });
 
+test('keeps task list content inside the panel at compact desktop widths', async ({ page }) => {
+  await mockDenServices(page);
+
+  for (const width of [950, 1100, 1250]) {
+    await page.setViewportSize({ width, height: 720 });
+    await page.goto('/');
+
+    const taskList = page.locator('.task-list');
+    await expect(page.getByRole('button', { name: /#3993 Den Web Angular/ })).toBeVisible();
+
+    const bounds = await taskList.evaluate((element) => {
+      const panel = element.getBoundingClientRect();
+      const descendants = Array.from(element.querySelectorAll('.toolbar > *, .row-title'));
+      return {
+        panelRight: panel.right,
+        overflowRight: Math.max(...descendants.map((descendant) => descendant.getBoundingClientRect().right)),
+      };
+    });
+
+    expect(bounds.overflowRight, `task list overflow at ${width}px`).toBeLessThanOrEqual(bounds.panelRight + 0.5);
+  }
+});
+
 test('scrolls long task detail inside the detail panel', async ({ page }) => {
   await mockDenServices(page);
   await page.setViewportSize({ width: 1280, height: 720 });
