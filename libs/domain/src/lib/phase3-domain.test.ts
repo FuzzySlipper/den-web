@@ -195,6 +195,7 @@ describe('successor document domain fixtures', () => {
     const fallback = documentMarkdownBody(documentDetailFixture({ content: 'live body', content_markdown: undefined }));
     const discussion = discussionFixture({
       comments: [
+        discussionCommentFixture({ id: 3, parent_comment_id: 2, author_identity: 'system-architect', body_markdown: 'Nested reply' }),
         discussionCommentFixture({ id: 2, parent_comment_id: 1, author_identity: 'patch', body_markdown: 'Reply' }),
         discussionCommentFixture({ id: 1, author_identity: 'codex', body_markdown: 'Root' }),
       ],
@@ -204,7 +205,8 @@ describe('successor document domain fixtures', () => {
     expect(body).toBe('# Canonical');
     expect(fallback).toBe('live body');
     expect(thread ? discussionAuthor(thread.comment) : '').toBe('codex');
-    expect(thread ? discussionBody(thread.replies[0] ?? thread.comment) : '').toBe('Reply');
+    expect(thread ? discussionBody(thread.replies[0]?.comment ?? thread.comment) : '').toBe('Reply');
+    expect(thread ? discussionBody(thread.replies[0]?.replies[0]?.comment ?? thread.comment) : '').toBe('Nested reply');
   });
 });
 

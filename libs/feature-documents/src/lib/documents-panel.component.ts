@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { MarkdownEditorDialogComponent, MarkdownViewComponent } from '@den-web/components';
 import { discussionAuthor, discussionBody, discussionThreads, documentMarkdownBody } from '@den-web/domain';
@@ -11,7 +12,7 @@ type MobilePane = 'list' | 'detail';
 @Component({
   selector: 'den-documents-panel',
   standalone: true,
-  imports: [DocumentPublishPanelComponent, MarkdownEditorDialogComponent, MarkdownViewComponent],
+  imports: [DocumentPublishPanelComponent, MarkdownEditorDialogComponent, MarkdownViewComponent, NgTemplateOutlet],
   styles: [documentsPanelStyles],
   template: `
     <section class="documents" aria-label="Documents" [class.show-detail]="mobilePane() === 'detail'">
@@ -131,17 +132,17 @@ type MobilePane = 'list' | 'detail';
                         <p class="state">No discussion comments</p>
                       } @else {
                         @for (thread of threads(); track thread.comment.id) {
-                          <article class="comment">
-                            <strong>{{ author(thread.comment) }}</strong>
-                            <span class="comment-body">{{ commentBody(thread.comment) }}</span>
-                            @for (reply of thread.replies; track reply.id) {
-                              <div class="reply">
-                                <strong>{{ author(reply) }}</strong>
-                                <span class="comment-body">{{ commentBody(reply) }}</span>
-                              </div>
+                          <ng-container [ngTemplateOutlet]="commentTree" [ngTemplateOutletContext]="{ $implicit: thread }" />
+                        }
+                        <ng-template #commentTree let-node>
+                          <article class="comment" [class.reply]="node.depth > 0" [attr.aria-label]="node.depth === 0 ? 'Discussion comment' : 'Discussion reply'">
+                            <strong>{{ author(node.comment) }}</strong>
+                            <span class="comment-body">{{ commentBody(node.comment) }}</span>
+                            @for (reply of node.replies; track reply.comment.id) {
+                              <ng-container [ngTemplateOutlet]="commentTree" [ngTemplateOutletContext]="{ $implicit: reply }" />
                             }
                           </article>
-                        }
+                        </ng-template>
                       }
                     }
                     @default { <p class="state">No document selected</p> }

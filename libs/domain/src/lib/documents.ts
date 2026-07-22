@@ -4,7 +4,8 @@ export type DocumentSelectionAction = 'keep-current' | 'prompt-for-dirty-switch'
 
 export interface DiscussionThread {
   readonly comment: DenDiscussionComment;
-  readonly replies: readonly DenDiscussionComment[];
+  readonly replies: readonly DiscussionThread[];
+  readonly depth: number;
 }
 
 export function documentIdentity(document: Pick<DenDocumentSummary, 'project_id' | 'slug'> | null | undefined): string | null {
@@ -28,17 +29,34 @@ export function documentMarkdownBody(document: { readonly content?: string; read
 
 export function discussionThreads(discussion: DenDiscussion | null | undefined): readonly DiscussionThread[] {
   const comments = [...(discussion?.comments ?? [])].sort(compareComments);
-  const repliesByParent = new Map<number, DenDiscussionComment[]>();
-  const roots: DenDiscussionComment[] = [];
+  const parentByCommentId = new Map(comments.map((comment) => [comment.id, discussionParentId(comment)]));
+  const nodes = new Map<number, MutableDiscussionThread>();
+  for (const comment of comments) nodes.set(comment.id, { comment, replies: [], depth: 0 });
 
+  const roots: MutableDiscussionThread[] = [];
   for (const comment of comments) {
+    const node = nodes.get(comment.id);
     const parentId = discussionParentId(comment);
-    if (parentId === null) roots.push(comment);
-    else repliesByParent.set(parentId, [...(repliesByParent.get(parentId) ?? []), comment]);
+    const parent = parentId === null ? undefined : nodes.get(parentId);
+    if (!node || parentId === null || !parent) {
+      roots.push(node ?? { comment, replies: [], depth: 0 });
+      continue;
+    }
+    if (discussionParentCycle(comment.id, parentId, parentByCommentId)) {
+      roots.push(node);
+      continue;
+    }
+    node.depth = parent.depth + 1;
+    parent.replies.push(node);
   }
-
-  return roots.map((comment) => ({ comment, replies: repliesByParent.get(comment.id) ?? [] }));
+  return roots;
 }
+
+type MutableDiscussionThread = {
+  comment: DenDiscussionComment;
+  replies: MutableDiscussionThread[];
+  depth: number;
+};
 
 export function discussionAuthor(comment: DenDiscussionComment): string {
   return comment.author_identity ?? comment.author ?? 'unknown';
@@ -50,6 +68,15 @@ export function discussionBody(comment: DenDiscussionComment): string {
 
 function discussionParentId(comment: DenDiscussionComment): number | null {
   return comment.parent_comment_id ?? comment.parent_id ?? null;
+}
+
+function discussionParentCycle(commentId: number, parentId: number, parentByCommentId: ReadonlyMap<number, number | null>): boolean {
+  const visited = new Set<number>();
+  for (let current: number | null = parentId; current !== null; current = parentByCommentId.get(current) ?? null) {
+    if (current === commentId || visited.has(current)) return true;
+    visited.add(current);
+  }
+  return false;
 }
 
 function compareComments(left: DenDiscussionComment, right: DenDiscussionComment): number {
