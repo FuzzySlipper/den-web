@@ -58,6 +58,7 @@ test('failed live smoke atomically restores every release link without stopping 
 
   const result = await runDeploy({
     ALLOW_DIRTY: '1',
+    DEPLOY_SMOKE: '1',
     DEN_WEB_URL: address(edge),
     DEPLOY_ROOT: deployRoot,
     NX_DAEMON: 'false',
