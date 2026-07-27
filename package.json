@@ -9,7 +9,6 @@
     "lint": "nx run-many -t lint",
     "typecheck": "nx run-many -t typecheck",
     "test": "vitest run --passWithNoTests",
-    "test:static-server": "node --test tools/scripts/den-web-static-server-regression.mjs",
     "e2e": "nx e2e den-web-e2e",
     "verify": "npm run check:pattern && npm run check:docs && npm run check:connectivity && npm run lint && npm run typecheck && npm test && npm run build && npm run e2e",
     "check:all": "npm run verify",

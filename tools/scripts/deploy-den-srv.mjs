@@ -12,38 +12,20 @@ const repoRoot = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), 
 const env = process.env;
 const deployRoot = env.DEPLOY_ROOT ?? '/data/services/den-web';
 const releasesDir = path.join(deployRoot, 'releases');
-const sharedDir = path.join(deployRoot, 'shared');
 const currentLink = path.join(deployRoot, 'current');
 const previousLink = path.join(deployRoot, 'previous');
 const wwwrootLink = path.join(deployRoot, 'wwwroot');
-const serverLink = path.join(deployRoot, 'den-web-static-server.mjs');
 const publicUrl = env.DEN_WEB_URL ?? 'http://192.168.1.10:18080';
-const serviceName = env.SERVICE_NAME ?? 'den-web.service';
-const systemctl = (env.SYSTEMCTL ?? 'systemctl').split(/\s+/).filter(Boolean);
 const keepReleases = Number.parseInt(env.KEEP_RELEASES ?? '5', 10);
 const dryRun = env.DRY_RUN === '1';
-const shouldRestart = env.DEPLOY_RESTART !== '0';
 const shouldSmoke = env.DEPLOY_SMOKE !== '0';
 const skipInstall = env.SKIP_INSTALL === '1';
 const skipChecks = env.SKIP_CHECKS === '1';
 const allowDirty = env.ALLOW_DIRTY === '1';
 const readyTimeoutMs = Number.parseInt(env.SERVICE_READY_TIMEOUT_MS ?? '15000', 10);
-const runtimeEnv = { ...readEnvFile(path.join(sharedDir, 'gateway.env')), ...env };
 
 function log(message) {
   console.log(`[deploy-den-srv] ${message}`);
-}
-
-function readEnvFile(filePath) {
-  if (!fssync.existsSync(filePath)) return {};
-  const values = {};
-  for (const line of fssync.readFileSync(filePath, 'utf8').split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const eq = trimmed.indexOf('=');
-    if (eq > 0) values[trimmed.slice(0, eq).trim()] = trimmed.slice(eq + 1).trim();
-  }
-  return values;
 }
 
 function run(command, args, options = {}) {
@@ -72,16 +54,6 @@ async function readLinkIfExists(linkPath) {
     return await fs.readlink(linkPath);
   } catch (error) {
     if (error?.code === 'ENOENT' || error?.code === 'EINVAL') return null;
-    throw error;
-  }
-}
-
-async function exists(target) {
-  try {
-    await fs.lstat(target);
-    return true;
-  } catch (error) {
-    if (error?.code === 'ENOENT') return false;
     throw error;
   }
 }
@@ -138,6 +110,7 @@ function runtimeConfig() {
     deliverySuccessorApiBase: env.DELIVERY_SUCCESSOR_API_BASE ?? '/api/v1/delivery',
     timelineSuccessorApiBase: env.TIMELINE_SUCCESSOR_API_BASE ?? '/api/v1/timeline',
     docPublishApiBase: env.DOC_PUBLISH_API_BASE ?? '/api/v1/blog/publications',
+    artifactsApiBase: env.ARTIFACTS_API_BASE ?? '/api/v1/artifacts',
     conversationSuccessorReadsEnabled: boolValue('CONVERSATION_SUCCESSOR_READS_ENABLED', 'true'),
     conversationSuccessorWritesEnabled: boolValue('CONVERSATION_SUCCESSOR_WRITES_ENABLED', 'true'),
     conversationSuccessorReadProjectIds: listValue('CONVERSATION_SUCCESSOR_READ_PROJECT_IDS', conversationProjects),
@@ -165,8 +138,6 @@ async function stageRelease(commit, dirty, id) {
   await fs.rm(releaseDir, { recursive: true, force: true });
   await fs.mkdir(releaseDir, { recursive: true });
   await fs.cp(buildOutputPath(), releaseWwwroot, { recursive: true, dereference: true });
-  await fs.copyFile(path.join(repoRoot, 'tools/scripts/den-web-static-server.mjs'), path.join(releaseDir, 'den-web-static-server.mjs'));
-  await fs.chmod(path.join(releaseDir, 'den-web-static-server.mjs'), 0o755);
   await writeJson(path.join(releaseWwwroot, 'den-web-config.json'), runtimeConfig());
   await writeJson(path.join(releaseWwwroot, 'den-web-build.json'), {
     commit,
@@ -176,27 +147,15 @@ async function stageRelease(commit, dirty, id) {
     builtBy: env.BUILT_BY ?? os.userInfo().username,
     sourceRepo: repoRoot,
   });
-  const gatewayEnv = path.join(sharedDir, 'gateway.env');
-  if (await exists(gatewayEnv)) await symlinkAtomic(gatewayEnv, path.join(releaseDir, 'gateway.env'));
   return releaseDir;
 }
 
 async function activate(releaseDir, previousTarget) {
   await prepareLinkPath(currentLink);
   await prepareLinkPath(wwwrootLink);
-  await prepareLinkPath(serverLink);
   await symlinkAtomic(releaseDir, currentLink);
   await symlinkAtomic(path.join(currentLink, 'wwwroot'), wwwrootLink);
-  await symlinkAtomic(path.join(currentLink, 'den-web-static-server.mjs'), serverLink);
   if (previousTarget) await symlinkAtomic(previousTarget, previousLink);
-}
-
-function restartService() {
-  if (!shouldRestart) {
-    log('skipping service restart because DEPLOY_RESTART=0');
-    return;
-  }
-  run(systemctl[0], [...systemctl.slice(1), 'restart', serviceName], { cwd: '/' });
 }
 
 function sleep(ms) {
@@ -220,14 +179,14 @@ function probeBuildSentinel() {
 }
 
 async function waitForServiceReady() {
-  if (!shouldRestart) return;
+  if (!shouldSmoke) return;
   const deadline = Date.now() + readyTimeoutMs;
-  log(`waiting for ${serviceName} to serve /den-web-build.json`);
+  log('waiting for web-edge to serve the activated /den-web-build.json');
   while (Date.now() < deadline) {
     if (await probeBuildSentinel() === 200) return;
     await sleep(250);
   }
-  throw new Error(`${serviceName} did not become ready within ${readyTimeoutMs}ms`);
+  throw new Error(`web-edge did not serve the activated release within ${readyTimeoutMs}ms`);
 }
 
 async function rollback(previousTarget) {
@@ -237,7 +196,6 @@ async function rollback(previousTarget) {
   }
   log(`rolling back to ${previousTarget}`);
   await activate(previousTarget, null);
-  restartService();
 }
 
 function smoke(commit) {
@@ -249,7 +207,7 @@ function smoke(commit) {
     env: {
       DEN_WEB_URL: publicUrl,
       EXPECTED_BUILD_COMMIT: commit,
-      EXPECTED_ENV_NAME: runtimeEnv.ENVIRONMENT_NAME ?? 'den-srv',
+      EXPECTED_ENV_NAME: env.ENVIRONMENT_NAME ?? 'den-srv',
     },
   });
 }
@@ -288,7 +246,6 @@ async function main() {
   if (!skipChecks) {
     run('npm', ['run', 'check:all']);
     run('npm', ['test']);
-    run('npm', ['run', 'test:static-server']);
   }
   run('npm', ['run', 'build']);
   if (dryRun) {
@@ -296,11 +253,9 @@ async function main() {
     return;
   }
   await fs.mkdir(releasesDir, { recursive: true });
-  await fs.mkdir(sharedDir, { recursive: true, mode: 0o750 });
   const releaseDir = await stageRelease(commit, dirty, id);
   await activate(releaseDir, previousTarget);
   try {
-    restartService();
     await waitForServiceReady();
     smoke(commit);
   } catch (error) {

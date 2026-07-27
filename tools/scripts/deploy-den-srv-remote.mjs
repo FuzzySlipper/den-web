@@ -15,7 +15,6 @@ const remoteHost = env.DEN_WEB_DEPLOY_HOST ?? '192.168.1.10';
 const remoteUser = env.DEN_WEB_DEPLOY_USER ?? 'agent';
 const remoteTarget = env.DEN_WEB_DEPLOY_TARGET ?? `${remoteUser}@${remoteHost}`;
 const remoteRepo = env.DEN_WEB_REMOTE_REPO ?? '/data/dev/den-web';
-const systemctl = env.SYSTEMCTL ?? 'sudo -n /usr/bin/systemctl';
 const publicUrl = env.DEN_WEB_URL ?? 'http://192.168.1.10:18080';
 const skipPush = env.SKIP_PUSH === '1' || env.DEPLOY_SKIP_PUSH === '1';
 const allowDirty = env.ALLOW_DIRTY === '1';
@@ -35,18 +34,15 @@ const passThroughEnv = [
   'CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS',
   'DELIVERY_SUCCESSOR_API_BASE',
   'DEN_WEB_URL',
-  'DEPLOY_RESTART',
   'DEPLOY_ROOT',
   'DEPLOY_SMOKE',
   'DOC_PUBLISH_API_BASE',
   'DRY_RUN',
   'ENVIRONMENT_NAME',
   'KEEP_RELEASES',
-  'LIBRARIAN_SUCCESSOR_API_BASE',
   'MESSAGES_SUCCESSOR_API_BASE',
   'OBSERVATION_SUCCESSOR_API_BASE',
   'RELEASE_ID',
-  'SERVICE_NAME',
   'SERVICE_READY_TIMEOUT_MS',
   'SKIP_CHECKS',
   'SKIP_INSTALL',
@@ -100,7 +96,6 @@ function ensureLocalState() {
 
 function remoteScript(expectedCommit) {
   const exports = [
-    `export SYSTEMCTL=${sh(systemctl)}`,
     `export EXPECTED_COMMIT=${sh(expectedCommit)}`,
   ];
   for (const name of passThroughEnv) {
