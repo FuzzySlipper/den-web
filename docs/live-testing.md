@@ -248,3 +248,33 @@ Non-claims:
 
 - does not prove feature-level rendered parity;
 - does not prove rollback unless rollback is explicitly exercised.
+
+### 11. Artifact Evidence Preview
+
+Purpose: prove a durable `den-artifact://` reference in Den message metadata
+resolves through the same-origin artifacts route without putting image bytes in
+task or message state.
+
+Milestones:
+
+- a task containing ref-only artifact metadata loads;
+- artifact metadata renders with MIME, byte count, dimensions, SHA-256,
+  sensitivity, and retention state;
+- image content loads from `/api/v1/artifacts/{artifact_id}/content`;
+- the thumbnail opens the full-size viewer;
+- the evidence packet records the rendered state and explicit non-claims.
+
+Run the focused live scenario with:
+
+```bash
+LIVE_RUN=1 \
+BASE_URL=http://192.168.1.10:18080 \
+ARTIFACT_EVIDENCE_TASK_ID=3480 \
+npx playwright test --config=apps/den-web-e2e/playwright.config.mts \
+  src/live/artifact-evidence.live.spec.ts
+```
+
+Non-claims:
+
+- does not prove sensitive-artifact authorization policy;
+- does not prove deleted-artifact rendering.
