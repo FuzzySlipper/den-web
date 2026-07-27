@@ -14,7 +14,7 @@ function fullUrl(pathname) {
   return new URL(pathname, base);
 }
 
-function request(pathname, method = 'GET') {
+function request(pathname, { method = 'GET', body = '', headers = {} } = {}) {
   const target = fullUrl(pathname);
   return new Promise((resolve, reject) => {
     const req = http.request({
@@ -23,7 +23,11 @@ function request(pathname, method = 'GET') {
       path: target.pathname + target.search,
       method,
       timeout: 15000,
-      headers: { 'User-Agent': 'den-web-smoke/1.0' },
+      headers: {
+        'User-Agent': 'den-web-smoke/1.0',
+        ...headers,
+        ...(body ? { 'Content-Length': Buffer.byteLength(body) } : {}),
+      },
     }, res => {
       let body = '';
       res.setEncoding('utf8');
@@ -34,6 +38,49 @@ function request(pathname, method = 'GET') {
     });
     req.on('error', reject);
     req.on('timeout', () => req.destroy(new Error(`timeout fetching ${target.href}`)));
+    req.end(body);
+  });
+}
+
+function requestSSE(pathname) {
+  const target = fullUrl(pathname);
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const req = http.request({
+      hostname: target.hostname,
+      port: target.port || 80,
+      path: target.pathname + target.search,
+      method: 'GET',
+      timeout: 15000,
+      headers: {
+        Accept: 'text/event-stream',
+        'User-Agent': 'den-web-smoke/1.0',
+      },
+    }, res => {
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', chunk => {
+        body += chunk;
+        if (!settled && body.includes('event: stream_open')) {
+          settled = true;
+          resolve({ status: res.statusCode ?? 0, headers: res.headers, body });
+          res.destroy();
+        }
+      });
+      res.on('end', () => {
+        if (!settled) {
+          settled = true;
+          resolve({ status: res.statusCode ?? 0, headers: res.headers, body });
+        }
+      });
+      res.on('error', error => {
+        if (!settled) reject(error);
+      });
+    });
+    req.on('error', error => {
+      if (!settled) reject(error);
+    });
+    req.on('timeout', () => req.destroy(new Error(`timeout fetching SSE ${target.href}`)));
     req.end();
   });
 }
@@ -121,6 +168,33 @@ async function checkApis() {
   }
 }
 
+async function checkProxyProtocols() {
+  console.log('\n-- Edge body and streaming protocols --');
+  const queryBody = JSON.stringify({
+    project_id: 'den-web',
+    query: 'Den Web edge live request-body probe',
+    source_limits: { tasks: 1, messages: 1, documents: 1, knowledge: 1 },
+  });
+  const query = await request('/api/v1/projects/den-web/librarian/query', {
+    method: 'POST',
+    body: queryBody,
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': 'den-web-smoke-librarian-query',
+    },
+  });
+  assertStatus('POST librarian query body through edge', query);
+  parseJson('librarian POST response', query);
+
+  const stream = await requestSSE('/api/v1/timeline/projects/den-web/stream?limit=1');
+  assertStatus('GET timeline SSE through edge', stream);
+  const contentType = stream.headers['content-type'] ?? '';
+  if (contentType.includes('text/event-stream')) pass('timeline SSE content-type is text/event-stream');
+  else fail('timeline SSE content-type', String(contentType));
+  if (stream.body.includes('event: stream_open')) pass('timeline SSE emitted stream_open');
+  else fail('timeline SSE event', JSON.stringify(stream.body));
+}
+
 async function main() {
   console.log('Den Web smoke test');
   console.log(`Base URL: ${baseUrl}`);
@@ -129,6 +203,7 @@ async function main() {
     await checkStaticRoot();
     await checkConfigAndBuild();
     await checkApis();
+    await checkProxyProtocols();
   } catch (error) {
     fail('Unhandled smoke error', error instanceof Error ? error.message : String(error));
   }

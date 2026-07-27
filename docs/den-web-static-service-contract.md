@@ -43,6 +43,10 @@ http://192.168.1.10:18080/
 The browser never receives a service token and never targets service loopback
 ports directly.
 
+Local Angular development uses the same contract. Its explicit proxy forwards
+runtime config and `/api/*` to `DEN_WEB_DEV_EDGE_URL` (default
+`http://127.0.0.1:18080`); API-shaped paths must never fall through to SPA HTML.
+
 ## Runtime config
 
 The browser loads `/den-web-config.json` before creating transport clients.

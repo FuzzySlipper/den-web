@@ -50,6 +50,9 @@
       "continuous": true,
       "executor": "@angular/build:dev-server",
       "defaultConfiguration": "development",
+      "options": {
+        "proxyConfig": "apps/den-web/proxy.conf.mjs"
+      },
       "configurations": {
         "production": {
           "buildTarget": "den-web:build:production"
@@ -80,4 +83,3 @@
     }
   }
 }
-

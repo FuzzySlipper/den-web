@@ -78,6 +78,14 @@ The deploy script:
 6. runs the live Den Web smoke;
 7. restores the previous symlink target if verification fails.
 
+The regression harness exercises both non-mutating dry-run behavior and a
+forced smoke failure that restores `current`, `wwwroot`, and `previous` while
+the independently managed edge remains running:
+
+```bash
+npm run test:asset-release
+```
+
 Useful overrides:
 
 | Variable | Default | Meaning |

@@ -189,13 +189,13 @@ async function waitForServiceReady() {
   throw new Error(`web-edge did not serve the activated release within ${readyTimeoutMs}ms`);
 }
 
-async function rollback(previousTarget) {
+async function rollback(previousTarget, previousPreviousTarget) {
   if (!previousTarget) {
     log('no previous release recorded; rollback cannot switch current');
     return;
   }
   log(`rolling back to ${previousTarget}`);
-  await activate(previousTarget, null);
+  await activate(previousTarget, previousPreviousTarget);
 }
 
 function smoke(commit) {
@@ -238,6 +238,7 @@ async function main() {
   const commit = read('git', ['rev-parse', 'HEAD']);
   const id = env.RELEASE_ID ?? releaseId(commit);
   const previousTarget = await readLinkIfExists(currentLink);
+  const previousPreviousTarget = await readLinkIfExists(previousLink);
   log(`repo: ${repoRoot}`);
   log(`deploy root: ${deployRoot}`);
   log(`release: ${id}`);
@@ -259,7 +260,7 @@ async function main() {
     await waitForServiceReady();
     smoke(commit);
   } catch (error) {
-    await rollback(previousTarget);
+    await rollback(previousTarget, previousPreviousTarget);
     throw error;
   }
   await prune();

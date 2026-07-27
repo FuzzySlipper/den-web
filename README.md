@@ -21,6 +21,17 @@ npm run verify
 npm run e2e
 ```
 
+`npm run dev` serves Angular on port 4200 and proxies runtime config plus
+`/api/*` to the Go edge at `http://127.0.0.1:18080`. Run a local edge or point
+at another trusted development edge:
+
+```bash
+DEN_WEB_DEV_EDGE_URL=http://192.168.1.10:18080 npm run dev
+```
+
+An API request must return the edge/Gateway response. SPA HTML on `/api/v1/*`
+is a broken local setup, not a fallback.
+
 Useful focused commands:
 
 ```bash
@@ -29,6 +40,8 @@ npm run check:docs
 npm run lint
 npm run typecheck
 npm test
+npm run test:local-proxy
+npm run test:asset-release
 npm run build
 ```
 
