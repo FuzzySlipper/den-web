@@ -13,7 +13,11 @@ test.describe('live artifact evidence', () => {
     await page.goto('/');
     await page.getByRole('button', { name: /Den Web den-web/ }).click();
     await page.getByLabel('Search tasks').fill(artifactTaskId);
-    await page.getByRole('button', { name: new RegExp(`#${artifactTaskId}\\b`) }).click();
+    const taskRow = page
+      .locator('.task-list')
+      .getByRole('button', { name: new RegExp(`#${artifactTaskId}\\b`) });
+    await expect(taskRow).toBeVisible();
+    await taskRow.click();
 
     await expect(page.getByLabel('Task detail').getByRole('heading', {
       name: new RegExp(`#${artifactTaskId}\\b`),
