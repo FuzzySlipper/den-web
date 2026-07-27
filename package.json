@@ -10,7 +10,7 @@
     "typecheck": "nx run-many -t typecheck",
     "test": "vitest run --passWithNoTests",
     "test:local-proxy": "node --test tools/scripts/serve-local-regression.mjs",
-    "test:asset-release": "node --test tools/scripts/asset-release-regression.mjs",
+    "test:asset-release": "node --test tools/scripts/asset-release-regression.mjs tools/scripts/smoke-den-web-regression.mjs",
     "e2e": "nx e2e den-web-e2e",
     "verify": "npm run check:pattern && npm run check:docs && npm run check:connectivity && npm run lint && npm run typecheck && npm test && npm run test:local-proxy && npm run test:asset-release && npm run build && npm run e2e",
     "check:all": "npm run verify",

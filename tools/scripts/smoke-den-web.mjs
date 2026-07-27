@@ -183,8 +183,18 @@ async function checkProxyProtocols() {
       'Idempotency-Key': 'den-web-smoke-librarian-query',
     },
   });
-  assertStatus('POST librarian query body through edge', query);
-  parseJson('librarian POST response', query);
+  const queryResponse = parseJson('librarian POST response', query);
+  if (query.status === 200) {
+    pass('POST librarian query body through edge');
+  } else if (
+    query.status === 404 &&
+    queryResponse?.error?.code === 'not_found' &&
+    queryResponse?.error?.message === 'project scope not found: den-web'
+  ) {
+    pass('POST librarian query body reached Librarian on empty instance');
+  } else {
+    fail('POST librarian query body through edge', `expected success or empty-instance scope response, got HTTP ${query.status}`);
+  }
 
   const stream = await requestSSE('/api/v1/timeline/projects/den-web/stream?limit=1');
   assertStatus('GET timeline SSE through edge', stream);
