@@ -28,20 +28,33 @@ function killChildTree(signal) {
   }
 }
 
+function childTreeIsRunning() {
+  if (!detached || !child.pid) return child.exitCode === null && child.signalCode === null;
+  try {
+    process.kill(-child.pid, 0);
+    return true;
+  } catch (error) {
+    if (error?.code === 'ESRCH') return false;
+    throw error;
+  }
+}
+
 function stop(signal) {
   if (stopping) return;
   stopping = true;
   killChildTree(signal);
-  forceKillTimer = setTimeout(() => killChildTree('SIGKILL'), 5000);
-  forceKillTimer.unref();
+  forceKillTimer = setTimeout(() => {
+    if (childTreeIsRunning()) killChildTree('SIGKILL');
+  }, 5000);
 }
 
 process.once('SIGINT', () => stop('SIGINT'));
 process.once('SIGTERM', () => stop('SIGTERM'));
 
 child.once('exit', (code, signal) => {
-  clearTimeout(forceKillTimer);
   if (!stopping) {
     process.exitCode = code ?? (signal ? 1 : 0);
+    return;
   }
+  if (!childTreeIsRunning()) clearTimeout(forceKillTimer);
 });
