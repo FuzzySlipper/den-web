@@ -19,6 +19,8 @@ Use the bootstrap template live harness:
 - live scenarios are opt-in and gated by `LIVE_RUN=1`;
 - the harness consumes `BASE_URL`;
 - it does not manage ports, kill processes, or guess server identity;
+- remote deployment evidence records the target hostname, machine ID, and
+  access route; a private LAN IP is not unique across sites;
 - the Playwright run broker may provide `BASE_URL` later;
 - until then, use the template local serve fallback and rerun with `BASE_URL`
   set;
