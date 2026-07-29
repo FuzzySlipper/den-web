@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { MarkdownEditorDialogComponent } from '@den-web/components';
+import { LocalTimeComponent, MarkdownEditorDialogComponent } from '@den-web/components';
 import {
   artifactDimensions,
   artifactDisplayName,
@@ -49,7 +49,7 @@ const taskListQuietRefreshMs = 15000;
 @Component({
   selector: 'den-task-cockpit',
   standalone: true,
-  imports: [MarkdownEditorDialogComponent, ArtifactEvidenceComponent],
+  imports: [MarkdownEditorDialogComponent, ArtifactEvidenceComponent, LocalTimeComponent],
   styles: [
     `
       :host {
@@ -538,6 +538,9 @@ const taskListQuietRefreshMs = 15000;
                         </span>
                         <strong>{{ row.task.title || 'Untitled task' }}</strong>
                       </span>
+                      @if (row.task.updated_at) {
+                        <span class="meta">Updated <den-local-time [value]="row.task.updated_at" /></span>
+                      }
                     </button>
                   }
                 }
@@ -612,6 +615,12 @@ const taskListQuietRefreshMs = 15000;
                   <span>Priority</span>
                   <strong>{{ detail.task.priority ?? 'none' }}</strong>
                 </div>
+                @if (detail.task.updated_at) {
+                  <div class="metric">
+                    <span>Updated</span>
+                    <strong><den-local-time [value]="detail.task.updated_at" /></strong>
+                  </div>
+                }
               </div>
 
               @if (editError()) {
@@ -676,7 +685,12 @@ const taskListQuietRefreshMs = 15000;
                       <li>
                         <button type="button" class="message-reference" (click)="openMessage(message)">
                           <strong>{{ messageTitle(message) }}</strong>
-                          <span>{{ messageMeta(message) }}</span>
+                          <span>
+                            {{ messageMeta(message) }}
+                            @if (message.created_at) {
+                              · <den-local-time [value]="message.created_at" />
+                            }
+                          </span>
                         </button>
                         <den-artifact-evidence [items]="artifactEvidenceItems(artifactRefsForMessage(message))" />
                       </li>
@@ -916,8 +930,7 @@ export class TaskCockpitComponent {
   protected messageMeta(message: DenMessage): string {
     const sender = message.sender ?? 'unknown';
     const intent = message.intent ? ` · ${message.intent.replace(/_/g, ' ')}` : '';
-    const date = message.created_at ? ` · ${message.created_at}` : '';
-    return `${sender}${intent}${date}`;
+    return `${sender}${intent}`;
   }
 
   protected artifactRefsForMessage(message: DenMessage): readonly ArtifactReference[] {

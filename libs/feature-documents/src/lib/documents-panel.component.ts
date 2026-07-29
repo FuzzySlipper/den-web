@@ -1,6 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { MarkdownEditorDialogComponent, MarkdownViewComponent } from '@den-web/components';
+import { LocalTimeComponent, MarkdownEditorDialogComponent, MarkdownViewComponent } from '@den-web/components';
 import { discussionAuthor, discussionBody, discussionThreads, documentMarkdownBody } from '@den-web/domain';
 import type { DenDocumentSummary } from '@den-web/protocol';
 import { DOCUMENTS_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
@@ -12,7 +12,7 @@ type MobilePane = 'list' | 'detail';
 @Component({
   selector: 'den-documents-panel',
   standalone: true,
-  imports: [DocumentPublishPanelComponent, MarkdownEditorDialogComponent, MarkdownViewComponent, NgTemplateOutlet],
+  imports: [DocumentPublishPanelComponent, LocalTimeComponent, MarkdownEditorDialogComponent, MarkdownViewComponent, NgTemplateOutlet],
   styles: [documentsPanelStyles],
   template: `
     <section class="documents" aria-label="Documents" [class.show-detail]="mobilePane() === 'detail'">
@@ -42,7 +42,9 @@ type MobilePane = 'list' | 'detail';
                     <span class="meta">{{ document.slug }}</span>
                     <span class="chips">
                       @if (document.doc_type) { <span class="chip">{{ document.doc_type }}</span> }
-                      @if (document.updated_at) { <span class="chip">{{ shortDate(document.updated_at) }}</span> }
+                      @if (document.updated_at) {
+                        <span class="chip"><den-local-time [value]="document.updated_at" [relative]="false" /></span>
+                      }
                     </span>
                   </button>
                 }
@@ -89,7 +91,7 @@ type MobilePane = 'list' | 'detail';
                     </div>
                     <div class="meta-item">
                       <span class="label">Updated</span>
-                      <span class="value">{{ doc.updated_at ? displayDate(doc.updated_at) : 'unknown' }}</span>
+                      <span class="value"><den-local-time [value]="doc.updated_at" [relative]="false" /></span>
                     </div>
                     <div class="meta-item">
                       <span class="label">Tags</span>
@@ -259,16 +261,6 @@ export class DocumentsPanelComponent {
 
   protected tagList(tags: readonly string[] | null | undefined): string {
     return tags && tags.length > 0 ? tags.join(', ') : 'none';
-  }
-
-  protected displayDate(value: string): string {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-  }
-
-  protected shortDate(value: string): string {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
   }
 
   protected author = discussionAuthor;

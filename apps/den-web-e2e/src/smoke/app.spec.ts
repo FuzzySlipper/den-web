@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { mockDenServices } from '../support/mock-den-services';
 
+test.use({ timezoneId: 'America/Los_Angeles' });
+
 test('boots the successor task cockpit', async ({ page }) => {
   await mockDenServices(page);
   await page.goto('/');
@@ -31,6 +33,23 @@ test('clicks through task recent messages into message threads', async ({ page }
 
   await expect(page.getByRole('button', { name: 'Messages' })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByLabel('Message thread').getByText('Message fixture loaded', { exact: true })).toBeVisible();
+});
+
+test('renders canonical UTC timestamps as semantic browser-local time without changing task identity', async ({ page }) => {
+  await mockDenServices(page);
+  await page.goto('/');
+
+  const taskRow = page.getByRole('button', { name: /#3993 Den Web Angular/ });
+  const localTime = taskRow.locator('time');
+  await expect(taskRow).toBeVisible();
+  await expect(localTime).toHaveAttribute('datetime', '2026-07-29T00:57:23.730966Z');
+  await expect(localTime).toHaveAttribute('title', /Jul 28, 2026.*5:57:23 PM PDT/);
+  await expect(localTime).not.toContainText('2026-07-29T00:57:23.730966Z');
+  await expect(taskRow).toContainText('#3993');
+
+  await page.getByLabel('Task sort').selectOption('id');
+  await expect(page.locator('.task-list .row').first()).toContainText('#3993');
+  await expect(localTime).toHaveAttribute('datetime', '2026-07-29T00:57:23.730966Z');
 });
 
 test('scrolls long task lists inside the task list panel', async ({ page }) => {

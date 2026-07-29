@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject } from '@angular/core';
+import { LocalTimeComponent } from '@den-web/components';
 import {
   artifactDimensions,
   artifactDisplayName,
@@ -13,7 +14,7 @@ import { ARTIFACTS_STORE, MESSAGES_STORE, NAVIGATION_STORE, stateValue, WORKSPAC
 @Component({
   selector: 'den-messages-inbox',
   standalone: true,
-  imports: [ArtifactEvidenceComponent],
+  imports: [ArtifactEvidenceComponent, LocalTimeComponent],
   styles: [`
     :host {
       display: block;
@@ -136,7 +137,7 @@ import { ARTIFACTS_STORE, MESSAGES_STORE, NAVIGATION_STORE, stateValue, WORKSPAC
                 @for (message of inboxItems(); track message.id) {
                   <button class="item" type="button" [attr.aria-pressed]="threadKey(message) === selectedThreadId()" (click)="select(message)">
                     <strong>{{ message.intentLabel }}</strong>
-                    <span class="muted">{{ message.sender }} · {{ message.createdAt }}</span>
+                    <span class="muted">{{ message.sender }} · <den-local-time [value]="message.createdAt" /></span>
                     <span class="muted inbox-body">{{ excerpt(message.body) }}</span>
                   </button>
                 }
@@ -156,7 +157,7 @@ import { ARTIFACTS_STORE, MESSAGES_STORE, NAVIGATION_STORE, stateValue, WORKSPAC
                 @for (message of threadItems(); track message.id) {
                   <article class="item">
                     <strong>{{ message.sender }}</strong>
-                    <span class="muted">{{ message.createdAt }}</span>
+                    <span class="muted"><den-local-time [value]="message.createdAt" /></span>
                     <p class="thread-body">{{ message.body }}</p>
                     <den-artifact-evidence [items]="artifactEvidenceItems(message.artifactRefs)" />
                   </article>

@@ -1,11 +1,13 @@
 import { Component, computed, inject } from '@angular/core';
 import type { OnInit } from '@angular/core';
+import { LocalTimeComponent } from '@den-web/components';
 import type { NotificationViewItem } from '@den-web/domain';
 import { NOTIFICATIONS_STORE, stateValue } from '@den-web/store';
 
 @Component({
   selector: 'den-notifications-panel',
   standalone: true,
+  imports: [LocalTimeComponent],
   styles: [`
     .surface { display: grid; gap: 14px; padding: 20px; }
     h2 { margin: 0; font-size: var(--den-font-size-xl); }
@@ -26,7 +28,10 @@ import { NOTIFICATIONS_STORE, stateValue } from '@den-web/store';
           @for (item of items(); track item.id) {
             <article class="item">
               <strong>{{ item.summary }}</strong>
-              <span class="muted">{{ item.source }} · {{ item.severity }} · {{ item.read ? 'read' : 'unread' }}</span>
+              <span class="muted">
+                {{ item.source }} · {{ item.severity }} · {{ item.read ? 'read' : 'unread' }}
+                @if (item.createdAt) { · <den-local-time [value]="item.createdAt" /> }
+              </span>
               @if (!item.read) { <button type="button" (click)="markRead(item)">Mark read</button> }
             </article>
           }

@@ -21,6 +21,7 @@ const primaryTask = {
   unfinished_dependency_count: 0,
   subtask_count: 1,
   description: 'Ship the first usable Angular successor slice.',
+  updated_at: '2026-07-29T00:57:23.730966Z',
 };
 const nestedTask = {
   id: 4001,

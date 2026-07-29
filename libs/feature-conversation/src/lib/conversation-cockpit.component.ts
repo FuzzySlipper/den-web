@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject, signal, ViewChild, type ElementRef } from '@angular/core';
+import { LocalTimeComponent } from '@den-web/components';
 import type { DenConversationMembership } from '@den-web/protocol';
 import {
   artifactDimensions,
@@ -12,7 +13,6 @@ import {
   membershipStatus,
   membershipType,
   membershipWakePolicy,
-  type ConversationFeedItem,
 } from '@den-web/domain';
 import { ArtifactEvidenceComponent, type ArtifactEvidenceItem } from '@den-web/feature-artifacts';
 import { ARTIFACTS_STORE, CONVERSATION_STORE, PREFERENCES_STORE, stateValue, WORKSPACE_STORE } from '@den-web/store';
@@ -47,7 +47,7 @@ const membershipStatusOptions: readonly MembershipStatusOption[] = [
 @Component({
   selector: 'den-conversation-cockpit',
   standalone: true,
-  imports: [ArtifactEvidenceComponent],
+  imports: [ArtifactEvidenceComponent, LocalTimeComponent],
   styles: [conversationCockpitStyles],
   template: `
     <section class="surface" aria-label="Conversation">
@@ -193,7 +193,7 @@ const membershipStatusOptions: readonly MembershipStatusOption[] = [
               @for (item of feedItems(); track item.id) {
                 <article class="message" [attr.data-source]="item.source">
                   <div class="message-meta">
-                    <span class="time">{{ timestamp(item) }}</span>
+                    <span class="time"><den-local-time [value]="item.createdAt" /></span>
                     <span class="sender">{{ item.sender }}</span>
                     <span class="kind">{{ item.kind }}</span>
                   </div>
@@ -363,18 +363,6 @@ export class ConversationCockpitComponent {
     queueMicrotask(() => {
       textarea.value = next;
       textarea.setSelectionRange(caret, caret);
-    });
-  }
-
-  protected timestamp(item: ConversationFeedItem): string {
-    if (!item.createdAt) return 'unknown time';
-    const date = new Date(item.createdAt);
-    if (Number.isNaN(date.getTime())) return item.createdAt;
-    return date.toLocaleString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
     });
   }
 
