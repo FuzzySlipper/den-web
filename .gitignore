@@ -10,3 +10,5 @@ playwright-report/
 .env.local
 den-web-config.json
 local/
+
+.angular

@@ -13,3 +13,4 @@ export * from './lib/preferences-store';
 export * from './lib/providers';
 export * from './lib/tasks-store';
 export * from './lib/workspace-store';
+export * from './lib/visual-contract-store';

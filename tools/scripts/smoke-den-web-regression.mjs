@@ -20,6 +20,7 @@ test('deployment smoke accepts a typed missing-project response on an empty inst
         environmentName: 'empty-instance',
         observationSuccessorApiBase: '/api/v1/observation',
         tasksSuccessorApiBase: '/api/v1',
+        visualContractApiBase: '/api/v1/visual-contracts',
       });
       return;
     }
@@ -58,7 +59,7 @@ test('deployment smoke accepts a typed missing-project response on an empty inst
   const result = await runSmoke(address(edge));
   assert.equal(result.code, 0, result.output);
   assert.match(result.output, /POST librarian query body reached Librarian on empty instance/);
-  assert.match(result.output, /-- Results: 34 passed, 0 failed --/);
+  assert.match(result.output, /-- Results: 35 passed, 0 failed --/);
 });
 
 function json(res, status, body) {

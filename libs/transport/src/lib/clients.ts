@@ -33,6 +33,13 @@ import type {
   DenTimelineItem,
   DenTimelineResponse,
   RuntimeApiConfig,
+  VisualComparisonReport,
+  VisualConstraint,
+  VisualContract,
+  VisualContractRun,
+  VisualObjectPromotionRule,
+  VisualPromotionResponse,
+  VisualValidationResponse,
 } from '@den-web/protocol';
 import { defaultRuntimeApiConfig, DEN_GLOBAL_PROJECT_ID } from '@den-web/protocol';
 import { DenHttpClient, joinUrl, query } from './http';
@@ -64,6 +71,7 @@ export interface DenTransportClients {
   readonly docPublish: DocPublishTransport;
   readonly artifacts: ArtifactsTransport;
   readonly guidance: GuidanceTransport;
+  readonly visualContract: VisualContractTransport;
 }
 
 export function createDenTransportClients(
@@ -85,7 +93,35 @@ export function createDenTransportClients(
     docPublish: new DocPublishTransport(config, http),
     artifacts: new ArtifactsTransport(config, http),
     guidance: new GuidanceTransport(config, http),
+    visualContract: new VisualContractTransport(config, http),
   };
+}
+
+export class VisualContractTransport {
+  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+
+  validate(contract: VisualContract): Promise<DenResult<VisualValidationResponse>> {
+    return this.http.json(joinUrl(this.config.visualContractApiBase, '/validate'), { method: 'POST', body: { contract } });
+  }
+
+  buildAuthored(contract: VisualContract, constraints: readonly VisualConstraint[]): Promise<DenResult<{ readonly contract: VisualContract }>> {
+    return this.http.json(joinUrl(this.config.visualContractApiBase, '/build-authored'), { method: 'POST', body: { contract, constraints } });
+  }
+
+  promote(contract: VisualContract, objects: readonly VisualObjectPromotionRule[], ignoreObjects: readonly string[]): Promise<DenResult<VisualPromotionResponse>> {
+    return this.http.json(joinUrl(this.config.visualContractApiBase, '/promote-contract'), {
+      method: 'POST',
+      body: { contract, objects, ignore_objects: ignoreObjects },
+    });
+  }
+
+  compare(reference: VisualContract, candidate: VisualContract): Promise<DenResult<VisualComparisonReport>> {
+    return this.http.json(joinUrl(this.config.visualContractApiBase, '/compare'), { method: 'POST', body: { reference, candidate } });
+  }
+
+  getRun(runId: string): Promise<DenResult<VisualContractRun>> {
+    return this.http.json(joinUrl(this.config.visualContractApiBase, `/${encodeURIComponent(runId)}`));
+  }
 }
 
 export class ProjectsTransport {

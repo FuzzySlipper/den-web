@@ -117,6 +117,7 @@ Each release contains same-origin browser bases:
   "timelineSuccessorApiBase": "/api/v1/timeline",
   "docPublishApiBase": "/api/v1/blog/publications",
   "artifactsApiBase": "/api/v1/artifacts",
+  "visualContractApiBase": "/api/v1/visual-contracts",
   "environmentName": "den-srv"
 }
 ```

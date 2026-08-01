@@ -1,0 +1,430 @@
+<section class="visual-workspace" aria-labelledby="visual-contract-title">
+  <header class="workspace-header">
+    <div>
+      <p class="eyebrow">Visual contract</p>
+      <h2 id="visual-contract-title">Author and inspect visual proof</h2>
+      <p class="lede">
+        Shape typed objects and constraints, then compare a candidate against
+        the reference.
+      </p>
+    </div>
+    <div class="draft-status" [class.dirty]="store.dirty()">
+      <strong
+        >{{ store.dirty() ? 'Unsaved local draft' : 'Transient workspace'
+        }}</strong
+      >
+      <span>No server-side draft, revision, or publish record is created.</span>
+    </div>
+  </header>
+
+  <section class="import-strip" aria-label="Contract import and export">
+    <label class="file-action"
+      >Import reference JSON<input
+        type="file"
+        accept="application/json,.json"
+        (change)="importFile($event, 'reference')"
+    /></label>
+    <label class="file-action"
+      >Import candidate JSON<input
+        type="file"
+        accept="application/json,.json"
+        (change)="importFile($event, 'candidate')"
+    /></label>
+    <button
+      type="button"
+      (click)="exportReference()"
+      [disabled]="!store.referenceDraft()"
+    >
+      Export reference draft
+    </button>
+    <button
+      type="button"
+      (click)="store.validateReference()"
+      [disabled]="!store.referenceDraft() || store.validation().kind === 'loading'"
+    >
+      Validate draft
+    </button>
+    @if (store.importError()) {
+    <p class="status error" role="alert">
+      Import failed: {{ store.importError() }}
+    </p>
+    } @if (store.validation(); as validation) { @if (validation.kind === 'data')
+    {
+    <p class="status success" role="status">
+      Valid {{ validation.value.schema }} contract for {{
+      validation.value.scene_id }}
+    </p>
+    } @if (validation.kind === 'error') {
+    <p class="status error" role="alert">
+      Validation failed: {{ validation.error.message }}
+    </p>
+    } }
+  </section>
+
+  @if (store.referenceDraft(); as reference) {
+  <div class="work-grid">
+    <section class="panel evidence-panel" aria-labelledby="evidence-title">
+      <div class="panel-heading">
+        <h3 id="evidence-title">Reference and evidence</h3>
+        <span
+          >{{ reference.scene.viewport.width_px }} × {{
+          reference.scene.viewport.height_px }}</span
+        >
+      </div>
+      <p class="muted">
+        {{ reference.scene.id }} · {{ reference.scene.type }} · {{
+        reference.evidence.source_type }}
+      </p>
+      <label
+        >Artifact or source reference
+        <span class="input-row">
+          <input
+            [ngModel]="evidenceRefValue() || reference.evidence.source_ref || ''"
+            (ngModelChange)="setText('evidence', $event)"
+            placeholder="den-artifact://..."
+          />
+          <button type="button" (click)="useEvidenceRef()">
+            Use reference
+          </button>
+        </span>
+      </label>
+      @if (evidenceItems().length > 0) { @for (item of evidenceItems(); track
+      item.ref) { @if (item.status === 'ready') {
+      <article class="source-card evidence-card">
+        @if (item.contentUrl) {
+        <img [src]="item.contentUrl" [alt]="item.label" /> }
+        <div>
+          <strong>{{ item.label }}</strong>
+          <p>
+            {{ item.mimeType }} · {{ item.byteCount }} bytes · {{
+            item.dimensions || 'dimensions unknown' }}
+          </p>
+          <p>
+            SHA-256 {{ item.sha256 }} · {{ item.sensitive ? 'sensitive' :
+            'normal' }} · {{ item.retention }}
+          </p>
+        </div>
+      </article>
+      } @else if (item.status === 'error') {
+      <p class="source-card status error" role="alert">
+        Artifact unavailable: {{ item.error }}
+      </p>
+      } @else {
+      <p class="source-card status" role="status">
+        Loading artifact metadata for {{ item.ref }}
+      </p>
+      } } } @else if (reference.evidence.source_ref) {
+      <p class="source-card">
+        Source: <code>{{ reference.evidence.source_ref }}</code><br /><span
+          >Not a resolvable Den artifact reference; contract geometry remains
+          available.</span
+        >
+      </p>
+      } @else {
+      <p class="empty">
+        No source image is attached. Add a
+        <code>den-artifact://</code> reference or continue with the typed
+        geometry.
+      </p>
+      }
+    </section>
+
+    <section class="panel canvas-panel" aria-labelledby="canvas-title">
+      <div class="panel-heading">
+        <h3 id="canvas-title">Contract canvas</h3>
+        <span
+          >{{ reference.objects.length }} objects · {{ reference.layers.length
+          }} layers</span
+        >
+      </div>
+      <div
+        class="canvas"
+        role="group"
+        aria-label="Visual contract object canvas"
+      >
+        @for (item of canvasObjects(); track item.object.id) {
+        <button
+          type="button"
+          class="canvas-object"
+          [class.selected]="store.selectedObjectId() === item.object.id"
+          [style.left.%]="item.leftPercent"
+          [style.top.%]="item.topPercent"
+          [style.width.%]="item.widthPercent"
+          [style.height.%]="item.heightPercent"
+          [attr.aria-label]="'Select ' + item.object.id + ', ' + item.object.role"
+          (click)="selectObject(item.object.id)"
+        >
+          <span>{{ item.object.id }}</span>
+        </button>
+        }
+      </div>
+      <div class="layers" aria-label="Layer outline">
+        @for (layer of reference.layers; track layer.id) {
+        <span>Layer {{ layer.z }} · {{ layer.id }}</span> }
+      </div>
+    </section>
+
+    <section class="panel outline-panel" aria-labelledby="outline-title">
+      <div class="panel-heading">
+        <h3 id="outline-title">Object outline</h3>
+        <span>Select to edit</span>
+      </div>
+      <div class="outline" role="list">
+        @for (object of reference.objects; track object.id) {
+        <button
+          type="button"
+          role="listitem"
+          [class.selected]="store.selectedObjectId() === object.id"
+          (click)="selectObject(object.id)"
+        >
+          <strong>{{ object.id }}</strong
+          ><span>{{ object.kind }} · {{ object.role }}</span
+          ><small>{{ object.importance }} · {{ object.parent }}</small>
+        </button>
+        }
+      </div>
+    </section>
+
+    <section class="panel author-panel" aria-labelledby="author-title">
+      <div class="panel-heading">
+        <h3 id="author-title">Author selected object</h3>
+        <span>Typed promotion</span>
+      </div>
+      @if (store.selectedObject(); as object) {
+      <div class="form-grid">
+        <label
+          >Object ID<input
+            [ngModel]="renameValue() || object.id"
+            (ngModelChange)="setText('rename', $event)"
+        /></label>
+        <label
+          >Role<input
+            [ngModel]="roleValue() || object.role"
+            (ngModelChange)="setText('role', $event)"
+        /></label>
+        <label
+          >Domain role<input
+            [ngModel]="domainRoleValue() || object.domain_role || ''"
+            (ngModelChange)="setText('domain', $event)"
+            placeholder="project vocabulary role"
+        /></label>
+        <label
+          >Importance<select
+            [ngModel]="importanceValue()"
+            (ngModelChange)="setImportance($event, 'object')"
+          >
+            <option>critical</option>
+            <option>major</option>
+            <option>minor</option>
+            <option>advisory</option>
+          </select></label
+        >
+      </div>
+      <dl class="object-facts">
+        <dt>Bounds</dt>
+        <dd>
+          {{ object.bounds.x }}, {{ object.bounds.y }} · {{ object.bounds.w }} ×
+          {{ object.bounds.h }}
+        </dd>
+        <dt>Evidence</dt>
+        <dd>{{ object.evidence_refs?.join(', ') || 'none' }}</dd>
+      </dl>
+      <div class="action-row">
+        <button
+          type="button"
+          class="primary"
+          (click)="applyObjectEdits()"
+          [disabled]="store.promotion().kind === 'loading'"
+        >
+          Promote object
+        </button>
+        <button type="button" class="danger" (click)="store.ignoreSelected()">
+          Ignore generated noise
+        </button>
+      </div>
+      @if (store.promotion(); as promotion) { @if (promotion.kind === 'error') {
+      <p class="status error" role="alert">
+        Promotion failed: {{ promotion.error.message }}
+      </p>
+      } @if (promotion.kind === 'data') {
+      <p class="status success" role="status">
+        Promotion applied by Visual Contract. {{
+        promotion.value.diagnostics?.length || 0 }} diagnostics.
+      </p>
+      } } } @else {
+      <p class="empty">Select an object in the outline or canvas.</p>
+      }
+    </section>
+
+    <section
+      class="panel constraints-panel"
+      aria-labelledby="constraints-title"
+    >
+      <div class="panel-heading">
+        <h3 id="constraints-title">Typed constraints</h3>
+        <span>{{ reference.constraints?.length || 0 }} active</span>
+      </div>
+      <div class="constraint-builder">
+        <label
+          >ID<input
+            [ngModel]="constraintId()"
+            (ngModelChange)="setText('constraint', $event)"
+        /></label>
+        <label
+          >Type<select
+            [ngModel]="constraintType()"
+            (ngModelChange)="setConstraintType($event)"
+          >
+            <option value="object_exists">Object exists</option>
+            <option value="area_ratio">Minimum area</option>
+          </select></label
+        >
+        <label
+          >Importance<select
+            [ngModel]="constraintImportance()"
+            (ngModelChange)="setImportance($event, 'constraint')"
+          >
+            <option>critical</option>
+            <option>major</option>
+            <option>minor</option>
+            <option>advisory</option>
+          </select></label
+        >
+        <button
+          type="button"
+          (click)="addConstraint()"
+          [disabled]="!store.selectedObject()"
+        >
+          Add for selected object
+        </button>
+      </div>
+      <div class="constraint-list">
+        @for (constraint of reference.constraints || []; track constraint.id) {
+        <article>
+          <strong>{{ constraint.id }}</strong
+          ><span>{{ constraint.type }} · {{ constraint.importance }}</span
+          ><small
+            >{{ constraint.object || constraint.a || constraint.role ||
+            'multi-object' }}</small
+          >
+        </article>
+        } @empty {
+        <p class="empty">
+          No constraints yet. Select an object and add a typed rule.
+        </p>
+        }
+      </div>
+    </section>
+
+    <section class="panel proof-panel" aria-labelledby="proof-title">
+      <div class="panel-heading">
+        <h3 id="proof-title">Proof run</h3>
+        <span>Read-only verdict</span>
+      </div>
+      <p class="muted">
+        A proof never changes a task, review, or deployment state.
+      </p>
+      <button
+        type="button"
+        class="primary"
+        (click)="store.runProof()"
+        [disabled]="!store.candidateDraft() || store.proof().kind === 'loading'"
+      >
+        Compare reference and candidate
+      </button>
+      @if (!store.candidateDraft()) {
+      <p class="empty">Import a candidate contract to run a comparison.</p>
+      } @if (store.proof(); as proof) { @if (proof.kind === 'loading') {
+      <p class="status" role="status">Running deterministic comparison…</p>
+      } @if (proof.kind === 'error') {
+      <p class="status error" role="alert">
+        Proof unavailable: {{ proof.error.message }}
+      </p>
+      } @if (proof.kind === 'data') {
+      <div class="verdict" [attr.data-verdict]="proof.value.report.verdict">
+        <strong>{{ proof.value.report.verdict }}</strong
+        ><span>Score {{ proof.value.report.score }}</span
+        ><code>Run {{ proof.value.report.run_id }}</code>
+      </div>
+      <div class="diagnostics">
+        @for (check of proof.value.report.failures || []; track
+        check.constraint) {
+        <article class="diagnostic failure">
+          <strong>{{ check.constraint }}</strong>
+          <p>{{ check.message }}</p>
+          <dl>
+            <dt>Expected</dt>
+            <dd>{{ check.expected || 'typed constraint' }}</dd>
+            <dt>Actual</dt>
+            <dd>{{ check.actual || 'see measurements' }}</dd>
+          </dl>
+          @if (check.measured) { <code>{{ check.measured | json }}</code> }@if
+          (check.repair_hint) {
+          <p class="repair">Repair: {{ check.repair_hint }}</p>
+          }
+        </article>
+        } @for (check of proof.value.report.warnings || []; track
+        check.constraint) {
+        <article class="diagnostic warning">
+          <strong>{{ check.constraint }}</strong>
+          <p>{{ check.message }}</p>
+          @if (check.repair_hint) {
+          <p class="repair">Repair: {{ check.repair_hint }}</p>
+          }
+        </article>
+        }
+      </div>
+      <div class="overlays" aria-label="Proof overlays">
+        @if (proof.value.report.artifacts.reference_overlay) {
+        <figure>
+          <figcaption>Reference</figcaption>
+          <img
+            [src]="proof.value.report.artifacts.reference_overlay"
+            alt="Reference contract overlay"
+          />
+        </figure>
+        } @if (proof.value.report.artifacts.candidate_overlay) {
+        <figure>
+          <figcaption>Candidate</figcaption>
+          <img
+            [src]="proof.value.report.artifacts.candidate_overlay"
+            alt="Candidate contract overlay"
+          />
+        </figure>
+        } @if (proof.value.report.artifacts.diff_overlay) {
+        <figure>
+          <figcaption>Difference</figcaption>
+          <img
+            [src]="proof.value.report.artifacts.diff_overlay"
+            alt="Visual contract difference overlay"
+          />
+        </figure>
+        }
+      </div>
+      <details>
+        <summary>Run artifact references</summary>
+        <dl class="artifact-refs">
+          @for (artifact of proof.value.run.artifacts | keyvalue; track
+          artifact.key) {
+          <dt>{{ artifact.key }}</dt>
+          <dd>
+            <a [href]="artifact.value" target="_blank" rel="noopener"
+              >{{ artifact.value }}</a
+            >
+          </dd>
+          }
+        </dl>
+      </details>
+      } }
+    </section>
+  </div>
+  } @else {
+  <section class="start-state">
+    <h3>Start with typed evidence</h3>
+    <p>
+      Import a bounded <code>layered-visual-contract/v0.1</code> reference. This
+      browser does not collect Playwright DOM evidence and does not pretend to.
+    </p>
+  </section>
+  }
+</section>

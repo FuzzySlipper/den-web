@@ -62,6 +62,7 @@ Supported API bases are:
 | `deliverySuccessorApiBase` | `/api/v1/delivery` |
 | `docPublishApiBase` | `/api/v1/blog/publications` |
 | `artifactsApiBase` | `/api/v1/artifacts` |
+| `visualContractApiBase` | `/api/v1/visual-contracts` |
 
 Feature flags and project allowlists may also be present. Missing config may
 fall back to local development defaults. Malformed config must produce a visible
