@@ -4,8 +4,13 @@ import type {
   VisualComparisonReport,
   VisualContract,
   VisualContractRun,
+  VisualPromotionResponse,
+  VisualValidationResponse,
 } from '@den-web/protocol';
-import { createVisualContractStore } from './visual-contract-store';
+import {
+  createVisualContractStore,
+  type VisualContractTransportPort,
+} from './visual-contract-store';
 
 const ok = <T>(value: T): DenResult<T> => ({ ok: true, value });
 const referenceVisualContractFixture = fixture('reference_homepage', 0.12);
@@ -40,10 +45,139 @@ describe('visual contract store', () => {
         : null,
     ).toContain('/api/v1/visual-contracts/run-1/');
   });
+
+  it('discards a comparison response after the candidate draft changes', async () => {
+    const comparison = deferred<DenResult<VisualComparisonReport>>();
+    let getRunCalls = 0;
+    const store = createVisualContractStore(
+      transportFixture({
+        compare: () => comparison.promise,
+        getRun: async () => {
+          getRunCalls += 1;
+          return ok(runFixture());
+        },
+      }),
+    );
+    store.importReference(JSON.stringify(referenceVisualContractFixture));
+    store.importCandidate(JSON.stringify(candidateVisualContractFixture));
+
+    const pending = store.runProof();
+    store.importCandidate(JSON.stringify(fixture('new_candidate', 0.2)));
+    comparison.resolve(ok(reportFixture()));
+    await pending;
+
+    expect(store.proof().kind).toBe('idle');
+    expect(getRunCalls).toBe(0);
+  });
+
+  it('discards run metadata after the reference draft changes', async () => {
+    const run = deferred<DenResult<VisualContractRun>>();
+    const store = createVisualContractStore(
+      transportFixture({ getRun: () => run.promise }),
+    );
+    store.importReference(JSON.stringify(referenceVisualContractFixture));
+    store.importCandidate(JSON.stringify(candidateVisualContractFixture));
+
+    const pending = store.runProof();
+    await Promise.resolve();
+    store.renameSelected('newer_heading');
+    run.resolve(ok(runFixture()));
+    await pending;
+
+    expect(store.referenceDraft()?.objects[0]?.id).toBe('newer_heading');
+    expect(store.proof().kind).toBe('idle');
+  });
+
+  it('discards authored constraints after a newer reference import', async () => {
+    const authored =
+      deferred<DenResult<{ readonly contract: VisualContract }>>();
+    const store = createVisualContractStore(
+      transportFixture({ buildAuthored: () => authored.promise }),
+    );
+    store.importReference(JSON.stringify(referenceVisualContractFixture));
+
+    const pending = store.addConstraint({
+      id: 'new_constraint',
+      type: 'object_exists',
+      object: 'hero_title',
+      importance: 'major',
+    });
+    store.importReference(JSON.stringify(fixture('newer_reference', 0.25)));
+    authored.resolve(ok({ contract: fixture('stale_owner_result', 0.3) }));
+    await pending;
+
+    expect(store.referenceDraft()?.scene.id).toBe('newer_reference');
+    expect(store.validation().kind).toBe('idle');
+  });
+
+  it('discards promotion after a local edit advances the draft', async () => {
+    const promotion = deferred<DenResult<VisualPromotionResponse>>();
+    const store = createVisualContractStore(
+      transportFixture({ promote: () => promotion.promise }),
+    );
+    store.importReference(JSON.stringify(referenceVisualContractFixture));
+
+    const pending = store.promoteSelected({
+      source_id: 'hero_title',
+      target_id: 'owner_heading',
+    });
+    store.renameSelected('local_heading');
+    promotion.resolve(
+      ok({ contract: fixture('stale_promotion', 0.3), diagnostics: [] }),
+    );
+    await pending;
+
+    expect(store.selectedObject()?.id).toBe('local_heading');
+    expect(store.referenceDraft()?.scene.id).toBe('reference_homepage');
+    expect(store.promotion().kind).toBe('idle');
+  });
+
+  it('discards validation after a newer reference import', async () => {
+    const validation = deferred<DenResult<VisualValidationResponse>>();
+    const store = createVisualContractStore(
+      transportFixture({ validate: () => validation.promise }),
+    );
+    store.importReference(JSON.stringify(referenceVisualContractFixture));
+
+    const pending = store.validateReference();
+    store.importReference(JSON.stringify(fixture('newer_reference', 0.25)));
+    validation.resolve(
+      ok({
+        schema: referenceVisualContractFixture.schema,
+        valid: true,
+        scene_id: 'reference_homepage',
+        counts: {},
+      }),
+    );
+    await pending;
+
+    expect(store.referenceDraft()?.scene.id).toBe('newer_reference');
+    expect(store.validation().kind).toBe('idle');
+  });
 });
 
-function transportFixture() {
-  const report: VisualComparisonReport = {
+function transportFixture(
+  overrides: Partial<VisualContractTransportPort> = {},
+): VisualContractTransportPort {
+  return {
+    validate: async () =>
+      ok({
+        schema: referenceVisualContractFixture.schema,
+        valid: true,
+        scene_id: referenceVisualContractFixture.scene.id,
+        counts: {},
+      }),
+    buildAuthored: async (contract: VisualContract) => ok({ contract }),
+    promote: async (contract: VisualContract) =>
+      ok({ contract, diagnostics: [] }),
+    compare: async () => ok(reportFixture()),
+    getRun: async () => ok(runFixture()),
+    ...overrides,
+  };
+}
+
+function reportFixture(): VisualComparisonReport {
+  return {
     schema: 'layered-visual-contract-report/v0.1',
     run_id: 'run-1',
     score: 0.5,
@@ -63,7 +197,10 @@ function transportFixture() {
       diff_overlay: '/api/v1/visual-contracts/run-1/artifacts/diff.overlay.svg',
     },
   };
-  const run: VisualContractRun = {
+}
+
+function runFixture(): VisualContractRun {
+  return {
     run_id: 'run-1',
     created_at: '2026-08-01T00:00:00Z',
     names: ['diff.overlay.svg'],
@@ -72,19 +209,19 @@ function transportFixture() {
         '/api/v1/visual-contracts/run-1/artifacts/diff.overlay.svg',
     },
   };
+}
+
+function deferred<T>(): {
+  readonly promise: Promise<T>;
+  readonly resolve: (value: T) => void;
+} {
+  let resolvePromise: ((value: T) => void) | undefined;
+  const promise = new Promise<T>((resolve) => {
+    resolvePromise = resolve;
+  });
   return {
-    validate: async () =>
-      ok({
-        schema: referenceVisualContractFixture.schema,
-        valid: true,
-        scene_id: referenceVisualContractFixture.scene.id,
-        counts: {},
-      }),
-    buildAuthored: async (contract: VisualContract) => ok({ contract }),
-    promote: async (contract: VisualContract) =>
-      ok({ contract, diagnostics: [] }),
-    compare: async () => ok(report),
-    getRun: async () => ok(run),
+    promise,
+    resolve: (value) => resolvePromise?.(value),
   };
 }
 

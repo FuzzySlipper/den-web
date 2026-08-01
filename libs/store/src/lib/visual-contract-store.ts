@@ -91,6 +91,11 @@ export function createVisualContractStore(
   const proof = signal<AsyncState<VisualProofResult>>(idleState());
   const importError = signal<string | null>(null);
   const dirty = signal(false);
+  let referenceGeneration = 0;
+  let candidateGeneration = 0;
+  let validationRequest = 0;
+  let promotionRequest = 0;
+  let proofRequest = 0;
   const selectedObject = computed(() => {
     const contract = referenceDraft();
     const id = selectedObjectId();
@@ -108,21 +113,25 @@ export function createVisualContractStore(
     }
     importError.set(null);
     if (destination === 'reference') {
+      referenceGeneration += 1;
       referenceDraft.set(parsed.value);
       selectedObjectId.set(parsed.value.objects[0]?.id ?? null);
       dirty.set(false);
       validation.set(idleState());
       promotion.set(idleState());
     } else {
+      candidateGeneration += 1;
       candidateDraft.set(parsed.value);
     }
     proof.set(idleState());
   };
 
   const replaceReference = (contract: VisualContract): void => {
+    referenceGeneration += 1;
     referenceDraft.set(contract);
     dirty.set(true);
     validation.set(idleState());
+    promotion.set(idleState());
     proof.set(idleState());
   };
 
@@ -169,6 +178,8 @@ export function createVisualContractStore(
     addConstraint: async (constraint) => {
       const contract = referenceDraft();
       if (!contract) return;
+      const generation = referenceGeneration;
+      const request = ++validationRequest;
       const existingConstraints = contract.constraints?.filter(
         (item) => item.id !== constraint.id,
       );
@@ -181,8 +192,14 @@ export function createVisualContractStore(
         const result = await transport.buildAuthored(baseContract, [
           constraint,
         ]);
+        if (generation !== referenceGeneration || request !== validationRequest)
+          return;
         if (result.ok) {
-          replaceReference(result.value.contract);
+          referenceGeneration += 1;
+          referenceDraft.set(result.value.contract);
+          dirty.set(true);
+          promotion.set(idleState());
+          proof.set(idleState());
           validation.set(
             dataState({
               schema: result.value.contract.schema,
@@ -197,32 +214,50 @@ export function createVisualContractStore(
           validation.set(errorState(result.error));
         }
       } catch (error: unknown) {
+        if (generation !== referenceGeneration || request !== validationRequest)
+          return;
         validation.set(errorState(unknownStoreError(error)));
       }
     },
     promoteSelected: async (rule) => {
       const contract = referenceDraft();
       if (!contract) return;
+      const generation = referenceGeneration;
+      const request = ++promotionRequest;
       promotion.set(loadingState());
       try {
         const result = await transport.promote(contract, [rule], []);
+        if (generation !== referenceGeneration || request !== promotionRequest)
+          return;
         promotion.set(resultState(result));
         if (result.ok) {
+          referenceGeneration += 1;
           referenceDraft.set(result.value.contract);
           selectedObjectId.set(rule.target_id ?? rule.source_id);
           dirty.set(true);
+          validation.set(idleState());
+          proof.set(idleState());
         }
       } catch (error: unknown) {
+        if (generation !== referenceGeneration || request !== promotionRequest)
+          return;
         promotion.set(errorState(unknownStoreError(error)));
       }
     },
     validateReference: async () => {
       const contract = referenceDraft();
       if (!contract) return;
+      const generation = referenceGeneration;
+      const request = ++validationRequest;
       validation.set(loadingState());
       try {
-        validation.set(resultState(await transport.validate(contract)));
+        const result = await transport.validate(contract);
+        if (generation !== referenceGeneration || request !== validationRequest)
+          return;
+        validation.set(resultState(result));
       } catch (error: unknown) {
+        if (generation !== referenceGeneration || request !== validationRequest)
+          return;
         validation.set(errorState(unknownStoreError(error)));
       }
     },
@@ -230,20 +265,30 @@ export function createVisualContractStore(
       const reference = referenceDraft();
       const candidate = candidateDraft();
       if (!reference || !candidate) return;
+      const referenceVersion = referenceGeneration;
+      const candidateVersion = candidateGeneration;
+      const request = ++proofRequest;
+      const isCurrentProof = (): boolean =>
+        request === proofRequest &&
+        referenceVersion === referenceGeneration &&
+        candidateVersion === candidateGeneration;
       proof.set(loadingState());
       try {
         const comparison = await transport.compare(reference, candidate);
+        if (!isCurrentProof()) return;
         if (!comparison.ok) {
           proof.set(errorState(comparison.error));
           return;
         }
         const run = await transport.getRun(comparison.value.run_id);
+        if (!isCurrentProof()) return;
         proof.set(
           run.ok
             ? dataState({ report: comparison.value, run: run.value })
             : errorState(run.error),
         );
       } catch (error: unknown) {
+        if (!isCurrentProof()) return;
         proof.set(errorState(unknownStoreError(error)));
       }
     },
