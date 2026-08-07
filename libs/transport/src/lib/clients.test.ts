@@ -90,6 +90,7 @@ describe('Den transport clients', () => {
     await clients.artifacts.resolve('den-artifact://art_123');
     await clients.artifacts.metadata('art_123');
     mutableCalls.push(clients.artifacts.contentUrl('art_123'));
+    await clients.visualContract.getRun('run-123');
 
     expect(calls).toEqual([]);
     expect(mutableCalls).toEqual([
@@ -126,6 +127,7 @@ describe('Den transport clients', () => {
       '/api/v1/artifacts/resolve?ref=den-artifact%3A%2F%2Fart_123',
       '/api/v1/artifacts/art_123/metadata',
       '/api/v1/artifacts/art_123/content',
+      '/api/v1/visual-contracts/run-123',
     ]);
   });
 

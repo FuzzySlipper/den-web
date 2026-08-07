@@ -20,6 +20,7 @@ const runtimeStringKeys = [
   'deliverySuccessorApiBase',
   'docPublishApiBase',
   'artifactsApiBase',
+  'visualContractApiBase',
   'environmentName',
 ] as const;
 
@@ -42,6 +43,7 @@ export function runtimeConfigFromFile(file: DenWebRuntimeConfigFile): RuntimeApi
     deliveryApiBase: normalizeApiBase(file.deliverySuccessorApiBase, defaultRuntimeApiConfig.deliveryApiBase),
     docPublishApiBase: normalizeApiBase(file.docPublishApiBase, defaultRuntimeApiConfig.docPublishApiBase),
     artifactsApiBase: normalizeApiBase(file.artifactsApiBase, defaultRuntimeApiConfig.artifactsApiBase),
+    visualContractApiBase: normalizeApiBase(file.visualContractApiBase, defaultRuntimeApiConfig.visualContractApiBase),
     environmentName: file.environmentName?.trim() || defaultRuntimeApiConfig.environmentName,
   };
 }
@@ -104,6 +106,7 @@ function parseRuntimeConfigRecord(raw: unknown): ParseResult<DenWebRuntimeConfig
       deliverySuccessorApiBase: record['deliverySuccessorApiBase'],
       docPublishApiBase: record['docPublishApiBase'],
       artifactsApiBase: record['artifactsApiBase'],
+      visualContractApiBase: record['visualContractApiBase'],
       environmentName: record['environmentName'],
     } as DenWebRuntimeConfigFile,
   };

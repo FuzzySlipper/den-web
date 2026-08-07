@@ -17,6 +17,7 @@ describe('runtime API config', () => {
       deliverySuccessorApiBase: '/api/v1/delivery/',
       docPublishApiBase: '/api/v1/blog/publications/',
       artifactsApiBase: '/api/v1/artifacts/',
+      visualContractApiBase: '/api/v1/visual-contracts/',
       environmentName: 'den-srv',
     });
 
@@ -28,6 +29,7 @@ describe('runtime API config', () => {
       deliveryApiBase: '/api/v1/delivery',
       docPublishApiBase: '/api/v1/blog/publications',
       artifactsApiBase: '/api/v1/artifacts',
+      visualContractApiBase: '/api/v1/visual-contracts',
       environmentName: 'den-srv',
     });
   });

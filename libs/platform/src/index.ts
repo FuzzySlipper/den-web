@@ -38,6 +38,11 @@ export interface PopupPort {
   readonly open: (url: string, target: string, features?: string) => void;
 }
 
+export interface FileExchangePort {
+  readonly readText: (file: Blob) => Promise<string>;
+  readonly downloadJson: (filename: string, content: string) => void;
+}
+
 export interface EventStreamEvent {
   readonly type: string;
   readonly data: string;
@@ -96,6 +101,19 @@ export const browserUrlSync = (): UrlSyncPort => ({
 export const browserPopup = (): PopupPort => ({
   open: (url, target, features) => {
     window.open(url, target, features);
+  },
+});
+
+export const browserFileExchange = (): FileExchangePort => ({
+  readText: (file) => file.text(),
+  downloadJson: (filename, content) => {
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
   },
 });
 

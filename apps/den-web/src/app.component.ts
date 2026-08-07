@@ -12,6 +12,7 @@ import { NotificationsPanelComponent } from '@den-web/feature-notifications';
 import { PreferencesPanelComponent } from '@den-web/feature-preferences';
 import { ProjectWorkspacePanelComponent } from '@den-web/feature-projects';
 import { TaskCockpitComponent } from '@den-web/feature-tasks';
+import { VisualContractWorkspaceComponent } from '@den-web/feature-visual-contract';
 import { NAVIGATION_STORE, PREFERENCES_STORE, type DenWebTab } from '@den-web/store';
 
 type CockpitTab = DenWebTab;
@@ -31,6 +32,7 @@ const tabs: readonly TabItem[] = [
   { id: 'guidance', label: 'Guidance' },
   { id: 'librarian', label: 'Librarian' },
   { id: 'agents', label: 'Agents' },
+  { id: 'visual-contract', label: 'Visual proof' },
   { id: 'preferences', label: 'Preferences' },
 ];
 
@@ -48,6 +50,7 @@ const tabs: readonly TabItem[] = [
     ProjectWorkspacePanelComponent,
     RouterOutlet,
     TaskCockpitComponent,
+    VisualContractWorkspaceComponent,
   ],
   selector: 'den-root',
   styles: [
@@ -200,6 +203,7 @@ const tabs: readonly TabItem[] = [
             @case ('guidance') { <den-guidance-panel /> }
             @case ('librarian') { <den-librarian-panel /> }
             @case ('agents') { <den-agents-overview /> }
+            @case ('visual-contract') { <den-visual-contract-workspace /> }
             @case ('preferences') { <den-preferences-panel /> }
           }
         </section>

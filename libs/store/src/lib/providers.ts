@@ -1,5 +1,5 @@
 import { InjectionToken, makeEnvironmentProviders, type EnvironmentProviders } from '@angular/core';
-import { browserClock, browserDocumentEffects, browserEventStream, browserStorage, type ClockPort, type EventStreamPort } from '@den-web/platform';
+import { browserClock, browserDocumentEffects, browserEventStream, browserFileExchange, browserStorage, type ClockPort, type EventStreamPort, type FileExchangePort } from '@den-web/platform';
 import type { RuntimeApiConfig } from '@den-web/protocol';
 import { defaultRuntimeApiConfig } from '@den-web/protocol';
 import { createDenTransportClients, type DenTransportClients } from '@den-web/transport';
@@ -17,10 +17,12 @@ import { createNotificationsStore, type NotificationsStore } from './notificatio
 import { createPreferencesStore, type PreferencesStore } from './preferences-store';
 import { createTasksStore, type TasksStore } from './tasks-store';
 import { createWorkspaceStore, type WorkspaceStore } from './workspace-store';
+import { createVisualContractStore, type VisualContractStore } from './visual-contract-store';
 
 export const DEN_RUNTIME_CONFIG = new InjectionToken<RuntimeApiConfig>('DEN_RUNTIME_CONFIG');
 export const DEN_CLOCK = new InjectionToken<ClockPort>('DEN_CLOCK');
 export const DEN_EVENT_STREAM = new InjectionToken<EventStreamPort>('DEN_EVENT_STREAM');
+export const DEN_FILE_EXCHANGE = new InjectionToken<FileExchangePort>('DEN_FILE_EXCHANGE');
 export const DEN_TRANSPORT_CLIENTS = new InjectionToken<DenTransportClients>('DEN_TRANSPORT_CLIENTS');
 export const WORKSPACE_STORE = new InjectionToken<WorkspaceStore>('WORKSPACE_STORE');
 export const TASKS_STORE = new InjectionToken<TasksStore>('TASKS_STORE');
@@ -36,11 +38,13 @@ export const NAVIGATION_STORE = new InjectionToken<NavigationStore>('NAVIGATION_
 export const LIBRARIAN_STORE = new InjectionToken<LibrarianStore>('LIBRARIAN_STORE');
 export const KNOWLEDGE_STORE = new InjectionToken<KnowledgeStore>('KNOWLEDGE_STORE');
 export const PREFERENCES_STORE = new InjectionToken<PreferencesStore>('PREFERENCES_STORE');
+export const VISUAL_CONTRACT_STORE = new InjectionToken<VisualContractStore>('VISUAL_CONTRACT_STORE');
 
 export function provideDenStoreKernel(config: RuntimeApiConfig = defaultRuntimeApiConfig): EnvironmentProviders {
   return makeEnvironmentProviders([
     { provide: DEN_RUNTIME_CONFIG, useValue: config },
     { provide: DEN_CLOCK, useValue: browserClock },
+    { provide: DEN_FILE_EXCHANGE, useFactory: () => browserFileExchange() },
     { provide: DEN_EVENT_STREAM, useFactory: () => browserEventStream() },
     {
       provide: DEN_TRANSPORT_CLIENTS,
@@ -113,6 +117,11 @@ export function provideDenStoreKernel(config: RuntimeApiConfig = defaultRuntimeA
     {
       provide: ARTIFACTS_STORE,
       useFactory: (clients: DenTransportClients) => createArtifactsStore(clients.artifacts),
+      deps: [DEN_TRANSPORT_CLIENTS],
+    },
+    {
+      provide: VISUAL_CONTRACT_STORE,
+      useFactory: (clients: DenTransportClients) => createVisualContractStore(clients.visualContract),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
   ]);

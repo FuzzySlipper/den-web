@@ -111,6 +111,7 @@ function runtimeConfig() {
     timelineSuccessorApiBase: env.TIMELINE_SUCCESSOR_API_BASE ?? '/api/v1/timeline',
     docPublishApiBase: env.DOC_PUBLISH_API_BASE ?? '/api/v1/blog/publications',
     artifactsApiBase: env.ARTIFACTS_API_BASE ?? '/api/v1/artifacts',
+    visualContractApiBase: env.VISUAL_CONTRACT_API_BASE ?? '/api/v1/visual-contracts',
     conversationSuccessorReadsEnabled: boolValue('CONVERSATION_SUCCESSOR_READS_ENABLED', 'true'),
     conversationSuccessorWritesEnabled: boolValue('CONVERSATION_SUCCESSOR_WRITES_ENABLED', 'true'),
     conversationSuccessorReadProjectIds: listValue('CONVERSATION_SUCCESSOR_READ_PROJECT_IDS', conversationProjects),

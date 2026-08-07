@@ -1,0 +1,19 @@
+{
+  "name": "feature-visual-contract",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/feature-visual-contract/src",
+  "prefix": "den",
+  "projectType": "library",
+  "tags": ["type:feature", "scope:feature"],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -p libs/feature-visual-contract/tsconfig.lib.json --noEmit"
+      }
+    }
+  }
+}

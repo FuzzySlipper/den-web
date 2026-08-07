@@ -135,6 +135,8 @@ async function checkConfigAndBuild() {
   else fail('conversationSuccessorApiBase', JSON.stringify(config?.conversationSuccessorApiBase));
   if (config?.observationSuccessorApiBase === '/api/v1/observation') pass('observation base is /api/v1/observation');
   else fail('observationSuccessorApiBase', JSON.stringify(config?.observationSuccessorApiBase));
+  if (config?.visualContractApiBase === '/api/v1/visual-contracts') pass('visual contract base is /api/v1/visual-contracts');
+  else fail('visualContractApiBase', JSON.stringify(config?.visualContractApiBase));
   if (config?.environmentName === expectedEnvironment) pass(`environmentName is ${expectedEnvironment}`);
   else fail('environmentName', JSON.stringify(config?.environmentName));
 

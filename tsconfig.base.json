@@ -37,6 +37,7 @@
       "@den-web/feature-preferences": ["libs/feature-preferences/src/index.ts"],
       "@den-web/feature-projects": ["libs/feature-projects/src/index.ts"],
       "@den-web/feature-tasks": ["libs/feature-tasks/src/index.ts"],
+      "@den-web/feature-visual-contract": ["libs/feature-visual-contract/src/index.ts"],
       "@den-web/platform": ["libs/platform/src/index.ts"],
       "@den-web/protocol": ["libs/protocol/src/index.ts"],
       "@den-web/renderer": ["libs/renderer/src/index.ts"],
