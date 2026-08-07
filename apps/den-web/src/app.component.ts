@@ -5,6 +5,7 @@ import { AgentsOverviewComponent } from '@den-web/feature-agents';
 import { ConversationCockpitComponent } from '@den-web/feature-conversation';
 import { DocumentsPanelComponent } from '@den-web/feature-documents';
 import { GuidancePanelComponent } from '@den-web/feature-guidance';
+import { KnowledgePanelComponent } from '@den-web/feature-knowledge';
 import { LibrarianPanelComponent } from '@den-web/feature-librarian';
 import { MessagesInboxComponent } from '@den-web/feature-messages';
 import { NotificationsPanelComponent } from '@den-web/feature-notifications';
@@ -26,6 +27,7 @@ const tabs: readonly TabItem[] = [
   { id: 'notifications', label: 'Notifications' },
   { id: 'messages', label: 'Messages' },
   { id: 'documents', label: 'Documents' },
+  { id: 'knowledge', label: 'Knowledge' },
   { id: 'guidance', label: 'Guidance' },
   { id: 'librarian', label: 'Librarian' },
   { id: 'agents', label: 'Agents' },
@@ -38,6 +40,7 @@ const tabs: readonly TabItem[] = [
     ConversationCockpitComponent,
     DocumentsPanelComponent,
     GuidancePanelComponent,
+    KnowledgePanelComponent,
     LibrarianPanelComponent,
     MessagesInboxComponent,
     NotificationsPanelComponent,
@@ -193,6 +196,7 @@ const tabs: readonly TabItem[] = [
             @case ('notifications') { <den-notifications-panel /> }
             @case ('messages') { <den-messages-inbox /> }
             @case ('documents') { <den-documents-panel /> }
+            @case ('knowledge') { <den-knowledge-panel /> }
             @case ('guidance') { <den-guidance-panel /> }
             @case ('librarian') { <den-librarian-panel /> }
             @case ('agents') { <den-agents-overview /> }

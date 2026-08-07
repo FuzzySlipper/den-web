@@ -1,0 +1,10 @@
+{
+  "project": "den-web",
+  "serve": {
+    "command": "npx nx run den-web:serve --host {host} --port {port}",
+    "healthUrl": "/",
+    "readyText": "Den Web",
+    "reusePolicy": "broker_owned",
+    "startupTimeout": "180s"
+  }
+}

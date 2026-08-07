@@ -10,6 +10,7 @@ import { createDocumentsStore, type DocumentsStore } from './documents-store';
 import { createDocumentPublishStore, type DocumentPublishStore } from './document-publish-store';
 import { createGuidanceStore, type GuidanceStore } from './guidance-store';
 import { createLibrarianStore, type LibrarianStore } from './librarian-store';
+import { createKnowledgeStore, type KnowledgeStore } from './knowledge-store';
 import { createMessagesStore, type MessagesStore } from './messages-store';
 import { createNavigationStore, type NavigationStore } from './navigation-store';
 import { createNotificationsStore, type NotificationsStore } from './notifications-store';
@@ -33,6 +34,7 @@ export const ARTIFACTS_STORE = new InjectionToken<ArtifactsStore>('ARTIFACTS_STO
 export const MESSAGES_STORE = new InjectionToken<MessagesStore>('MESSAGES_STORE');
 export const NAVIGATION_STORE = new InjectionToken<NavigationStore>('NAVIGATION_STORE');
 export const LIBRARIAN_STORE = new InjectionToken<LibrarianStore>('LIBRARIAN_STORE');
+export const KNOWLEDGE_STORE = new InjectionToken<KnowledgeStore>('KNOWLEDGE_STORE');
 export const PREFERENCES_STORE = new InjectionToken<PreferencesStore>('PREFERENCES_STORE');
 
 export function provideDenStoreKernel(config: RuntimeApiConfig = defaultRuntimeApiConfig): EnvironmentProviders {
@@ -87,6 +89,11 @@ export function provideDenStoreKernel(config: RuntimeApiConfig = defaultRuntimeA
     {
       provide: LIBRARIAN_STORE,
       useFactory: (clients: DenTransportClients) => createLibrarianStore(clients.librarian),
+      deps: [DEN_TRANSPORT_CLIENTS],
+    },
+    {
+      provide: KNOWLEDGE_STORE,
+      useFactory: (clients: DenTransportClients) => createKnowledgeStore(clients.knowledge),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
     {

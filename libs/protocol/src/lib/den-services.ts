@@ -129,6 +129,47 @@ export interface DenDocumentUpdateRequest {
   readonly summary?: string | null;
 }
 
+export interface DenKnowledgeSourceRef {
+  readonly source_kind: string;
+  readonly source_id: string;
+  readonly project_id?: string;
+  readonly task_id?: number;
+  readonly message_id?: number;
+  readonly url?: string;
+  readonly note?: string;
+}
+
+export interface DenKnowledgeEntrySummary {
+  readonly id: number;
+  readonly slug: string;
+  readonly title: string;
+  readonly summary?: string;
+  readonly kind: string;
+  readonly status: string;
+  readonly curation_state: string;
+  readonly tags?: readonly string[];
+  readonly audience?: readonly string[];
+  readonly aliases?: readonly string[];
+  readonly source_refs?: readonly DenKnowledgeSourceRef[];
+  readonly accuracy_notes?: string;
+  readonly replacement_slug?: string;
+  readonly last_reviewed_at?: string;
+  readonly review_due_at?: string;
+  readonly created_by?: string;
+  readonly updated_by?: string;
+  readonly created_at: string;
+  readonly updated_at: string;
+}
+
+export interface DenKnowledgeEntryDetail extends DenKnowledgeEntrySummary {
+  readonly body_markdown: string;
+}
+
+export interface DenKnowledgeListResponse {
+  readonly items: readonly DenKnowledgeEntrySummary[];
+  readonly count: number;
+}
+
 export interface DenGuidanceEntry {
   readonly id: number;
   readonly project_id: string;

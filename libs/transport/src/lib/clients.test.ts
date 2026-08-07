@@ -4,6 +4,28 @@ import { createDenTransportClients } from './clients';
 import { DenHttpClient } from './http';
 
 describe('Den transport clients', () => {
+  it('loads global Knowledge entries without a project scope', async () => {
+    const calls: string[] = [];
+    const http = new DenHttpClient({
+      fetchImpl: async (input) => {
+        const path = String(input);
+        calls.push(path);
+        return path.endsWith('/knowledge/entries')
+          ? Response.json({ items: [], count: 0 })
+          : Response.json({ slug: 'topic/a', title: 'Topic A', body_markdown: '# Topic A' });
+      },
+    });
+    const clients = createDenTransportClients(defaultRuntimeApiConfig, http);
+
+    await clients.knowledge.listEntries();
+    await clients.knowledge.getEntry('topic/a');
+
+    expect(calls).toEqual([
+      '/api/v1/knowledge/entries',
+      '/api/v1/knowledge/entries/topic%2Fa',
+    ]);
+  });
+
   it('constructs canonical successor route URLs', async () => {
     const calls: readonly string[] = [];
     const mutableCalls: string[] = [];

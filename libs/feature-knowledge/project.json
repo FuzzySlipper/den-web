@@ -1,0 +1,21 @@
+{
+  "name": "feature-knowledge",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/feature-knowledge/src",
+  "projectType": "library",
+  "tags": [
+    "type:feature",
+    "scope:feature"
+  ],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -p libs/feature-knowledge/tsconfig.lib.json --noEmit"
+      }
+    }
+  }
+}

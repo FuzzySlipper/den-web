@@ -174,6 +174,45 @@ const extraMessages = Array.from({ length: 48 }, (_, index) => ({
 }));
 const messages = [primaryMessage, ...extraMessages];
 const threadMessages = { root: primaryMessage, replies: [] };
+const knowledgeEntries = [
+  {
+    id: 7001,
+    slug: 'successor-boundaries',
+    title: 'Successor boundaries',
+    summary: 'Keep domain ownership explicit while migrating legacy services.',
+    kind: 'architecture_note',
+    status: 'reviewed',
+    curation_state: 'human_curated',
+    tags: ['architecture', 'successor'],
+    audience: ['agents'],
+    created_at: '2026-08-01T00:00:00Z',
+    updated_at: '2026-08-05T00:00:00Z',
+    source_refs: [{ source_kind: 'document', source_id: 'architecture-guidelines', project_id: 'den-services' }],
+  },
+  {
+    id: 7002,
+    slug: 'global-entry-long-body',
+    title: 'Global entry with long body',
+    summary: 'Long content fixture for detail scrolling.',
+    kind: 'reference',
+    status: 'reviewed',
+    curation_state: 'agent_curated',
+    tags: ['fixture', 'scroll'],
+    audience: ['agents', 'humans'],
+    created_at: '2026-07-01T00:00:00Z',
+    updated_at: '2026-08-04T00:00:00Z',
+  },
+] as const;
+const knowledgeDetails = [
+  {
+    ...knowledgeEntries[0],
+    body_markdown: '# Successor boundaries\n\nKnowledge is global and remains independent from the selected Den Web workspace.',
+  },
+  {
+    ...knowledgeEntries[1],
+    body_markdown: `${Array.from({ length: 42 }, (_, index) => `Long knowledge paragraph ${index + 1}. This fixture keeps the detail panel internally scrollable.`).join('\n\n')}\n\nKnowledge detail bottom sentinel.`,
+  },
+];
 const documents = [
   { project_id: 'den-web', slug: 'successor-brief', title: 'Successor Brief', updated_at: '2026-07-02T00:00:00Z' },
   {
@@ -383,6 +422,17 @@ export async function mockDenServices(page: Page): Promise<void> {
   await page.route('**/api/v1/projects/asha/documents/asha-brief/discussion', (route) => json(route, discussion));
   await page.route('**/api/v1/projects/_global/documents/global-brief', (route) => json(route, globalDocumentDetail));
   await page.route('**/api/v1/projects/_global/documents/global-brief/discussion', (route) => json(route, discussion));
+  await page.route('**/api/v1/knowledge/entries', (route) => json(route, { items: knowledgeEntries, count: knowledgeEntries.length }));
+  await page.route('**/api/v1/knowledge/entries/*', (route) => {
+    const slug = new URL(route.request().url()).pathname.split('/').pop();
+    const detail = knowledgeDetails.find((entry) => entry.slug === slug);
+    if (detail) return json(route, detail);
+    return route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'knowledge entry not found' }),
+    });
+  });
   await page.route('**/api/v1/projects/den-web/agent-guidance', (route) => json(route, guidancePacket('den-web', [projectGuidanceEntry, globalGuidanceEntry])));
   await page.route('**/api/v1/projects/den-web/agent-guidance?**', (route) => json(route, guidancePacket('den-web', [projectGuidanceEntry, globalGuidanceEntry])));
   await page.route('**/api/v1/projects/_global/agent-guidance', (route) => json(route, guidancePacket('_global', [globalGuidanceEntry])));

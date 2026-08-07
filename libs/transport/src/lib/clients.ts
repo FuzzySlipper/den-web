@@ -17,6 +17,9 @@ import type {
   DenGuidanceEntryListResponse,
   DenGuidanceEntryRequest,
   DenGuidancePacket,
+  DenKnowledgeEntryDetail,
+  DenKnowledgeEntrySummary,
+  DenKnowledgeListResponse,
   DenArtifactMetadata,
   DenLibrarianQueryRequest,
   DenLibrarianQueryResponse,
@@ -56,6 +59,7 @@ export interface DenTransportClients {
   readonly messages: MessagesTransport;
   readonly notifications: NotificationsTransport;
   readonly documents: DocumentsTransport;
+  readonly knowledge: KnowledgeTransport;
   readonly librarian: LibrarianTransport;
   readonly conversation: ConversationTransport;
   readonly timeline: TimelineTransport;
@@ -77,6 +81,7 @@ export function createDenTransportClients(
     messages: new MessagesTransport(config, http),
     notifications: new NotificationsTransport(config, http),
     documents: new DocumentsTransport(config, http),
+    knowledge: new KnowledgeTransport(config, http),
     librarian: new LibrarianTransport(config, http),
     conversation: new ConversationTransport(config, http),
     timeline: new TimelineTransport(config, http, eventStream),
@@ -195,6 +200,20 @@ export class DocumentsTransport {
 
   getDiscussion(projectId: string, slug: string): Promise<DenResult<DenDiscussion>> {
     return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(slug)}/discussion`));
+  }
+}
+
+export class KnowledgeTransport {
+  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+
+  listEntries(): Promise<DenResult<readonly DenKnowledgeEntrySummary[]>> {
+    return this.http.json<DenKnowledgeListResponse>(joinUrl(this.config.servicesApiBase, '/knowledge/entries')).then((result) => (
+      result.ok ? { ok: true, value: result.value.items } : result
+    ));
+  }
+
+  getEntry(slug: string): Promise<DenResult<DenKnowledgeEntryDetail>> {
+    return this.http.json(joinUrl(this.config.servicesApiBase, `/knowledge/entries/${encodeURIComponent(slug)}`));
   }
 }
 
