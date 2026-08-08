@@ -19,14 +19,19 @@ export function createKnowledgeStore(transport: KnowledgeTransportPort): Knowled
   const entries = signal<AsyncState<readonly DenKnowledgeEntrySummary[]>>(idleState());
   const detail = signal<AsyncState<DenKnowledgeEntryDetail>>(idleState());
   const selected = signal<DenKnowledgeEntrySummary | null>(null);
+  let detailRequest = 0;
 
   const loadSelected = async (entry: DenKnowledgeEntrySummary): Promise<void> => {
     selected.set(entry);
+    const request = ++detailRequest;
     const previousDetail = stateValue(detail());
     detail.set(loadingState(previousDetail));
     try {
-      detail.set(resultState(await transport.getEntry(entry.slug), previousDetail));
+      const result = await transport.getEntry(entry.slug);
+      if (request !== detailRequest || selected()?.slug !== entry.slug) return;
+      detail.set(resultState(result, previousDetail));
     } catch (error) {
+      if (request !== detailRequest || selected()?.slug !== entry.slug) return;
       detail.set(errorState(unknownStoreError(error), previousDetail));
     }
   };
@@ -42,6 +47,7 @@ export function createKnowledgeStore(transport: KnowledgeTransportPort): Knowled
         const result = await transport.listEntries();
         entries.set(resultState(result, previousEntries));
         if (result.ok && selected() && !result.value.some((entry) => entry.slug === selected()?.slug)) {
+          detailRequest += 1;
           selected.set(null);
           detail.set(idleState());
         }

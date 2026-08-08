@@ -12,7 +12,17 @@ describe('Den transport clients', () => {
         calls.push(path);
         return path.endsWith('/knowledge/entries')
           ? Response.json({ items: [], count: 0 })
-          : Response.json({ slug: 'topic/a', title: 'Topic A', body_markdown: '# Topic A' });
+          : Response.json({
+            id: 1,
+            slug: 'topic/a',
+            title: 'Topic A',
+            kind: 'reference',
+            status: 'reviewed',
+            curation_state: 'human_curated',
+            created_at: '2026-08-06T00:00:00Z',
+            updated_at: '2026-08-06T00:00:00Z',
+            body_markdown: '# Topic A',
+          });
       },
     });
     const clients = createDenTransportClients(defaultRuntimeApiConfig, http);
@@ -24,6 +34,27 @@ describe('Den transport clients', () => {
       '/api/v1/knowledge/entries',
       '/api/v1/knowledge/entries/topic%2Fa',
     ]);
+  });
+
+  it('returns an invalid-response result for malformed Knowledge payloads', async () => {
+    const http = new DenHttpClient({
+      fetchImpl: async (input) => String(input).endsWith('/knowledge/entries')
+        ? Response.json({ items: [{}], count: 1 })
+        : Response.json({}),
+    });
+    const clients = createDenTransportClients(defaultRuntimeApiConfig, http);
+
+    const list = await clients.knowledge.listEntries();
+    const detail = await clients.knowledge.getEntry('malformed');
+
+    expect(list).toEqual({
+      ok: false,
+      error: { kind: 'invalid-response', message: 'Knowledge list response is missing valid items.' },
+    });
+    expect(detail).toEqual({
+      ok: false,
+      error: { kind: 'invalid-response', message: 'Knowledge detail response is missing required fields.' },
+    });
   });
 
   it('constructs canonical successor route URLs', async () => {

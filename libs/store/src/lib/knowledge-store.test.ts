@@ -18,6 +18,15 @@ const detail: DenKnowledgeEntryDetail = {
   ...entry,
   body_markdown: '# Global entry',
 };
+const secondEntry: DenKnowledgeEntrySummary = {
+  ...entry,
+  slug: 'second-entry',
+  title: 'Second entry',
+};
+const secondDetail: DenKnowledgeEntryDetail = {
+  ...secondEntry,
+  body_markdown: '# Second entry',
+};
 
 const ok = <T>(value: T): DenResult<T> => ({ ok: true, value });
 
@@ -77,5 +86,34 @@ describe('KnowledgeStore', () => {
 
     await store.select(entry);
     expect(store.detail().kind).toBe('error');
+  });
+
+  it('does not publish stale detail success or error responses', async () => {
+    let resolveFirst!: (result: DenResult<DenKnowledgeEntryDetail>) => void;
+    let resolveSecond!: (result: DenResult<DenKnowledgeEntryDetail>) => void;
+    const firstRequest = new Promise<DenResult<DenKnowledgeEntryDetail>>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const secondRequest = new Promise<DenResult<DenKnowledgeEntryDetail>>((resolve) => {
+      resolveSecond = resolve;
+    });
+    const staleFailure: DenResult<DenKnowledgeEntryDetail> = {
+      ok: false,
+      error: { kind: 'network', message: 'stale request failed' },
+    };
+    const store = createKnowledgeStore({
+      listEntries: async () => ok([entry, secondEntry]),
+      getEntry: (slug) => slug === entry.slug ? firstRequest : secondRequest,
+    });
+
+    const firstSelection = store.select(entry);
+    const secondSelection = store.select(secondEntry);
+    resolveSecond(ok(secondDetail));
+    await secondSelection;
+    resolveFirst(staleFailure);
+    await firstSelection;
+
+    expect(store.selected()?.slug).toBe(secondEntry.slug);
+    expect(stateValue(store.detail())?.slug).toBe(secondDetail.slug);
   });
 });

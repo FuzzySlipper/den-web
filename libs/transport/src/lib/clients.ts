@@ -243,14 +243,57 @@ export class KnowledgeTransport {
   constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
 
   listEntries(): Promise<DenResult<readonly DenKnowledgeEntrySummary[]>> {
-    return this.http.json<DenKnowledgeListResponse>(joinUrl(this.config.servicesApiBase, '/knowledge/entries')).then((result) => (
-      result.ok ? { ok: true, value: result.value.items } : result
-    ));
+    return this.http.json<unknown>(joinUrl(this.config.servicesApiBase, '/knowledge/entries')).then((result) => {
+      if (!result.ok) return result;
+      if (!isKnowledgeListResponse(result.value)) {
+        return invalidKnowledgeResponse('Knowledge list response is missing valid items.');
+      }
+      return { ok: true, value: result.value.items };
+    });
   }
 
   getEntry(slug: string): Promise<DenResult<DenKnowledgeEntryDetail>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/knowledge/entries/${encodeURIComponent(slug)}`));
+    return this.http.json<unknown>(joinUrl(this.config.servicesApiBase, `/knowledge/entries/${encodeURIComponent(slug)}`)).then((result) => {
+      if (!result.ok) return result;
+      if (!isKnowledgeEntryDetail(result.value)) {
+        return invalidKnowledgeResponse('Knowledge detail response is missing required fields.');
+      }
+      return { ok: true, value: result.value };
+    });
   }
+}
+
+function invalidKnowledgeResponse<T>(message: string): DenResult<T> {
+  return { ok: false, error: { kind: 'invalid-response', message } };
+}
+
+function isKnowledgeListResponse(value: unknown): value is DenKnowledgeListResponse {
+  return isRecord(value)
+    && Array.isArray(value['items'])
+    && typeof value['count'] === 'number'
+    && value['items'].every(isKnowledgeEntrySummary);
+}
+
+function isKnowledgeEntryDetail(value: unknown): value is DenKnowledgeEntryDetail {
+  return isRecord(value)
+    && isKnowledgeEntrySummary(value)
+    && typeof value['body_markdown'] === 'string';
+}
+
+function isKnowledgeEntrySummary(value: unknown): value is DenKnowledgeEntrySummary {
+  return isRecord(value)
+    && typeof value['id'] === 'number'
+    && typeof value['slug'] === 'string'
+    && typeof value['title'] === 'string'
+    && typeof value['kind'] === 'string'
+    && typeof value['status'] === 'string'
+    && typeof value['curation_state'] === 'string'
+    && typeof value['created_at'] === 'string'
+    && typeof value['updated_at'] === 'string';
+}
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export class GuidanceTransport {
