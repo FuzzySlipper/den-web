@@ -1,7 +1,7 @@
 import type { Page, Route } from '@playwright/test';
 
 const project = { id: 'den-web', name: 'Den Web', visibility: 'normal' };
-const hiddenProject = { id: 'archive-mine', name: 'Archive Mine', visibility: 'hidden' };
+const hiddenProject = { id: 'archive-mine', name: 'Archive Mine', visibility: 'archived' };
 const spaces = [
   { id: 'den-web', name: 'Den Web', kind: 'project', visibility: 'normal' },
   { id: 'asha', name: 'Asha Studio', kind: 'project', visibility: 'normal' },
@@ -85,6 +85,12 @@ const ashaTask = {
   unfinished_dependency_count: 0,
   subtask_count: 0,
   description: 'Loaded through space selection.',
+};
+const archivedTask = {
+  ...ashaTask,
+  id: 4200,
+  project_id: 'archive-mine',
+  title: 'Archived read-only fixture task',
 };
 const channels = [
   { id: 7, project_id: 'den-web', slug: 'den-web', name: 'den-web', kind: 'project_default' },
@@ -276,19 +282,59 @@ const observation = {
 };
 
 export async function mockDenServices(page: Page): Promise<void> {
+  let acceptedTask = primaryTask;
+  let humanAcceptanceReviews: readonly Readonly<Record<string, unknown>>[] = [];
   await page.route('**/api/v1/projects', (route) => json(route, [project]));
   await page.route('**/api/v1/projects?**', (route) => json(route, includeArchivedHidden(route) ? [project, hiddenProject] : [project]));
   await page.route('**/api/v1/spaces', (route) => json(route, spaces));
   await page.route('**/api/v1/spaces?**', (route) => json(route, includeArchivedHidden(route) ? [...spaces, archivedSpace] : spaces));
   await page.route('**/api/v1/projects/den-web/tasks?**', (route) => json(route, tasks));
   await page.route('**/api/v1/projects/asha/tasks?**', (route) => json(route, [ashaTask]));
+  await page.route('**/api/v1/projects/archive-mine/tasks?**', (route) => json(route, [archivedTask]));
   await page.route('**/api/v1/projects/den-web/tasks/3993', async (route) => {
     if (route.request().method() === 'PATCH') {
       const body = route.request().postDataJSON() as { readonly status?: string };
       await json(route, { ...primaryTask, status: body.status ?? primaryTask.status });
       return;
     }
-    await json(route, taskDetail);
+    await json(route, { ...taskDetail, task: acceptedTask, human_acceptance_reviews: humanAcceptanceReviews });
+  });
+  await page.route('**/api/v1/projects/den-web/tasks/3993/human-acceptance-reviews', async (route) => {
+    const body = route.request().postDataJSON() as Readonly<Record<string, unknown>>;
+    const lifecycleEffect = typeof body['lifecycle_effect'] === 'string' ? body['lifecycle_effect'] : 'record_only';
+    const taskStatusAfter = lifecycleEffect === 'record_only' ? acceptedTask.status : 'done';
+    acceptedTask = { ...acceptedTask, status: taskStatusAfter, updated_at: '2026-08-11T08:15:00Z' };
+    const acceptance = {
+      id: 901,
+      task_id: acceptedTask.id,
+      project_id: acceptedTask.project_id,
+      reviewer_identity: body['reviewer_identity'],
+      verdict: 'looks_good',
+      rationale: body['rationale'] || 'Looks good.',
+      reviewed_revision: body['reviewed_revision'],
+      reviewed_build: body['reviewed_build'],
+      reviewed_environment: body['reviewed_environment'],
+      evidence_links: body['evidence_links'],
+      lifecycle_effect: lifecycleEffect,
+      note_markdown: '## Human acceptance: Looks good',
+      task_status_before: primaryTask.status,
+      task_status_after: taskStatusAfter,
+      created_at: '2026-08-11T08:15:00Z',
+    };
+    humanAcceptanceReviews = [acceptance];
+    await json(route, {
+      acceptance,
+      task: acceptedTask,
+      changed_task_ids: lifecycleEffect === 'record_only' ? [] : [acceptedTask.id],
+      unchanged_task_ids: lifecycleEffect === 'record_only' ? [acceptedTask.id] : [],
+      independent_review_state: {
+        agent_review_rounds_changed: false,
+        agent_findings_changed: false,
+        github_gates_changed: false,
+      },
+      warnings: ['Independent agent review rounds, findings, and GitHub gates were not changed.'],
+      audit_handle: 'human-acceptance:901',
+    });
   });
   await page.route('**/api/v1/projects/den-web/tasks/4001', (route) => json(route, {
     task: nestedTask,
@@ -319,6 +365,13 @@ export async function mockDenServices(page: Page): Promise<void> {
     dependencies: [],
     subtasks: [],
     recent_messages: [],
+  }));
+  await page.route('**/api/v1/projects/archive-mine/tasks/4200', (route) => json(route, {
+    task: archivedTask,
+    dependencies: [],
+    subtasks: [],
+    recent_messages: [],
+    human_acceptance_reviews: [],
   }));
   await page.route('**/api/v1/conversation/channels?**', (route) => json(route, channelListFor(route)));
   await page.route('**/api/v1/conversation/memberships?**', (route) => json(route, membershipListFor(route)));
@@ -390,6 +443,8 @@ export async function mockDenServices(page: Page): Promise<void> {
   await page.route('**/api/v1/user-notifications?**', (route) => json(route, notifications));
   await page.route('**/api/v1/user-notifications/read', (route) => json(route, { marked: 1 }));
   await page.route('**/api/v1/projects/den-web/messages?**', (route) => json(route, messagesFor(route)));
+  await page.route('**/api/v1/projects/asha/messages?**', (route) => json(route, []));
+  await page.route('**/api/v1/projects/archive-mine/messages?**', (route) => json(route, []));
   await page.route('**/api/v1/projects/den-web/messages/threads/1', (route) => json(route, threadMessages));
   await page.route('**/api/v1/artifacts/resolve?**', (route) => json(route, artifactMetadata));
   await page.route('**/api/v1/artifacts/art_fixture_image/metadata', (route) => json(route, artifactMetadata));

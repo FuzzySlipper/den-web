@@ -74,6 +74,12 @@ describe('Den transport clients', () => {
     await clients.tasks.listTasks(DEN_GLOBAL_PROJECT_ID, { tree: true });
     await clients.tasks.getTask('den-web', 3991);
     await clients.tasks.updateTask('den-web', 3991, { status: 'in_progress' });
+    await clients.tasks.recordHumanAcceptance('den-web', 3991, {
+      reviewer_identity: 'patch',
+      verdict: 'looks_good',
+      lifecycle_effect: 'record_only',
+      idempotency_key: 'acceptance-3991',
+    });
     await clients.messages.listMessages('den-web', { taskId: 3991, limit: 10 });
     await clients.messages.getThread('den-web', 42);
     await clients.notifications.listUserNotifications({ readForAgent: 'web-ui', limit: 5 });
@@ -132,6 +138,7 @@ describe('Den transport clients', () => {
       '/api/v1/spaces',
       '/api/v1/projects/den-web/tasks/3991',
       '/api/v1/projects/den-web/tasks/3991',
+      '/api/v1/projects/den-web/tasks/3991/human-acceptance-reviews',
       '/api/v1/projects/den-web/messages?task_id=3991&limit=10',
       '/api/v1/projects/den-web/messages/threads/42',
       '/api/v1/user-notifications?read_for_agent=web-ui&limit=5',
@@ -160,6 +167,51 @@ describe('Den transport clients', () => {
       '/api/v1/artifacts/art_123/content',
       '/api/v1/visual-contracts/run-123',
     ]);
+  });
+
+  it('posts the authoritative human acceptance request without inventing review state', async () => {
+    let observedBody: unknown = null;
+    const http = new DenHttpClient({
+      fetchImpl: async (_input, init) => {
+        observedBody = typeof init?.body === 'string' ? JSON.parse(init.body) : null;
+        return Response.json({
+          acceptance: { id: 1, task_id: 6812, project_id: 'den-services', verdict: 'looks_good' },
+          task: { id: 6812, project_id: 'den-services', status: 'done' },
+          changed_task_ids: [6812],
+          unchanged_task_ids: [],
+          independent_review_state: {
+            agent_review_rounds_changed: false,
+            agent_findings_changed: false,
+            github_gates_changed: false,
+          },
+          warnings: [],
+          audit_handle: 'human-acceptance:1',
+        });
+      },
+    });
+    const clients = createDenTransportClients(defaultRuntimeApiConfig, http);
+
+    await clients.tasks.recordHumanAcceptance('den-services', 6812, {
+      reviewer_identity: 'patch',
+      verdict: 'looks_good',
+      rationale: 'Browser flow checked.',
+      reviewed_revision: 'abc123',
+      evidence_links: ['https://example.test/evidence'],
+      lifecycle_effect: 'complete_task',
+      idempotency_key: 'stable-key',
+      expected_task_updated_at: '2026-08-11T08:00:00Z',
+    });
+
+    expect(observedBody).toEqual({
+      reviewer_identity: 'patch',
+      verdict: 'looks_good',
+      rationale: 'Browser flow checked.',
+      reviewed_revision: 'abc123',
+      evidence_links: ['https://example.test/evidence'],
+      lifecycle_effect: 'complete_task',
+      idempotency_key: 'stable-key',
+      expected_task_updated_at: '2026-08-11T08:00:00Z',
+    });
   });
 
   it('fans global task lists through active workspace project routes', async () => {

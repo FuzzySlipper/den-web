@@ -11,7 +11,13 @@ import {
   type TaskStatusFilter,
 } from '@den-web/domain';
 import { ArtifactEvidenceComponent, type ArtifactEvidenceItem } from '@den-web/feature-artifacts';
-import type { DenMessage, DenTaskDetail, DenTaskSummary } from '@den-web/protocol';
+import type {
+  DenHumanAcceptanceLifecycleEffect,
+  DenHumanAcceptanceReview,
+  DenMessage,
+  DenTaskDetail,
+  DenTaskSummary,
+} from '@den-web/protocol';
 import { ARTIFACTS_STORE, DEN_CLOCK, NAVIGATION_STORE, stateValue, TASKS_STORE, WORKSPACE_STORE } from '@den-web/store';
 
 interface FilterOption {
@@ -297,6 +303,103 @@ const taskListQuietRefreshMs = 15000;
       }
 
       .description-body { margin: 0; white-space: pre-wrap; }
+
+      .acceptance-actions,
+      .acceptance-result-head {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: space-between;
+      }
+
+      .acceptance-button,
+      .acceptance-form button {
+        appearance: none;
+        background: var(--den-input);
+        border: 1px solid var(--den-border);
+        border-radius: 6px;
+        color: var(--den-text);
+        cursor: pointer;
+        font: inherit;
+        min-height: 36px;
+        padding: 0 12px;
+      }
+
+      .acceptance-button:hover,
+      .acceptance-button:focus-visible,
+      .acceptance-form button:hover,
+      .acceptance-form button:focus-visible {
+        background: var(--den-hover);
+        border-color: var(--den-border-strong);
+        outline: none;
+      }
+
+      .acceptance-button.primary,
+      .acceptance-form button.primary {
+        border-color: var(--den-accent);
+      }
+
+      .acceptance-form {
+        border-top: 1px solid var(--den-border);
+        display: grid;
+        gap: 12px;
+        margin-top: 12px;
+        padding-top: 12px;
+      }
+
+      .acceptance-form label {
+        align-items: stretch;
+        display: grid;
+        gap: 5px;
+        white-space: normal;
+      }
+
+      .acceptance-form textarea {
+        background: var(--den-input);
+        border: 1px solid var(--den-border);
+        border-radius: 6px;
+        box-sizing: border-box;
+        color: var(--den-text);
+        font: inherit;
+        min-height: 72px;
+        padding: 8px 10px;
+        resize: vertical;
+        width: 100%;
+      }
+
+      .acceptance-fields {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+
+      .acceptance-preview,
+      .acceptance-result {
+        background: var(--den-selected);
+        border: 1px solid var(--den-border);
+        border-radius: 6px;
+        margin: 0;
+        padding: 10px;
+      }
+
+      .acceptance-records {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .acceptance-record {
+        border-left: 3px solid var(--den-accent);
+        display: grid;
+        gap: 4px;
+        padding: 6px 9px;
+      }
+
+      .acceptance-record p,
+      .acceptance-result p { margin: 0; }
+
+      .warning-list { color: var(--den-warning); }
 
       .section ul {
         display: grid;
@@ -639,6 +742,95 @@ const taskListQuietRefreshMs = 15000;
                 }
               </section>
 
+              <section class="section" aria-label="Human acceptance">
+                <div class="acceptance-actions">
+                  <div>
+                    <span class="section-title">Human acceptance</span>
+                    <span class="meta">A human observation; independent reviews and gates are unchanged.</span>
+                  </div>
+                  @if (!taskReadOnly()) {
+                    <button type="button" class="acceptance-button primary" (click)="openAcceptanceComposer(detail)">Looks good</button>
+                  } @else {
+                    <span class="meta">Read-only project</span>
+                  }
+                </div>
+
+                @if (acceptanceComposerOpen()) {
+                  <form class="acceptance-form" aria-label="Record human acceptance" (submit)="submitHumanAcceptance($event, detail, reviewer.value, rationale.value, revision.value, build.value, environment.value, evidence.value, lifecycle.value)">
+                    <div class="acceptance-fields">
+                      <label>
+                        Reviewer identity
+                        <input #reviewer name="reviewer" value="human" required autofocus />
+                      </label>
+                      <label>
+                        Lifecycle effect
+                        <select #lifecycle name="lifecycle" [value]="acceptanceLifecycle()" (change)="changeAcceptanceLifecycle($event)">
+                          <option value="record_only">Record only</option>
+                          <option value="complete_task">Complete task</option>
+                          <option value="complete_task_and_parent">Complete task and eligible parent</option>
+                        </select>
+                      </label>
+                    </div>
+                    <label>
+                      Observation
+                      <textarea #rationale name="rationale" placeholder="Looks good.">Looks good.</textarea>
+                    </label>
+                    <div class="acceptance-fields">
+                      <label>Reviewed revision <input #revision name="revision" /></label>
+                      <label>Reviewed build <input #build name="build" /></label>
+                      <label>Environment <input #environment name="environment" /></label>
+                    </div>
+                    <label>
+                      Evidence links (one per line)
+                      <textarea #evidence name="evidence" placeholder="https://…"></textarea>
+                    </label>
+                    <p class="acceptance-preview" aria-live="polite"><strong>Will change:</strong> {{ acceptanceEffectSummary(detail) }}</p>
+                    @if (acceptanceError()) {
+                      <p class="state error" role="alert">{{ acceptanceError() }}</p>
+                    }
+                    <div class="acceptance-actions">
+                      <button type="button" (click)="closeAcceptanceComposer()">Cancel</button>
+                      <button type="submit" class="primary" [disabled]="acceptanceSubmitting()">
+                        {{ acceptanceSubmitting() ? 'Recording…' : 'Confirm looks good' }}
+                      </button>
+                    </div>
+                  </form>
+                }
+
+                @if (acceptanceResult(); as result) {
+                  <div class="acceptance-result" aria-live="polite">
+                    <div class="acceptance-result-head">
+                      <strong>Recorded human acceptance</strong>
+                      <span class="badge">{{ lifecycleLabel(result.acceptance.lifecycle_effect) }}</span>
+                    </div>
+                    <p>{{ result.acceptance.rationale }}</p>
+                    <p class="meta">Task: {{ result.acceptance.task_status_before }} → {{ result.acceptance.task_status_after }} · Audit {{ result.audit_handle }}</p>
+                    @if (result.parent) {
+                      <p class="meta">Parent #{{ result.parent.id }}: {{ result.acceptance.parent_status_before }} → {{ result.acceptance.parent_status_after }}</p>
+                    }
+                    @if (result.warnings.length > 0) {
+                      <ul class="warning-list" aria-label="Acceptance warnings">
+                        @for (warning of result.warnings; track warning) { <li>{{ warning }}</li> }
+                      </ul>
+                    }
+                  </div>
+                }
+
+                <div class="acceptance-records" aria-label="Human acceptance records">
+                  @if ((detail.human_acceptance_reviews ?? []).length === 0) {
+                    <p class="state">No human acceptance recorded</p>
+                  } @else {
+                    @for (acceptance of detail.human_acceptance_reviews; track acceptance.id) {
+                      <div class="acceptance-record">
+                        <strong><span class="badge">Human · Looks good</span> {{ acceptance.reviewer_identity }}</strong>
+                        <p>{{ acceptance.rationale }}</p>
+                        <span class="meta">{{ lifecycleLabel(acceptance.lifecycle_effect) }} @if (acceptance.created_at) { · <den-local-time [value]="acceptance.created_at" /> }</span>
+                      </div>
+                    }
+                  }
+                </div>
+              </section>
+
               <section class="section" aria-label="Dependencies">
                 <span class="section-title">Dependencies</span>
                 @if ((detail.dependencies ?? []).length === 0) {
@@ -726,6 +918,7 @@ export class TaskCockpitComponent {
   protected readonly filters = filterOptions;
   protected readonly sortOptions = sortOptions;
   protected readonly selectedProjectId = this.workspace.selectedProjectId;
+  protected readonly selectedProject = this.workspace.selectedProject;
   protected readonly tasks = this.taskStore.tasks;
   protected readonly selectedTask = this.taskStore.selectedTask;
   protected readonly rows = this.taskStore.rows;
@@ -736,6 +929,10 @@ export class TaskCockpitComponent {
   protected readonly descriptionEditorOpen = signal(false);
   protected readonly descriptionDraft = signal('');
   protected readonly editError = signal<string | null>(null);
+  protected readonly acceptanceComposerOpen = signal(false);
+  protected readonly acceptanceLifecycle = signal<DenHumanAcceptanceLifecycleEffect>('record_only');
+  protected readonly acceptanceIdempotencyKey = signal('');
+  protected readonly acceptanceError = signal<string | null>(null);
   protected readonly mobilePane = signal<MobilePane>('list');
   protected readonly tasksError = computed(() => {
     const state = this.tasks();
@@ -748,6 +945,9 @@ export class TaskCockpitComponent {
   protected readonly selectedTaskDetail = computed(() => stateValue(this.selectedTask()) ?? null);
   protected readonly selectedTaskId = computed(() => stateValue(this.selectedTask())?.task.id ?? null);
   protected readonly filterValue = computed(() => this.filters.find((option) => option.filter === this.taskStore.filter())?.value ?? 'active');
+  protected readonly acceptanceSubmitting = computed(() => this.taskStore.humanAcceptanceResult().kind === 'loading');
+  protected readonly acceptanceResult = computed(() => stateValue(this.taskStore.humanAcceptanceResult()) ?? null);
+  protected readonly taskReadOnly = computed(() => this.selectedProject()?.visibility === 'archived');
 
   private readonly projectRefreshEffect = effect(() => {
     const projectId = this.selectedProjectId();
@@ -871,6 +1071,82 @@ export class TaskCockpitComponent {
       this.editError.set(result.ok ? null : this.errorText(result.error));
       if (result.ok) this.descriptionEditorOpen.set(false);
     });
+  }
+
+  protected openAcceptanceComposer(detail: DenTaskDetail): void {
+    this.taskStore.clearHumanAcceptanceResult();
+    this.acceptanceError.set(null);
+    this.acceptanceLifecycle.set('record_only');
+    this.acceptanceIdempotencyKey.set(`den-web:${detail.task.id}:human-acceptance:${this.clock.now().getTime()}`);
+    this.acceptanceComposerOpen.set(true);
+  }
+
+  protected closeAcceptanceComposer(): void {
+    this.acceptanceComposerOpen.set(false);
+    this.acceptanceError.set(null);
+  }
+
+  protected changeAcceptanceLifecycle(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) return;
+    if (target.value === 'record_only' || target.value === 'complete_task' || target.value === 'complete_task_and_parent') {
+      this.acceptanceLifecycle.set(target.value);
+    }
+  }
+
+  protected acceptanceEffectSummary(detail: DenTaskDetail): string {
+    switch (this.acceptanceLifecycle()) {
+      case 'complete_task':
+        return `record the acceptance and request completion of task #${detail.task.id}.`;
+      case 'complete_task_and_parent':
+        return detail.task.parent_id
+          ? `record the acceptance and request completion of task #${detail.task.id} plus eligible parent #${detail.task.parent_id}. The service decides eligibility.`
+          : `record the acceptance and request task completion; this task has no parent, so the service will reject parent completion.`;
+      default:
+        return `record the acceptance only; task #${detail.task.id} and its parent will not change status.`;
+    }
+  }
+
+  protected submitHumanAcceptance(
+    event: Event,
+    detail: DenTaskDetail,
+    reviewerIdentity: string,
+    rationale: string,
+    reviewedRevision: string,
+    reviewedBuild: string,
+    reviewedEnvironment: string,
+    evidenceText: string,
+    lifecycleEffect: string,
+  ): void {
+    event.preventDefault();
+    const projectId = detail.task.project_id ?? this.selectedProjectId();
+    if (!projectId || this.taskReadOnly() || this.acceptanceSubmitting()) return;
+    const lifecycle = lifecycleEffect === 'complete_task' || lifecycleEffect === 'complete_task_and_parent'
+      ? lifecycleEffect
+      : 'record_only';
+    const build = reviewedBuild.trim();
+    const environment = reviewedEnvironment.trim();
+    const revision = reviewedRevision.trim();
+    const result = this.taskStore.recordHumanAcceptance(projectId, detail.task.id, {
+      reviewer_identity: reviewerIdentity.trim(),
+      verdict: 'looks_good',
+      rationale: rationale.trim(),
+      ...(revision ? { reviewed_revision: revision } : {}),
+      ...(build ? { reviewed_build: build } : {}),
+      ...(environment ? { reviewed_environment: environment } : {}),
+      evidence_links: evidenceText.split('\n').map((link) => link.trim()).filter(Boolean),
+      lifecycle_effect: lifecycle,
+      idempotency_key: this.acceptanceIdempotencyKey(),
+      ...(revision && detail.task.updated_at ? { expected_task_updated_at: detail.task.updated_at } : {}),
+    });
+    void result.then((response) => {
+      this.acceptanceError.set(response.ok ? null : this.errorText(response.error));
+      if (response.ok) this.acceptanceComposerOpen.set(false);
+    });
+  }
+
+  protected lifecycleLabel(effect: DenHumanAcceptanceReview['lifecycle_effect']): string {
+    return effect.replace(/_/g, ' ');
   }
 
   protected statusLabel(status: string): string {

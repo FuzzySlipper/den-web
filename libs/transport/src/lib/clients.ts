@@ -31,6 +31,8 @@ import type {
   DenResult,
   DenSpace,
   DenTaskDetail,
+  DenRecordHumanAcceptanceRequest,
+  DenRecordHumanAcceptanceResponse,
   DenTaskSummary,
   DenTaskUpdateRequest,
   DenTimelineItem,
@@ -158,6 +160,13 @@ export class TasksTransport {
   updateTask(projectId: string, taskId: number, body: DenTaskUpdateRequest): Promise<DenResult<DenTaskDetail | DenTaskSummary | undefined>> {
     return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/tasks/${taskId}`), {
       method: 'PATCH',
+      body,
+    });
+  }
+
+  recordHumanAcceptance(projectId: string, taskId: number, body: DenRecordHumanAcceptanceRequest): Promise<DenResult<DenRecordHumanAcceptanceResponse>> {
+    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/human-acceptance-reviews`), {
+      method: 'POST',
       body,
     });
   }

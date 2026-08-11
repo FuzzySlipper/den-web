@@ -1,6 +1,14 @@
 import { computed, signal, type Signal } from '@angular/core';
 import { visibleTaskRows, type FlatTaskRow, type TaskSortMode, type TaskStatusFilter } from '@den-web/domain';
-import type { DenMessage, DenResult, DenTaskDetail, DenTaskSummary, DenTaskUpdateRequest } from '@den-web/protocol';
+import type {
+  DenMessage,
+  DenRecordHumanAcceptanceRequest,
+  DenRecordHumanAcceptanceResponse,
+  DenResult,
+  DenTaskDetail,
+  DenTaskSummary,
+  DenTaskUpdateRequest,
+} from '@den-web/protocol';
 import { errorState, idleState, loadingState, resultState, stateValue, type AsyncState, unknownStoreError } from './async-state';
 
 const taskUpdateAgent = 'web-ui';
@@ -9,6 +17,7 @@ export interface TasksTransportPort {
   readonly listTasks: (projectId: string, options?: { readonly limit?: number; readonly status?: string; readonly tree?: boolean }) => Promise<DenResult<readonly DenTaskSummary[]>>;
   readonly getTask: (projectId: string, taskId: number) => Promise<DenResult<DenTaskDetail>>;
   readonly updateTask: (projectId: string, taskId: number, patch: DenTaskUpdateRequest) => Promise<DenResult<DenTaskDetail | DenTaskSummary | undefined>>;
+  readonly recordHumanAcceptance: (projectId: string, taskId: number, request: DenRecordHumanAcceptanceRequest) => Promise<DenResult<DenRecordHumanAcceptanceResponse>>;
 }
 
 export interface TaskMessagesTransportPort {
@@ -18,6 +27,7 @@ export interface TaskMessagesTransportPort {
 export interface TasksStore {
   readonly tasks: Signal<AsyncState<readonly DenTaskSummary[]>>;
   readonly selectedTask: Signal<AsyncState<DenTaskDetail>>;
+  readonly humanAcceptanceResult: Signal<AsyncState<DenRecordHumanAcceptanceResponse>>;
   readonly filter: Signal<TaskStatusFilter>;
   readonly sortMode: Signal<TaskSortMode>;
   readonly query: Signal<string>;
@@ -27,6 +37,8 @@ export interface TasksStore {
   readonly selectTask: (projectId: string, taskId: number) => Promise<void>;
   readonly updateTaskStatus: (projectId: string, taskId: number, status: string) => Promise<DenResult<DenTaskDetail>>;
   readonly updateTaskDescription: (projectId: string, taskId: number, description: string) => Promise<DenResult<DenTaskDetail>>;
+  readonly recordHumanAcceptance: (projectId: string, taskId: number, request: DenRecordHumanAcceptanceRequest) => Promise<DenResult<DenRecordHumanAcceptanceResponse>>;
+  readonly clearHumanAcceptanceResult: () => void;
   readonly setFilter: (filter: TaskStatusFilter) => void;
   readonly setSortMode: (mode: TaskSortMode) => void;
   readonly setQuery: (query: string) => void;
@@ -36,6 +48,7 @@ export interface TasksStore {
 export function createTasksStore(transport: TasksTransportPort, messagesTransport: TaskMessagesTransportPort): TasksStore {
   const tasks = signal<AsyncState<readonly DenTaskSummary[]>>(idleState());
   const selectedTask = signal<AsyncState<DenTaskDetail>>(idleState());
+  const humanAcceptanceResult = signal<AsyncState<DenRecordHumanAcceptanceResponse>>(idleState());
   const filter = signal<TaskStatusFilter>('active');
   const sortMode = signal<TaskSortMode>('priority');
   const query = signal('');
@@ -44,6 +57,7 @@ export function createTasksStore(transport: TasksTransportPort, messagesTranspor
   return {
     tasks: tasks.asReadonly(),
     selectedTask: selectedTask.asReadonly(),
+    humanAcceptanceResult: humanAcceptanceResult.asReadonly(),
     filter: filter.asReadonly(),
     sortMode: sortMode.asReadonly(),
     query: query.asReadonly(),
@@ -77,6 +91,23 @@ export function createTasksStore(transport: TasksTransportPort, messagesTranspor
     },
     updateTaskStatus: (projectId, taskId, status) => updateTask(projectId, taskId, { status }),
     updateTaskDescription: (projectId, taskId, description) => updateTask(projectId, taskId, { description }),
+    recordHumanAcceptance: async (projectId, taskId, request) => {
+      const previous = stateValue(humanAcceptanceResult());
+      humanAcceptanceResult.set(loadingState(previous));
+      try {
+        const result = await transport.recordHumanAcceptance(projectId, taskId, request);
+        humanAcceptanceResult.set(resultState(result, previous));
+        if (!result.ok) return result;
+        tasks.set(reconcileTaskList(tasks(), result.value.task));
+        await refreshSelectedTask(projectId, taskId);
+        return result;
+      } catch (error) {
+        const classified = unknownStoreError(error);
+        humanAcceptanceResult.set(errorState(classified, previous));
+        return { ok: false, error: classified };
+      }
+    },
+    clearHumanAcceptanceResult: () => humanAcceptanceResult.set(idleState()),
     setFilter: (nextFilter) => filter.set(nextFilter),
     setSortMode: (nextMode) => sortMode.set(nextMode),
     setQuery: (nextQuery) => query.set(nextQuery),
@@ -108,6 +139,15 @@ export function createTasksStore(transport: TasksTransportPort, messagesTranspor
     const nextTask = nextTasks.find((task) => task.id === previous.task.id);
     if (!nextTask) return;
     selectedTask.set(resultState({ ok: true, value: { ...previous, task: { ...previous.task, ...nextTask } } }, previous));
+  }
+
+  async function refreshSelectedTask(projectId: string, taskId: number): Promise<void> {
+    const previous = stateValue(selectedTask());
+    const [taskResult, messagesResult] = await Promise.all([
+      transport.getTask(projectId, taskId),
+      messagesTransport.listMessages(projectId, { taskId, limit: 20 }),
+    ]);
+    selectedTask.set(resultState(withTaskMessages(taskResult, messagesResult), previous));
   }
 }
 
@@ -161,6 +201,7 @@ function reconcileTaskDetail(
   return {
     dependencies: previous?.dependencies ?? [],
     recent_messages: previous?.recent_messages ?? [],
+    human_acceptance_reviews: previous?.human_acceptance_reviews ?? [],
     subtasks: previous?.subtasks ?? [],
     task,
   };

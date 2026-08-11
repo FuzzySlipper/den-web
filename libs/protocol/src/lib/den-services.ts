@@ -36,6 +36,58 @@ export interface DenTaskDetail {
   readonly dependencies?: readonly DenTaskSummary[];
   readonly subtasks?: readonly DenTaskSummary[];
   readonly recent_messages?: readonly DenMessage[];
+  readonly human_acceptance_reviews?: readonly DenHumanAcceptanceReview[];
+}
+
+export type DenHumanAcceptanceLifecycleEffect = 'record_only' | 'complete_task' | 'complete_task_and_parent';
+
+export interface DenHumanAcceptanceReview {
+  readonly id: number;
+  readonly task_id: number;
+  readonly project_id: string;
+  readonly reviewer_identity: string;
+  readonly verdict: 'looks_good';
+  readonly rationale: string;
+  readonly reviewed_revision?: string;
+  readonly reviewed_build?: string;
+  readonly reviewed_environment?: string;
+  readonly evidence_links?: readonly string[];
+  readonly lifecycle_effect: DenHumanAcceptanceLifecycleEffect;
+  readonly note_markdown: string;
+  readonly task_status_before: string;
+  readonly task_status_after: string;
+  readonly parent_task_id?: number;
+  readonly parent_status_before?: string;
+  readonly parent_status_after?: string;
+  readonly created_at: string;
+}
+
+export interface DenRecordHumanAcceptanceRequest {
+  readonly reviewer_identity: string;
+  readonly verdict: 'looks_good';
+  readonly rationale?: string;
+  readonly reviewed_revision?: string;
+  readonly reviewed_build?: string;
+  readonly reviewed_environment?: string;
+  readonly evidence_links?: readonly string[];
+  readonly lifecycle_effect: DenHumanAcceptanceLifecycleEffect;
+  readonly idempotency_key: string;
+  readonly expected_task_updated_at?: string;
+}
+
+export interface DenRecordHumanAcceptanceResponse {
+  readonly acceptance: DenHumanAcceptanceReview;
+  readonly task: DenTaskSummary;
+  readonly parent?: DenTaskSummary;
+  readonly changed_task_ids: readonly number[];
+  readonly unchanged_task_ids: readonly number[];
+  readonly independent_review_state: {
+    readonly agent_review_rounds_changed: boolean;
+    readonly agent_findings_changed: boolean;
+    readonly github_gates_changed: boolean;
+  };
+  readonly warnings: readonly string[];
+  readonly audit_handle: string;
 }
 
 export interface DenTaskUpdateRequest {

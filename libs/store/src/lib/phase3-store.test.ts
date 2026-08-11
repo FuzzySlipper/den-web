@@ -10,6 +10,7 @@ import type {
   DenNotification,
   DenObservationLane,
   DenProject,
+  DenRecordHumanAcceptanceResponse,
   DenResult,
   DenSpace,
   DenTaskDetail,
@@ -30,6 +31,9 @@ import {
 } from '../index';
 
 const ok = <T>(value: T): DenResult<T> => ({ ok: true, value });
+const unexpectedHumanAcceptance = async (): Promise<DenResult<DenRecordHumanAcceptanceResponse>> => {
+  throw new Error('human acceptance was not expected in this test');
+};
 
 describe('successor signal stores', () => {
   it('refreshes workspace state through readonly async signals and named commands', async () => {
@@ -131,6 +135,7 @@ describe('successor signal stores', () => {
       ]),
       getTask: async (_projectId, taskId) => ok(taskDetailFixture({ task: taskFixture({ id: taskId }) })),
       updateTask: async () => ok(undefined),
+      recordHumanAcceptance: unexpectedHumanAcceptance,
     }, {
       listMessages: async () => ok([]),
     });
@@ -152,6 +157,7 @@ describe('successor signal stores', () => {
       ]),
       getTask: async (_projectId, taskId) => ok(taskDetailFixture({ task: taskFixture({ id: taskId }) })),
       updateTask: async () => ok(undefined),
+      recordHumanAcceptance: unexpectedHumanAcceptance,
     }, {
       listMessages: async () => ok([]),
     });
@@ -175,6 +181,7 @@ describe('successor signal stores', () => {
         patches.push(patch);
         return ok({ id: taskId, ...patch });
       },
+      recordHumanAcceptance: unexpectedHumanAcceptance,
     }, {
       listMessages: async () => ok([]),
     });
@@ -209,6 +216,7 @@ describe('successor signal stores', () => {
         task: taskFixture({ id: taskId, status: 'in_progress' }),
       })),
       updateTask: async () => ok(undefined),
+      recordHumanAcceptance: unexpectedHumanAcceptance,
     }, {
       listMessages: async () => ok([]),
     });
@@ -234,6 +242,7 @@ describe('successor signal stores', () => {
         recent_messages: [],
       })),
       updateTask: async () => ok(undefined),
+      recordHumanAcceptance: unexpectedHumanAcceptance,
     }, {
       listMessages: async (_projectId, options) => ok([
         {
@@ -252,6 +261,71 @@ describe('successor signal stores', () => {
 
     expect(stateValue(store.selectedTask())?.recent_messages?.[0]?.content).toContain('ready for review');
     expect(stateValue(store.selectedTask())?.task.status).toBe('review');
+  });
+
+  it('records human acceptance and replaces task detail with authoritative readback', async () => {
+    const acceptanceRequests: unknown[] = [];
+    let detailRead = 0;
+    const acceptance = {
+      id: 91,
+      task_id: 6812,
+      project_id: 'den-services',
+      reviewer_identity: 'patch',
+      verdict: 'looks_good' as const,
+      rationale: 'Checked in the browser.',
+      lifecycle_effect: 'complete_task' as const,
+      note_markdown: '## Human acceptance: Looks good',
+      task_status_before: 'review',
+      task_status_after: 'done',
+      created_at: '2026-08-11T08:00:00Z',
+    };
+    const acceptedDetail = taskDetailFixture({
+      task: taskFixture({ id: 6812, status: 'done' }),
+      human_acceptance_reviews: [acceptance],
+    });
+    const response: DenRecordHumanAcceptanceResponse = {
+      acceptance,
+      task: acceptedDetail.task,
+      changed_task_ids: [6812],
+      unchanged_task_ids: [],
+      independent_review_state: {
+        agent_review_rounds_changed: false,
+        agent_findings_changed: false,
+        github_gates_changed: false,
+      },
+      warnings: ['Independent review gates remain unchanged.'],
+      audit_handle: 'human-acceptance:91',
+    };
+    const store = createTasksStore({
+      listTasks: async () => ok([taskFixture({ id: 6812, status: 'review' })]),
+      getTask: async () => {
+        detailRead += 1;
+        return ok(detailRead === 1 ? taskDetailFixture({ task: taskFixture({ id: 6812, status: 'review' }) }) : acceptedDetail);
+      },
+      updateTask: async () => ok(undefined),
+      recordHumanAcceptance: async (_projectId, _taskId, request) => {
+        acceptanceRequests.push(request);
+        return ok(response);
+      },
+    }, {
+      listMessages: async () => ok([]),
+    });
+
+    await store.refresh('den-services');
+    await store.selectTask('den-services', 6812);
+    const request = {
+      reviewer_identity: 'patch',
+      verdict: 'looks_good' as const,
+      rationale: 'Checked in the browser.',
+      lifecycle_effect: 'complete_task' as const,
+      idempotency_key: 'stable-key',
+    };
+    await store.recordHumanAcceptance('den-services', 6812, request);
+
+    expect(acceptanceRequests).toEqual([request]);
+    expect(stateValue(store.selectedTask())?.task.status).toBe('done');
+    expect(stateValue(store.selectedTask())?.human_acceptance_reviews?.[0]?.reviewer_identity).toBe('patch');
+    expect(stateValue(store.humanAcceptanceResult())?.warnings).toEqual(['Independent review gates remain unchanged.']);
   });
 
   it('owns dirty document switching and separate discussion reads', async () => {

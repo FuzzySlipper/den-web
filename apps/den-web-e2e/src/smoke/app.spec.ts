@@ -236,6 +236,70 @@ test('updates task status with the web UI actor', async ({ page }) => {
   await expect(page.locator('.task-list').getByRole('button', { name: /#4177 Long detail fixture task/ })).toBeVisible();
 });
 
+test('records human acceptance through the task detail with authoritative readback', async ({ page }, testInfo) => {
+  await mockDenServices(page);
+  const acceptanceBodies: Readonly<Record<string, unknown>>[] = [];
+  await page.route('**/api/v1/projects/den-web/tasks/3993/human-acceptance-reviews', async (route) => {
+    const body = route.request().postDataJSON() as Readonly<Record<string, unknown>>;
+    if (route.request().method() === 'POST' && typeof body['idempotency_key'] === 'string') acceptanceBodies.push(body);
+    if (acceptanceBodies.length === 1) {
+      await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'temporary fixture failure' }) });
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Looks good' }).click();
+  const composer = page.getByRole('form', { name: 'Record human acceptance' });
+  await expect(composer.getByLabel('Lifecycle effect')).toHaveValue('record_only');
+  await expect(composer.getByText(/will not change status/)).toBeVisible();
+  await composer.getByLabel('Reviewer identity').fill('patch');
+  await composer.getByLabel('Observation').fill('Checked the rendered task workflow.');
+  await composer.getByLabel('Reviewed revision').fill('abc123');
+  await composer.getByLabel('Reviewed build').fill('den-web-42');
+  await composer.getByLabel('Environment').fill('local smoke');
+  await composer.getByLabel('Evidence links').fill('https://example.test/proof-1\nhttps://example.test/proof-2');
+  await composer.getByLabel('Lifecycle effect').selectOption('complete_task');
+  await expect(composer.getByText(/request completion of task #3993/)).toBeVisible();
+  await composer.getByRole('button', { name: 'Confirm looks good' }).press('Enter');
+  await expect(composer.getByRole('alert')).toContainText('503');
+  await composer.getByRole('button', { name: 'Confirm looks good' }).click();
+
+  await expect.poll(() => acceptanceBodies.at(-1)).toMatchObject({
+    reviewer_identity: 'patch',
+    verdict: 'looks_good',
+    rationale: 'Checked the rendered task workflow.',
+    reviewed_revision: 'abc123',
+    reviewed_build: 'den-web-42',
+    reviewed_environment: 'local smoke',
+    evidence_links: ['https://example.test/proof-1', 'https://example.test/proof-2'],
+    lifecycle_effect: 'complete_task',
+    expected_task_updated_at: '2026-07-29T00:57:23.730966Z',
+  });
+  await expect.poll(() => acceptanceBodies.length).toBe(2);
+  expect(acceptanceBodies[0]?.['idempotency_key']).toMatch(/^den-web:3993:human-acceptance:/);
+  expect(new Set(acceptanceBodies.map((body) => body['idempotency_key'])).size).toBe(1);
+  await expect(page.getByText('Recorded human acceptance')).toBeVisible();
+  await expect(page.getByText('Checked the rendered task workflow.').first()).toBeVisible();
+  await expect(page.getByLabel('Acceptance warnings')).toContainText('Independent agent review rounds');
+  await expect(page.getByLabel('Human acceptance records').getByText('Human · Looks good')).toBeVisible();
+  await expect(page.getByLabel('Task status', { exact: true })).toHaveValue('done');
+  await page.screenshot({ path: testInfo.outputPath('human-acceptance-readback.png'), fullPage: true });
+});
+
+test('does not offer human acceptance from an archived read-only project', async ({ page }) => {
+  await mockDenServices(page);
+  await page.goto('/');
+  await page.getByLabel('Show archived and hidden').check();
+  await page.getByRole('button', { name: /Archive Mine archive-mine/ }).click();
+  await page.locator('.task-list').getByRole('button', { name: /#4200 Archived read-only fixture task/ }).click();
+
+  await expect(page.getByLabel('Task detail').getByRole('heading', { name: /#4200 Archived read-only fixture task/ })).toBeVisible();
+  await expect(page.getByLabel('Human acceptance').getByText('Read-only project')).toBeVisible();
+  await expect(page.getByLabel('Human acceptance').getByRole('button', { name: 'Looks good' })).toHaveCount(0);
+});
+
 test('renders inherited feature tabs through successor fixtures', async ({ page }) => {
   await mockDenServices(page);
   await page.goto('/');
