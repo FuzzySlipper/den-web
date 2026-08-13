@@ -7,6 +7,11 @@ import {
   signal,
 } from '@angular/core';
 import { LocalTimeComponent, MarkdownViewComponent } from '@den-web/components';
+import {
+  boardCommentAuthor,
+  boardCommentBody,
+  boardCommentIsTombstone,
+} from '@den-web/domain';
 import type {
   DenBoardCreateCommentRequest,
   DenBoardCreatePostRequest,
@@ -20,6 +25,7 @@ import {
   WORKSPACE_STORE,
 } from '@den-web/store';
 import { BoardCommentNodeComponent } from './board-comment-node.component';
+import { boardNoticeText, type BoardNotice } from './board-notices';
 import { boardPanelStyles } from './board-panel.styles';
 
 type MobilePane = 'list' | 'detail';
@@ -236,6 +242,46 @@ type PurgeTarget =
                   </div>
                 </section>
 
+                @if (commentPath(); as path) {
+                  <section
+                    class="section comment-path"
+                    aria-label="Bounded path to matched Board comment"
+                  >
+                    <div class="section-head">
+                      <h4>Path to matched reply</h4>
+                      @if (path.truncated) {
+                        <span class="muted">Showing bounded path suffix</span>
+                      }
+                    </div>
+                    <ol class="path-list">
+                      @for (comment of path.comments; track comment.id) {
+                        <li
+                          class="path-item"
+                          [class.path-target]="
+                            comment.id === commentPathTargetId()
+                          "
+                        >
+                          <div class="meta">
+                            @if (boardCommentIsTombstone(comment)) {
+                              <strong>Content purged</strong>
+                            } @else {
+                              <strong>{{ boardCommentAuthor(comment) }}</strong>
+                            }
+                            · Comment #{{ comment.id }}
+                          </div>
+                          @if (!boardCommentIsTombstone(comment)) {
+                            <div class="path-body">
+                              <den-markdown-view
+                                [content]="boardCommentBody(comment)"
+                              />
+                            </div>
+                          }
+                        </li>
+                      }
+                    </ol>
+                  </section>
+                }
+
                 <section class="section" aria-label="Board comments">
                   <div class="section-head">
                     <h4>Replies</h4>
@@ -311,9 +357,6 @@ type PurgeTarget =
                       <p class="error" role="alert">
                         {{ errorText(createCommentError()) }}
                       </p>
-                    }
-                    @if (createCommentState().kind === 'data') {
-                      <p class="success" role="status">Reply created.</p>
                     }
                     <div class="form-actions">
                       <button
@@ -443,11 +486,16 @@ export class BoardPanelComponent {
   protected readonly identity = computed(
     () => this.preferences.preferences().conversationSenderIdentity,
   );
+  protected readonly boardCommentAuthor = boardCommentAuthor;
+  protected readonly boardCommentBody = boardCommentBody;
+  protected readonly boardCommentIsTombstone = boardCommentIsTombstone;
   protected readonly postsState = this.store.posts;
   protected readonly searchState = this.store.search;
   protected readonly searchQuery = this.store.searchQuery;
   protected readonly selectedPostId = this.store.selectedPostId;
   protected readonly selectedPostState = this.store.selectedPost;
+  protected readonly commentPath = this.store.commentPath;
+  protected readonly commentPathTargetId = this.store.commentPathTargetId;
   protected readonly rootBranch = computed(() => {
     const postId = this.selectedPostId();
     return postId === null
@@ -532,15 +580,14 @@ export class BoardPanelComponent {
   protected readonly canConfirmPurge = computed(
     () => this.purgeReason().trim().length > 0,
   );
-  protected readonly notice = computed(() => {
-    if (this.createPostState().kind === 'data') return 'Post created.';
-    if (this.createCommentState().kind === 'data') return 'Reply created.';
-    if (this.purgePostState().kind === 'data')
-      return 'Post purged successfully.';
-    if (this.purgeCommentState().kind === 'data')
-      return 'Comment purged successfully.';
-    return null;
-  });
+  private readonly noticeState = signal<BoardNotice | null>(null);
+  protected readonly notice = computed(() =>
+    boardNoticeText(
+      this.noticeState(),
+      this.selectedProjectId(),
+      this.selectedPostId(),
+    ),
+  );
 
   private readonly projectRefreshEffect = effect(() => {
     const projectId = this.workspace.selectedProjectId();
@@ -579,6 +626,7 @@ export class BoardPanelComponent {
   protected selectPost(post: DenBoardPostSummary): void {
     const projectId = this.selectedProjectId();
     if (!projectId) return;
+    this.noticeState.set(null);
     this.closeReply();
     this.store
       .selectPost(projectId, post.id)
@@ -588,10 +636,13 @@ export class BoardPanelComponent {
   protected selectSearchResult(result: DenBoardSearchResult): void {
     const projectId = this.selectedProjectId();
     if (!projectId) return;
+    this.noticeState.set(null);
     this.closeReply();
-    this.store
-      .selectPost(projectId, result.post_id)
-      .then(() => this.mobilePane.set('detail'));
+    const selection =
+      result.kind === 'comment'
+        ? this.store.selectCommentPath(projectId, result.id)
+        : this.store.selectPost(projectId, result.post_id);
+    selection.then(() => this.mobilePane.set('detail'));
   }
 
   protected openNewPost(): void {
@@ -626,6 +677,11 @@ export class BoardPanelComponent {
     };
     void this.store.createPost(projectId, request).then((result) => {
       if (!result.ok) return;
+      this.noticeState.set({
+        kind: 'post-created',
+        projectId,
+        postId: result.value.id,
+      });
       this.newPostOpen.set(false);
       this.newPostTitle.set('');
       this.newPostBody.set('');
@@ -660,7 +716,8 @@ export class BoardPanelComponent {
   protected submitReply(event: SubmitEvent): void {
     event.preventDefault();
     const postId = this.selectedPostId();
-    if (postId === null || !this.canSubmitReply()) return;
+    const projectId = this.selectedProjectId();
+    if (postId === null || projectId === null || !this.canSubmitReply()) return;
     const parentCommentId = this.replyTargetId();
     const request: DenBoardCreateCommentRequest = {
       ...(parentCommentId === null
@@ -671,6 +728,16 @@ export class BoardPanelComponent {
     };
     void this.store.createComment(postId, request).then((result) => {
       if (!result.ok) return;
+      this.noticeState.set({
+        kind: 'comment-created',
+        projectId,
+        postId,
+      });
+      if (
+        this.selectedProjectId() !== projectId ||
+        this.selectedPostId() !== postId
+      )
+        return;
       this.closeReply();
     });
   }
@@ -691,11 +758,13 @@ export class BoardPanelComponent {
   }
 
   protected requestPostPurge(postId: number): void {
+    this.noticeState.set(null);
     this.purgeTarget.set({ kind: 'post', postId });
     this.purgeReason.set('');
   }
 
   protected requestCommentPurge(postId: number, commentId: number): void {
+    this.noticeState.set(null);
     this.purgeTarget.set({ kind: 'comment', postId, commentId });
     this.purgeReason.set('');
   }
@@ -714,6 +783,7 @@ export class BoardPanelComponent {
   protected confirmPurge(): void {
     const target = this.purgeTarget();
     if (!target || !this.canConfirmPurge()) return;
+    const targetProjectId = this.selectedProjectId();
     const request = {
       actor_identity: this.identity(),
       reason: this.purgeReason().trim(),
@@ -728,6 +798,17 @@ export class BoardPanelComponent {
       .purgeComment(target.postId, target.commentId, request)
       .then((result) => {
         if (!result.ok) return;
+        if (
+          targetProjectId !== null &&
+          this.selectedProjectId() === targetProjectId &&
+          this.selectedPostId() === target.postId
+        ) {
+          this.noticeState.set({
+            kind: 'comment-purged',
+            projectId: targetProjectId,
+            postId: target.postId,
+          });
+        }
         if (this.replyTargetId() === target.commentId) this.closeReply();
         this.cancelPurge();
       });
@@ -746,6 +827,7 @@ export class BoardPanelComponent {
   }
 
   private resetView(): void {
+    this.noticeState.set(null);
     this.searchDraft.set('');
     this.newPostOpen.set(false);
     this.newPostTitle.set('');

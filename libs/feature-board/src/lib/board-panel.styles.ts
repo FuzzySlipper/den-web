@@ -237,6 +237,36 @@ export const boardPanelStyles = `
     overflow-wrap: anywhere;
   }
 
+  .comment-path {
+    border-color: var(--den-accent);
+  }
+
+  .path-list {
+    display: grid;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .path-item {
+    border-left: 2px solid var(--den-border);
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    padding: 8px 0 8px 10px;
+  }
+
+  .path-item.path-target {
+    background: color-mix(in srgb, var(--den-accent) 10%, transparent);
+    border-left-color: var(--den-accent);
+  }
+
+  .path-body {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
   .reply-list {
     display: grid;
     gap: 4px;

@@ -9,6 +9,7 @@ import {
   removeBoardCommentSearchContent,
   removeBoardPost,
   removeBoardSearchContent,
+  sanitizeBoardComment,
   sanitizeBoardCommentPage,
   type BoardBranchLoadState,
   type BoardCommentBranchSnapshot,
@@ -94,6 +95,8 @@ export interface BoardStore {
   readonly searchQuery: Signal<string>;
   readonly selectedPostId: Signal<number | null>;
   readonly selectedPost: Signal<AsyncState<DenBoardPost>>;
+  readonly commentPath: Signal<DenBoardCommentPath | null>;
+  readonly commentPathTargetId: Signal<number | null>;
   readonly branches: Signal<ReadonlyMap<string, BoardBranchState>>;
   readonly expandedBranchKeys: Signal<ReadonlySet<string>>;
   readonly commentTree: Signal<readonly BoardCommentTreeNode[]>;
@@ -106,6 +109,10 @@ export interface BoardStore {
   readonly loadMorePosts: (projectId: string) => Promise<void>;
   readonly loadMoreSearchResults: (projectId: string) => Promise<void>;
   readonly selectPost: (projectId: string, postId: number) => Promise<void>;
+  readonly selectCommentPath: (
+    projectId: string,
+    commentId: number,
+  ) => Promise<void>;
   readonly branchState: (
     postId: number,
     parentCommentId: number | null,
@@ -147,6 +154,8 @@ export function createBoardStore(transport: BoardTransportPort): BoardStore {
   const searchQuery = signal('');
   const selectedPostId = signal<number | null>(null);
   const selectedPost = signal<AsyncState<DenBoardPost>>(idleState());
+  const commentPath = signal<DenBoardCommentPath | null>(null);
+  const commentPathTargetId = signal<number | null>(null);
   const branches = signal<ReadonlyMap<string, BoardBranchState>>(new Map());
   const expandedBranchKeys = signal<ReadonlySet<string>>(new Set());
   const createPostState = signal<AsyncState<DenBoardPost>>(idleState());
@@ -354,14 +363,16 @@ export function createBoardStore(transport: BoardTransportPort): BoardStore {
     postId: number,
   ): Promise<void> => {
     ensureProjectScope(projectId);
+    const request = ++selectedPostRequest;
+    const scope = scopeGeneration;
+    const content = contentGeneration;
+    commentPath.set(null);
+    commentPathTargetId.set(null);
     if (quarantinedPostIds.has(postId)) {
       selectedPostId.set(null);
       selectedPost.set(idleState());
       return;
     }
-    const request = ++selectedPostRequest;
-    const scope = scopeGeneration;
-    const content = contentGeneration;
     selectedPostId.set(postId);
     expandedBranchKeys.set(new Set());
     selectedPost.set(loadingState());
@@ -379,6 +390,52 @@ export function createBoardStore(transport: BoardTransportPort): BoardStore {
     } catch (error: unknown) {
       if (!isCurrentSelectedPost(projectId, postId, scope, content, request))
         return;
+      selectedPost.set(errorState(unknownStoreError(error)));
+    }
+  };
+
+  const selectCommentPath = async (
+    projectId: string,
+    commentId: number,
+  ): Promise<void> => {
+    ensureProjectScope(projectId);
+    const request = ++selectedPostRequest;
+    const scope = scopeGeneration;
+    const content = contentGeneration;
+    selectedPostId.set(null);
+    selectedPost.set(loadingState());
+    commentPath.set(null);
+    commentPathTargetId.set(commentId);
+    branches.set(new Map());
+    expandedBranchKeys.set(new Set());
+    try {
+      const result = await transport.getCommentPath(commentId, {
+        limit: boardPageLimit,
+      });
+      if (!isCurrentSelectionRequest(projectId, scope, content, request))
+        return;
+      if (!result.ok) {
+        commentPathTargetId.set(null);
+        selectedPost.set(errorState(result.error));
+        return;
+      }
+      const path = sanitizeCommentPath(result.value, quarantinedCommentIds);
+      if (quarantinedPostIds.has(path.post.id)) {
+        commentPath.set(null);
+        commentPathTargetId.set(null);
+        selectedPost.set(idleState());
+        return;
+      }
+      selectedPostId.set(path.post.id);
+      selectedPost.set(dataState(path.post));
+      commentPath.set(path);
+      const seeded = seedCommentPath(path.post.id, path.comments);
+      branches.set(seeded.branches);
+      expandedBranchKeys.set(seeded.expandedBranchKeys);
+    } catch (error: unknown) {
+      if (!isCurrentSelectionRequest(projectId, scope, content, request))
+        return;
+      commentPathTargetId.set(null);
       selectedPost.set(errorState(unknownStoreError(error)));
     }
   };
@@ -548,6 +605,7 @@ export function createBoardStore(transport: BoardTransportPort): BoardStore {
         ? stateValue(currentBranch.state)
         : undefined;
       if (previous) {
+        invalidateBranchRequest(boardBranchKey(postId, parentCommentId));
         setBranchState(
           postId,
           parentCommentId,
@@ -606,6 +664,14 @@ export function createBoardStore(transport: BoardTransportPort): BoardStore {
       contentGeneration += 1;
       quarantinedPostIds.add(postId);
       purgePostState.set(dataState(undefined));
+      if (stateValue(createPostState())?.id === postId)
+        createPostState.set(idleState());
+      if (stateValue(createCommentState())?.post_id === postId)
+        createCommentState.set(idleState());
+      if (commentPath()?.post.id === postId) {
+        commentPath.set(null);
+        commentPathTargetId.set(null);
+      }
       posts.set(
         mapStateValue(posts(), (page) => removeBoardPost(page, postId)),
       );
@@ -668,6 +734,13 @@ export function createBoardStore(transport: BoardTransportPort): BoardStore {
       contentGeneration += 1;
       quarantinedCommentIds.add(commentId);
       purgeCommentState.set(dataState(undefined));
+      if (stateValue(createCommentState())?.id === commentId)
+        createCommentState.set(idleState());
+      const currentPath = commentPath();
+      if (currentPath?.post.id === postId)
+        commentPath.set(
+          sanitizeCommentPath(currentPath, quarantinedCommentIds),
+        );
       const nextBranches = new Map<string, BoardBranchState>();
       for (const [key, branch] of branches()) {
         nextBranches.set(key, {
@@ -709,6 +782,8 @@ export function createBoardStore(transport: BoardTransportPort): BoardStore {
     searchQuery: searchQuery.asReadonly(),
     selectedPostId: selectedPostId.asReadonly(),
     selectedPost: selectedPost.asReadonly(),
+    commentPath: commentPath.asReadonly(),
+    commentPathTargetId: commentPathTargetId.asReadonly(),
     branches: branches.asReadonly(),
     expandedBranchKeys: expandedBranchKeys.asReadonly(),
     commentTree,
@@ -721,6 +796,7 @@ export function createBoardStore(transport: BoardTransportPort): BoardStore {
     loadMorePosts,
     loadMoreSearchResults,
     selectPost,
+    selectCommentPath,
     branchState,
     loadComments,
     toggleBranch,
@@ -749,6 +825,8 @@ export function createBoardStore(transport: BoardTransportPort): BoardStore {
     searchQuery.set('');
     selectedPostId.set(null);
     selectedPost.set(idleState());
+    commentPath.set(null);
+    commentPathTargetId.set(null);
     branches.set(new Map());
     expandedBranchKeys.set(new Set());
     createPostState.set(idleState());
@@ -766,6 +844,10 @@ export function createBoardStore(transport: BoardTransportPort): BoardStore {
     const nextBranches = new Map(branches());
     nextBranches.set(key, { postId, parentCommentId, state });
     branches.set(nextBranches);
+  }
+
+  function invalidateBranchRequest(key: string): void {
+    branchRequests.set(key, (branchRequests.get(key) ?? 0) + 1);
   }
 
   function isCurrentListRequest(
@@ -814,6 +896,20 @@ export function createBoardStore(transport: BoardTransportPort): BoardStore {
     );
   }
 
+  function isCurrentSelectionRequest(
+    projectId: string,
+    scope: number,
+    content: number,
+    request: number,
+  ): boolean {
+    return (
+      activeProjectId === projectId &&
+      scope === scopeGeneration &&
+      content === contentGeneration &&
+      request === selectedPostRequest
+    );
+  }
+
   function isCurrentBranchRequest(
     postId: number,
     key: string,
@@ -854,6 +950,51 @@ function branchLoadState(
   state: AsyncState<DenBoardCommentPage>,
 ): BoardBranchLoadState {
   return state.kind;
+}
+
+function sanitizeCommentPath(
+  path: DenBoardCommentPath,
+  quarantinedCommentIds: ReadonlySet<number>,
+): DenBoardCommentPath {
+  return {
+    ...path,
+    comments: path.comments.map((comment) =>
+      sanitizeBoardComment(comment, quarantinedCommentIds),
+    ),
+  };
+}
+
+function seedCommentPath(
+  postId: number,
+  comments: readonly DenBoardComment[],
+): {
+  readonly branches: ReadonlyMap<string, BoardBranchState>;
+  readonly expandedBranchKeys: ReadonlySet<string>;
+} {
+  const branches = new Map<string, BoardBranchState>();
+  const expandedBranchKeys = new Set<string>();
+  for (const comment of comments) {
+    const parentCommentId = comment.parent_comment_id ?? null;
+    const key = boardBranchKey(postId, parentCommentId);
+    const existing = branches.get(key);
+    const existingComments = existing
+      ? (stateValue(existing.state)?.comments ?? [])
+      : [];
+    const commentsById = new Map(
+      [...existingComments, comment].map((item) => [item.id, item]),
+    );
+    branches.set(key, {
+      postId,
+      parentCommentId,
+      state: dataState({
+        comments: [...commentsById.values()],
+        next_after_id: null,
+      }),
+    });
+    if (parentCommentId !== null)
+      expandedBranchKeys.add(boardBranchKey(postId, parentCommentId));
+  }
+  return { branches, expandedBranchKeys };
 }
 
 function mapStateValue<T>(

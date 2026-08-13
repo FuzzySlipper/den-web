@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type {
   DenBoardComment,
   DenBoardCommentPage,
+  DenBoardCommentPath,
   DenBoardPost,
   DenBoardPostSummary,
   DenBoardSearchPage,
@@ -41,7 +42,8 @@ describe('BoardStore', () => {
         });
       },
       getComment: async () => ok(root),
-      getCommentPath: async () => ok({}),
+      getCommentPath: async () =>
+        ok({ post, comments: [root], truncated: false }),
       purgeComment: async () => ok(undefined),
     });
 
@@ -83,6 +85,61 @@ describe('BoardStore', () => {
     );
     expect(store.branches().has('1:10')).toBe(true);
     expect(store.branches().has('1:11')).toBe(true);
+  });
+
+  it('opens a deep comment search hit with its bounded ancestor path seeded into the tree', async () => {
+    const grandchild = commentFixture({ id: 12, parent_comment_id: 11 });
+    const requestedPath: DenBoardCommentPath = {
+      post,
+      comments: [root, child, grandchild],
+      truncated: false,
+    };
+    const store = createBoardStore(
+      boardTransportFixture({
+        getCommentPath: async (commentId, options) => {
+          expect(commentId).toBe(grandchild.id);
+          expect(options?.limit).toBe(50);
+          return ok(requestedPath);
+        },
+      }),
+    );
+
+    await store.selectCommentPath('den-web', grandchild.id);
+
+    expect(store.selectedPostId()).toBe(post.id);
+    expect(store.commentPathTargetId()).toBe(grandchild.id);
+    expect(store.commentPath()?.comments.map((comment) => comment.id)).toEqual([
+      root.id,
+      child.id,
+      grandchild.id,
+    ]);
+    expect(store.commentTree()[0]?.children[0]?.children[0]?.comment.id).toBe(
+      grandchild.id,
+    );
+    expect(store.expandedBranchKeys()).toEqual(new Set(['1:10', '1:11']));
+  });
+
+  it('keeps a truncated comment-path suffix visible when the root is outside the bound', async () => {
+    const grandchild = commentFixture({ id: 12, parent_comment_id: 11 });
+    const store = createBoardStore(
+      boardTransportFixture({
+        getCommentPath: async () =>
+          ok({
+            post,
+            comments: [child, grandchild],
+            truncated: true,
+          }),
+      }),
+    );
+
+    await store.selectCommentPath('den-web', grandchild.id);
+
+    expect(store.commentPath()?.truncated).toBe(true);
+    expect(store.commentPath()?.comments.map((comment) => comment.id)).toEqual([
+      child.id,
+      grandchild.id,
+    ]);
+    expect(store.commentTree()).toEqual([]);
   });
 
   it('quarantines a purged comment so stale branch responses cannot restore authored content', async () => {
@@ -157,6 +214,89 @@ describe('BoardStore', () => {
     expect(store.selectedPostId()).toBeNull();
     expect(store.selectedPost().kind).toBe('idle');
   });
+
+  it('scrubs create payload states when their comment or post is purged', async () => {
+    const store = createBoardStore(boardTransportFixture());
+
+    await store.createPost('den-web', {
+      title: post.title,
+      body_markdown: post.body_markdown,
+      author_identity: post.author_identity,
+    });
+    await store.createComment(post.id, {
+      body_markdown: child.body_markdown ?? '',
+      author_identity: child.author_identity ?? '',
+    });
+    expect(stateValue(store.createPostState())?.body_markdown).toBe(
+      post.body_markdown,
+    );
+    expect(stateValue(store.createCommentState())?.body_markdown).toBe(
+      child.body_markdown,
+    );
+
+    await store.purgePost(post.id, {
+      actor_identity: 'web-ui',
+      reason: 'moderation',
+    });
+
+    expect(store.createPostState().kind).toBe('idle');
+    expect(store.createCommentState().kind).toBe('idle');
+
+    const commentStore = createBoardStore(boardTransportFixture());
+    await commentStore.createComment(post.id, {
+      body_markdown: child.body_markdown ?? '',
+      author_identity: child.author_identity ?? '',
+    });
+    await commentStore.purgeComment(post.id, child.id, {
+      actor_identity: 'web-ui',
+      reason: 'moderation',
+    });
+
+    expect(commentStore.createCommentState().kind).toBe('idle');
+  });
+
+  it('does not let an in-flight branch response erase a created reply', async () => {
+    const createdReply = commentFixture({ id: 12 });
+    let resolveStale:
+      | ((result: DenResult<DenBoardCommentPage>) => void)
+      | null = null;
+    let listCommentCalls = 0;
+    const store = createBoardStore(
+      boardTransportFixture({
+        createComment: async () => ok(createdReply),
+        listComments: async () => {
+          listCommentCalls += 1;
+          if (listCommentCalls === 2) {
+            return new Promise<DenResult<DenBoardCommentPage>>((resolve) => {
+              resolveStale = resolve;
+            });
+          }
+          return ok({ comments: [root], next_after_id: null });
+        },
+      }),
+    );
+
+    await store.selectPost('den-web', post.id);
+    const staleBranch = store.loadComments(post.id, null);
+    await store.createComment(post.id, {
+      body_markdown: child.body_markdown ?? '',
+      author_identity: child.author_identity ?? '',
+    });
+    expect(
+      stateValue(store.branchState(post.id, null))?.comments.map(
+        (comment) => comment.id,
+      ),
+    ).toContain(createdReply.id);
+
+    resolveStale?.(ok({ comments: [root], next_after_id: null }));
+    await staleBranch;
+
+    expect(
+      stateValue(store.branchState(post.id, null))?.comments.map(
+        (comment) => comment.id,
+      ),
+    ).toContain(createdReply.id);
+  });
 });
 
 function boardTransportFixture(
@@ -172,7 +312,8 @@ function boardTransportFixture(
     createComment: async () => ok(child),
     listComments: async () => ok({ comments: [root], next_after_id: null }),
     getComment: async () => ok(root),
-    getCommentPath: async () => ok({}),
+    getCommentPath: async () =>
+      ok({ post, comments: [root], truncated: false }),
     purgeComment: async () => ok(undefined),
     ...overrides,
   };
