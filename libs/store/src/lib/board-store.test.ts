@@ -4,6 +4,7 @@ import type {
   DenBoardCommentPage,
   DenBoardCommentPath,
   DenBoardPost,
+  DenBoardPostPage,
   DenBoardPostSummary,
   DenBoardSearchPage,
   DenResult,
@@ -176,6 +177,79 @@ describe('BoardStore', () => {
     expect(visibleComment?.status).toBe('deleted');
     expect(visibleComment).not.toHaveProperty('body_markdown');
     expect(JSON.stringify(visibleComment)).not.toContain('body');
+  });
+
+  it('settles every invalidated loading state when a purge wins concurrent reads', async () => {
+    let resolvePosts: ((result: DenResult<DenBoardPostPage>) => void) | null =
+      null;
+    let resolveSearch: ((result: DenResult<DenBoardSearchPage>) => void) | null =
+      null;
+    let resolveBranch:
+      | ((result: DenResult<DenBoardCommentPage>) => void)
+      | null = null;
+    const store = createBoardStore(
+      boardTransportFixture({
+        listPosts: async () =>
+          new Promise<DenResult<DenBoardPostPage>>((resolve) => {
+            resolvePosts = resolve;
+          }),
+        searchPosts: async () =>
+          new Promise<DenResult<DenBoardSearchPage>>((resolve) => {
+            resolveSearch = resolve;
+          }),
+        listComments: async () =>
+          new Promise<DenResult<DenBoardCommentPage>>((resolve) => {
+            resolveBranch = resolve;
+          }),
+        purgeComment: async () => ok(undefined),
+      }),
+    );
+
+    const stalePosts = store.refresh('den-web');
+    const staleSearch = store.searchPosts('den-web', 'comment');
+    const staleBranch = store.loadComments(post.id, null);
+    expect(store.posts().kind).toBe('loading');
+    expect(store.search().kind).toBe('loading');
+    expect(store.branchState(post.id, null).kind).toBe('loading');
+
+    await store.purgeComment(post.id, root.id, {
+      actor_identity: 'web-ui',
+      reason: 'misleading information',
+    });
+
+    expect(store.posts().kind).not.toBe('loading');
+    expect(store.search().kind).not.toBe('loading');
+    expect(store.branchState(post.id, null).kind).not.toBe('loading');
+
+    resolvePosts?.(ok({ posts: [postSummary(post)], next_after_id: null }));
+    resolveSearch?.(
+      ok({
+        results: [
+          {
+            kind: 'comment',
+            id: root.id,
+            post_id: post.id,
+            project_id: post.project_id,
+            title: post.title,
+            snippet: root.body_markdown ?? '',
+            rank: 1,
+            created_at: root.created_at,
+          },
+        ],
+        next_after_id: null,
+      }),
+    );
+    resolveBranch?.(ok({ comments: [root], next_after_id: null }));
+    await Promise.all([stalePosts, staleSearch, staleBranch]);
+
+    expect(store.posts().kind).not.toBe('loading');
+    expect(store.search().kind).not.toBe('loading');
+    expect(store.branchState(post.id, null).kind).not.toBe('loading');
+    expect(JSON.stringify(store.posts())).not.toContain(post.body_markdown);
+    expect(JSON.stringify(store.search())).not.toContain(root.body_markdown);
+    expect(JSON.stringify(store.branchState(post.id, null))).not.toContain(
+      root.body_markdown,
+    );
   });
 
   it('removes a purged post from list/search/detail state', async () => {

@@ -673,16 +673,33 @@ export function createBoardStore(transport: BoardTransportPort): BoardStore {
         commentPathTargetId.set(null);
       }
       posts.set(
-        mapStateValue(posts(), (page) => removeBoardPost(page, postId)),
+        settleInvalidatedState(posts(), (page) => removeBoardPost(page, postId)),
       );
       search.set(
-        mapStateValue(search(), (page) =>
+        settleInvalidatedState(search(), (page) =>
           removeBoardSearchContent(page, postId),
         ),
       );
+      selectedPost.set(
+        settleInvalidatedState(selectedPost(), (value) => value),
+      );
+      createPostState.set(
+        settleInvalidatedState(createPostState(), (value) => value),
+      );
+      createCommentState.set(
+        settleInvalidatedState(createCommentState(), (value) => value),
+      );
       branches.set(
         new Map(
-          [...branches()].filter(([, branch]) => branch.postId !== postId),
+          [...branches()]
+            .filter(([, branch]) => branch.postId !== postId)
+            .map(([key, branch]) => [
+              key,
+              {
+                ...branch,
+                state: settleInvalidatedState(branch.state, (page) => page),
+              },
+            ]),
         ),
       );
       expandedBranchKeys.set(
@@ -745,16 +762,29 @@ export function createBoardStore(transport: BoardTransportPort): BoardStore {
       for (const [key, branch] of branches()) {
         nextBranches.set(key, {
           ...branch,
-          state: mapStateValue(branch.state, (page) =>
+          state: settleInvalidatedState(branch.state, (page) =>
             sanitizeBoardCommentPage(page, quarantinedCommentIds),
           ),
         });
       }
       branches.set(nextBranches);
       search.set(
-        mapStateValue(search(), (page) =>
+        settleInvalidatedState(search(), (page) =>
           removeBoardCommentSearchContent(page, commentId),
         ),
+      );
+      posts.set(settleInvalidatedState(posts(), (page) => page));
+      selectedPost.set(
+        settleInvalidatedState(selectedPost(), (value) => value),
+      );
+      createPostState.set(
+        settleInvalidatedState(createPostState(), (value) => value),
+      );
+      createCommentState.set(
+        settleInvalidatedState(createCommentState(), (value) => value),
+      );
+      purgePostState.set(
+        settleInvalidatedState(purgePostState(), (value) => value),
       );
       return result;
     } catch (error: unknown) {
@@ -997,7 +1027,7 @@ function seedCommentPath(
   return { branches, expandedBranchKeys };
 }
 
-function mapStateValue<T>(
+function settleInvalidatedState<T>(
   state: AsyncState<T>,
   map: (value: T) => T,
 ): AsyncState<T> {
@@ -1006,8 +1036,8 @@ function mapStateValue<T>(
       return state;
     case 'loading':
       return state.previous === undefined
-        ? loadingState()
-        : loadingState(map(state.previous));
+        ? idleState()
+        : dataState(map(state.previous));
     case 'data':
       return dataState(map(state.value));
     case 'error':
