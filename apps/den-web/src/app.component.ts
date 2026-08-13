@@ -2,6 +2,7 @@ import { Component, effect, inject, signal } from '@angular/core';
 import type { OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AgentsOverviewComponent } from '@den-web/feature-agents';
+import { BoardPanelComponent } from '@den-web/feature-board';
 import { ConversationCockpitComponent } from '@den-web/feature-conversation';
 import { DocumentsPanelComponent } from '@den-web/feature-documents';
 import { GuidancePanelComponent } from '@den-web/feature-guidance';
@@ -13,7 +14,11 @@ import { PreferencesPanelComponent } from '@den-web/feature-preferences';
 import { ProjectWorkspacePanelComponent } from '@den-web/feature-projects';
 import { TaskCockpitComponent } from '@den-web/feature-tasks';
 import { VisualContractWorkspaceComponent } from '@den-web/feature-visual-contract';
-import { NAVIGATION_STORE, PREFERENCES_STORE, type DenWebTab } from '@den-web/store';
+import {
+  NAVIGATION_STORE,
+  PREFERENCES_STORE,
+  type DenWebTab,
+} from '@den-web/store';
 
 type CockpitTab = DenWebTab;
 
@@ -28,6 +33,7 @@ const tabs: readonly TabItem[] = [
   { id: 'notifications', label: 'Notifications' },
   { id: 'messages', label: 'Messages' },
   { id: 'documents', label: 'Documents' },
+  { id: 'board', label: 'Board' },
   { id: 'knowledge', label: 'Knowledge' },
   { id: 'guidance', label: 'Guidance' },
   { id: 'librarian', label: 'Librarian' },
@@ -39,6 +45,7 @@ const tabs: readonly TabItem[] = [
 @Component({
   imports: [
     AgentsOverviewComponent,
+    BoardPanelComponent,
     ConversationCockpitComponent,
     DocumentsPanelComponent,
     GuidancePanelComponent,
@@ -181,7 +188,12 @@ const tabs: readonly TabItem[] = [
         <h1>Den Web</h1>
         <nav aria-label="Primary">
           @for (tab of tabs; track tab.id) {
-            <button type="button" class="nav-item" [attr.aria-current]="activeTab() === tab.id ? 'page' : null" (click)="selectTab(tab.id)">
+            <button
+              type="button"
+              class="nav-item"
+              [attr.aria-current]="activeTab() === tab.id ? 'page' : null"
+              (click)="selectTab(tab.id)"
+            >
               {{ tab.label }}
             </button>
           }
@@ -194,17 +206,42 @@ const tabs: readonly TabItem[] = [
         </section>
         <section class="main">
           @switch (activeTab()) {
-            @case ('tasks') { <den-task-cockpit /> }
-            @case ('conversation') { <den-conversation-cockpit /> }
-            @case ('notifications') { <den-notifications-panel /> }
-            @case ('messages') { <den-messages-inbox /> }
-            @case ('documents') { <den-documents-panel /> }
-            @case ('knowledge') { <den-knowledge-panel /> }
-            @case ('guidance') { <den-guidance-panel /> }
-            @case ('librarian') { <den-librarian-panel /> }
-            @case ('agents') { <den-agents-overview /> }
-            @case ('visual-contract') { <den-visual-contract-workspace /> }
-            @case ('preferences') { <den-preferences-panel /> }
+            @case ('tasks') {
+              <den-task-cockpit />
+            }
+            @case ('conversation') {
+              <den-conversation-cockpit />
+            }
+            @case ('notifications') {
+              <den-notifications-panel />
+            }
+            @case ('messages') {
+              <den-messages-inbox />
+            }
+            @case ('documents') {
+              <den-documents-panel />
+            }
+            @case ('board') {
+              <den-board-panel />
+            }
+            @case ('knowledge') {
+              <den-knowledge-panel />
+            }
+            @case ('guidance') {
+              <den-guidance-panel />
+            }
+            @case ('librarian') {
+              <den-librarian-panel />
+            }
+            @case ('agents') {
+              <den-agents-overview />
+            }
+            @case ('visual-contract') {
+              <den-visual-contract-workspace />
+            }
+            @case ('preferences') {
+              <den-preferences-panel />
+            }
           }
         </section>
         <router-outlet />

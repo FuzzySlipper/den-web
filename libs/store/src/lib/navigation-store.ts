@@ -1,6 +1,18 @@
 import { signal, type Signal } from '@angular/core';
 
-export type DenWebTab = 'tasks' | 'conversation' | 'notifications' | 'messages' | 'documents' | 'knowledge' | 'guidance' | 'librarian' | 'agents' | 'visual-contract' | 'preferences';
+export type DenWebTab =
+  | 'tasks'
+  | 'conversation'
+  | 'notifications'
+  | 'messages'
+  | 'documents'
+  | 'board'
+  | 'knowledge'
+  | 'guidance'
+  | 'librarian'
+  | 'agents'
+  | 'visual-contract'
+  | 'preferences';
 
 export interface MessageThreadNavigationTarget {
   readonly projectId: string;
@@ -14,12 +26,16 @@ export interface NavigationStore {
   readonly openTab: (tab: DenWebTab) => void;
   readonly openMessageThread: (target: MessageThreadNavigationTarget) => void;
   readonly clearActiveTabRequest: () => void;
-  readonly clearMessageThreadTarget: (target: MessageThreadNavigationTarget) => void;
+  readonly clearMessageThreadTarget: (
+    target: MessageThreadNavigationTarget,
+  ) => void;
 }
 
 export function createNavigationStore(): NavigationStore {
   const activeTabRequest = signal<DenWebTab | null>(null);
-  const messageThreadTarget = signal<MessageThreadNavigationTarget | null>(null);
+  const messageThreadTarget = signal<MessageThreadNavigationTarget | null>(
+    null,
+  );
 
   return {
     activeTabRequest: activeTabRequest.asReadonly(),
@@ -32,7 +48,11 @@ export function createNavigationStore(): NavigationStore {
     clearActiveTabRequest: () => activeTabRequest.set(null),
     clearMessageThreadTarget: (target) => {
       const current = messageThreadTarget();
-      if (current?.projectId === target.projectId && current.threadId === target.threadId && current.messageId === target.messageId) {
+      if (
+        current?.projectId === target.projectId &&
+        current.threadId === target.threadId &&
+        current.messageId === target.messageId
+      ) {
         messageThreadTarget.set(null);
       }
     },

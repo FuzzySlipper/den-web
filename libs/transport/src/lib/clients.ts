@@ -1,4 +1,13 @@
 import type {
+  DenBoardComment,
+  DenBoardCommentPage,
+  DenBoardCommentPath,
+  DenBoardCreateCommentRequest,
+  DenBoardCreatePostRequest,
+  DenBoardPost,
+  DenBoardPostPage,
+  DenBoardPurgeRequest,
+  DenBoardSearchPage,
   DenChannelMessage,
   DenConversationChannel,
   DenConversationMembership,
@@ -46,7 +55,10 @@ import type {
   VisualPromotionResponse,
   VisualValidationResponse,
 } from '@den-web/protocol';
-import { defaultRuntimeApiConfig, DEN_GLOBAL_PROJECT_ID } from '@den-web/protocol';
+import {
+  defaultRuntimeApiConfig,
+  DEN_GLOBAL_PROJECT_ID,
+} from '@den-web/protocol';
 import { DenHttpClient, joinUrl, query } from './http';
 
 interface EventStreamEvent {
@@ -55,14 +67,18 @@ interface EventStreamEvent {
 }
 
 interface EventStreamPort {
-  readonly open: (url: string, options: {
-    readonly events: readonly string[];
-    readonly onEvent: (event: EventStreamEvent) => void;
-    readonly onError?: () => void;
-  }) => { readonly close: () => void };
+  readonly open: (
+    url: string,
+    options: {
+      readonly events: readonly string[];
+      readonly onEvent: (event: EventStreamEvent) => void;
+      readonly onError?: () => void;
+    },
+  ) => { readonly close: () => void };
 }
 
 export interface DenTransportClients {
+  readonly board: BoardTransport;
   readonly projects: ProjectsTransport;
   readonly tasks: TasksTransport;
   readonly messages: MessagesTransport;
@@ -86,6 +102,7 @@ export function createDenTransportClients(
   eventStream?: EventStreamPort,
 ): DenTransportClients {
   return {
+    board: new BoardTransport(config, http),
     projects: new ProjectsTransport(config, http),
     tasks: new TasksTransport(config, http),
     messages: new MessagesTransport(config, http),
@@ -105,170 +122,586 @@ export function createDenTransportClients(
 }
 
 export class VisualContractTransport {
-  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
 
-  validate(contract: VisualContract): Promise<DenResult<VisualValidationResponse>> {
-    return this.http.json(joinUrl(this.config.visualContractApiBase, '/validate'), { method: 'POST', body: { contract } });
+  validate(
+    contract: VisualContract,
+  ): Promise<DenResult<VisualValidationResponse>> {
+    return this.http.json(
+      joinUrl(this.config.visualContractApiBase, '/validate'),
+      { method: 'POST', body: { contract } },
+    );
   }
 
-  buildAuthored(contract: VisualContract, constraints: readonly VisualConstraint[]): Promise<DenResult<{ readonly contract: VisualContract }>> {
-    return this.http.json(joinUrl(this.config.visualContractApiBase, '/build-authored'), { method: 'POST', body: { contract, constraints } });
+  buildAuthored(
+    contract: VisualContract,
+    constraints: readonly VisualConstraint[],
+  ): Promise<DenResult<{ readonly contract: VisualContract }>> {
+    return this.http.json(
+      joinUrl(this.config.visualContractApiBase, '/build-authored'),
+      { method: 'POST', body: { contract, constraints } },
+    );
   }
 
-  promote(contract: VisualContract, objects: readonly VisualObjectPromotionRule[], ignoreObjects: readonly string[]): Promise<DenResult<VisualPromotionResponse>> {
-    return this.http.json(joinUrl(this.config.visualContractApiBase, '/promote-contract'), {
-      method: 'POST',
-      body: { contract, objects, ignore_objects: ignoreObjects },
-    });
+  promote(
+    contract: VisualContract,
+    objects: readonly VisualObjectPromotionRule[],
+    ignoreObjects: readonly string[],
+  ): Promise<DenResult<VisualPromotionResponse>> {
+    return this.http.json(
+      joinUrl(this.config.visualContractApiBase, '/promote-contract'),
+      {
+        method: 'POST',
+        body: { contract, objects, ignore_objects: ignoreObjects },
+      },
+    );
   }
 
-  compare(reference: VisualContract, candidate: VisualContract): Promise<DenResult<VisualComparisonReport>> {
-    return this.http.json(joinUrl(this.config.visualContractApiBase, '/compare'), { method: 'POST', body: { reference, candidate } });
+  compare(
+    reference: VisualContract,
+    candidate: VisualContract,
+  ): Promise<DenResult<VisualComparisonReport>> {
+    return this.http.json(
+      joinUrl(this.config.visualContractApiBase, '/compare'),
+      { method: 'POST', body: { reference, candidate } },
+    );
   }
 
   getRun(runId: string): Promise<DenResult<VisualContractRun>> {
-    return this.http.json(joinUrl(this.config.visualContractApiBase, `/${encodeURIComponent(runId)}`));
+    return this.http.json(
+      joinUrl(
+        this.config.visualContractApiBase,
+        `/${encodeURIComponent(runId)}`,
+      ),
+    );
   }
 }
 
 export class ProjectsTransport {
-  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
 
-  listProjects(options: { readonly includeHidden?: boolean; readonly includeArchived?: boolean } = {}): Promise<DenResult<readonly DenProject[]>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects${query({ include_hidden: options.includeHidden, include_archived: options.includeArchived })}`));
+  listProjects(
+    options: {
+      readonly includeHidden?: boolean;
+      readonly includeArchived?: boolean;
+    } = {},
+  ): Promise<DenResult<readonly DenProject[]>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects${query({ include_hidden: options.includeHidden, include_archived: options.includeArchived })}`,
+      ),
+    );
   }
 
-  listSpaces(options: { readonly includeHidden?: boolean; readonly includeArchived?: boolean } = {}): Promise<DenResult<readonly DenSpace[]>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/spaces${query({ include_hidden: options.includeHidden, include_archived: options.includeArchived })}`));
+  listSpaces(
+    options: {
+      readonly includeHidden?: boolean;
+      readonly includeArchived?: boolean;
+    } = {},
+  ): Promise<DenResult<readonly DenSpace[]>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/spaces${query({ include_hidden: options.includeHidden, include_archived: options.includeArchived })}`,
+      ),
+    );
+  }
+}
+
+export class BoardTransport {
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
+
+  createPost(
+    projectId: string,
+    body: DenBoardCreatePostRequest,
+  ): Promise<DenResult<DenBoardPost>> {
+    return this.http
+      .json<unknown>(
+        joinUrl(
+          this.config.servicesApiBase,
+          `/projects/${encodeURIComponent(projectId)}/board/posts`,
+        ),
+        {
+          method: 'POST',
+          body,
+        },
+      )
+      .then((result) =>
+        parseBoardResponse(
+          result,
+          isBoardPost,
+          'Board post response is missing required fields.',
+        ),
+      );
+  }
+
+  listPosts(
+    projectId: string,
+    options: { readonly afterId?: number; readonly limit?: number } = {},
+  ): Promise<DenResult<DenBoardPostPage>> {
+    return this.http
+      .json<unknown>(
+        joinUrl(
+          this.config.servicesApiBase,
+          `/projects/${encodeURIComponent(projectId)}/board/posts${query({
+            after_id: options.afterId,
+            limit: options.limit,
+          })}`,
+        ),
+      )
+      .then((result) =>
+        parseBoardResponse(
+          result,
+          isBoardPostPage,
+          'Board post list response is malformed.',
+        ),
+      );
+  }
+
+  searchPosts(
+    projectId: string,
+    searchQuery: string,
+    options: { readonly afterId?: number; readonly limit?: number } = {},
+  ): Promise<DenResult<DenBoardSearchPage>> {
+    return this.http
+      .json<unknown>(
+        joinUrl(
+          this.config.servicesApiBase,
+          `/projects/${encodeURIComponent(projectId)}/board/posts/search${query(
+            {
+              q: searchQuery,
+              after_id: options.afterId,
+              limit: options.limit,
+            },
+          )}`,
+        ),
+      )
+      .then((result) =>
+        parseBoardResponse(
+          result,
+          isBoardSearchPage,
+          'Board search response is malformed.',
+        ),
+      );
+  }
+
+  getPost(postId: number): Promise<DenResult<DenBoardPost>> {
+    return this.http
+      .json<unknown>(
+        joinUrl(this.config.servicesApiBase, `/board/posts/${postId}`),
+      )
+      .then((result) =>
+        parseBoardResponse(
+          result,
+          isBoardPost,
+          'Board post response is missing required fields.',
+        ),
+      );
+  }
+
+  purgePost(
+    postId: number,
+    body: DenBoardPurgeRequest,
+  ): Promise<DenResult<void>> {
+    return this.http
+      .json<unknown>(
+        joinUrl(this.config.servicesApiBase, `/board/posts/${postId}`),
+        {
+          method: 'DELETE',
+          body,
+        },
+      )
+      .then(parseBoardPurgeResponse);
+  }
+
+  createComment(
+    postId: number,
+    body: DenBoardCreateCommentRequest,
+  ): Promise<DenResult<DenBoardComment>> {
+    return this.http
+      .json<unknown>(
+        joinUrl(this.config.servicesApiBase, `/board/posts/${postId}/comments`),
+        {
+          method: 'POST',
+          body,
+        },
+      )
+      .then((result) =>
+        parseBoardResponse(
+          result,
+          isBoardComment,
+          'Board comment response is missing required fields.',
+        ),
+      );
+  }
+
+  listComments(
+    postId: number,
+    options: {
+      readonly parentCommentId?: number;
+      readonly afterId?: number;
+      readonly limit?: number;
+    } = {},
+  ): Promise<DenResult<DenBoardCommentPage>> {
+    return this.http
+      .json<unknown>(
+        joinUrl(
+          this.config.servicesApiBase,
+          `/board/posts/${postId}/comments${query({
+            parent_comment_id: options.parentCommentId,
+            after_id: options.afterId,
+            limit: options.limit,
+          })}`,
+        ),
+      )
+      .then((result) =>
+        parseBoardResponse(
+          result,
+          isBoardCommentPage,
+          'Board comment list response is malformed.',
+        ),
+      );
+  }
+
+  getComment(commentId: number): Promise<DenResult<DenBoardComment>> {
+    return this.http
+      .json<unknown>(
+        joinUrl(this.config.servicesApiBase, `/board/comments/${commentId}`),
+      )
+      .then((result) =>
+        parseBoardResponse(
+          result,
+          isBoardComment,
+          'Board comment response is missing required fields.',
+        ),
+      );
+  }
+
+  getCommentPath(
+    commentId: number,
+    options: { readonly limit?: number } = {},
+  ): Promise<DenResult<DenBoardCommentPath>> {
+    return this.http
+      .json<unknown>(
+        joinUrl(
+          this.config.servicesApiBase,
+          `/board/comments/${commentId}/path${query({ limit: options.limit })}`,
+        ),
+      )
+      .then((result) =>
+        parseBoardResponse(
+          result,
+          isBoardCommentPath,
+          'Board comment path response is malformed.',
+        ),
+      );
+  }
+
+  purgeComment(
+    commentId: number,
+    body: DenBoardPurgeRequest,
+  ): Promise<DenResult<void>> {
+    return this.http
+      .json<unknown>(
+        joinUrl(this.config.servicesApiBase, `/board/comments/${commentId}`),
+        {
+          method: 'DELETE',
+          body,
+        },
+      )
+      .then(parseBoardPurgeResponse);
   }
 }
 
 export class TasksTransport {
-  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
 
-  listTasks(projectId: string, options: { readonly limit?: number; readonly status?: string; readonly tree?: boolean } = {}): Promise<DenResult<readonly DenTaskSummary[]>> {
+  listTasks(
+    projectId: string,
+    options: {
+      readonly limit?: number;
+      readonly status?: string;
+      readonly tree?: boolean;
+    } = {},
+  ): Promise<DenResult<readonly DenTaskSummary[]>> {
     if (projectId === DEN_GLOBAL_PROJECT_ID) {
       return this.listGlobalTasks(options);
     }
     return this.listProjectTasks(projectId, options);
   }
 
-  getTask(projectId: string, taskId: number): Promise<DenResult<DenTaskDetail>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/tasks/${taskId}`));
+  getTask(
+    projectId: string,
+    taskId: number,
+  ): Promise<DenResult<DenTaskDetail>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/tasks/${taskId}`,
+      ),
+    );
   }
 
-  updateTask(projectId: string, taskId: number, body: DenTaskUpdateRequest): Promise<DenResult<DenTaskDetail | DenTaskSummary | undefined>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/tasks/${taskId}`), {
-      method: 'PATCH',
-      body,
-    });
+  updateTask(
+    projectId: string,
+    taskId: number,
+    body: DenTaskUpdateRequest,
+  ): Promise<DenResult<DenTaskDetail | DenTaskSummary | undefined>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/tasks/${taskId}`,
+      ),
+      {
+        method: 'PATCH',
+        body,
+      },
+    );
   }
 
-  recordHumanAcceptance(projectId: string, taskId: number, body: DenRecordHumanAcceptanceRequest): Promise<DenResult<DenRecordHumanAcceptanceResponse>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/human-acceptance-reviews`), {
-      method: 'POST',
-      body,
-    });
+  recordHumanAcceptance(
+    projectId: string,
+    taskId: number,
+    body: DenRecordHumanAcceptanceRequest,
+  ): Promise<DenResult<DenRecordHumanAcceptanceResponse>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/human-acceptance-reviews`,
+      ),
+      {
+        method: 'POST',
+        body,
+      },
+    );
   }
 
-  private listProjectTasks(projectId: string, options: { readonly limit?: number; readonly status?: string; readonly tree?: boolean }): Promise<DenResult<readonly DenTaskSummary[]>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/tasks${query(options)}`));
+  private listProjectTasks(
+    projectId: string,
+    options: {
+      readonly limit?: number;
+      readonly status?: string;
+      readonly tree?: boolean;
+    },
+  ): Promise<DenResult<readonly DenTaskSummary[]>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/tasks${query(options)}`,
+      ),
+    );
   }
 
-  private async listGlobalTasks(options: { readonly limit?: number; readonly status?: string; readonly tree?: boolean }): Promise<DenResult<readonly DenTaskSummary[]>> {
+  private async listGlobalTasks(options: {
+    readonly limit?: number;
+    readonly status?: string;
+    readonly tree?: boolean;
+  }): Promise<DenResult<readonly DenTaskSummary[]>> {
     const [projectResult, spaceResult] = await Promise.all([
-      this.http.json<readonly DenProject[]>(joinUrl(this.config.servicesApiBase, '/projects')),
-      this.http.json<readonly DenSpace[]>(joinUrl(this.config.servicesApiBase, '/spaces')),
+      this.http.json<readonly DenProject[]>(
+        joinUrl(this.config.servicesApiBase, '/projects'),
+      ),
+      this.http.json<readonly DenSpace[]>(
+        joinUrl(this.config.servicesApiBase, '/spaces'),
+      ),
     ]);
     if (!projectResult.ok) return { ok: false, error: projectResult.error };
     if (!spaceResult.ok) return { ok: false, error: spaceResult.error };
 
     const projectIds = activeProjectIds(projectResult.value, spaceResult.value);
-    const taskResults = await Promise.all(projectIds.map((id) => this.listProjectTasks(id, options)));
+    const taskResults = await Promise.all(
+      projectIds.map((id) => this.listProjectTasks(id, options)),
+    );
     const failedResult = taskResults.find((result) => !result.ok);
-    if (failedResult && !failedResult.ok) return { ok: false, error: failedResult.error };
+    if (failedResult && !failedResult.ok)
+      return { ok: false, error: failedResult.error };
 
     return {
       ok: true,
-      value: taskResults.flatMap((result) => result.ok ? result.value : []),
+      value: taskResults.flatMap((result) => (result.ok ? result.value : [])),
     };
   }
 }
 
 export class MessagesTransport {
-  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
 
-  listMessages(projectId: string, options: { readonly taskId?: number; readonly limit?: number } = {}): Promise<DenResult<readonly DenMessage[]>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/messages${query({ task_id: options.taskId, limit: options.limit })}`));
+  listMessages(
+    projectId: string,
+    options: { readonly taskId?: number; readonly limit?: number } = {},
+  ): Promise<DenResult<readonly DenMessage[]>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/messages${query({ task_id: options.taskId, limit: options.limit })}`,
+      ),
+    );
   }
 
-  getThread(projectId: string, threadId: number): Promise<DenResult<DenMessageThreadResponse>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/messages/threads/${threadId}`));
+  getThread(
+    projectId: string,
+    threadId: number,
+  ): Promise<DenResult<DenMessageThreadResponse>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/messages/threads/${threadId}`,
+      ),
+    );
   }
 }
 
 export class NotificationsTransport {
-  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
 
-  listUserNotifications(options: { readonly readForAgent?: string; readonly limit?: number } = {}): Promise<DenResult<readonly DenNotification[]>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/user-notifications${query({ read_for_agent: options.readForAgent, limit: options.limit })}`));
+  listUserNotifications(
+    options: { readonly readForAgent?: string; readonly limit?: number } = {},
+  ): Promise<DenResult<readonly DenNotification[]>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/user-notifications${query({ read_for_agent: options.readForAgent, limit: options.limit })}`,
+      ),
+    );
   }
 
-  markRead(ids: readonly number[], readForAgent: string): Promise<DenResult<{ readonly marked?: number }>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, '/user-notifications/read'), {
-      method: 'POST',
-      body: { ids, read_for_agent: readForAgent },
-    });
+  markRead(
+    ids: readonly number[],
+    readForAgent: string,
+  ): Promise<DenResult<{ readonly marked?: number }>> {
+    return this.http.json(
+      joinUrl(this.config.servicesApiBase, '/user-notifications/read'),
+      {
+        method: 'POST',
+        body: { ids, read_for_agent: readForAgent },
+      },
+    );
   }
 }
 
 export class DocumentsTransport {
-  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
 
-  listDocuments(projectId: string): Promise<DenResult<readonly DenDocumentSummary[]>> {
+  listDocuments(
+    projectId: string,
+  ): Promise<DenResult<readonly DenDocumentSummary[]>> {
     if (projectId === DEN_GLOBAL_PROJECT_ID) {
-      return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(DEN_GLOBAL_PROJECT_ID)}/documents`));
+      return this.http.json(
+        joinUrl(
+          this.config.servicesApiBase,
+          `/projects/${encodeURIComponent(DEN_GLOBAL_PROJECT_ID)}/documents`,
+        ),
+      );
     }
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/documents`));
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/documents`,
+      ),
+    );
   }
 
-  getDocument(projectId: string, slug: string): Promise<DenResult<DenDocumentDetail>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(slug)}`));
+  getDocument(
+    projectId: string,
+    slug: string,
+  ): Promise<DenResult<DenDocumentDetail>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(slug)}`,
+      ),
+    );
   }
 
-  updateDocument(projectId: string, slug: string, body: DenDocumentUpdateRequest): Promise<DenResult<DenDocumentDetail | DenDocumentSummary | undefined>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/documents`), {
-      method: 'POST',
-      body: documentStoreBody(slug, body),
-    });
+  updateDocument(
+    projectId: string,
+    slug: string,
+    body: DenDocumentUpdateRequest,
+  ): Promise<DenResult<DenDocumentDetail | DenDocumentSummary | undefined>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/documents`,
+      ),
+      {
+        method: 'POST',
+        body: documentStoreBody(slug, body),
+      },
+    );
   }
 
-  getDiscussion(projectId: string, slug: string): Promise<DenResult<DenDiscussion>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(slug)}/discussion`));
+  getDiscussion(
+    projectId: string,
+    slug: string,
+  ): Promise<DenResult<DenDiscussion>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(slug)}/discussion`,
+      ),
+    );
   }
 }
 
 export class KnowledgeTransport {
-  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
 
   listEntries(): Promise<DenResult<readonly DenKnowledgeEntrySummary[]>> {
-    return this.http.json<unknown>(joinUrl(this.config.servicesApiBase, '/knowledge/entries')).then((result) => {
-      if (!result.ok) return result;
-      if (!isKnowledgeListResponse(result.value)) {
-        return invalidKnowledgeResponse('Knowledge list response is missing valid items.');
-      }
-      return { ok: true, value: result.value.items };
-    });
+    return this.http
+      .json<unknown>(joinUrl(this.config.servicesApiBase, '/knowledge/entries'))
+      .then((result) => {
+        if (!result.ok) return result;
+        if (!isKnowledgeListResponse(result.value)) {
+          return invalidKnowledgeResponse(
+            'Knowledge list response is missing valid items.',
+          );
+        }
+        return { ok: true, value: result.value.items };
+      });
   }
 
   getEntry(slug: string): Promise<DenResult<DenKnowledgeEntryDetail>> {
-    return this.http.json<unknown>(joinUrl(this.config.servicesApiBase, `/knowledge/entries/${encodeURIComponent(slug)}`)).then((result) => {
-      if (!result.ok) return result;
-      if (!isKnowledgeEntryDetail(result.value)) {
-        return invalidKnowledgeResponse('Knowledge detail response is missing required fields.');
-      }
-      return { ok: true, value: result.value };
-    });
+    return this.http
+      .json<unknown>(
+        joinUrl(
+          this.config.servicesApiBase,
+          `/knowledge/entries/${encodeURIComponent(slug)}`,
+        ),
+      )
+      .then((result) => {
+        if (!result.ok) return result;
+        if (!isKnowledgeEntryDetail(result.value)) {
+          return invalidKnowledgeResponse(
+            'Knowledge detail response is missing required fields.',
+          );
+        }
+        return { ok: true, value: result.value };
+      });
   }
 }
 
@@ -276,29 +709,187 @@ function invalidKnowledgeResponse<T>(message: string): DenResult<T> {
   return { ok: false, error: { kind: 'invalid-response', message } };
 }
 
-function isKnowledgeListResponse(value: unknown): value is DenKnowledgeListResponse {
-  return isRecord(value)
-    && Array.isArray(value['items'])
-    && typeof value['count'] === 'number'
-    && value['items'].every(isKnowledgeEntrySummary);
+function isKnowledgeListResponse(
+  value: unknown,
+): value is DenKnowledgeListResponse {
+  return (
+    isRecord(value) &&
+    Array.isArray(value['items']) &&
+    typeof value['count'] === 'number' &&
+    value['items'].every(isKnowledgeEntrySummary)
+  );
 }
 
-function isKnowledgeEntryDetail(value: unknown): value is DenKnowledgeEntryDetail {
-  return isRecord(value)
-    && isKnowledgeEntrySummary(value)
-    && typeof value['body_markdown'] === 'string';
+function isKnowledgeEntryDetail(
+  value: unknown,
+): value is DenKnowledgeEntryDetail {
+  return (
+    isRecord(value) &&
+    isKnowledgeEntrySummary(value) &&
+    typeof value['body_markdown'] === 'string'
+  );
 }
 
-function isKnowledgeEntrySummary(value: unknown): value is DenKnowledgeEntrySummary {
-  return isRecord(value)
-    && typeof value['id'] === 'number'
-    && typeof value['slug'] === 'string'
-    && typeof value['title'] === 'string'
-    && typeof value['kind'] === 'string'
-    && typeof value['status'] === 'string'
-    && typeof value['curation_state'] === 'string'
-    && typeof value['created_at'] === 'string'
-    && typeof value['updated_at'] === 'string';
+function isKnowledgeEntrySummary(
+  value: unknown,
+): value is DenKnowledgeEntrySummary {
+  return (
+    isRecord(value) &&
+    typeof value['id'] === 'number' &&
+    typeof value['slug'] === 'string' &&
+    typeof value['title'] === 'string' &&
+    typeof value['kind'] === 'string' &&
+    typeof value['status'] === 'string' &&
+    typeof value['curation_state'] === 'string' &&
+    typeof value['created_at'] === 'string' &&
+    typeof value['updated_at'] === 'string'
+  );
+}
+
+function parseBoardResponse<T>(
+  result: DenResult<unknown>,
+  guard: (value: unknown) => value is T,
+  message: string,
+): DenResult<T> {
+  if (!result.ok) return result;
+  return guard(result.value)
+    ? { ok: true, value: result.value }
+    : { ok: false, error: { kind: 'invalid-response', message } };
+}
+
+function parseBoardPurgeResponse(result: DenResult<unknown>): DenResult<void> {
+  if (!result.ok) return result;
+  return result.value === undefined
+    ? { ok: true, value: undefined }
+    : {
+        ok: false,
+        error: {
+          kind: 'invalid-response',
+          message: 'Board purge response must be empty.',
+        },
+      };
+}
+
+function isBoardPost(value: unknown): value is DenBoardPost {
+  return (
+    isRecord(value) &&
+    isFiniteNumber(value['id']) &&
+    typeof value['project_id'] === 'string' &&
+    typeof value['title'] === 'string' &&
+    typeof value['body_markdown'] === 'string' &&
+    typeof value['author_identity'] === 'string' &&
+    typeof value['status'] === 'string' &&
+    typeof value['created_at'] === 'string' &&
+    typeof value['updated_at'] === 'string'
+  );
+}
+
+function isBoardPostSummary(
+  value: unknown,
+): value is DenBoardPostPage['posts'][number] {
+  return (
+    isRecord(value) &&
+    isFiniteNumber(value['id']) &&
+    typeof value['project_id'] === 'string' &&
+    typeof value['title'] === 'string' &&
+    typeof value['author_identity'] === 'string' &&
+    typeof value['status'] === 'string' &&
+    typeof value['created_at'] === 'string' &&
+    typeof value['updated_at'] === 'string'
+  );
+}
+
+function isBoardComment(value: unknown): value is DenBoardComment {
+  if (
+    !isRecord(value) ||
+    !isFiniteNumber(value['id']) ||
+    !isFiniteNumber(value['post_id']) ||
+    !isOptionalFiniteNumber(value['parent_comment_id']) ||
+    typeof value['status'] !== 'string' ||
+    typeof value['created_at'] !== 'string' ||
+    typeof value['updated_at'] !== 'string'
+  ) {
+    return false;
+  }
+  if (value['deleted'] !== undefined && typeof value['deleted'] !== 'boolean')
+    return false;
+  if (value['status'] === 'deleted' || value['deleted'] === true) return true;
+  return (
+    typeof value['author_identity'] === 'string' &&
+    typeof value['body_markdown'] === 'string'
+  );
+}
+
+function isBoardPostPage(value: unknown): value is DenBoardPostPage {
+  return (
+    isRecord(value) &&
+    Array.isArray(value['posts']) &&
+    value['posts'].every(isBoardPostSummary) &&
+    isOptionalFiniteNumberOrNull(value['next_after_id'])
+  );
+}
+
+function isBoardCommentPage(value: unknown): value is DenBoardCommentPage {
+  return (
+    isRecord(value) &&
+    Array.isArray(value['comments']) &&
+    value['comments'].every(isBoardComment) &&
+    isOptionalFiniteNumberOrNull(value['next_after_id'])
+  );
+}
+
+function isBoardSearchPage(value: unknown): value is DenBoardSearchPage {
+  return (
+    isRecord(value) &&
+    Array.isArray(value['results']) &&
+    value['results'].every(isBoardSearchResult) &&
+    isOptionalFiniteNumberOrNull(value['next_after_id'])
+  );
+}
+
+function isBoardSearchResult(
+  value: unknown,
+): value is DenBoardSearchPage['results'][number] {
+  return (
+    isRecord(value) &&
+    typeof value['kind'] === 'string' &&
+    isFiniteNumber(value['id']) &&
+    isFiniteNumber(value['post_id']) &&
+    typeof value['project_id'] === 'string' &&
+    isOptionalString(value['title']) &&
+    isOptionalString(value['author_identity']) &&
+    typeof value['snippet'] === 'string' &&
+    isFiniteNumber(value['rank']) &&
+    typeof value['created_at'] === 'string'
+  );
+}
+
+function isBoardCommentPath(value: unknown): value is DenBoardCommentPath {
+  return (
+    isRecord(value) &&
+    isBoardPost(value['post']) &&
+    Array.isArray(value['comments']) &&
+    value['comments'].every(isBoardComment) &&
+    typeof value['truncated'] === 'boolean'
+  );
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isOptionalFiniteNumber(value: unknown): value is number | undefined {
+  return value === undefined || isFiniteNumber(value);
+}
+
+function isOptionalFiniteNumberOrNull(
+  value: unknown,
+): value is number | null | undefined {
+  return value === undefined || value === null || isFiniteNumber(value);
+}
+
+function isOptionalString(value: unknown): value is string | undefined {
+  return value === undefined || typeof value === 'string';
 }
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
@@ -306,34 +897,77 @@ function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
 }
 
 export class GuidanceTransport {
-  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
 
-  listEntries(projectId: string, options: { readonly includeGlobal?: boolean } = {}): Promise<DenResult<DenGuidanceEntryListResponse>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/agent-guidance/entries${query({ include_global: options.includeGlobal })}`));
+  listEntries(
+    projectId: string,
+    options: { readonly includeGlobal?: boolean } = {},
+  ): Promise<DenResult<DenGuidanceEntryListResponse>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/agent-guidance/entries${query({ include_global: options.includeGlobal })}`,
+      ),
+    );
   }
 
-  resolve(projectId: string, options: { readonly includeContent?: boolean; readonly includeHidden?: boolean } = {}): Promise<DenResult<DenGuidancePacket>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/agent-guidance${query({
-      include_content: options.includeContent,
-      include_hidden: options.includeHidden,
-    })}`));
+  resolve(
+    projectId: string,
+    options: {
+      readonly includeContent?: boolean;
+      readonly includeHidden?: boolean;
+    } = {},
+  ): Promise<DenResult<DenGuidancePacket>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/agent-guidance${query({
+          include_content: options.includeContent,
+          include_hidden: options.includeHidden,
+        })}`,
+      ),
+    );
   }
 
-  addEntry(projectId: string, body: DenGuidanceEntryRequest): Promise<DenResult<DenGuidanceEntry>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/agent-guidance/entries`), {
-      method: 'POST',
-      body,
-    });
+  addEntry(
+    projectId: string,
+    body: DenGuidanceEntryRequest,
+  ): Promise<DenResult<DenGuidanceEntry>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/agent-guidance/entries`,
+      ),
+      {
+        method: 'POST',
+        body,
+      },
+    );
   }
 
-  deleteEntry(projectId: string, entryId: number): Promise<DenResult<DenGuidanceDeleteResponse>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/agent-guidance/entries/${entryId}`), {
-      method: 'DELETE',
-    });
+  deleteEntry(
+    projectId: string,
+    entryId: number,
+  ): Promise<DenResult<DenGuidanceDeleteResponse>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/agent-guidance/entries/${entryId}`,
+      ),
+      {
+        method: 'DELETE',
+      },
+    );
   }
 }
 
-function documentStoreBody(slug: string, body: DenDocumentUpdateRequest): {
+function documentStoreBody(
+  slug: string,
+  body: DenDocumentUpdateRequest,
+): {
   readonly slug: string;
   readonly title: string;
   readonly content: string;
@@ -352,93 +986,198 @@ function documentStoreBody(slug: string, body: DenDocumentUpdateRequest): {
 }
 
 export class ArtifactsTransport {
-  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
 
   resolve(ref: string): Promise<DenResult<DenArtifactMetadata>> {
-    return this.http.json(joinUrl(this.config.artifactsApiBase, `/resolve${query({ ref })}`));
+    return this.http.json(
+      joinUrl(this.config.artifactsApiBase, `/resolve${query({ ref })}`),
+    );
   }
 
   metadata(artifactId: string): Promise<DenResult<DenArtifactMetadata>> {
-    return this.http.json(joinUrl(this.config.artifactsApiBase, `/${encodeURIComponent(artifactId)}/metadata`));
+    return this.http.json(
+      joinUrl(
+        this.config.artifactsApiBase,
+        `/${encodeURIComponent(artifactId)}/metadata`,
+      ),
+    );
   }
 
   contentUrl(artifactId: string): string {
-    return joinUrl(this.config.artifactsApiBase, `/${encodeURIComponent(artifactId)}/content`);
+    return joinUrl(
+      this.config.artifactsApiBase,
+      `/${encodeURIComponent(artifactId)}/content`,
+    );
   }
 }
 
-function activeProjectIds(projects: readonly DenProject[], spaces: readonly DenSpace[]): readonly string[] {
+function activeProjectIds(
+  projects: readonly DenProject[],
+  spaces: readonly DenSpace[],
+): readonly string[] {
   const ids = new Set<string>();
   for (const space of spaces) {
-    if (space.visibility === 'archived' || space.id === DEN_GLOBAL_PROJECT_ID) continue;
+    if (space.visibility === 'archived' || space.id === DEN_GLOBAL_PROJECT_ID)
+      continue;
     ids.add(space.id);
   }
   for (const project of projects) {
-    if (project.visibility === 'archived' || project.id === DEN_GLOBAL_PROJECT_ID) continue;
+    if (
+      project.visibility === 'archived' ||
+      project.id === DEN_GLOBAL_PROJECT_ID
+    )
+      continue;
     ids.add(project.id);
   }
   return [...ids];
 }
 
 export class LibrarianTransport {
-  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
 
-  query(projectId: string, request: DenLibrarianQueryRequest): Promise<DenResult<DenLibrarianQueryResponse>> {
-    return this.http.json(joinUrl(this.config.servicesApiBase, `/projects/${encodeURIComponent(projectId)}/librarian/query`), {
-      method: 'POST',
-      body: request,
-    });
+  query(
+    projectId: string,
+    request: DenLibrarianQueryRequest,
+  ): Promise<DenResult<DenLibrarianQueryResponse>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/librarian/query`,
+      ),
+      {
+        method: 'POST',
+        body: request,
+      },
+    );
   }
 }
 
 export class ConversationTransport {
-  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
 
-  listChannels(projectId: string, options: { readonly limit?: number; readonly kind?: string } = {}): Promise<DenResult<readonly DenConversationChannel[]>> {
+  listChannels(
+    projectId: string,
+    options: { readonly limit?: number; readonly kind?: string } = {},
+  ): Promise<DenResult<readonly DenConversationChannel[]>> {
     if (projectId === DEN_GLOBAL_PROJECT_ID) {
-      return this.http.json(joinUrl(this.config.conversationApiBase, `/channels${query({ limit: options.limit, kind: options.kind ?? 'system' })}`));
+      return this.http.json(
+        joinUrl(
+          this.config.conversationApiBase,
+          `/channels${query({ limit: options.limit, kind: options.kind ?? 'system' })}`,
+        ),
+      );
     }
-    return this.http.json(joinUrl(this.config.conversationApiBase, `/channels${query({ project_id: projectId, limit: options.limit, kind: options.kind })}`));
+    return this.http.json(
+      joinUrl(
+        this.config.conversationApiBase,
+        `/channels${query({ project_id: projectId, limit: options.limit, kind: options.kind })}`,
+      ),
+    );
   }
 
-  listMemberships(options: { readonly channelId?: number; readonly projectId?: string; readonly includeLeft?: boolean; readonly limit?: number } = {}): Promise<DenResult<readonly DenConversationMembership[]>> {
-    return this.http.json(joinUrl(this.config.conversationApiBase, `/memberships${query({
-      channel_id: options.channelId,
-      project_id: options.projectId,
-      include_left: options.includeLeft,
-      limit: options.limit,
-    })}`));
+  listMemberships(
+    options: {
+      readonly channelId?: number;
+      readonly projectId?: string;
+      readonly includeLeft?: boolean;
+      readonly limit?: number;
+    } = {},
+  ): Promise<DenResult<readonly DenConversationMembership[]>> {
+    return this.http.json(
+      joinUrl(
+        this.config.conversationApiBase,
+        `/memberships${query({
+          channel_id: options.channelId,
+          project_id: options.projectId,
+          include_left: options.includeLeft,
+          limit: options.limit,
+        })}`,
+      ),
+    );
   }
 
-  putMembership(channelId: number, body: DenConversationPutMembershipRequest): Promise<DenResult<DenConversationMembership>> {
-    return this.http.json(joinUrl(this.config.conversationApiBase, `/channels/${channelId}/memberships`), {
-      method: 'PUT',
-      body,
-    });
+  putMembership(
+    channelId: number,
+    body: DenConversationPutMembershipRequest,
+  ): Promise<DenResult<DenConversationMembership>> {
+    return this.http.json(
+      joinUrl(
+        this.config.conversationApiBase,
+        `/channels/${channelId}/memberships`,
+      ),
+      {
+        method: 'PUT',
+        body,
+      },
+    );
   }
 
-  listMessages(channelId: number, options: { readonly afterId?: number; readonly limit?: number } = {}): Promise<DenResult<readonly DenChannelMessage[]>> {
-    return this.http.json(joinUrl(this.config.conversationApiBase, `/channels/${channelId}/messages${query({ after_id: options.afterId, limit: options.limit })}`));
+  listMessages(
+    channelId: number,
+    options: { readonly afterId?: number; readonly limit?: number } = {},
+  ): Promise<DenResult<readonly DenChannelMessage[]>> {
+    return this.http.json(
+      joinUrl(
+        this.config.conversationApiBase,
+        `/channels/${channelId}/messages${query({ after_id: options.afterId, limit: options.limit })}`,
+      ),
+    );
   }
 
-  postMessage(channelId: number, body: DenConversationPostMessageRequest): Promise<DenResult<DenChannelMessage>> {
-    return this.http.json(joinUrl(this.config.conversationApiBase, `/channels/${channelId}/messages`), {
-      method: 'POST',
-      body,
-      headers: { 'Idempotency-Key': body.dedupe_key },
-    });
+  postMessage(
+    channelId: number,
+    body: DenConversationPostMessageRequest,
+  ): Promise<DenResult<DenChannelMessage>> {
+    return this.http.json(
+      joinUrl(
+        this.config.conversationApiBase,
+        `/channels/${channelId}/messages`,
+      ),
+      {
+        method: 'POST',
+        body,
+        headers: { 'Idempotency-Key': body.dedupe_key },
+      },
+    );
   }
 }
 
 export class TimelineTransport {
-  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient, private readonly eventStream?: EventStreamPort) {}
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+    private readonly eventStream?: EventStreamPort,
+  ) {}
 
-  listChannelItems(channelId: number, options: { readonly limit?: number; readonly after?: string } = {}): Promise<DenResult<DenTimelineResponse>> {
-    return this.http.json(joinUrl(this.config.timelineApiBase, `/channels/${channelId}/items${query(options)}`));
+  listChannelItems(
+    channelId: number,
+    options: { readonly limit?: number; readonly after?: string } = {},
+  ): Promise<DenResult<DenTimelineResponse>> {
+    return this.http.json(
+      joinUrl(
+        this.config.timelineApiBase,
+        `/channels/${channelId}/items${query(options)}`,
+      ),
+    );
   }
 
-  streamUrl(channelId: number, options: { readonly after?: string; readonly includeDebug?: boolean } = {}): string {
-    return joinUrl(this.config.timelineApiBase, `/channels/${channelId}/stream${query({ after: options.after, include_debug: options.includeDebug })}`);
+  streamUrl(
+    channelId: number,
+    options: { readonly after?: string; readonly includeDebug?: boolean } = {},
+  ): string {
+    return joinUrl(
+      this.config.timelineApiBase,
+      `/channels/${channelId}/stream${query({ after: options.after, include_debug: options.includeDebug })}`,
+    );
   }
 
   streamChannelItems(
@@ -451,7 +1190,10 @@ export class TimelineTransport {
     },
   ): { readonly close: () => void } {
     if (!this.eventStream) return { close: () => undefined };
-    const streamOptions: { readonly after?: string; readonly includeDebug?: boolean } = options.after ? { after: options.after } : {};
+    const streamOptions: {
+      readonly after?: string;
+      readonly includeDebug?: boolean;
+    } = options.after ? { after: options.after } : {};
     const eventOptions: Parameters<EventStreamPort['open']>[1] = {
       events: ['timeline_item', 'timeline_refresh', 'heartbeat'],
       onEvent: (event: EventStreamEvent) => {
@@ -464,47 +1206,84 @@ export class TimelineTransport {
       },
       ...(options.onError ? { onError: options.onError } : {}),
     };
-    return this.eventStream.open(this.streamUrl(channelId, streamOptions), eventOptions);
+    return this.eventStream.open(
+      this.streamUrl(channelId, streamOptions),
+      eventOptions,
+    );
   }
 }
 
 export class ObservationTransport {
-  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
 
-  lane(options: { readonly limit?: number } = {}): Promise<DenResult<DenObservationLane>> {
-    return this.http.json(joinUrl(this.config.observationApiBase, `/lane${query(options)}`));
+  lane(
+    options: { readonly limit?: number } = {},
+  ): Promise<DenResult<DenObservationLane>> {
+    return this.http.json(
+      joinUrl(this.config.observationApiBase, `/lane${query(options)}`),
+    );
   }
 
   activeWork(): Promise<DenResult<unknown>> {
-    return this.http.json(joinUrl(this.config.observationApiBase, '/active-work'));
+    return this.http.json(
+      joinUrl(this.config.observationApiBase, '/active-work'),
+    );
   }
 }
 
 export class DeliveryTransport {
-  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
 
-  createIntent(body: DenDeliveryIntentRequest): Promise<DenResult<DenDeliveryIntent>> {
-    return this.http.json(joinUrl(this.config.deliveryApiBase, '/intents'), { method: 'POST', body });
+  createIntent(
+    body: DenDeliveryIntentRequest,
+  ): Promise<DenResult<DenDeliveryIntent>> {
+    return this.http.json(joinUrl(this.config.deliveryApiBase, '/intents'), {
+      method: 'POST',
+      body,
+    });
   }
 }
 
 function parseTimelineItem(data: string): DenTimelineItem | null {
   try {
     const parsed = JSON.parse(data) as unknown;
-    return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as DenTimelineItem : null;
+    return parsed !== null &&
+      typeof parsed === 'object' &&
+      !Array.isArray(parsed)
+      ? (parsed as DenTimelineItem)
+      : null;
   } catch {
     return null;
   }
 }
 
 export class DocPublishTransport {
-  constructor(private readonly config: RuntimeApiConfig, private readonly http: DenHttpClient) {}
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
 
-  preview(request: DenDocPublishRequest): Promise<DenResult<DenDocPublishResponse>> {
-    return this.http.json(joinUrl(this.config.docPublishApiBase, '/preview'), { method: 'POST', body: request });
+  preview(
+    request: DenDocPublishRequest,
+  ): Promise<DenResult<DenDocPublishResponse>> {
+    return this.http.json(joinUrl(this.config.docPublishApiBase, '/preview'), {
+      method: 'POST',
+      body: request,
+    });
   }
 
-  publish(request: DenDocPublishRequest): Promise<DenResult<DenDocPublishResponse>> {
-    return this.http.json(this.config.docPublishApiBase, { method: 'POST', body: request });
+  publish(
+    request: DenDocPublishRequest,
+  ): Promise<DenResult<DenDocPublishResponse>> {
+    return this.http.json(this.config.docPublishApiBase, {
+      method: 'POST',
+      body: request,
+    });
   }
 }

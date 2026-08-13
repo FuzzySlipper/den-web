@@ -1,46 +1,118 @@
-import { InjectionToken, makeEnvironmentProviders, type EnvironmentProviders } from '@angular/core';
-import { browserClock, browserDocumentEffects, browserEventStream, browserFileExchange, browserStorage, type ClockPort, type EventStreamPort, type FileExchangePort } from '@den-web/platform';
+import {
+  InjectionToken,
+  makeEnvironmentProviders,
+  type EnvironmentProviders,
+} from '@angular/core';
+import {
+  browserClock,
+  browserDocumentEffects,
+  browserEventStream,
+  browserFileExchange,
+  browserStorage,
+  type ClockPort,
+  type EventStreamPort,
+  type FileExchangePort,
+} from '@den-web/platform';
 import type { RuntimeApiConfig } from '@den-web/protocol';
 import { defaultRuntimeApiConfig } from '@den-web/protocol';
-import { createDenTransportClients, type DenTransportClients } from '@den-web/transport';
+import {
+  createDenTransportClients,
+  type DenTransportClients,
+} from '@den-web/transport';
 import { createAgentsStore, type AgentsStore } from './agents-store';
 import { createArtifactsStore, type ArtifactsStore } from './artifacts-store';
-import { createConversationStore, type ConversationStore } from './conversation-store';
+import { createBoardStore, type BoardStore } from './board-store';
+import {
+  createConversationStore,
+  type ConversationStore,
+} from './conversation-store';
 import { createDocumentsStore, type DocumentsStore } from './documents-store';
-import { createDocumentPublishStore, type DocumentPublishStore } from './document-publish-store';
+import {
+  createDocumentPublishStore,
+  type DocumentPublishStore,
+} from './document-publish-store';
 import { createGuidanceStore, type GuidanceStore } from './guidance-store';
 import { createLibrarianStore, type LibrarianStore } from './librarian-store';
 import { createKnowledgeStore, type KnowledgeStore } from './knowledge-store';
 import { createMessagesStore, type MessagesStore } from './messages-store';
-import { createNavigationStore, type NavigationStore } from './navigation-store';
-import { createNotificationsStore, type NotificationsStore } from './notifications-store';
-import { createPreferencesStore, type PreferencesStore } from './preferences-store';
+import {
+  createNavigationStore,
+  type NavigationStore,
+} from './navigation-store';
+import {
+  createNotificationsStore,
+  type NotificationsStore,
+} from './notifications-store';
+import {
+  createPreferencesStore,
+  type PreferencesStore,
+} from './preferences-store';
 import { createTasksStore, type TasksStore } from './tasks-store';
 import { createWorkspaceStore, type WorkspaceStore } from './workspace-store';
-import { createVisualContractStore, type VisualContractStore } from './visual-contract-store';
+import {
+  createVisualContractStore,
+  type VisualContractStore,
+} from './visual-contract-store';
 
-export const DEN_RUNTIME_CONFIG = new InjectionToken<RuntimeApiConfig>('DEN_RUNTIME_CONFIG');
+export const DEN_RUNTIME_CONFIG = new InjectionToken<RuntimeApiConfig>(
+  'DEN_RUNTIME_CONFIG',
+);
 export const DEN_CLOCK = new InjectionToken<ClockPort>('DEN_CLOCK');
-export const DEN_EVENT_STREAM = new InjectionToken<EventStreamPort>('DEN_EVENT_STREAM');
-export const DEN_FILE_EXCHANGE = new InjectionToken<FileExchangePort>('DEN_FILE_EXCHANGE');
-export const DEN_TRANSPORT_CLIENTS = new InjectionToken<DenTransportClients>('DEN_TRANSPORT_CLIENTS');
-export const WORKSPACE_STORE = new InjectionToken<WorkspaceStore>('WORKSPACE_STORE');
+export const DEN_EVENT_STREAM = new InjectionToken<EventStreamPort>(
+  'DEN_EVENT_STREAM',
+);
+export const DEN_FILE_EXCHANGE = new InjectionToken<FileExchangePort>(
+  'DEN_FILE_EXCHANGE',
+);
+export const DEN_TRANSPORT_CLIENTS = new InjectionToken<DenTransportClients>(
+  'DEN_TRANSPORT_CLIENTS',
+);
+export const WORKSPACE_STORE = new InjectionToken<WorkspaceStore>(
+  'WORKSPACE_STORE',
+);
 export const TASKS_STORE = new InjectionToken<TasksStore>('TASKS_STORE');
-export const DOCUMENTS_STORE = new InjectionToken<DocumentsStore>('DOCUMENTS_STORE');
-export const DOCUMENT_PUBLISH_STORE = new InjectionToken<DocumentPublishStore>('DOCUMENT_PUBLISH_STORE');
-export const GUIDANCE_STORE = new InjectionToken<GuidanceStore>('GUIDANCE_STORE');
-export const NOTIFICATIONS_STORE = new InjectionToken<NotificationsStore>('NOTIFICATIONS_STORE');
-export const CONVERSATION_STORE = new InjectionToken<ConversationStore>('CONVERSATION_STORE');
+export const DOCUMENTS_STORE = new InjectionToken<DocumentsStore>(
+  'DOCUMENTS_STORE',
+);
+export const DOCUMENT_PUBLISH_STORE = new InjectionToken<DocumentPublishStore>(
+  'DOCUMENT_PUBLISH_STORE',
+);
+export const GUIDANCE_STORE = new InjectionToken<GuidanceStore>(
+  'GUIDANCE_STORE',
+);
+export const NOTIFICATIONS_STORE = new InjectionToken<NotificationsStore>(
+  'NOTIFICATIONS_STORE',
+);
+export const CONVERSATION_STORE = new InjectionToken<ConversationStore>(
+  'CONVERSATION_STORE',
+);
 export const AGENTS_STORE = new InjectionToken<AgentsStore>('AGENTS_STORE');
-export const ARTIFACTS_STORE = new InjectionToken<ArtifactsStore>('ARTIFACTS_STORE');
-export const MESSAGES_STORE = new InjectionToken<MessagesStore>('MESSAGES_STORE');
-export const NAVIGATION_STORE = new InjectionToken<NavigationStore>('NAVIGATION_STORE');
-export const LIBRARIAN_STORE = new InjectionToken<LibrarianStore>('LIBRARIAN_STORE');
-export const KNOWLEDGE_STORE = new InjectionToken<KnowledgeStore>('KNOWLEDGE_STORE');
-export const PREFERENCES_STORE = new InjectionToken<PreferencesStore>('PREFERENCES_STORE');
-export const VISUAL_CONTRACT_STORE = new InjectionToken<VisualContractStore>('VISUAL_CONTRACT_STORE');
+export const ARTIFACTS_STORE = new InjectionToken<ArtifactsStore>(
+  'ARTIFACTS_STORE',
+);
+export const BOARD_STORE = new InjectionToken<BoardStore>('BOARD_STORE');
+export const MESSAGES_STORE = new InjectionToken<MessagesStore>(
+  'MESSAGES_STORE',
+);
+export const NAVIGATION_STORE = new InjectionToken<NavigationStore>(
+  'NAVIGATION_STORE',
+);
+export const LIBRARIAN_STORE = new InjectionToken<LibrarianStore>(
+  'LIBRARIAN_STORE',
+);
+export const KNOWLEDGE_STORE = new InjectionToken<KnowledgeStore>(
+  'KNOWLEDGE_STORE',
+);
+export const PREFERENCES_STORE = new InjectionToken<PreferencesStore>(
+  'PREFERENCES_STORE',
+);
+export const VISUAL_CONTRACT_STORE = new InjectionToken<VisualContractStore>(
+  'VISUAL_CONTRACT_STORE',
+);
 
-export function provideDenStoreKernel(config: RuntimeApiConfig = defaultRuntimeApiConfig): EnvironmentProviders {
+export function provideDenStoreKernel(
+  config: RuntimeApiConfig = defaultRuntimeApiConfig,
+): EnvironmentProviders {
   return makeEnvironmentProviders([
     { provide: DEN_RUNTIME_CONFIG, useValue: config },
     { provide: DEN_CLOCK, useValue: browserClock },
@@ -48,42 +120,52 @@ export function provideDenStoreKernel(config: RuntimeApiConfig = defaultRuntimeA
     { provide: DEN_EVENT_STREAM, useFactory: () => browserEventStream() },
     {
       provide: DEN_TRANSPORT_CLIENTS,
-      useFactory: (runtimeConfig: RuntimeApiConfig, eventStream: EventStreamPort) => createDenTransportClients(runtimeConfig, undefined, eventStream),
+      useFactory: (
+        runtimeConfig: RuntimeApiConfig,
+        eventStream: EventStreamPort,
+      ) => createDenTransportClients(runtimeConfig, undefined, eventStream),
       deps: [DEN_RUNTIME_CONFIG, DEN_EVENT_STREAM],
     },
     {
       provide: WORKSPACE_STORE,
-      useFactory: (clients: DenTransportClients, clock: ClockPort) => createWorkspaceStore(clients.projects, clock),
+      useFactory: (clients: DenTransportClients, clock: ClockPort) =>
+        createWorkspaceStore(clients.projects, clock),
       deps: [DEN_TRANSPORT_CLIENTS, DEN_CLOCK],
     },
     {
       provide: TASKS_STORE,
-      useFactory: (clients: DenTransportClients) => createTasksStore(clients.tasks, clients.messages),
+      useFactory: (clients: DenTransportClients) =>
+        createTasksStore(clients.tasks, clients.messages),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
     {
       provide: DOCUMENTS_STORE,
-      useFactory: (clients: DenTransportClients) => createDocumentsStore(clients.documents),
+      useFactory: (clients: DenTransportClients) =>
+        createDocumentsStore(clients.documents),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
     {
       provide: DOCUMENT_PUBLISH_STORE,
-      useFactory: (clients: DenTransportClients) => createDocumentPublishStore(clients.docPublish),
+      useFactory: (clients: DenTransportClients) =>
+        createDocumentPublishStore(clients.docPublish),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
     {
       provide: GUIDANCE_STORE,
-      useFactory: (clients: DenTransportClients) => createGuidanceStore(clients.guidance, clients.documents),
+      useFactory: (clients: DenTransportClients) =>
+        createGuidanceStore(clients.guidance, clients.documents),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
     {
       provide: NOTIFICATIONS_STORE,
-      useFactory: (clients: DenTransportClients) => createNotificationsStore(clients.notifications, browserStorage()),
+      useFactory: (clients: DenTransportClients) =>
+        createNotificationsStore(clients.notifications, browserStorage()),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
     {
       provide: MESSAGES_STORE,
-      useFactory: (clients: DenTransportClients) => createMessagesStore(clients.messages),
+      useFactory: (clients: DenTransportClients) =>
+        createMessagesStore(clients.messages),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
     {
@@ -92,36 +174,53 @@ export function provideDenStoreKernel(config: RuntimeApiConfig = defaultRuntimeA
     },
     {
       provide: LIBRARIAN_STORE,
-      useFactory: (clients: DenTransportClients) => createLibrarianStore(clients.librarian),
+      useFactory: (clients: DenTransportClients) =>
+        createLibrarianStore(clients.librarian),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
     {
       provide: KNOWLEDGE_STORE,
-      useFactory: (clients: DenTransportClients) => createKnowledgeStore(clients.knowledge),
+      useFactory: (clients: DenTransportClients) =>
+        createKnowledgeStore(clients.knowledge),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
     {
       provide: PREFERENCES_STORE,
-      useFactory: () => createPreferencesStore(browserStorage(), browserDocumentEffects()),
+      useFactory: () =>
+        createPreferencesStore(browserStorage(), browserDocumentEffects()),
     },
     {
       provide: CONVERSATION_STORE,
-      useFactory: (clients: DenTransportClients) => createConversationStore(clients.conversation, clients.timeline, clients.delivery),
+      useFactory: (clients: DenTransportClients) =>
+        createConversationStore(
+          clients.conversation,
+          clients.timeline,
+          clients.delivery,
+        ),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
     {
       provide: AGENTS_STORE,
-      useFactory: (clients: DenTransportClients) => createAgentsStore(clients.observation),
+      useFactory: (clients: DenTransportClients) =>
+        createAgentsStore(clients.observation),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
     {
       provide: ARTIFACTS_STORE,
-      useFactory: (clients: DenTransportClients) => createArtifactsStore(clients.artifacts),
+      useFactory: (clients: DenTransportClients) =>
+        createArtifactsStore(clients.artifacts),
+      deps: [DEN_TRANSPORT_CLIENTS],
+    },
+    {
+      provide: BOARD_STORE,
+      useFactory: (clients: DenTransportClients) =>
+        createBoardStore(clients.board),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
     {
       provide: VISUAL_CONTRACT_STORE,
-      useFactory: (clients: DenTransportClients) => createVisualContractStore(clients.visualContract),
+      useFactory: (clients: DenTransportClients) =>
+        createVisualContractStore(clients.visualContract),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
   ]);

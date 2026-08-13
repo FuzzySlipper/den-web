@@ -1,6 +1,7 @@
 export * from './lib/agents-store';
 export * from './lib/artifacts-store';
 export * from './lib/async-state';
+export * from './lib/board-store';
 export * from './lib/conversation-store';
 export * from './lib/documents-store';
 export * from './lib/document-publish-store';

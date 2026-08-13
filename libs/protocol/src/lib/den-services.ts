@@ -39,7 +39,10 @@ export interface DenTaskDetail {
   readonly human_acceptance_reviews?: readonly DenHumanAcceptanceReview[];
 }
 
-export type DenHumanAcceptanceLifecycleEffect = 'record_only' | 'complete_task' | 'complete_task_and_parent';
+export type DenHumanAcceptanceLifecycleEffect =
+  | 'record_only'
+  | 'complete_task'
+  | 'complete_task_and_parent';
 
 export interface DenHumanAcceptanceReview {
   readonly id: number;
@@ -306,6 +309,91 @@ export interface DenDiscussionComment {
   readonly parent_id?: number | null;
   readonly parent_comment_id?: number | null;
   readonly created_at?: string;
+}
+
+export interface DenBoardPost {
+  readonly id: number;
+  readonly project_id: string;
+  readonly title: string;
+  readonly body_markdown: string;
+  readonly author_identity: string;
+  readonly metadata?: Readonly<Record<string, unknown>> | null;
+  readonly status: string;
+  readonly created_at: string;
+  readonly updated_at: string;
+}
+
+export interface DenBoardPostSummary {
+  readonly id: number;
+  readonly project_id: string;
+  readonly title: string;
+  readonly author_identity: string;
+  readonly status: string;
+  readonly created_at: string;
+  readonly updated_at: string;
+}
+
+export interface DenBoardComment {
+  readonly id: number;
+  readonly post_id: number;
+  readonly parent_comment_id?: number;
+  readonly author_identity?: string;
+  readonly body_markdown?: string;
+  readonly metadata?: Readonly<Record<string, unknown>> | null;
+  readonly status: string;
+  readonly deleted?: boolean;
+  readonly created_at: string;
+  readonly updated_at: string;
+}
+
+export interface DenBoardSearchResult {
+  readonly kind: string;
+  readonly id: number;
+  readonly post_id: number;
+  readonly project_id: string;
+  readonly title?: string;
+  readonly author_identity?: string;
+  readonly snippet: string;
+  readonly rank: number;
+  readonly created_at: string;
+}
+
+export interface DenBoardPostPage {
+  readonly posts: readonly DenBoardPostSummary[];
+  readonly next_after_id?: number | null;
+}
+
+export interface DenBoardCommentPage {
+  readonly comments: readonly DenBoardComment[];
+  readonly next_after_id?: number | null;
+}
+
+export interface DenBoardSearchPage {
+  readonly results: readonly DenBoardSearchResult[];
+  readonly next_after_id?: number | null;
+}
+
+export interface DenBoardCommentPath {
+  readonly post: DenBoardPost;
+  readonly comments: readonly DenBoardComment[];
+  readonly truncated: boolean;
+}
+
+export interface DenBoardCreatePostRequest {
+  readonly title: string;
+  readonly body_markdown: string;
+  readonly author_identity: string;
+}
+
+export interface DenBoardCreateCommentRequest {
+  readonly parent_comment_id?: number;
+  readonly body_markdown: string;
+  readonly author_identity: string;
+}
+
+export interface DenBoardPurgeRequest {
+  readonly actor_identity: string;
+  readonly reason: string;
 }
 
 export interface DenConversationChannel {
