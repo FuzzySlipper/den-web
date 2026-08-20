@@ -46,16 +46,14 @@ test('redirects unknown and empty URLs to tasks', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Tasks' })).toBeVisible();
 });
 
-test('hides and restores the workspace panel from the rail toggle', async ({ page }) => {
+test('keeps the workspace list docked below the nav rail', async ({ page }) => {
   await mockDenServices(page);
   await page.goto('/');
 
-  const workspace = page.locator('#workspace-panel');
+  const workspace = page.getByRole('complementary', { name: 'Workspace' });
   await expect(workspace.getByRole('button', { name: /Den Web den-web/ })).toBeVisible();
-
-  await page.getByRole('button', { name: 'Collapse workspace panel' }).click();
-  await expect(workspace).toHaveCount(0);
-
-  await page.getByRole('button', { name: 'Expand workspace panel' }).click();
   await expect(workspace.getByRole('button', { name: /Asha Studio asha/ })).toBeVisible();
+
+  await page.getByRole('link', { name: 'Documents' }).click();
+  await expect(workspace.getByRole('button', { name: /Den Web den-web/ })).toBeVisible();
 });

@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, effect, inject } from '@angular/core';
 import type { OnInit } from '@angular/core';
 import {
   Router,
@@ -23,35 +23,35 @@ interface NavGroup {
   readonly items: readonly NavItem[];
 }
 
-const operateGroup: NavGroup = {
-  label: 'Operate',
-  items: [
-    { id: 'tasks', label: 'Tasks' },
-    { id: 'conversation', label: 'Conversation' },
-    { id: 'messages', label: 'Messages' },
-    { id: 'notifications', label: 'Notifications' },
-  ],
-};
-
-const libraryGroup: NavGroup = {
-  label: 'Library',
-  items: [
-    { id: 'documents', label: 'Documents' },
-    { id: 'board', label: 'Board' },
-    { id: 'knowledge', label: 'Knowledge' },
-    { id: 'guidance', label: 'Guidance' },
-    { id: 'librarian', label: 'Librarian' },
-  ],
-};
-
-const adminGroup: NavGroup = {
-  label: 'Admin',
-  items: [
-    { id: 'agents', label: 'Agents' },
-    { id: 'visual-contract', label: 'Visual proof' },
-    { id: 'preferences', label: 'Preferences' },
-  ],
-};
+const navGroups: readonly NavGroup[] = [
+  {
+    label: 'Operate',
+    items: [
+      { id: 'tasks', label: 'Tasks' },
+      { id: 'conversation', label: 'Conversation' },
+      { id: 'messages', label: 'Messages' },
+      { id: 'notifications', label: 'Notifications' },
+    ],
+  },
+  {
+    label: 'Library',
+    items: [
+      { id: 'documents', label: 'Documents' },
+      { id: 'board', label: 'Board' },
+      { id: 'knowledge', label: 'Knowledge' },
+      { id: 'guidance', label: 'Guidance' },
+      { id: 'librarian', label: 'Librarian' },
+    ],
+  },
+  {
+    label: 'Admin',
+    items: [
+      { id: 'agents', label: 'Agents' },
+      { id: 'visual-contract', label: 'Visual proof' },
+      { id: 'preferences', label: 'Preferences' },
+    ],
+  },
+];
 
 @Component({
   imports: [
@@ -76,21 +76,25 @@ const adminGroup: NavGroup = {
       .shell {
         box-sizing: border-box;
         display: grid;
-        grid-template-columns: 112px auto minmax(0, 1fr);
-        grid-template-rows: minmax(0, 1fr);
+        grid-template-columns: 220px minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
         height: 100dvh;
         overflow: hidden;
       }
 
       .rail {
         background: var(--den-panel);
+        border-bottom: 1px solid var(--den-border);
         border-right: 1px solid var(--den-border);
         display: flex;
         flex-direction: column;
         gap: 10px;
+        grid-column: 1;
+        grid-row: 1;
+        max-height: 100%;
         min-height: 0;
         overflow-y: auto;
-        padding: 10px 6px;
+        padding: 12px 10px;
       }
 
       .brand {
@@ -98,9 +102,7 @@ const adminGroup: NavGroup = {
         font-weight: 600;
         line-height: var(--den-line-height-tight);
         margin: 0;
-        overflow: hidden;
-        text-align: center;
-        text-overflow: ellipsis;
+        padding: 0 4px;
       }
 
       .rail-group {
@@ -109,16 +111,11 @@ const adminGroup: NavGroup = {
         gap: 2px;
       }
 
-      .rail-group.admin {
-        margin-top: auto;
-      }
-
       .rail-group-label {
         color: var(--den-muted);
         font-size: var(--den-font-size-xs);
         letter-spacing: 0.06em;
         padding: 0 4px 2px;
-        text-align: center;
         text-transform: uppercase;
       }
 
@@ -126,12 +123,12 @@ const adminGroup: NavGroup = {
         border-radius: 6px;
         color: var(--den-muted);
         display: block;
-        font-size: var(--den-font-size-sm);
+        font-size: var(--den-font-size-md);
         overflow: hidden;
-        padding: 6px 4px;
-        text-align: center;
+        padding: 6px 8px;
         text-decoration: none;
         text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .nav-item:hover {
@@ -143,31 +140,18 @@ const adminGroup: NavGroup = {
         color: var(--den-text);
       }
 
-      .workspace-toggle {
-        appearance: none;
-        background: transparent;
-        border: 1px solid var(--den-border);
-        border-radius: 6px;
-        color: var(--den-muted);
-        cursor: pointer;
-        font-size: var(--den-font-size-xs);
-        padding: 5px 4px;
-      }
-
-      .workspace-toggle:hover {
-        color: var(--den-text);
-      }
-
       .workspace {
         background: var(--den-panel);
-        border-right: 1px solid var(--den-border);
+        grid-column: 1;
+        grid-row: 2;
         min-height: 0;
         overflow: hidden;
-        width: 280px;
       }
 
       .main {
         background: var(--den-surface);
+        grid-column: 2;
+        grid-row: 1 / -1;
         min-height: 0;
         min-width: 0;
         overflow: hidden;
@@ -186,6 +170,7 @@ const adminGroup: NavGroup = {
           border-right: 0;
           flex-direction: row;
           gap: 6px;
+          max-height: none;
           overflow-x: auto;
           overflow-y: hidden;
           padding: 8px;
@@ -195,10 +180,8 @@ const adminGroup: NavGroup = {
           display: none;
         }
 
-        .rail-group,
-        .rail-group.admin {
+        .rail-group {
           flex-direction: row;
-          margin-top: 0;
         }
 
         .rail-group-label {
@@ -207,20 +190,11 @@ const adminGroup: NavGroup = {
 
         .nav-item {
           flex: 0 0 auto;
-          font-size: var(--den-font-size-md);
           padding: 6px 9px;
-        }
-
-        .workspace-toggle {
-          align-self: center;
-          flex: 0 0 auto;
         }
 
         .workspace {
           border-bottom: 1px solid var(--den-border);
-          border-right: 0;
-          max-height: 190px;
-          width: auto;
         }
 
         .main {
@@ -234,11 +208,7 @@ const adminGroup: NavGroup = {
       <nav class="rail" aria-label="Primary">
         <h1 class="brand">Den Web</h1>
         @for (group of navGroups; track group.label) {
-          <div
-            class="rail-group"
-            [class.admin]="group.label === 'Admin'"
-            [attr.aria-label]="group.label"
-          >
+          <div class="rail-group" [attr.aria-label]="group.label">
             <span class="rail-group-label">{{ group.label }}</span>
             @for (item of group.items; track item.id) {
               <a
@@ -252,24 +222,10 @@ const adminGroup: NavGroup = {
             }
           </div>
         }
-        <button
-          type="button"
-          class="workspace-toggle"
-          [attr.aria-label]="
-            workspaceOpen() ? 'Collapse workspace panel' : 'Expand workspace panel'
-          "
-          [attr.aria-expanded]="workspaceOpen()"
-          aria-controls="workspace-panel"
-          (click)="toggleWorkspace()"
-        >
-          {{ workspaceOpen() ? '«' : '»' }}
-        </button>
       </nav>
-      @if (workspaceOpen()) {
-        <section class="workspace" id="workspace-panel">
-          <den-project-workspace-panel />
-        </section>
-      }
+      <section class="workspace">
+        <den-project-workspace-panel />
+      </section>
       <section class="main">
         <router-outlet />
       </section>
@@ -281,12 +237,7 @@ export class ShellComponent implements OnInit {
   private readonly navigationStore = inject(NAVIGATION_STORE);
   private readonly router = inject(Router);
 
-  protected readonly navGroups: readonly NavGroup[] = [
-    operateGroup,
-    libraryGroup,
-    adminGroup,
-  ];
-  protected readonly workspaceOpen = signal(true);
+  protected readonly navGroups = navGroups;
 
   private readonly tabRequestEffect = effect(() => {
     const tab = this.navigationStore.activeTabRequest();
@@ -299,9 +250,5 @@ export class ShellComponent implements OnInit {
 
   ngOnInit(): void {
     this.preferencesStore.apply();
-  }
-
-  protected toggleWorkspace(): void {
-    this.workspaceOpen.update((open) => !open);
   }
 }

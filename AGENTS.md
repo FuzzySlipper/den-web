@@ -31,8 +31,8 @@ protocol -> transport -> domain -> store -> renderer/components -> feature-* -> 
 `libs/shell` owns the real shell: `shell.routes.ts` lazy-routes each feature
 component at its own path (`/tasks`, `/messages`, ...; unknown paths redirect to
 `/tasks`), and `ShellComponent` (selector `den-root`, bootstrapped from
-`apps/den-web/src/main.ts`) renders the grouped nav rail, the collapsible
-workspace panel, and the `router-outlet`. There is no tab bar or app-level
+`apps/den-web/src/main.ts`) renders a single left rail: grouped nav links on
+top, the workspace panel docked below them, and the `router-outlet` beside it. There is no tab bar or app-level
 `@switch`; cross-feature navigation goes through `NAVIGATION_STORE`
 (`openTab`/`openMessageThread`), which the shell turns into router navigation.
 

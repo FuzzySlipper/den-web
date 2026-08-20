@@ -33,19 +33,23 @@ interface WorkspaceItem {
 
       header {
         border-bottom: 1px solid var(--den-border);
-        padding: 18px;
+        padding: 10px 12px;
       }
 
       h2 {
-        font-size: var(--den-font-size-lg);
+        color: var(--den-muted);
+        font-size: var(--den-font-size-xs);
+        font-weight: 700;
+        letter-spacing: 0.06em;
         line-height: var(--den-line-height-tight);
         margin: 0;
+        text-transform: uppercase;
       }
 
       .meta {
         color: var(--den-muted);
-        font-size: var(--den-font-size-sm);
-        margin-top: 6px;
+        font-size: var(--den-font-size-xs);
+        margin-top: 4px;
       }
 
       .scope-toggle {
@@ -53,9 +57,9 @@ interface WorkspaceItem {
         color: var(--den-muted);
         cursor: pointer;
         display: flex;
-        font-size: var(--den-font-size-sm);
-        gap: 8px;
-        margin-top: 12px;
+        font-size: var(--den-font-size-xs);
+        gap: 6px;
+        margin-top: 8px;
       }
 
       .scope-toggle input {
@@ -65,10 +69,10 @@ interface WorkspaceItem {
       .body {
         align-content: start;
         display: grid;
-        gap: 14px;
+        gap: 10px;
         min-height: 0;
         overflow: auto;
-        padding: 14px;
+        padding: 8px 10px;
       }
 
       .section-title {
@@ -93,10 +97,9 @@ interface WorkspaceItem {
         color: var(--den-text);
         cursor: pointer;
         display: grid;
-        gap: 3px;
-        min-height: 44px;
+        gap: 2px;
         min-width: 0;
-        padding: 9px 10px;
+        padding: 5px 8px;
         text-align: left;
       }
 
@@ -113,7 +116,7 @@ interface WorkspaceItem {
       }
 
       strong {
-        font-size: var(--den-font-size-md);
+        font-size: var(--den-font-size-sm);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -128,7 +131,7 @@ interface WorkspaceItem {
 
       span {
         color: var(--den-muted);
-        font-size: var(--den-font-size-sm);
+        font-size: var(--den-font-size-xs);
       }
 
       .item-id {
@@ -157,15 +160,16 @@ interface WorkspaceItem {
 
       footer {
         border-top: 1px solid var(--den-border);
-        padding: 12px 14px;
+        padding: 6px 10px;
       }
 
       .refresh {
         align-items: center;
         border-color: var(--den-border);
         display: inline-grid;
-        min-height: 36px;
-        padding: 0 12px;
+        font-size: var(--den-font-size-xs);
+        min-height: 26px;
+        padding: 0 10px;
       }
 
       @media (max-width: 840px) {
