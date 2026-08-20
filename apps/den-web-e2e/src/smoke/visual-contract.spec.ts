@@ -16,7 +16,7 @@ test('authors a transient contract and inspects a failing proof', async ({
   await mockDenServices(page);
   await mockVisualContract(page);
   await page.goto('/');
-  await page.getByRole('button', { name: 'Visual proof' }).click();
+  await page.getByRole('link', { name: 'Visual proof' }).click();
 
   await page
     .getByLabel('Import reference JSON')
@@ -93,7 +93,7 @@ test('shows an explicit missing artifact state without losing contract geometry'
       }),
   );
   await page.goto('/');
-  await page.getByRole('button', { name: 'Visual proof' }).click();
+  await page.getByRole('link', { name: 'Visual proof' }).click();
   await page
     .getByLabel('Import reference JSON')
     .setInputFiles(jsonFile('reference.json', referenceVisualContractFixture));

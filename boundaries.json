@@ -12,7 +12,7 @@
     "theme",
     "testing-fixtures"
   ],
-  "types": ["app", "lib", "feature", "testing"],
+  "types": ["app", "lib", "feature", "shell", "testing"],
   "allowedScopes": {
     "protocol": [],
     "platform": [],

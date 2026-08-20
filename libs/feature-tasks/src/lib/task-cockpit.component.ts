@@ -641,9 +641,6 @@ const taskListQuietRefreshMs = 15000;
                         </span>
                         <strong>{{ row.task.title || 'Untitled task' }}</strong>
                       </span>
-                      @if (row.task.updated_at) {
-                        <span class="meta">Updated <den-local-time [value]="row.task.updated_at" /></span>
-                      }
                     </button>
                   }
                 }

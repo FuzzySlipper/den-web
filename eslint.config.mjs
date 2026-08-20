@@ -54,9 +54,10 @@ export default [
         {
           allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$'],
           depConstraints: [
-            { sourceTag: 'type:app', onlyDependOnLibsWithTags: ['type:lib', 'type:feature'] },
+            { sourceTag: 'type:app', onlyDependOnLibsWithTags: ['type:lib', 'type:feature', 'type:shell'] },
             { sourceTag: 'type:lib', onlyDependOnLibsWithTags: ['type:lib'] },
             { sourceTag: 'type:feature', onlyDependOnLibsWithTags: ['type:lib'] },
+            { sourceTag: 'type:shell', onlyDependOnLibsWithTags: ['type:lib', 'type:feature'] },
             { sourceTag: 'type:testing', onlyDependOnLibsWithTags: ['type:app', 'type:lib', 'type:feature', 'type:testing'] },
             ...scopeConstraints,
           ],

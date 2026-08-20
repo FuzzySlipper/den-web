@@ -10,7 +10,7 @@ test.describe('live inherited features', () => {
   for (const tab of featureTabs) {
     test(`${tab} renders inherited feature surface`, async ({ page }, testInfo) => {
       await page.goto('/');
-      await page.getByRole('button', { name: tab }).click();
+      await page.getByRole('link', { name: tab }).click();
       await expect(page.getByRole('heading', { name: tab })).toBeVisible();
       await page.screenshot({ path: testInfo.outputPath(`${tab.toLowerCase()}.png`), fullPage: true });
       await writeEvidencePacket(page, testInfo, {

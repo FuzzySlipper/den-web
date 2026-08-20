@@ -31,17 +31,19 @@ test('clicks through task recent messages into message threads', async ({ page }
 
   await page.getByLabel('Recent messages').getByRole('button', { name: /Phase 4 fixture loaded/ }).click();
 
-  await expect(page.getByRole('button', { name: 'Messages' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('link', { name: 'Messages' })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByLabel('Message thread').getByText('Message fixture loaded', { exact: true })).toBeVisible();
 });
 
-test('renders canonical UTC timestamps as semantic browser-local time without changing task identity', async ({ page }) => {
+test('keeps the canonical updated timestamp in task detail without cluttering task rows', async ({ page }) => {
   await mockDenServices(page);
   await page.goto('/');
 
   const taskRow = page.getByRole('button', { name: /#3993 Den Web Angular/ });
-  const localTime = taskRow.locator('time');
+  const updatedMetric = page.getByLabel('Task detail').locator('.metric').filter({ hasText: 'Updated' });
+  const localTime = updatedMetric.locator('time');
   await expect(taskRow).toBeVisible();
+  await expect(taskRow.locator('time')).toHaveCount(0);
   await expect(localTime).toHaveAttribute('datetime', '2026-07-29T00:57:23.730966Z');
   await expect(localTime).toHaveAttribute('title', /Jul 28, 2026.*5:57:23 PM PDT/);
   await expect(localTime).not.toContainText('2026-07-29T00:57:23.730966Z');
@@ -49,6 +51,7 @@ test('renders canonical UTC timestamps as semantic browser-local time without ch
 
   await page.getByLabel('Task sort').selectOption('id');
   await expect(page.locator('.task-list .row').first()).toContainText('#3993');
+  await expect(taskRow.locator('time')).toHaveCount(0);
   await expect(localTime).toHaveAttribute('datetime', '2026-07-29T00:57:23.730966Z');
 });
 
@@ -139,7 +142,7 @@ test('selects spaces as active workspaces', async ({ page }) => {
   await page.getByRole('button', { name: /Asha Studio asha/ }).click();
 
   await expect(page.locator('.task-list').getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
-  await page.getByRole('button', { name: 'Documents' }).click();
+  await page.getByRole('link', { name: 'Documents' }).click();
   await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Asha Brief' }).first()).toBeVisible();
 });
 
@@ -158,11 +161,11 @@ test('shows archived workspaces on demand and exposes global scope views', async
   await page.getByRole('button', { name: /Global _global/ }).click();
   await expect(page.locator('.task-list').getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Documents' }).click();
+  await page.getByRole('link', { name: 'Documents' }).click();
   await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Global Brief' }).first()).toBeVisible();
   await expect(page.getByLabel('Document content').getByText('Global document fixture loaded.')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Conversation' }).click();
+  await page.getByRole('link', { name: 'Conversation' }).click();
   await expect(page.getByLabel('Channels').getByRole('button', { name: /#agent-commons/ })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('Channel chat').getByText('Agent commons fixture loaded')).toBeVisible();
 });
@@ -172,7 +175,7 @@ test('supports minimal mobile viewing navigation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
 
-  await expect(page.getByRole('button', { name: 'Tasks' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Tasks' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Den Web den-web/ })).toBeVisible();
   await page.getByRole('button', { name: /Asha Studio asha/ }).click();
   await expect(page.locator('.task-list').getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
@@ -181,7 +184,7 @@ test('supports minimal mobile viewing navigation', async ({ page }) => {
   await page.getByRole('button', { name: 'Back to tasks' }).click();
   await expect(page.locator('.task-list').getByRole('button', { name: /#4100 Asha Studio space task/ })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Documents' }).click();
+  await page.getByRole('link', { name: 'Documents' }).click();
   await expect(page.getByRole('button', { name: /Asha Brief/ })).toBeVisible();
   await page.getByRole('button', { name: /Asha Brief/ }).click();
   await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Asha Brief' }).first()).toBeVisible();
@@ -304,9 +307,9 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await mockDenServices(page);
   await page.goto('/');
 
-  await page.getByRole('button', { name: 'Preferences' }).click();
+  await page.getByRole('link', { name: 'Preferences' }).click();
   await page.getByLabel('Conversation sender identity').fill('patch');
-  await page.getByRole('button', { name: 'Conversation' }).click();
+  await page.getByRole('link', { name: 'Conversation' }).click();
   await expect(page.getByText('Conversation fixture loaded')).toBeVisible();
   await expect(page.getByText('Timeline fixture loaded')).toBeVisible();
   await expect(page.getByText('Observation tool fixture loaded')).toBeVisible();
@@ -388,12 +391,12 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
     channel_message_id: 72,
   }]);
 
-  await page.getByRole('button', { name: 'Notifications' }).click();
+  await page.getByRole('link', { name: 'Notifications' }).click();
   await expect(page.getByText('Notification fixture loaded')).toBeVisible();
   await page.getByRole('button', { name: 'Mark read' }).click();
   await expect(page.getByText('0 unread')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Messages' }).click();
+  await page.getByRole('link', { name: 'Messages' }).click();
   await expect(page.getByText('Message fixture loaded')).toBeVisible();
   await page.getByRole('button', { name: /Handoff/ }).click();
   await expect(page.getByLabel('Message thread').getByText('Message fixture loaded', { exact: true })).toBeVisible();
@@ -412,7 +415,7 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await expect(page.getByLabel('Artifact evidence').getByText('visual-evidence-overview.png')).toBeVisible();
   await expect(page.getByLabel('Artifact evidence').getByRole('img', { name: 'visual-evidence-overview.png' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Documents' }).click();
+  await page.getByRole('link', { name: 'Documents' }).click();
   await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Successor Brief' }).first()).toBeVisible();
   await expect(async () => {
     const heights = await page.getByTestId('document-list-item').evaluateAll((items) => items.map((item) => item.getBoundingClientRect().height));
@@ -480,7 +483,7 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
       guidanceEntryPostBody = request.postDataJSON();
     }
   });
-  await page.getByRole('button', { name: 'Guidance' }).click();
+  await page.getByRole('link', { name: 'Guidance' }).click();
   await expect(page.getByLabel('Guidance entries').getByText('Successor Brief')).toBeVisible();
   await expect(page.getByLabel('Guidance entries').getByText('Global Brief')).toBeVisible();
   await page.getByLabel('Guidance entries').getByRole('button', { name: /Successor Brief/ }).click();
@@ -508,16 +511,16 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await expect(page.getByLabel('Guidance entries').getByText('Successor Brief')).toHaveCount(0);
   await page.getByLabel('Workspaces').getByRole('button', { name: /Den Web/ }).click();
 
-  await page.getByRole('button', { name: 'Librarian' }).click();
+  await page.getByRole('link', { name: 'Librarian' }).click();
   await page.getByLabel('Librarian query').fill('phase 5');
   await page.getByRole('button', { name: 'Query' }).click();
   await expect(page.getByText('Librarian fixture loaded')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Agents' }).click();
+  await page.getByRole('link', { name: 'Agents' }).click();
   await expect(page.getByText('Agent fixture loaded')).toBeVisible();
   await expect(page.getByText(/Fixture degraded state/)).toBeVisible();
 
-  await page.getByRole('button', { name: 'Preferences' }).click();
+  await page.getByRole('link', { name: 'Preferences' }).click();
   await page.getByLabel('Density').selectOption('compact');
   await page.getByLabel('Dark mode').check();
   await page.getByLabel('High contrast').check();
