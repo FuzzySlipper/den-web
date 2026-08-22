@@ -25,14 +25,36 @@ test('boots the successor task cockpit', async ({ page }) => {
   await expect(page.getByLabel('Artifact evidence').getByText('1 x 1')).toBeVisible();
 });
 
-test('clicks through task recent messages into message threads', async ({ page }) => {
+test('opens task recent messages in an overlay with full details', async ({ page }) => {
   await mockDenServices(page);
   await page.goto('/');
 
-  await page.getByLabel('Recent messages').getByRole('button', { name: /Phase 4 fixture loaded/ }).click();
+  const recent = page.getByLabel('Recent messages');
+  const messageRows = recent.locator('.message-reference');
+  await expect(messageRows.first()).toContainText('Phase 4 fixture loaded');
+  await expect(messageRows).toHaveCount(2);
+  await expect(messageRows.last()).toContainText('Oldest task fixture note');
 
-  await expect(page.getByRole('link', { name: 'Messages' })).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByLabel('Message thread').getByText('Message fixture loaded', { exact: true })).toBeVisible();
+  await recent.getByRole('button', { name: /Phase 4 fixture loaded/ }).click();
+
+  const overlay = page.getByRole('dialog', { name: 'Task message' });
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toContainText('Phase 4 fixture loaded');
+  await expect(overlay).toContainText('Task #3993 · den-web · codex · handoff');
+  await expect(page.getByRole('link', { name: 'Messages' })).not.toHaveAttribute('aria-current', 'page');
+
+  await overlay.getByRole('button', { name: 'Close message details' }).click();
+  await expect(overlay).toHaveCount(0);
+
+  await recent.getByRole('button', { name: /Phase 4 fixture loaded/ }).click();
+  await expect(overlay).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(overlay).toHaveCount(0);
+
+  await recent.getByRole('button', { name: /Phase 4 fixture loaded/ }).click();
+  await expect(overlay).toBeVisible();
+  await page.locator('.message-overlay-backdrop').click({ position: { x: 8, y: 8 } });
+  await expect(overlay).toHaveCount(0);
 });
 
 test('keeps the canonical updated timestamp in task detail without cluttering task rows', async ({ page }) => {

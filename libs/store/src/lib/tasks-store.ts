@@ -13,6 +13,9 @@ import { errorState, idleState, loadingState, resultState, stateValue, type Asyn
 
 const taskUpdateAgent = 'web-ui';
 
+/** The messages service caps task message lists at 100 per request. */
+export const taskMessagesFetchLimit = 100;
+
 export interface TasksTransportPort {
   readonly listTasks: (projectId: string, options?: { readonly limit?: number; readonly status?: string; readonly tree?: boolean }) => Promise<DenResult<readonly DenTaskSummary[]>>;
   readonly getTask: (projectId: string, taskId: number) => Promise<DenResult<DenTaskDetail>>;
@@ -82,7 +85,7 @@ export function createTasksStore(transport: TasksTransportPort, messagesTranspor
       try {
         const [taskResult, messagesResult] = await Promise.all([
           transport.getTask(projectId, taskId),
-          messagesTransport.listMessages(projectId, { taskId, limit: 20 }),
+          messagesTransport.listMessages(projectId, { taskId, limit: taskMessagesFetchLimit }),
         ]);
         selectedTask.set(resultState(withTaskMessages(taskResult, messagesResult), previous));
       } catch (error) {
@@ -145,7 +148,7 @@ export function createTasksStore(transport: TasksTransportPort, messagesTranspor
     const previous = stateValue(selectedTask());
     const [taskResult, messagesResult] = await Promise.all([
       transport.getTask(projectId, taskId),
-      messagesTransport.listMessages(projectId, { taskId, limit: 20 }),
+      messagesTransport.listMessages(projectId, { taskId, limit: taskMessagesFetchLimit }),
     ]);
     selectedTask.set(resultState(withTaskMessages(taskResult, messagesResult), previous));
   }

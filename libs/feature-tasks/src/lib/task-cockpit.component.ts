@@ -6,6 +6,7 @@ import {
   artifactRetentionLabel,
   extractArtifactReferences,
   formatArtifactByteCount,
+  messageIntentLabel,
   type ArtifactReference,
   type TaskSortMode,
   type TaskStatusFilter,
@@ -18,7 +19,15 @@ import type {
   DenTaskDetail,
   DenTaskSummary,
 } from '@den-web/protocol';
-import { ARTIFACTS_STORE, DEN_CLOCK, NAVIGATION_STORE, stateValue, TASKS_STORE, WORKSPACE_STORE } from '@den-web/store';
+import {
+  ARTIFACTS_STORE,
+  DEN_CLOCK,
+  DEN_HOTKEY,
+  stateValue,
+  TASKS_STORE,
+  WORKSPACE_STORE,
+  taskMessagesFetchLimit,
+} from '@den-web/store';
 
 interface FilterOption {
   readonly value: string;
@@ -495,6 +504,92 @@ const taskListQuietRefreshMs = 15000;
         white-space: nowrap;
       }
 
+      .message-overlay-backdrop {
+        align-items: center;
+        background: rgba(18, 24, 38, 0.46);
+        box-sizing: border-box;
+        display: grid;
+        inset: 0;
+        justify-items: center;
+        padding: 24px;
+        position: fixed;
+        z-index: 40;
+      }
+
+      .message-overlay {
+        background: var(--den-panel);
+        border: 1px solid var(--den-border-strong);
+        border-radius: 8px;
+        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.24);
+        color: var(--den-text);
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        max-height: min(640px, calc(100vh - 48px));
+        max-width: min(760px, calc(100vw - 48px));
+        overflow: hidden;
+        width: 100%;
+      }
+
+      .message-overlay-head {
+        align-items: start;
+        border-bottom: 1px solid var(--den-border);
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        padding: 14px 16px;
+      }
+
+      .message-overlay-title {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
+      }
+
+      .message-overlay-title strong {
+        font-size: var(--den-font-size-md);
+        line-height: var(--den-line-height-snug);
+      }
+
+      .message-overlay-title .meta {
+        color: var(--den-muted);
+        font-size: var(--den-font-size-xs);
+        line-height: var(--den-line-height-snug);
+      }
+
+      .message-overlay-head button {
+        appearance: none;
+        background: var(--den-input);
+        border: 1px solid var(--den-border);
+        border-radius: 6px;
+        color: var(--den-text);
+        cursor: pointer;
+        flex: 0 0 auto;
+        font: inherit;
+        min-height: 32px;
+        padding: 0 12px;
+      }
+
+      .message-overlay-head button:hover,
+      .message-overlay-head button:focus-visible {
+        background: var(--den-hover);
+        border-color: var(--den-border-strong);
+        outline: none;
+      }
+
+      .message-overlay-body {
+        min-height: 0;
+        overflow: auto;
+        padding: 16px;
+      }
+
+      .message-body {
+        font: inherit;
+        line-height: var(--den-line-height-normal);
+        margin: 0 0 12px;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }
+
       .error {
         color: var(--den-danger);
       }
@@ -515,6 +610,15 @@ const taskListQuietRefreshMs = 15000;
           height: auto;
           min-height: calc(100vh - 250px);
           overflow: visible;
+        }
+
+        .message-overlay-backdrop {
+          padding: 12px;
+        }
+
+        .message-overlay {
+          max-height: calc(100vh - 24px);
+          max-width: calc(100vw - 24px);
         }
 
         .task-list {
@@ -865,10 +969,13 @@ const taskListQuietRefreshMs = 15000;
               </section>
 
               <section class="section" aria-label="Recent messages">
-                <span class="section-title">Recent messages</span>
+                <span class="section-title">Recent messages@if (selectedTaskMessageCount() > 0) { · {{ selectedTaskMessageCount() }}}</span>
                 @if ((detail.recent_messages ?? []).length === 0) {
                   <p class="state">No recent messages</p>
                 } @else {
+                  @if (selectedTaskMessageCount() >= messageWindowLimit) {
+                    <p class="state">Showing the latest {{ messageWindowLimit }} messages.</p>
+                  }
                   <ul class="recent-messages">
                     @for (message of detail.recent_messages; track message.id) {
                       <li>
@@ -893,6 +1000,33 @@ const taskListQuietRefreshMs = 15000;
         }
       </article>
 
+      @if (selectedThreadMessage(); as message) {
+        <div class="message-overlay-backdrop" role="presentation" (click)="closeThreadMessage()">
+          <section
+            class="message-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Task message"
+            (click)="$event.stopPropagation()"
+          >
+            <header class="message-overlay-head">
+              <div class="message-overlay-title">
+                <strong>{{ messageIntent(message) }}</strong>
+                <span class="meta">{{ threadMessageContext(message) }}</span>
+                @if (message.created_at) {
+                  <span class="meta"><den-local-time [value]="message.created_at" /></span>
+                }
+              </div>
+              <button type="button" aria-label="Close message details" (click)="closeThreadMessage()">Close</button>
+            </header>
+            <div class="message-overlay-body">
+              <p class="message-body">{{ message.content || message.summary || '(no content)' }}</p>
+              <den-artifact-evidence [items]="artifactEvidenceItems(artifactRefsForMessage(message))" />
+            </div>
+          </section>
+        </div>
+      }
+
       <den-markdown-editor-dialog
         title="Edit Description"
         [open]="descriptionEditorOpen()"
@@ -907,7 +1041,7 @@ export class TaskCockpitComponent {
   private readonly workspace = inject(WORKSPACE_STORE);
   private readonly taskStore = inject(TASKS_STORE);
   private readonly artifacts = inject(ARTIFACTS_STORE);
-  private readonly navigation = inject(NAVIGATION_STORE);
+  private readonly hotkeys = inject(DEN_HOTKEY);
   private readonly clock = inject(DEN_CLOCK);
   private loadedProjectId: string | null = null;
   private keepDetailPaneForProjectChange = false;
@@ -931,6 +1065,11 @@ export class TaskCockpitComponent {
   protected readonly acceptanceIdempotencyKey = signal('');
   protected readonly acceptanceError = signal<string | null>(null);
   protected readonly mobilePane = signal<MobilePane>('list');
+  protected readonly selectedThreadMessage = signal<DenMessage | null>(null);
+  protected readonly messageWindowLimit = taskMessagesFetchLimit;
+  protected readonly selectedTaskMessageCount = computed(
+    () => stateValue(this.selectedTask())?.recent_messages?.length ?? 0,
+  );
   protected readonly tasksError = computed(() => {
     const state = this.tasks();
     return state.kind === 'error' ? state.error : null;
@@ -989,6 +1128,12 @@ export class TaskCockpitComponent {
     for (const message of this.selectedTaskDetail()?.recent_messages ?? []) {
       for (const ref of this.artifactRefsForMessage(message)) void this.artifacts.load(ref.ref);
     }
+  });
+
+  private readonly messageOverlayEscapeEffect = effect((onCleanup) => {
+    if (this.selectedThreadMessage() === null) return;
+    const unbind = this.hotkeys.bind({ key: 'Escape', handler: () => this.closeThreadMessage() });
+    onCleanup(() => unbind());
   });
 
   protected setQuery(event: Event): void {
@@ -1189,10 +1334,20 @@ export class TaskCockpitComponent {
   }
 
   protected openMessage(message: DenMessage): void {
-    const projectId = message.project_id ?? this.selectedProjectId();
-    const threadId = message.thread_id ?? message.id;
-    if (!projectId) return;
-    this.navigation.openMessageThread({ projectId, threadId, messageId: message.id });
+    this.selectedThreadMessage.set(message);
+  }
+
+  protected closeThreadMessage(): void {
+    this.selectedThreadMessage.set(null);
+  }
+
+  protected messageIntent(message: DenMessage): string {
+    return messageIntentLabel(message.intent);
+  }
+
+  protected threadMessageContext(message: DenMessage): string {
+    const projectId = message.project_id ?? this.selectedProjectId() ?? 'unknown project';
+    return `Task #${message.task_id ?? '?'} · ${projectId} · ${this.messageMeta(message)}`;
   }
 
   protected messageTitle(message: DenMessage): string {

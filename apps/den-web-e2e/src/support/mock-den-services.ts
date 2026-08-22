@@ -165,7 +165,8 @@ const taskDetail = {
   recent_messages: [],
 };
 const notifications = [{ id: 9, project_id: 'den-web', task_id: 3993, sender: 'den-services', content: 'Notification fixture loaded', urgency: 'normal', is_read: false, created_at: '2026-07-02T00:00:00Z', metadata: null }];
-const taskMessages = [{ id: 2, project_id: 'den-web', task_id: 3993, thread_id: 1, sender: 'codex', intent: 'handoff', content: 'Phase 4 fixture loaded', metadata: artifactPacket, created_at: '2026-07-02T00:01:00Z' }];
+const olderTaskMessage = { id: 1, project_id: 'den-web', task_id: 3993, thread_id: 1, sender: 'den-web', intent: 'note', content: 'Oldest task fixture note', metadata: null, created_at: '2026-07-01T23:59:00Z' };
+const taskMessages = [{ id: 2, project_id: 'den-web', task_id: 3993, thread_id: 1, sender: 'codex', intent: 'handoff', content: 'Phase 4 fixture loaded', metadata: artifactPacket, created_at: '2026-07-02T00:01:00Z' }, olderTaskMessage];
 const primaryMessage = { id: 10, project_id: 'den-web', task_id: 3993, thread_id: 1, sender: 'codex', intent: 'handoff', content: 'Message fixture loaded', metadata: artifactPacket, created_at: '2026-07-02T00:00:00Z' };
 const extraMessages = Array.from({ length: 48 }, (_, index) => ({
   id: 100 + index,

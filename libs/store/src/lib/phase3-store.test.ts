@@ -28,6 +28,7 @@ import {
   createWorkspaceStore,
   NOTIFICATION_READ_CACHE_KEY,
   stateValue,
+  taskMessagesFetchLimit,
 } from '../index';
 
 const ok = <T>(value: T): DenResult<T> => ({ ok: true, value });
@@ -171,6 +172,25 @@ describe('successor signal stores', () => {
     expect(store.rows().map((row) => row.task.id)).toEqual([10, 3992]);
     store.setFlat(true);
     expect(store.rows()[0]?.parent?.id).toBe(10);
+  });
+
+  it('fetches the full task message window when selecting a task', async () => {
+    const messageOptions: unknown[] = [];
+    const store = createTasksStore({
+      listTasks: async () => ok([taskFixture({ id: 7 })]),
+      getTask: async (_projectId, taskId) => ok(taskDetailFixture({ task: taskFixture({ id: taskId }) })),
+      updateTask: async () => ok(undefined),
+      recordHumanAcceptance: unexpectedHumanAcceptance,
+    }, {
+      listMessages: async (_projectId, options) => {
+        messageOptions.push(options);
+        return ok([]);
+      },
+    });
+
+    await store.selectTask('den-web', 7);
+
+    expect(messageOptions).toEqual([{ taskId: 7, limit: taskMessagesFetchLimit }]);
   });
 
   it('switches task list sorting between priority and id', async () => {

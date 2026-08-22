@@ -104,6 +104,22 @@ export const browserPopup = (): PopupPort => ({
   },
 });
 
+export const browserHotkey = (): HotkeyPort => ({
+  bind: (binding) => {
+    const listener = (event: KeyboardEvent): void => {
+      if (event.key !== binding.key) return;
+      if (binding.ctrlKey && !event.ctrlKey) return;
+      if (binding.metaKey && !event.metaKey) return;
+      if (binding.altKey && !event.altKey) return;
+      if (binding.shiftKey && !event.shiftKey) return;
+      event.preventDefault();
+      binding.handler();
+    };
+    window.addEventListener('keydown', listener);
+    return () => window.removeEventListener('keydown', listener);
+  },
+});
+
 export const browserFileExchange = (): FileExchangePort => ({
   readText: (file) => file.text(),
   downloadJson: (filename, content) => {

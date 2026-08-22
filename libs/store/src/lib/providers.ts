@@ -8,10 +8,12 @@ import {
   browserDocumentEffects,
   browserEventStream,
   browserFileExchange,
+  browserHotkey,
   browserStorage,
   type ClockPort,
   type EventStreamPort,
   type FileExchangePort,
+  type HotkeyPort,
 } from '@den-web/platform';
 import type { RuntimeApiConfig } from '@den-web/protocol';
 import { defaultRuntimeApiConfig } from '@den-web/protocol';
@@ -58,6 +60,7 @@ export const DEN_RUNTIME_CONFIG = new InjectionToken<RuntimeApiConfig>(
   'DEN_RUNTIME_CONFIG',
 );
 export const DEN_CLOCK = new InjectionToken<ClockPort>('DEN_CLOCK');
+export const DEN_HOTKEY = new InjectionToken<HotkeyPort>('DEN_HOTKEY');
 export const DEN_EVENT_STREAM = new InjectionToken<EventStreamPort>(
   'DEN_EVENT_STREAM',
 );
@@ -116,6 +119,7 @@ export function provideDenStoreKernel(
   return makeEnvironmentProviders([
     { provide: DEN_RUNTIME_CONFIG, useValue: config },
     { provide: DEN_CLOCK, useValue: browserClock },
+    { provide: DEN_HOTKEY, useFactory: () => browserHotkey() },
     { provide: DEN_FILE_EXCHANGE, useFactory: () => browserFileExchange() },
     { provide: DEN_EVENT_STREAM, useFactory: () => browserEventStream() },
     {
