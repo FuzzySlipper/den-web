@@ -93,6 +93,31 @@ describe('successor signal stores', () => {
     expect(spaceOptions).toEqual([{}, { includeHidden: true, includeArchived: true }, {}]);
   });
 
+  it('starts with spaces hidden and toggles them without refetching', async () => {
+    let projectFetches = 0;
+    const store = createWorkspaceStore({
+      listProjects: async () => {
+        projectFetches += 1;
+        return ok([projectFixture()]);
+      },
+      listSpaces: async () => ok([
+        spaceFixture(),
+        spaceFixture({ id: 'asha', name: 'Asha Studio', kind: 'personal' }),
+      ]),
+    }, fakeClock());
+
+    await store.refresh();
+
+    expect(store.showSpaces()).toBe(false);
+
+    store.setShowSpaces(true);
+    expect(store.showSpaces()).toBe(true);
+
+    store.setShowSpaces(false);
+    expect(store.showSpaces()).toBe(false);
+    expect(projectFetches).toBe(1);
+  });
+
   it('keeps the synthetic global workspace selectable without a backing project row', async () => {
     const store = createWorkspaceStore({
       listProjects: async () => ok([]),

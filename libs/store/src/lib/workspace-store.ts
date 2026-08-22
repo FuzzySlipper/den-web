@@ -17,11 +17,14 @@ export interface WorkspaceStore {
   readonly projects: Signal<AsyncState<readonly DenProject[]>>;
   readonly spaces: Signal<AsyncState<readonly DenSpace[]>>;
   readonly includeArchivedHidden: Signal<boolean>;
+  /** Display filter for the merged workspace list; toggling it never refetches. */
+  readonly showSpaces: Signal<boolean>;
   readonly selectedProjectId: Signal<string | null>;
   readonly selectedSpaceId: Signal<string | null>;
   readonly selectedProject: Signal<DenProject | null>;
   readonly refresh: () => Promise<void>;
   readonly setIncludeArchivedHidden: (enabled: boolean) => void;
+  readonly setShowSpaces: (enabled: boolean) => void;
   readonly selectProject: (projectId: string | null) => void;
   readonly selectSpace: (spaceId: string | null) => void;
   readonly startPolling: (cadenceMs?: number) => () => void;
@@ -31,6 +34,7 @@ export function createWorkspaceStore(transport: WorkspaceTransportPort, clock: C
   const projects = signal<AsyncState<readonly DenProject[]>>(idleState());
   const spaces = signal<AsyncState<readonly DenSpace[]>>(idleState());
   const includeArchivedHidden = signal(false);
+  const showSpaces = signal(false);
   const selectedProjectId = signal<string | null>(null);
   const selectedSpaceId = signal<string | null>(null);
   let stopped = true;
@@ -71,6 +75,7 @@ export function createWorkspaceStore(transport: WorkspaceTransportPort, clock: C
     projects: projects.asReadonly(),
     spaces: spaces.asReadonly(),
     includeArchivedHidden: includeArchivedHidden.asReadonly(),
+    showSpaces: showSpaces.asReadonly(),
     selectedProjectId: selectedProjectId.asReadonly(),
     selectedSpaceId: selectedSpaceId.asReadonly(),
     selectedProject: computed(() => stateValue(projects())?.find((project) => project.id === selectedProjectId()) ?? null),
@@ -78,6 +83,9 @@ export function createWorkspaceStore(transport: WorkspaceTransportPort, clock: C
     setIncludeArchivedHidden: (enabled) => {
       includeArchivedHidden.set(enabled);
       void refresh();
+    },
+    setShowSpaces: (enabled) => {
+      showSpaces.set(enabled);
     },
     selectProject: (projectId) => {
       selectedProjectId.set(projectId);

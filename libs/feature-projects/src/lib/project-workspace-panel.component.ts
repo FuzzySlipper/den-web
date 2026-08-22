@@ -1,15 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import type { OnDestroy, OnInit } from '@angular/core';
-import { DEN_GLOBAL_PROJECT_ID, type DenProject, type DenSpace } from '@den-web/protocol';
 import { stateValue, WORKSPACE_STORE } from '@den-web/store';
-
-interface WorkspaceItem {
-  readonly id: string;
-  readonly kind: string | undefined;
-  readonly name: string | undefined;
-  readonly source: 'global' | 'project' | 'space';
-  readonly visibility: string | undefined;
-}
+import { workspaceItems, type WorkspaceItem } from './workspace-items';
 
 @Component({
   selector: 'den-project-workspace-panel',
@@ -233,6 +225,14 @@ interface WorkspaceItem {
           />
           <span>Show archived and hidden</span>
         </label>
+        <label class="scope-toggle">
+          <input
+            type="checkbox"
+            [checked]="showSpaces()"
+            (change)="setShowSpaces($event)"
+          />
+          <span>Show spaces</span>
+        </label>
       </header>
 
       <div class="body">
@@ -281,9 +281,12 @@ export class ProjectWorkspacePanelComponent implements OnInit, OnDestroy {
   protected readonly selectedProjectId = this.workspace.selectedProjectId;
   protected readonly selectedSpaceId = this.workspace.selectedSpaceId;
   protected readonly includeArchivedHidden = this.workspace.includeArchivedHidden;
+  protected readonly showSpaces = this.workspace.showSpaces;
   protected readonly projectItems = computed(() => stateValue(this.projects()) ?? []);
   protected readonly spaceItems = computed(() => stateValue(this.spaces()) ?? []);
-  protected readonly workspaceItems = computed(() => workspaceItems(this.projectItems(), this.spaceItems()));
+  protected readonly workspaceItems = computed(() =>
+    workspaceItems(this.projectItems(), this.spaceItems(), this.showSpaces()),
+  );
   protected readonly loading = computed(() => this.projects().kind === 'loading' || this.spaces().kind === 'loading');
   protected readonly loadError = computed(() => {
     const state = this.projects();
@@ -308,6 +311,10 @@ export class ProjectWorkspacePanelComponent implements OnInit, OnDestroy {
     this.workspace.setIncludeArchivedHidden(eventTargetChecked(event));
   }
 
+  protected setShowSpaces(event: Event): void {
+    this.workspace.setShowSpaces(eventTargetChecked(event));
+  }
+
   protected selectWorkspace(item: WorkspaceItem): void {
     if (item.source === 'space') {
       this.workspace.selectSpace(item.id);
@@ -324,44 +331,6 @@ export class ProjectWorkspacePanelComponent implements OnInit, OnDestroy {
     if (!error) return 'unknown: Unable to load';
     return `${error.kind}: ${error.message}`;
   }
-}
-
-function workspaceItems(projects: readonly DenProject[], spaces: readonly DenSpace[]): readonly WorkspaceItem[] {
-  const byId = new Map<string, WorkspaceItem>();
-  const globalItem: WorkspaceItem = {
-    id: DEN_GLOBAL_PROJECT_ID,
-    kind: 'global',
-    name: 'Global',
-    source: 'global',
-    visibility: 'normal',
-  };
-  for (const space of spaces) {
-    byId.set(space.id, {
-      id: space.id,
-      kind: space.kind,
-      name: space.name,
-      source: 'space',
-      visibility: space.visibility,
-    });
-  }
-  for (const project of projects) {
-    if (byId.has(project.id)) continue;
-    byId.set(project.id, {
-      id: project.id,
-      kind: project.visibility,
-      name: project.name,
-      source: 'project',
-      visibility: project.visibility,
-    });
-  }
-  return [
-    globalItem,
-    ...[...byId.values()].sort((left, right) => displayName(left).localeCompare(displayName(right))),
-  ];
-}
-
-function displayName(item: WorkspaceItem): string {
-  return item.name || item.id;
 }
 
 function eventTargetChecked(event: Event): boolean {
