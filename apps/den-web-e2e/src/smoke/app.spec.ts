@@ -313,6 +313,89 @@ test('records human acceptance through the task detail with authoritative readba
   await page.screenshot({ path: testInfo.outputPath('human-acceptance-readback.png'), fullPage: true });
 });
 
+test('does not offer manual review for a non-review task', async ({ page }) => {
+  await mockDenServices(page);
+  await page.goto('/');
+
+  await page.getByRole('button', { name: /#3993 Den Web Angular/ }).click();
+  await expect(page.getByLabel('Task detail').getByRole('heading', { name: /#3993 Den Web Angular/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Send to review queue' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Request best-effort review' })).toHaveCount(0);
+});
+
+test('sends an exact-source review from a review task', async ({ page }) => {
+  await mockDenServices(page);
+  await page.goto('/');
+
+  await page.getByRole('button', { name: /#4250 Exact review fixture task/ }).click();
+  await expect(page.getByLabel('Task detail').getByRole('heading', { name: /#4250 Exact review fixture task/ })).toBeVisible();
+  const reviewButton = page.getByRole('button', { name: 'Send to review queue' });
+  await expect(reviewButton).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Request best-effort review' })).toHaveCount(0);
+
+  await reviewButton.click();
+
+  await expect(page.getByText('Review request submitted')).toBeVisible();
+  await expect(page.getByText('Exact review queued.')).toBeVisible();
+});
+
+test('retries a failed manual review capability read', async ({ page }) => {
+  await mockDenServices(page);
+  let capabilityReads = 0;
+  await page.route('**/api/v1/projects/den-web/tasks/4251/manual-review', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fallback();
+      return;
+    }
+    capabilityReads += 1;
+    if (capabilityReads === 1) {
+      await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'temporary capability fixture failure' }) });
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: /#4251 Best-effort review fixture task/ }).click();
+  await expect(page.getByRole('alert')).toContainText('503');
+  await expect(page.getByRole('button', { name: 'Request best-effort review' })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Retry' }).click();
+  await expect(page.getByRole('button', { name: 'Request best-effort review' })).toBeVisible();
+  expect(capabilityReads).toBe(2);
+});
+
+test('retries a best-effort review with the same idempotency key', async ({ page }) => {
+  await mockDenServices(page);
+  const idempotencyKeys: string[] = [];
+  await page.route('**/api/v1/projects/den-web/tasks/4251/manual-review', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.fallback();
+      return;
+    }
+    const key = route.request().headers()['idempotency-key'];
+    if (key) idempotencyKeys.push(key);
+    if (idempotencyKeys.length === 1) {
+      await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'temporary review fixture failure' }) });
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: /#4251 Best-effort review fixture task/ }).click();
+  const reviewButton = page.getByRole('button', { name: 'Request best-effort review' });
+  await expect(reviewButton).toBeVisible();
+  await reviewButton.click();
+  await expect(page.getByRole('alert')).toContainText('503');
+
+  await reviewButton.click();
+  await expect(page.getByText('Review request submitted')).toBeVisible();
+  await expect(page.getByText('Best-effort review queued against current main.')).toBeVisible();
+  expect(idempotencyKeys).toHaveLength(2);
+  expect(idempotencyKeys[0]).toBe(idempotencyKeys[1]);
+});
+
 test('does not offer human acceptance from an archived read-only project', async ({ page }) => {
   await mockDenServices(page);
   await page.goto('/');
@@ -323,6 +406,8 @@ test('does not offer human acceptance from an archived read-only project', async
   await expect(page.getByLabel('Task detail').getByRole('heading', { name: /#4200 Archived read-only fixture task/ })).toBeVisible();
   await expect(page.getByLabel('Human acceptance').getByText('Read-only project')).toBeVisible();
   await expect(page.getByLabel('Human acceptance').getByRole('button', { name: 'Looks good' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Send to review queue' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Request best-effort review' })).toHaveCount(0);
 });
 
 test('renders inherited feature tabs through successor fixtures', async ({ page }) => {

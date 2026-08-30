@@ -7,6 +7,8 @@ import type {
   DenDocumentDetail,
   DenDocumentSummary,
   DenGuidanceEntry,
+  DenManualReviewCapability,
+  DenManualReviewReceipt,
   DenNotification,
   DenObservationLane,
   DenProject,
@@ -279,6 +281,223 @@ describe('successor signal stores', () => {
     expect(stateValue(store.selectedTask())?.task.status).toBe('done');
   });
 
+  it('invalidates a stale manual review capability when a selected task leaves review', async () => {
+    let releaseCapability: ((result: DenResult<DenManualReviewCapability>) => void) | null = null;
+    let capabilityStarted: (() => void) | null = null;
+    let releaseTaskList: ((result: DenResult<readonly DenTaskSummary[]>) => void) | null = null;
+    const capabilityReady = new Promise<void>((resolve) => { capabilityStarted = resolve; });
+    const store = createTasksStore({
+      listTasks: async () => new Promise((resolve) => { releaseTaskList = resolve; }),
+      getTask: async (_projectId, taskId) => ok(taskDetailFixture({
+        task: taskFixture({ id: taskId, status: 'review', updated_at: '2026-08-29T01:00:00Z' }),
+      })),
+      updateTask: async () => ok(undefined),
+      recordHumanAcceptance: unexpectedHumanAcceptance,
+      getManualReviewCapability: async () => {
+        capabilityStarted?.();
+        return new Promise((resolve) => { releaseCapability = resolve; });
+      },
+    }, {
+      listMessages: async () => ok([]),
+    });
+
+    const selection = store.selectTask('den-web', 4120);
+    await capabilityReady;
+    const refresh = store.refresh('den-web');
+    releaseTaskList?.(ok([taskFixture({ id: 4120, status: 'done', updated_at: '2026-08-29T02:00:00Z' })]));
+    await refresh;
+
+    expect(stateValue(store.selectedTask())?.task.status).toBe('done');
+    expect(store.manualReviewCapability().kind).toBe('idle');
+    expect(store.manualReviewResult().kind).toBe('idle');
+
+    releaseCapability?.(ok({ eligible: true, mode: 'exact' }));
+    await selection;
+
+    expect(store.manualReviewCapability().kind).toBe('idle');
+  });
+
+  it('reloads manual review capability when a selected review task gets a new revision', async () => {
+    let capabilityCalls = 0;
+    let releaseSecondCapability: ((result: DenResult<DenManualReviewCapability>) => void) | null = null;
+    const store = createTasksStore({
+      listTasks: async () => ok([taskFixture({ id: 4121, status: 'review', updated_at: '2026-08-29T02:00:00Z' })]),
+      getTask: async (_projectId, taskId) => ok(taskDetailFixture({
+        task: taskFixture({ id: taskId, status: 'review', updated_at: '2026-08-29T01:00:00Z' }),
+      })),
+      updateTask: async () => ok(undefined),
+      recordHumanAcceptance: unexpectedHumanAcceptance,
+      getManualReviewCapability: async () => {
+        capabilityCalls += 1;
+        if (capabilityCalls === 1) return ok({ eligible: true, mode: 'exact' as const });
+        return new Promise((resolve) => { releaseSecondCapability = resolve; });
+      },
+      submitManualReview: async () => ({
+        ok: false,
+        error: { kind: 'server' as const, message: 'submission failed', status: 503 },
+      }),
+    }, {
+      listMessages: async () => ok([]),
+    });
+
+    await store.selectTask('den-web', 4121);
+    await store.submitManualReview('den-web', 4121, 'revision-refresh-key');
+    expect(store.manualReviewResult().kind).toBe('error');
+
+    await store.refresh('den-web');
+    expect(stateValue(store.selectedTask())?.task.updated_at).toBe('2026-08-29T02:00:00Z');
+    expect(store.manualReviewCapability().kind).toBe('loading');
+    expect(stateValue(store.manualReviewCapability())).toBeUndefined();
+    expect(store.manualReviewResult().kind).toBe('idle');
+
+    releaseSecondCapability?.(ok({ eligible: true, mode: 'best_effort' }));
+    await eventually(() => stateValue(store.manualReviewCapability())?.mode === 'best_effort');
+    expect(capabilityCalls).toBe(2);
+  });
+
+  it('keeps an in-flight human acceptance valid across a review freshness refresh', async () => {
+    let listRefreshes = 0;
+    let detailReads = 0;
+    let releaseAcceptance: ((result: DenResult<DenRecordHumanAcceptanceResponse>) => void) | null = null;
+    const acceptedTask = taskFixture({ id: 4122, status: 'done', updated_at: '2026-08-29T03:00:00Z' });
+    const acceptanceResponse: DenRecordHumanAcceptanceResponse = {
+      acceptance: {
+        id: 8122,
+        task_id: 4122,
+        project_id: 'den-web',
+        reviewer_identity: 'human',
+        verdict: 'looks_good',
+        rationale: 'Verified the current review state.',
+        lifecycle_effect: 'complete_task',
+        note_markdown: '## Human acceptance: Looks good',
+        task_status_before: 'review',
+        task_status_after: 'done',
+        created_at: '2026-08-29T03:00:00Z',
+      },
+      task: acceptedTask,
+      changed_task_ids: [4122],
+      unchanged_task_ids: [],
+      independent_review_state: {
+        agent_review_rounds_changed: false,
+        agent_findings_changed: false,
+        github_gates_changed: false,
+      },
+      warnings: [],
+      audit_handle: 'human-acceptance:8122',
+    };
+    const store = createTasksStore({
+      listTasks: async () => {
+        listRefreshes += 1;
+        return ok([taskFixture({
+          id: 4122,
+          status: 'review',
+          updated_at: listRefreshes === 1 ? '2026-08-29T01:00:00Z' : '2026-08-29T02:00:00Z',
+        })]);
+      },
+      getTask: async (_projectId, taskId) => {
+        detailReads += 1;
+        return ok(taskDetailFixture({
+          task: detailReads === 1
+            ? taskFixture({ id: taskId, status: 'review', updated_at: '2026-08-29T01:00:00Z' })
+            : acceptedTask,
+        }));
+      },
+      updateTask: async () => ok(undefined),
+      recordHumanAcceptance: async () => new Promise((resolve) => { releaseAcceptance = resolve; }),
+      getManualReviewCapability: async () => ok({ eligible: true, mode: 'exact' as const }),
+    }, {
+      listMessages: async () => ok([]),
+    });
+    const request = {
+      reviewer_identity: 'human',
+      verdict: 'looks_good' as const,
+      rationale: 'Verified the current review state.',
+      lifecycle_effect: 'complete_task' as const,
+      idempotency_key: 'acceptance-refresh-key',
+    };
+
+    await store.refresh('den-web');
+    await store.selectTask('den-web', 4122);
+    const acceptance = store.recordHumanAcceptance('den-web', 4122, request);
+    expect(store.humanAcceptanceResult().kind).toBe('loading');
+
+    await store.refresh('den-web');
+    expect(stateValue(store.selectedTask())?.task.updated_at).toBe('2026-08-29T02:00:00Z');
+    expect(store.humanAcceptanceResult().kind).toBe('loading');
+
+    releaseAcceptance?.(ok(acceptanceResponse));
+    const result = await acceptance;
+
+    expect(result.ok).toBe(true);
+    expect(store.humanAcceptanceResult().kind).toBe('data');
+    expect(stateValue(store.selectedTask())?.task.status).toBe('done');
+  });
+
+  it('invalidates an in-flight manual capability when updateTask leaves review', async () => {
+    let releaseCapability: ((result: DenResult<DenManualReviewCapability>) => void) | null = null;
+    let capabilityStarted: (() => void) | null = null;
+    const capabilityReady = new Promise<void>((resolve) => { capabilityStarted = resolve; });
+    const store = createTasksStore({
+      listTasks: async () => ok([]),
+      getTask: async (_projectId, taskId) => ok(taskDetailFixture({
+        task: taskFixture({ id: taskId, status: 'review', updated_at: '2026-08-29T01:00:00Z' }),
+      })),
+      updateTask: async (_projectId, taskId, patch) => ok(taskDetailFixture({
+        task: taskFixture({ id: taskId, status: patch.status ?? 'review', updated_at: '2026-08-29T02:00:00Z' }),
+      })),
+      recordHumanAcceptance: unexpectedHumanAcceptance,
+      getManualReviewCapability: async () => {
+        capabilityStarted?.();
+        return new Promise((resolve) => { releaseCapability = resolve; });
+      },
+    }, {
+      listMessages: async () => ok([]),
+    });
+
+    const selection = store.selectTask('den-web', 4130);
+    await capabilityReady;
+    await store.updateTaskStatus('den-web', 4130, 'done');
+
+    expect(stateValue(store.selectedTask())?.task.status).toBe('done');
+    expect(store.manualReviewCapability().kind).toBe('idle');
+
+    releaseCapability?.(ok({ eligible: true, mode: 'exact' }));
+    await selection;
+
+    expect(store.manualReviewCapability().kind).toBe('idle');
+  });
+
+  it('invalidates an in-flight manual submission when updateTask changes review description', async () => {
+    let releaseSubmission: ((result: DenResult<DenManualReviewReceipt>) => void) | null = null;
+    const store = createTasksStore({
+      listTasks: async () => ok([]),
+      getTask: async (_projectId, taskId) => ok(taskDetailFixture({
+        task: taskFixture({ id: taskId, status: 'review', description: 'original description' }),
+      })),
+      updateTask: async (_projectId, taskId) => ok(taskDetailFixture({
+        task: taskFixture({ id: taskId, status: 'review', description: 'updated description' }),
+      })),
+      recordHumanAcceptance: unexpectedHumanAcceptance,
+      getManualReviewCapability: async () => ok({ eligible: true, mode: 'exact' as const }),
+      submitManualReview: async () => new Promise((resolve) => { releaseSubmission = resolve; }),
+    }, {
+      listMessages: async () => ok([]),
+    });
+
+    await store.selectTask('den-web', 4131);
+    const submission = store.submitManualReview('den-web', 4131, 'update-description-key');
+    expect(store.manualReviewResult().kind).toBe('loading');
+
+    await store.updateTaskDescription('den-web', 4131, 'updated description');
+    expect(stateValue(store.selectedTask())?.task.description).toBe('updated description');
+    expect(store.manualReviewResult().kind).toBe('idle');
+
+    releaseSubmission?.(ok({ mode: 'exact', status: 'queued', message: 'Stale submission receipt.' }));
+    await submission;
+
+    expect(store.manualReviewResult().kind).toBe('idle');
+  });
+
   it('loads task-scoped messages into selected task details', async () => {
     const store = createTasksStore({
       listTasks: async () => ok([taskFixture({ id: 4104, status: 'review' })]),
@@ -306,6 +525,156 @@ describe('successor signal stores', () => {
 
     expect(stateValue(store.selectedTask())?.recent_messages?.[0]?.content).toContain('ready for review');
     expect(stateValue(store.selectedTask())?.task.status).toBe('review');
+  });
+
+  it('loads manual review capability only for review tasks', async () => {
+    const capabilityRequests: number[] = [];
+    const store = createTasksStore({
+      listTasks: async () => ok([]),
+      getTask: async (_projectId, taskId) => ok(taskDetailFixture({
+        task: taskFixture({ id: taskId, status: taskId === 4105 ? 'review' : 'in_progress' }),
+      })),
+      updateTask: async () => ok(undefined),
+      recordHumanAcceptance: unexpectedHumanAcceptance,
+      getManualReviewCapability: async (_projectId, taskId) => {
+        capabilityRequests.push(taskId);
+        return ok(taskId === 4105
+          ? {
+            eligible: true,
+            mode: 'best_effort' as const,
+            label: 'Request best-effort review',
+            detail: 'Review current main against the task context.',
+          }
+          : {
+            eligible: false,
+            mode: 'exact' as const,
+          });
+      },
+    }, {
+      listMessages: async () => ok([]),
+    });
+
+    await store.selectTask('den-web', 4104);
+    expect(store.manualReviewCapability().kind).toBe('idle');
+
+    await store.selectTask('den-web', 4105);
+    expect(capabilityRequests).toEqual([4105]);
+    expect(stateValue(store.manualReviewCapability())?.mode).toBe('best_effort');
+  });
+
+  it('suppresses duplicate manual review submissions while allowing a stable-key retry', async () => {
+    const submissionKeys: string[] = [];
+    let submissionCount = 0;
+    const store = createTasksStore({
+      listTasks: async () => ok([]),
+      getTask: async (_projectId, taskId) => ok(taskDetailFixture({ task: taskFixture({ id: taskId, status: 'review' }) })),
+      updateTask: async () => ok(undefined),
+      recordHumanAcceptance: unexpectedHumanAcceptance,
+      getManualReviewCapability: async () => ok({ eligible: true, mode: 'exact' as const }),
+      submitManualReview: async (_projectId, _taskId, idempotencyKey) => {
+        submissionCount += 1;
+        submissionKeys.push(idempotencyKey);
+        return {
+          ok: false,
+          error: { kind: 'server' as const, message: `attempt ${submissionCount}`, status: 503 },
+        };
+      },
+    }, {
+      listMessages: async () => ok([]),
+    });
+
+    await store.selectTask('den-web', 4105);
+    const firstAttempt = store.submitManualReview('den-web', 4105, 'stable-review-key');
+    const duplicateAttempt = store.submitManualReview('den-web', 4105, 'stable-review-key');
+    expect(duplicateAttempt).toBe(firstAttempt);
+    await Promise.all([firstAttempt, duplicateAttempt]);
+
+    const retryAttempt = store.submitManualReview('den-web', 4105, 'stable-review-key');
+    await retryAttempt;
+
+    expect(submissionCount).toBe(2);
+    expect(submissionKeys).toEqual(['stable-review-key', 'stable-review-key']);
+    expect(store.manualReviewResult().kind).toBe('error');
+  });
+
+  it('retries a failed manual review capability read without reloading task detail', async () => {
+    let capabilityCalls = 0;
+    const store = createTasksStore({
+      listTasks: async () => ok([]),
+      getTask: async (_projectId, taskId) => ok(taskDetailFixture({ task: taskFixture({ id: taskId, status: 'review' }) })),
+      updateTask: async () => ok(undefined),
+      recordHumanAcceptance: unexpectedHumanAcceptance,
+      getManualReviewCapability: async () => {
+        capabilityCalls += 1;
+        return capabilityCalls === 1
+          ? { ok: false, error: { kind: 'server', message: 'temporary capability failure', status: 503 } }
+          : ok({ eligible: true, mode: 'best_effort' as const });
+      },
+    }, {
+      listMessages: async () => ok([]),
+    });
+
+    await store.selectTask('den-web', 4110);
+    expect(store.manualReviewCapability().kind).toBe('error');
+    await store.refreshManualReviewCapability('den-web', 4110);
+
+    expect(capabilityCalls).toBe(2);
+    expect(stateValue(store.manualReviewCapability())?.mode).toBe('best_effort');
+  });
+
+  it('ignores a stale task and capability response after a rapid task switch', async () => {
+    let releaseFirstCapability: ((result: DenResult<{ readonly eligible: boolean; readonly mode: 'exact' | 'best_effort' }>) => void) | null = null;
+    let firstCapabilityStarted: (() => void) | null = null;
+    const firstCapabilityReady = new Promise<void>((resolve) => { firstCapabilityStarted = resolve; });
+    const store = createTasksStore({
+      listTasks: async () => ok([]),
+      getTask: async (_projectId, taskId) => ok(taskDetailFixture({ task: taskFixture({ id: taskId, status: 'review' }) })),
+      updateTask: async () => ok(undefined),
+      recordHumanAcceptance: unexpectedHumanAcceptance,
+      getManualReviewCapability: async (_projectId, taskId) => {
+        if (taskId === 4111) {
+          firstCapabilityStarted?.();
+          return new Promise((resolve) => { releaseFirstCapability = resolve; });
+        }
+        return ok({ eligible: true, mode: 'best_effort' as const });
+      },
+    }, {
+      listMessages: async () => ok([]),
+    });
+
+    const firstSelection = store.selectTask('den-web', 4111);
+    await firstCapabilityReady;
+    const secondSelection = store.selectTask('den-web', 4112);
+    await secondSelection;
+    releaseFirstCapability?.(ok({ eligible: true, mode: 'exact' }));
+    await firstSelection;
+
+    expect(stateValue(store.selectedTask())?.task.id).toBe(4112);
+    expect(stateValue(store.manualReviewCapability())?.mode).toBe('best_effort');
+  });
+
+  it('ignores a stale manual review receipt after switching tasks', async () => {
+    let releaseSubmission: ((result: DenResult<DenManualReviewReceipt>) => void) | null = null;
+    const store = createTasksStore({
+      listTasks: async () => ok([]),
+      getTask: async (_projectId, taskId) => ok(taskDetailFixture({ task: taskFixture({ id: taskId, status: 'review' }) })),
+      updateTask: async () => ok(undefined),
+      recordHumanAcceptance: unexpectedHumanAcceptance,
+      getManualReviewCapability: async () => ok({ eligible: true, mode: 'exact' as const }),
+      submitManualReview: async () => new Promise((resolve) => { releaseSubmission = resolve; }),
+    }, {
+      listMessages: async () => ok([]),
+    });
+
+    await store.selectTask('den-web', 4113);
+    const submission = store.submitManualReview('den-web', 4113, 'stale-receipt-key');
+    const secondSelection = store.selectTask('den-web', 4114);
+    await secondSelection;
+    releaseSubmission?.(ok({ mode: 'exact', status: 'queued', message: 'Stale review receipt.' }));
+    await submission;
+
+    expect(stateValue(store.selectedTask())?.task.id).toBe(4114);
+    expect(store.manualReviewResult().kind).toBe('idle');
   });
 
   it('records human acceptance and replaces task detail with authoritative readback', async () => {

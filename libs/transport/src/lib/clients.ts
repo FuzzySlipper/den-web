@@ -32,6 +32,8 @@ import type {
   DenArtifactMetadata,
   DenLibrarianQueryRequest,
   DenLibrarianQueryResponse,
+  DenManualReviewCapability,
+  DenManualReviewReceipt,
   DenMessage,
   DenMessageThreadResponse,
   DenNotification,
@@ -485,6 +487,36 @@ export class TasksTransport {
       {
         method: 'POST',
         body,
+      },
+    );
+  }
+
+  getManualReviewCapability(
+    projectId: string,
+    taskId: number,
+  ): Promise<DenResult<DenManualReviewCapability>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/manual-review`,
+      ),
+    );
+  }
+
+  submitManualReview(
+    projectId: string,
+    taskId: number,
+    idempotencyKey: string,
+  ): Promise<DenResult<DenManualReviewReceipt>> {
+    return this.http.json(
+      joinUrl(
+        this.config.servicesApiBase,
+        `/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/manual-review`,
+      ),
+      {
+        method: 'POST',
+        body: {},
+        headers: { 'Idempotency-Key': idempotencyKey },
       },
     );
   }

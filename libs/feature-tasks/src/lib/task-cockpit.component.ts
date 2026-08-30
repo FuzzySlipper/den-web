@@ -15,6 +15,7 @@ import { ArtifactEvidenceComponent, type ArtifactEvidenceItem } from '@den-web/f
 import type {
   DenHumanAcceptanceLifecycleEffect,
   DenHumanAcceptanceReview,
+  DenManualReviewReceipt,
   DenMessage,
   DenTaskDetail,
   DenTaskSummary,
@@ -347,6 +348,22 @@ const taskListQuietRefreshMs = 15000;
       .acceptance-button.primary,
       .acceptance-form button.primary {
         border-color: var(--den-accent);
+      }
+
+      .manual-review-button {
+        border-color: var(--den-warning);
+      }
+
+      .manual-review-status,
+      .manual-review-result {
+        display: grid;
+        gap: 4px;
+        margin-top: 10px;
+      }
+
+      .manual-review-result {
+        border-top: 1px solid var(--den-border);
+        padding-top: 10px;
       }
 
       .acceptance-form {
@@ -849,12 +866,55 @@ const taskListQuietRefreshMs = 15000;
                     <span class="section-title">Human acceptance</span>
                     <span class="meta">A human observation; independent reviews and gates are unchanged.</span>
                   </div>
-                  @if (!taskReadOnly()) {
-                    <button type="button" class="acceptance-button primary" (click)="openAcceptanceComposer(detail)">Looks good</button>
-                  } @else {
-                    <span class="meta">Read-only project</span>
-                  }
+                  <div class="acceptance-actions">
+                    @if (!taskReadOnly()) {
+                      <button type="button" class="acceptance-button primary" (click)="openAcceptanceComposer(detail)">Looks good</button>
+                    } @else {
+                      <span class="meta">Read-only project</span>
+                    }
+                    @if (manualReviewActionVisible(detail)) {
+                      <button
+                        type="button"
+                        class="acceptance-button manual-review-button"
+                        [disabled]="manualReviewSubmitting()"
+                        (click)="requestManualReview(detail)"
+                      >{{ manualReviewButtonLabel() }}</button>
+                    }
+                  </div>
                 </div>
+
+                @if (manualReviewStatusVisible(detail)) {
+                  <div class="manual-review-status" aria-live="polite">
+                    @switch (manualReviewCapabilityState().kind) {
+                      @case ('loading') {
+                        <span class="meta">Checking review readiness…</span>
+                      }
+                      @case ('error') {
+                        <div class="acceptance-actions">
+                          <span class="state error" role="alert">Review readiness unavailable: {{ errorText(manualReviewCapabilityError()) }}</span>
+                          <button type="button" class="acceptance-button" (click)="retryManualReviewCapability(detail)">Retry</button>
+                        </div>
+                      }
+                      @case ('data') {
+                        @if (!manualReviewCapabilityValue()?.eligible) {
+                          <span class="meta">{{ manualReviewCapabilityValue()?.detail || 'Manual review is not currently available.' }}</span>
+                        }
+                      }
+                    }
+                  </div>
+                }
+
+                @if (manualReviewError()) {
+                  <p class="manual-review-status state error" role="alert">{{ errorText(manualReviewError()) }}</p>
+                }
+
+                @if (manualReviewReceipt(); as receipt) {
+                  <div class="manual-review-result" aria-live="polite">
+                    <strong>Review request submitted</strong>
+                    <span>{{ receipt.message }}</span>
+                    <span class="meta">{{ manualReviewModeLabel(receipt.mode) }} · {{ receipt.status }}</span>
+                  </div>
+                }
 
                 @if (acceptanceComposerOpen()) {
                   <form class="acceptance-form" aria-label="Record human acceptance" (submit)="submitHumanAcceptance($event, detail, reviewer.value, rationale.value, revision.value, build.value, environment.value, evidence.value, lifecycle.value)">
@@ -1064,6 +1124,7 @@ export class TaskCockpitComponent {
   protected readonly acceptanceLifecycle = signal<DenHumanAcceptanceLifecycleEffect>('record_only');
   protected readonly acceptanceIdempotencyKey = signal('');
   protected readonly acceptanceError = signal<string | null>(null);
+  protected readonly manualReviewIdempotencyKey = signal('');
   protected readonly mobilePane = signal<MobilePane>('list');
   protected readonly selectedThreadMessage = signal<DenMessage | null>(null);
   protected readonly messageWindowLimit = taskMessagesFetchLimit;
@@ -1083,7 +1144,22 @@ export class TaskCockpitComponent {
   protected readonly filterValue = computed(() => this.filters.find((option) => option.filter === this.taskStore.filter())?.value ?? 'active');
   protected readonly acceptanceSubmitting = computed(() => this.taskStore.humanAcceptanceResult().kind === 'loading');
   protected readonly acceptanceResult = computed(() => stateValue(this.taskStore.humanAcceptanceResult()) ?? null);
+  protected readonly manualReviewCapabilityState = this.taskStore.manualReviewCapability;
+  protected readonly manualReviewCapabilityValue = computed(() => stateValue(this.manualReviewCapabilityState()) ?? null);
+  protected readonly manualReviewResult = this.taskStore.manualReviewResult;
+  protected readonly manualReviewReceipt = computed(() => stateValue(this.manualReviewResult()) ?? null);
+  protected readonly manualReviewSubmitting = computed(() => this.manualReviewResult().kind === 'loading');
+  protected readonly manualReviewCapabilityError = computed(() => {
+    const state = this.manualReviewCapabilityState();
+    return state.kind === 'error' ? state.error : null;
+  });
+  protected readonly manualReviewError = computed(() => {
+    const state = this.manualReviewResult();
+    return state.kind === 'error' ? state.error : null;
+  });
   protected readonly taskReadOnly = computed(() => this.selectedProject()?.visibility === 'archived');
+
+  private manualReviewTarget = '';
 
   private readonly projectRefreshEffect = effect(() => {
     const projectId = this.selectedProjectId();
@@ -1128,6 +1204,17 @@ export class TaskCockpitComponent {
     for (const message of this.selectedTaskDetail()?.recent_messages ?? []) {
       for (const ref of this.artifactRefsForMessage(message)) void this.artifacts.load(ref.ref);
     }
+  });
+
+  private readonly manualReviewSelectionEffect = effect(() => {
+    const detail = this.selectedTaskDetail();
+    const projectId = detail?.task.project_id ?? this.selectedProjectId();
+    const target = detail && projectId
+      ? `${projectId}:${detail.task.id}:${detail.task.status ?? ''}`
+      : '';
+    if (target === this.manualReviewTarget) return;
+    this.manualReviewTarget = target;
+    this.manualReviewIdempotencyKey.set('');
   });
 
   private readonly messageOverlayEscapeEffect = effect((onCleanup) => {
@@ -1285,6 +1372,48 @@ export class TaskCockpitComponent {
       this.acceptanceError.set(response.ok ? null : this.errorText(response.error));
       if (response.ok) this.acceptanceComposerOpen.set(false);
     });
+  }
+
+  protected manualReviewActionVisible(detail: DenTaskDetail): boolean {
+    return detail.task.status === 'review'
+      && !this.taskReadOnly()
+      && this.manualReviewCapabilityState().kind === 'data'
+      && this.manualReviewCapabilityValue()?.eligible === true;
+  }
+
+  protected manualReviewStatusVisible(detail: DenTaskDetail): boolean {
+    return detail.task.status === 'review' && !this.taskReadOnly();
+  }
+
+  protected manualReviewButtonLabel(): string {
+    const backendLabel = this.manualReviewCapabilityValue()?.label?.trim();
+    if (backendLabel) return backendLabel;
+    return this.manualReviewCapabilityValue()?.mode === 'exact'
+      ? 'Send to review queue'
+      : 'Request best-effort review';
+  }
+
+  protected retryManualReviewCapability(detail: DenTaskDetail): void {
+    const projectId = detail.task.project_id ?? this.selectedProjectId();
+    if (!projectId || this.taskReadOnly() || detail.task.status !== 'review' || this.manualReviewCapabilityState().kind === 'loading') return;
+    void this.taskStore.refreshManualReviewCapability(projectId, detail.task.id);
+  }
+
+  protected requestManualReview(detail: DenTaskDetail): void {
+    const projectId = detail.task.project_id ?? this.selectedProjectId();
+    const capability = this.manualReviewCapabilityValue();
+    if (!projectId || this.taskReadOnly() || detail.task.status !== 'review' || !capability?.eligible || this.manualReviewSubmitting()) return;
+
+    let idempotencyKey = this.manualReviewIdempotencyKey();
+    if (!idempotencyKey) {
+      idempotencyKey = `den-web:${projectId}:${detail.task.id}:manual-review:${this.clock.now().getTime()}`;
+      this.manualReviewIdempotencyKey.set(idempotencyKey);
+    }
+    void this.taskStore.submitManualReview(projectId, detail.task.id, idempotencyKey);
+  }
+
+  protected manualReviewModeLabel(mode: DenManualReviewReceipt['mode']): string {
+    return mode === 'exact' ? 'Exact revision' : 'Best-effort current main';
   }
 
   protected lifecycleLabel(effect: DenHumanAcceptanceReview['lifecycle_effect']): string {

@@ -39,6 +39,30 @@ export interface DenTaskDetail {
   readonly human_acceptance_reviews?: readonly DenHumanAcceptanceReview[];
 }
 
+export type DenManualReviewMode = 'exact' | 'best_effort';
+
+export interface DenManualReviewSource {
+  readonly repository: string;
+  readonly commit_sha: string;
+  readonly ref: string;
+}
+
+export interface DenManualReviewCapability {
+  readonly eligible: boolean;
+  readonly mode: DenManualReviewMode;
+  readonly label?: string;
+  readonly detail?: string;
+  readonly source?: DenManualReviewSource;
+}
+
+export interface DenManualReviewReceipt {
+  readonly mode: DenManualReviewMode;
+  readonly status: string;
+  readonly message: string;
+  readonly job_id?: string;
+  readonly round_id?: number;
+}
+
 export type DenHumanAcceptanceLifecycleEffect =
   | 'record_only'
   | 'complete_task'

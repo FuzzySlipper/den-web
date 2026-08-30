@@ -56,6 +56,28 @@ const longDetailTask = {
   subtask_count: 0,
   description: `${longDescription}\n\nLong detail bottom sentinel.`,
 };
+const exactReviewTask = {
+  id: 4250,
+  project_id: 'den-web',
+  title: 'Exact review fixture task',
+  status: 'review',
+  priority: 5,
+  assigned_to: 'codex',
+  parent_id: null,
+  tags: ['fixture', 'review'],
+  availability: 'available',
+  dependency_count: 0,
+  unfinished_dependency_count: 0,
+  subtask_count: 0,
+  description: 'A review task with an exact source revision.',
+  updated_at: '2026-08-12T00:00:00Z',
+};
+const bestEffortReviewTask = {
+  ...exactReviewTask,
+  id: 4251,
+  title: 'Best-effort review fixture task',
+  description: 'A review task without a connected source revision.',
+};
 const extraTasks = Array.from({ length: 80 }, (_, index) => ({
   id: 4300 + index,
   project_id: 'den-web',
@@ -70,7 +92,7 @@ const extraTasks = Array.from({ length: 80 }, (_, index) => ({
   unfinished_dependency_count: 0,
   subtask_count: 0,
 }));
-const tasks = [primaryTask, nestedTask, longDetailTask, ...extraTasks];
+const tasks = [primaryTask, nestedTask, longDetailTask, exactReviewTask, bestEffortReviewTask, ...extraTasks];
 const ashaTask = {
   id: 4100,
   project_id: 'asha',
@@ -91,6 +113,7 @@ const archivedTask = {
   id: 4200,
   project_id: 'archive-mine',
   title: 'Archived read-only fixture task',
+  status: 'review',
 };
 const channels = [
   { id: 7, project_id: 'den-web', slug: 'den-web', name: 'den-web', kind: 'project_default' },
@@ -361,6 +384,65 @@ export async function mockDenServices(page: Page): Promise<void> {
       recent_messages: [],
     });
   });
+  await page.route('**/api/v1/projects/den-web/tasks/4177/manual-review', (route) => json(route, {
+    eligible: true,
+    mode: 'best_effort',
+    label: 'Request best-effort review',
+    detail: 'Review current main against the task context.',
+  }));
+  await page.route('**/api/v1/projects/den-web/tasks/4250', (route) => json(route, {
+    task: exactReviewTask,
+    dependencies: [],
+    subtasks: [],
+    recent_messages: [],
+  }));
+  await page.route('**/api/v1/projects/den-web/tasks/4251', (route) => json(route, {
+    task: bestEffortReviewTask,
+    dependencies: [],
+    subtasks: [],
+    recent_messages: [],
+  }));
+  await page.route('**/api/v1/projects/den-web/tasks/4250/manual-review', async (route) => {
+    if (route.request().method() === 'POST') {
+      await json(route, {
+        mode: 'exact',
+        status: 'queued',
+        message: 'Exact review queued.',
+        job_id: 'job-exact-4250',
+        round_id: 4250,
+      });
+      return;
+    }
+    await json(route, {
+      eligible: true,
+      mode: 'exact',
+      label: 'Send to review queue',
+      detail: 'The connected commit will be reviewed.',
+      source: {
+        repository: 'openai/den-web',
+        commit_sha: 'a'.repeat(40),
+        ref: 'main',
+      },
+    });
+  });
+  await page.route('**/api/v1/projects/den-web/tasks/4251/manual-review', async (route) => {
+    if (route.request().method() === 'POST') {
+      await json(route, {
+        mode: 'best_effort',
+        status: 'queued',
+        message: 'Best-effort review queued against current main.',
+        job_id: 'job-best-effort-4251',
+        round_id: 4251,
+      });
+      return;
+    }
+    await json(route, {
+      eligible: true,
+      mode: 'best_effort',
+      label: 'Request best-effort review',
+      detail: 'Review current main against the task description and messages.',
+    });
+  });
   await page.route('**/api/v1/projects/asha/tasks/4100', (route) => json(route, {
     task: ashaTask,
     dependencies: [],
@@ -373,6 +455,17 @@ export async function mockDenServices(page: Page): Promise<void> {
     subtasks: [],
     recent_messages: [],
     human_acceptance_reviews: [],
+  }));
+  await page.route('**/api/v1/projects/archive-mine/tasks/4200/manual-review', (route) => json(route, {
+    eligible: true,
+    mode: 'exact',
+    label: 'Send to review queue',
+    detail: 'The connected commit will be reviewed.',
+    source: {
+      repository: 'openai/den-web',
+      commit_sha: 'b'.repeat(40),
+      ref: 'main',
+    },
   }));
   await page.route('**/api/v1/conversation/channels?**', (route) => json(route, channelListFor(route)));
   await page.route('**/api/v1/conversation/memberships?**', (route) => json(route, membershipListFor(route)));

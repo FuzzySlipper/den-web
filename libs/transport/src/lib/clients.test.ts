@@ -80,6 +80,8 @@ describe('Den transport clients', () => {
       lifecycle_effect: 'record_only',
       idempotency_key: 'acceptance-3991',
     });
+    await clients.tasks.getManualReviewCapability('den-web', 3991);
+    await clients.tasks.submitManualReview('den-web', 3991, 'manual-review-3991');
     await clients.messages.listMessages('den-web', { taskId: 3991, limit: 10 });
     await clients.messages.getThread('den-web', 42);
     await clients.notifications.listUserNotifications({ readForAgent: 'web-ui', limit: 5 });
@@ -139,6 +141,8 @@ describe('Den transport clients', () => {
       '/api/v1/projects/den-web/tasks/3991',
       '/api/v1/projects/den-web/tasks/3991',
       '/api/v1/projects/den-web/tasks/3991/human-acceptance-reviews',
+      '/api/v1/projects/den-web/tasks/3991/manual-review',
+      '/api/v1/projects/den-web/tasks/3991/manual-review',
       '/api/v1/projects/den-web/messages?task_id=3991&limit=10',
       '/api/v1/projects/den-web/messages/threads/42',
       '/api/v1/user-notifications?read_for_agent=web-ui&limit=5',
@@ -212,6 +216,49 @@ describe('Den transport clients', () => {
       idempotency_key: 'stable-key',
       expected_task_updated_at: '2026-08-11T08:00:00Z',
     });
+  });
+
+  it('loads manual review capability and submits with a stable idempotency header', async () => {
+    const observed: Array<{ readonly method: string; readonly path: string; readonly body: unknown; readonly key: string | null }> = [];
+    const http = new DenHttpClient({
+      fetchImpl: async (input, init) => {
+        observed.push({
+          method: init?.method ?? 'GET',
+          path: String(input),
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+          key: new Headers(init?.headers).get('Idempotency-Key'),
+        });
+        return observed.length === 1
+          ? Response.json({
+            eligible: true,
+            mode: 'exact',
+            label: 'Send to review queue',
+            source: { repository: 'openai/den-web', commit_sha: 'a'.repeat(40), ref: 'main' },
+          })
+          : Response.json({ mode: 'exact', status: 'queued', message: 'Review queued.', job_id: 'job-1', round_id: 12 });
+      },
+    });
+    const clients = createDenTransportClients(defaultRuntimeApiConfig, http);
+
+    const capability = await clients.tasks.getManualReviewCapability('den-web', 3991);
+    const receipt = await clients.tasks.submitManualReview('den-web', 3991, 'stable-manual-review-key');
+
+    expect(capability.ok && capability.value.mode).toBe('exact');
+    expect(receipt.ok && receipt.value.job_id).toBe('job-1');
+    expect(observed).toEqual([
+      {
+        method: 'GET',
+        path: '/api/v1/projects/den-web/tasks/3991/manual-review',
+        body: null,
+        key: null,
+      },
+      {
+        method: 'POST',
+        path: '/api/v1/projects/den-web/tasks/3991/manual-review',
+        body: {},
+        key: 'stable-manual-review-key',
+      },
+    ]);
   });
 
   it('fans global task lists through active workspace project routes', async () => {
