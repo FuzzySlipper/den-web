@@ -46,6 +46,7 @@ type MobilePane = 'list' | 'detail';
 const filterOptions: readonly FilterOption[] = [
   { value: 'active', filter: 'active', label: 'Active' },
   { value: '__all', filter: null, label: 'All' },
+  { value: 'backlog', filter: 'backlog', label: 'Backlog' },
   { value: 'planned', filter: 'planned', label: 'Planned' },
   { value: 'in_progress', filter: 'in_progress', label: 'In Progress' },
   { value: 'review', filter: 'review', label: 'Review' },
@@ -59,7 +60,7 @@ const sortOptions: readonly SortOption[] = [
   { value: 'id', label: 'ID' },
 ];
 
-const editableStatuses: readonly string[] = ['planned', 'in_progress', 'review', 'blocked', 'done', 'cancelled'];
+const editableStatuses: readonly string[] = ['backlog', 'planned', 'in_progress', 'review', 'blocked', 'done', 'cancelled'];
 const taskListQuietRefreshMs = 15000;
 
 @Component({
@@ -1426,6 +1427,7 @@ export class TaskCockpitComponent {
 
   protected statusIconClass(status: string | null | undefined): string {
     switch (status) {
+      case 'backlog':
       case 'planned':
         return 'status-icon status-icon--planned';
       case 'in_progress':
@@ -1445,6 +1447,7 @@ export class TaskCockpitComponent {
 
   protected statusIcon(status: string | null | undefined): string {
     switch (status) {
+      case 'backlog':
       case 'planned':
         return '○';
       case 'in_progress':

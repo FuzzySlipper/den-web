@@ -36,6 +36,15 @@ import type {
 } from '@den-web/protocol';
 
 describe('successor task domain fixtures', () => {
+  it('keeps backlog searchable in All and hides it from Active even with active children', () => {
+    const backlog = taskFixture({ id: 100, status: 'backlog', title: 'Deferred work' });
+    const child = taskFixture({ id: 101, parent_id: 100, status: 'planned' });
+    expect(taskMatchesStatusFilter(backlog, 'active')).toBe(false);
+    expect(taskMatchesStatusFilter(backlog, 'backlog')).toBe(true);
+    expect(visibleTaskRows([backlog], { filter: null, query: 'Deferred' }).map(row => row.task.id)).toEqual([100]);
+    expect(visibleTaskRows([backlog, child], { filter: 'active' }).map(row => row.task.id)).toEqual([101]);
+    expect(visibleTaskRows([backlog, child], { filter: 'active', flat: true }).map(row => row.task.id)).toEqual([101]);
+  });
   it('keeps active and dependency-waiting task filters distinct', () => {
     const waiting = taskFixture({ availability: 'waiting_on_dependencies', unfinished_dependency_count: 2 });
     const blocked = taskFixture({ status: 'blocked', availability: 'blocked', unfinished_dependency_count: 0 });

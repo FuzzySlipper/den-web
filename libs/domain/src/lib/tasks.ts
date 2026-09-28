@@ -21,7 +21,7 @@ const terminalStatuses = new Set(['done', 'cancelled']);
 
 export function taskMatchesStatusFilter(task: DenTaskSummary, filter: TaskStatusFilter): boolean {
   if (filter === null) return true;
-  if (filter === ACTIVE_TASK_FILTER) return !terminalStatuses.has(task.status ?? '');
+  if (filter === ACTIVE_TASK_FILTER) return task.status !== 'backlog' && !terminalStatuses.has(task.status ?? '');
   if (filter === 'waiting_on_dependencies') return isDependencyWaitingTask(task);
   return task.status === filter;
 }
@@ -129,13 +129,17 @@ export function visibleTaskRows(
       .map((task) => ({ task, parent: task.parent_id ? taskById.get(task.parent_id) ?? null : null, depth: 0 }));
   }
 
-  return flattenTaskTree(sortTaskTree(filterTaskTree(buildTaskTree(tasks), matches), sort));
+  return flattenTaskTree(sortTaskTree(filterTaskTree(buildTaskTree(tasks), matches, options.filter === ACTIVE_TASK_FILTER), sort));
 }
 
-function filterTaskTree(nodes: readonly TaskNode[], matches: (task: DenTaskSummary) => boolean): readonly TaskNode[] {
+function filterTaskTree(nodes: readonly TaskNode[], matches: (task: DenTaskSummary) => boolean, hideBacklog = false): readonly TaskNode[] {
   const filtered: TaskNode[] = [];
   for (const node of nodes) {
-    const children = filterTaskTree(node.children, matches);
+    const children = filterTaskTree(node.children, matches, hideBacklog);
+    if (hideBacklog && node.task.status === 'backlog') {
+      filtered.push(...children);
+      continue;
+    }
     if (matches(node.task) || children.length > 0) filtered.push({ task: node.task, children });
   }
   return filtered;
