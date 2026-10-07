@@ -42,7 +42,7 @@ export function workspaceItems(
   }
   const items = [
     globalItem,
-    ...[...byId.values()].sort((left, right) => displayName(left).localeCompare(displayName(right))),
+    ...[...byId.values()].sort((left, right) => left.id.localeCompare(right.id)),
   ];
   return showSpaces ? items : items.filter((item) => !isSpaceItem(item, projects));
 }
@@ -57,8 +57,4 @@ function isSpaceItem(item: WorkspaceItem, projects: readonly DenProject[]): bool
   if (item.source !== 'space') return false;
   if (item.kind !== undefined && item.kind !== '') return item.kind !== 'project';
   return !projects.some((project) => project.id === item.id);
-}
-
-function displayName(item: WorkspaceItem): string {
-  return item.name || item.id;
 }

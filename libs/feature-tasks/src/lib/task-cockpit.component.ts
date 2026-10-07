@@ -1122,7 +1122,7 @@ export class TaskCockpitComponent {
   protected readonly descriptionDraft = signal('');
   protected readonly editError = signal<string | null>(null);
   protected readonly acceptanceComposerOpen = signal(false);
-  protected readonly acceptanceLifecycle = signal<DenHumanAcceptanceLifecycleEffect>('record_only');
+  protected readonly acceptanceLifecycle = signal<DenHumanAcceptanceLifecycleEffect>('complete_task');
   protected readonly acceptanceIdempotencyKey = signal('');
   protected readonly acceptanceError = signal<string | null>(null);
   protected readonly manualReviewIdempotencyKey = signal('');
@@ -1306,7 +1306,7 @@ export class TaskCockpitComponent {
   protected openAcceptanceComposer(detail: DenTaskDetail): void {
     this.taskStore.clearHumanAcceptanceResult();
     this.acceptanceError.set(null);
-    this.acceptanceLifecycle.set('record_only');
+    this.acceptanceLifecycle.set('complete_task');
     this.acceptanceIdempotencyKey.set(`den-web:${detail.task.id}:human-acceptance:${this.clock.now().getTime()}`);
     this.acceptanceComposerOpen.set(true);
   }
