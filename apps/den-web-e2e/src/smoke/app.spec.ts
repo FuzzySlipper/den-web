@@ -277,15 +277,14 @@ test('records human acceptance through the task detail with authoritative readba
   await page.goto('/');
   await page.getByRole('button', { name: 'Looks good' }).click();
   const composer = page.getByRole('form', { name: 'Record human acceptance' });
-  await expect(composer.getByLabel('Lifecycle effect')).toHaveValue('record_only');
-  await expect(composer.getByText(/will not change status/)).toBeVisible();
+  await expect(composer.getByLabel('Lifecycle effect')).toHaveValue('complete_task');
+  await expect(composer.getByText(/request completion of task #3993/)).toBeVisible();
   await composer.getByLabel('Reviewer identity').fill('patch');
   await composer.getByLabel('Observation').fill('Checked the rendered task workflow.');
   await composer.getByLabel('Reviewed revision').fill('abc123');
   await composer.getByLabel('Reviewed build').fill('den-web-42');
   await composer.getByLabel('Environment').fill('local smoke');
   await composer.getByLabel('Evidence links').fill('https://example.test/proof-1\nhttps://example.test/proof-2');
-  await composer.getByLabel('Lifecycle effect').selectOption('complete_task');
   await expect(composer.getByText(/request completion of task #3993/)).toBeVisible();
   await composer.getByRole('button', { name: 'Confirm looks good' }).press('Enter');
   await expect(composer.getByRole('alert')).toContainText('503');
