@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  channelMessagePrimaryBody,
-  conversationFeedItems,
   discussionAuthor,
   discussionBody,
   discussionThreads,
@@ -15,14 +13,11 @@ import {
   notificationCacheId,
   notificationViewItem,
   observationAgentsOverview,
-  parseMessageBodySegments,
   parseNotificationReadCache,
   taskMatchesStatusFilter,
-  timelineItems,
   visibleTaskRows,
 } from '../index';
 import type {
-  DenChannelMessage,
   DenDiscussion,
   DenDiscussionComment,
   DenDocumentDetail,
@@ -32,7 +27,6 @@ import type {
   DenObservationLane,
   DenTaskDetail,
   DenTaskSummary,
-  DenTimelineResponse,
 } from '@den-web/protocol';
 
 describe('successor task domain fixtures', () => {
@@ -159,20 +153,6 @@ function messageFixture(overrides: Partial<DenMessage> = {}): DenMessage {
   };
 }
 
-function channelMessageFixture(overrides: Partial<DenChannelMessage> = {}): DenChannelMessage {
-  return {
-    id: 1,
-    channel_id: 10,
-    sender_identity: 'patch',
-    sender_type: 'user',
-    body: 'Hello',
-    summary: null,
-    metadata: null,
-    created_at: '2026-07-02T00:00:00Z',
-    ...overrides,
-  };
-}
-
 function observationLaneFixture(overrides: Partial<DenObservationLane> = {}): DenObservationLane {
   return {
     items: [{
@@ -257,53 +237,7 @@ describe('successor notification and message fixtures', () => {
   });
 });
 
-describe('successor conversation and observation fixtures', () => {
-  it('parses details blocks without exposing raw disclosure markup', () => {
-    const segments = parseMessageBodySegments('Before\n<details><summary>Plan</summary>\n\nDo the thing\n</details>\nAfter');
-
-    expect(segments).toEqual([
-      { type: 'text', text: 'Before\n' },
-      { type: 'details', summary: 'Plan', body: 'Do the thing' },
-      { type: 'text', text: '\nAfter' },
-    ]);
-  });
-
-  it('prefers the message body before metadata or summaries', () => {
-    expect(channelMessagePrimaryBody(channelMessageFixture({ body: 'Request body', summary: 'Generated summary' }))).toBe('Request body');
-  });
-
-  it('merges channel messages and timeline items into chronological chat feed rows', () => {
-    const feed = conversationFeedItems(
-      [channelMessageFixture({ id: 1, body: 'Channel message', created_at: '2026-07-02T00:02:00Z' })],
-      [{ id: 'tool-1', kind: 'observation_tool_call', title: 'Tool call', body: 'Observation event', sender: 'den-mcp-runner', createdAt: '2026-07-02T00:01:00Z' }],
-    );
-
-    expect(feed.map((item) => item.body)).toEqual(['Observation event', 'Channel message']);
-  });
-
-  it('projects den-services timeline actor and occurred time into chat rows', () => {
-    const response: DenTimelineResponse = {
-      items: [{
-        timeline_id: 'tl-1',
-        cursor: 'cursor-1',
-        event_kind: 'channel_message',
-        actor: { identity: 'codex' },
-        body: 'Timeline message',
-        occurred_at: '2026-07-02T00:03:00Z',
-      }],
-      next_cursor: 'cursor-1',
-    };
-
-    expect(timelineItems(response)[0]).toMatchObject({
-      id: 'tl-1',
-      cursor: 'cursor-1',
-      kind: 'channel_message',
-      sender: 'codex',
-      body: 'Timeline message',
-      createdAt: '2026-07-02T00:03:00Z',
-    });
-  });
-
+describe('successor observation fixtures', () => {
   it('marks the agents overview degraded when an observation source is unhealthy', () => {
     const model = observationAgentsOverview(observationLaneFixture({
       source_health: [{ source: 'observation', status: 'unavailable', detail: 'not ready' }],

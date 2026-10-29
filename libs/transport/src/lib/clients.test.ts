@@ -93,30 +93,6 @@ describe('Den transport clients', () => {
     await clients.guidance.addEntry('den-web', { document_project_id: 'den-web', document_slug: 'successor-brief', importance: 'required' });
     await clients.guidance.deleteEntry('den-web', 601);
     await clients.librarian.query('den-web', { query: 'successor' });
-    await clients.conversation.listChannels('den-web', { limit: 1 });
-    await clients.conversation.listChannels(DEN_GLOBAL_PROJECT_ID, { limit: 100 });
-    await clients.conversation.listMemberships({ channelId: 7, limit: 10 });
-    await clients.conversation.putMembership(7, {
-      member_type: 'agent',
-      member_identity: 'codex',
-      profile_identity: 'codex',
-      membership_status: 'active',
-      wake_policy: 'mentions_only',
-      can_send: true,
-      can_react: true,
-      can_invite: false,
-      membership_purpose: 'ordinary',
-      settings: {},
-    });
-    await clients.conversation.listMessages(7, { afterId: 2, limit: 20 });
-    await clients.conversation.postMessage(7, {
-      sender_type: 'user',
-      sender_identity: 'web-ui',
-      body: 'hello',
-      message_kind: 'human_text',
-      source_kind: 'den_web_channel_post',
-      dedupe_key: 'k1',
-    });
     await clients.timeline.listChannelItems(7, { limit: 1 });
     await clients.observation.lane({ limit: 1 });
     await clients.observation.activeWork();
@@ -129,7 +105,6 @@ describe('Den transport clients', () => {
     await clients.artifacts.resolve('den-artifact://art_123');
     await clients.artifacts.metadata('art_123');
     mutableCalls.push(clients.artifacts.contentUrl('art_123'));
-    await clients.visualContract.getRun('run-123');
 
     expect(calls).toEqual([]);
     expect(mutableCalls).toEqual([
@@ -154,12 +129,6 @@ describe('Den transport clients', () => {
       '/api/v1/projects/den-web/agent-guidance/entries',
       '/api/v1/projects/den-web/agent-guidance/entries/601',
       '/api/v1/projects/den-web/librarian/query',
-      '/api/v1/conversation/channels?project_id=den-web&limit=1',
-      '/api/v1/conversation/channels?limit=100&kind=system',
-      '/api/v1/conversation/memberships?channel_id=7&limit=10',
-      '/api/v1/conversation/channels/7/memberships',
-      '/api/v1/conversation/channels/7/messages?after_id=2&limit=20',
-      '/api/v1/conversation/channels/7/messages',
       '/api/v1/timeline/channels/7/items?limit=1',
       '/api/v1/observation/lane?limit=1',
       '/api/v1/observation/active-work',
@@ -169,7 +138,6 @@ describe('Den transport clients', () => {
       '/api/v1/artifacts/resolve?ref=den-artifact%3A%2F%2Fart_123',
       '/api/v1/artifacts/art_123/metadata',
       '/api/v1/artifacts/art_123/content',
-      '/api/v1/visual-contracts/run-123',
     ]);
   });
 
@@ -301,37 +269,5 @@ describe('Den transport clients', () => {
     expect(clients.timeline.streamUrl(7, { after: 'cursor-1', includeDebug: true })).toBe(
       '/api/v1/timeline/channels/7/stream?after=cursor-1&include_debug=true',
     );
-  });
-
-  it('posts conversation messages with den-services request fields and idempotency header', async () => {
-    let observedBody: unknown = null;
-    let observedIdempotencyKey: string | null = null;
-    const http = new DenHttpClient({
-      fetchImpl: async (_input, init) => {
-        observedBody = typeof init?.body === 'string' ? JSON.parse(init.body) : null;
-        observedIdempotencyKey = new Headers(init?.headers).get('Idempotency-Key');
-        return Response.json({ id: 1, channel_id: 7, sender_identity: 'web-ui', sender_type: 'user', body: 'hello' }, { status: 201 });
-      },
-    });
-    const clients = createDenTransportClients(defaultRuntimeApiConfig, http);
-
-    await clients.conversation.postMessage(7, {
-      sender_type: 'user',
-      sender_identity: 'web-ui',
-      body: 'hello',
-      message_kind: 'human_text',
-      source_kind: 'den_web_channel_post',
-      dedupe_key: 'web-ui:1',
-    });
-
-    expect(observedIdempotencyKey).toBe('web-ui:1');
-    expect(observedBody).toEqual({
-      sender_type: 'user',
-      sender_identity: 'web-ui',
-      body: 'hello',
-      message_kind: 'human_text',
-      source_kind: 'den_web_channel_post',
-      dedupe_key: 'web-ui:1',
-    });
   });
 });

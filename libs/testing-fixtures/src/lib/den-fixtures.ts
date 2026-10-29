@@ -1,6 +1,4 @@
 import type {
-  DenChannelMessage,
-  DenConversationChannel,
   DenDiscussion,
   DenDiscussionComment,
   DenDocumentDetail,
@@ -111,24 +109,6 @@ export function messageFixture(overrides: Partial<DenMessage> = {}): DenMessage 
     sender: 'codex',
     intent: 'handoff',
     content: 'Implementation note',
-    created_at: '2026-07-02T00:00:00Z',
-    ...overrides,
-  };
-}
-
-export function conversationChannelFixture(overrides: Partial<DenConversationChannel> = {}): DenConversationChannel {
-  return { id: 10, project_id: 'den-web', slug: 'den-web', name: 'den-web', kind: 'project', ...overrides };
-}
-
-export function channelMessageFixture(overrides: Partial<DenChannelMessage> = {}): DenChannelMessage {
-  return {
-    id: 1,
-    channel_id: 10,
-    sender_identity: 'patch',
-    sender_type: 'user',
-    body: 'Hello',
-    summary: null,
-    metadata: null,
     created_at: '2026-07-02T00:00:00Z',
     ...overrides,
   };

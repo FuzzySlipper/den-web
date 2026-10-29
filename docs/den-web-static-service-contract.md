@@ -18,7 +18,7 @@ reverse-proxy implementation.
 The `web-edge` module in `den-services` owns static serving and the public
 listener. Gateway owns browser route-to-service selection and credential
 replacement. Projects, Tasks, Messages, Documents, Guidance, Review, Artifacts,
-Librarian, Conversation, Timeline, Observation, Delivery, and Doc Publish
+Librarian, Timeline, Observation, Delivery, and Doc Publish
 remain the authorities for their own domains.
 
 ## Public contract
@@ -56,13 +56,11 @@ Supported API bases are:
 | --- | --- |
 | `tasksSuccessorApiBase` | `/api/v1` |
 | `messagesSuccessorApiBase` | `/api/v1` |
-| `conversationSuccessorApiBase` | `/api/v1/conversation` |
 | `timelineSuccessorApiBase` | `/api/v1/timeline` |
 | `observationSuccessorApiBase` | `/api/v1/observation` |
 | `deliverySuccessorApiBase` | `/api/v1/delivery` |
 | `docPublishApiBase` | `/api/v1/blog/publications` |
 | `artifactsApiBase` | `/api/v1/artifacts` |
-| `visualContractApiBase` | `/api/v1/visual-contracts` |
 
 Feature flags and project allowlists may also be present. Missing config may
 fall back to local development defaults. Malformed config must produce a visible
@@ -85,7 +83,7 @@ A production release is healthy when:
 2. `/den-web-build.json` returns the expected frontend commit.
 3. deep browser routes return the SPA shell.
 4. `/api/v1/projects` and a project task read succeed through Gateway.
-5. Conversation, Observation, and Timeline reads succeed through Gateway.
+5. Observation and Timeline reads succeed through Gateway.
 6. a retired `/api/*` path returns `410`.
 7. browser tests show no backend token or loopback target in public config,
    HTML, or JavaScript.

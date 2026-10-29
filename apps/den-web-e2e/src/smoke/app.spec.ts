@@ -186,10 +186,6 @@ test('shows archived workspaces on demand and exposes global scope views', async
   await page.getByRole('link', { name: 'Documents' }).click();
   await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Global Brief' }).first()).toBeVisible();
   await expect(page.getByLabel('Document content').getByText('Global document fixture loaded.')).toBeVisible();
-
-  await page.getByRole('link', { name: 'Conversation' }).click();
-  await expect(page.getByLabel('Channels').getByRole('button', { name: /#agent-commons/ })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByLabel('Channel chat').getByText('Agent commons fixture loaded')).toBeVisible();
 });
 
 test('supports minimal mobile viewing navigation', async ({ page }) => {
@@ -412,90 +408,6 @@ test('does not offer human acceptance from an archived read-only project', async
 test('renders inherited feature tabs through successor fixtures', async ({ page }) => {
   await mockDenServices(page);
   await page.goto('/');
-
-  await page.getByRole('link', { name: 'Preferences' }).click();
-  await page.getByLabel('Conversation sender identity').fill('patch');
-  await page.getByRole('link', { name: 'Conversation' }).click();
-  await expect(page.getByText('Conversation fixture loaded')).toBeVisible();
-  await expect(page.getByText('Timeline fixture loaded')).toBeVisible();
-  await expect(page.getByText('Observation tool fixture loaded')).toBeVisible();
-  await expect(page.getByText('Stream fixture loaded')).toBeVisible();
-  await expect(page.getByLabel('Channels').getByRole('button', { name: /#den-web/ })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByLabel('Channels').getByRole('button', { name: /#ops/ })).toBeVisible();
-  await expect(page.getByLabel('Channel participants').getByText('codex')).toBeVisible();
-  await expect(page.getByLabel('Channel participants').getByText('always-agent')).toBeVisible();
-  await expect(page.getByLabel('Channel chat').getByText(/Jul 1|Jul 2|Jul 3/).first()).toBeVisible();
-  await expect(page.getByLabel('Channel chat').getByText('unknown time')).toHaveCount(0);
-  await expect(page.getByLabel('Channel chat').locator('.sender', { hasText: 'timeline' })).toHaveCount(0);
-
-  const conversationRequests: unknown[] = [];
-  const deliveryRequests: unknown[] = [];
-  const membershipRequests: unknown[] = [];
-  page.on('request', (request) => {
-    if (request.method() === 'PUT' && request.url().includes('/api/v1/conversation/channels/7/memberships')) {
-      membershipRequests.push(request.postDataJSON());
-    }
-    if (request.method() === 'POST' && request.url().includes('/api/v1/conversation/channels/7/messages')) {
-      conversationRequests.push(request.postDataJSON());
-    }
-    if (request.method() === 'POST' && request.url().includes('/api/v1/delivery/intents')) {
-      deliveryRequests.push(request.postDataJSON());
-    }
-  });
-
-  await page.getByLabel('Channel participants').getByRole('button', { name: /codex/ }).click();
-  await expect(page.getByLabel('Participant wake policy')).toHaveValue('mentions_only');
-  await page.getByLabel('Participant membership status').selectOption('active');
-  await page.getByRole('button', { name: 'Done' }).click();
-  await page.getByLabel('Agent identity to join').fill('fixture-agent');
-  await page.getByLabel('New agent wake policy').selectOption('direct_questions_only');
-  await page.getByRole('button', { name: 'Add agent' }).click();
-  await expect(page.getByLabel('Channel participants').getByText('fixture-agent')).toBeVisible();
-  await expect.poll(() => membershipRequests).toEqual([
-    expect.objectContaining({
-      member_identity: 'codex',
-      membership_status: 'active',
-      wake_policy: 'mentions_only',
-    }),
-    expect.objectContaining({
-      member_identity: 'fixture-agent',
-      membership_status: 'active',
-      wake_policy: 'direct_questions_only',
-    }),
-  ]);
-
-  const composer = page.getByLabel('Conversation message');
-  await composer.fill('Line one');
-  await page.keyboard.press('Shift+Enter');
-  await page.keyboard.type('Line two');
-  await expect(composer).toHaveValue('Line one\nLine two');
-  await composer.fill('@c');
-  await expect(page.getByRole('listbox', { name: 'Mention suggestions' }).getByText('codex')).toBeVisible();
-  await page.keyboard.press('Tab');
-  await expect(composer).toHaveValue('@codex ');
-  await page.keyboard.type('Sent from fixture UI');
-  await page.keyboard.press('Enter');
-  await expect(page.getByLabel('Channel chat').getByText('@codex Sent from fixture UI')).toBeVisible();
-  await expect.poll(() => conversationRequests).toEqual([{
-    sender_type: 'user',
-    sender_identity: 'patch',
-    body: '@codex Sent from fixture UI',
-    message_kind: 'human_text',
-    source_kind: 'den_web_channel_post',
-    dedupe_key: expect.stringMatching(/^patch:/),
-  }]);
-  await expect.poll(() => deliveryRequests.length).toBe(2);
-  expect(deliveryRequests).toEqual([{
-    target_identity: { profile: 'codex', instance_id: 'codex@den-srv' },
-    idempotency_key: expect.stringMatching(/^mention:7:codex:/),
-    source_ref: 'conversation:channels/7/messages/72',
-    channel_message_id: 72,
-  }, {
-    target_identity: { profile: 'always-agent', instance_id: 'always-agent@den-srv' },
-    idempotency_key: expect.stringMatching(/^wake:7:always-agent:/),
-    source_ref: 'conversation:channels/7/messages/72',
-    channel_message_id: 72,
-  }]);
 
   await page.getByRole('link', { name: 'Notifications' }).click();
   await expect(page.getByText('Notification fixture loaded')).toBeVisible();

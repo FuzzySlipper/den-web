@@ -8,11 +8,6 @@ import type {
   DenBoardPostPage,
   DenBoardPurgeRequest,
   DenBoardSearchPage,
-  DenChannelMessage,
-  DenConversationChannel,
-  DenConversationMembership,
-  DenConversationPostMessageRequest,
-  DenConversationPutMembershipRequest,
   DenDeliveryIntent,
   DenDeliveryIntentRequest,
   DenDiscussion,
@@ -49,13 +44,6 @@ import type {
   DenTimelineItem,
   DenTimelineResponse,
   RuntimeApiConfig,
-  VisualComparisonReport,
-  VisualConstraint,
-  VisualContract,
-  VisualContractRun,
-  VisualObjectPromotionRule,
-  VisualPromotionResponse,
-  VisualValidationResponse,
 } from '@den-web/protocol';
 import {
   defaultRuntimeApiConfig,
@@ -88,14 +76,12 @@ export interface DenTransportClients {
   readonly documents: DocumentsTransport;
   readonly knowledge: KnowledgeTransport;
   readonly librarian: LibrarianTransport;
-  readonly conversation: ConversationTransport;
   readonly timeline: TimelineTransport;
   readonly observation: ObservationTransport;
   readonly delivery: DeliveryTransport;
   readonly docPublish: DocPublishTransport;
   readonly artifacts: ArtifactsTransport;
   readonly guidance: GuidanceTransport;
-  readonly visualContract: VisualContractTransport;
 }
 
 export function createDenTransportClients(
@@ -112,74 +98,13 @@ export function createDenTransportClients(
     documents: new DocumentsTransport(config, http),
     knowledge: new KnowledgeTransport(config, http),
     librarian: new LibrarianTransport(config, http),
-    conversation: new ConversationTransport(config, http),
     timeline: new TimelineTransport(config, http, eventStream),
     observation: new ObservationTransport(config, http),
     delivery: new DeliveryTransport(config, http),
     docPublish: new DocPublishTransport(config, http),
     artifacts: new ArtifactsTransport(config, http),
     guidance: new GuidanceTransport(config, http),
-    visualContract: new VisualContractTransport(config, http),
   };
-}
-
-export class VisualContractTransport {
-  constructor(
-    private readonly config: RuntimeApiConfig,
-    private readonly http: DenHttpClient,
-  ) {}
-
-  validate(
-    contract: VisualContract,
-  ): Promise<DenResult<VisualValidationResponse>> {
-    return this.http.json(
-      joinUrl(this.config.visualContractApiBase, '/validate'),
-      { method: 'POST', body: { contract } },
-    );
-  }
-
-  buildAuthored(
-    contract: VisualContract,
-    constraints: readonly VisualConstraint[],
-  ): Promise<DenResult<{ readonly contract: VisualContract }>> {
-    return this.http.json(
-      joinUrl(this.config.visualContractApiBase, '/build-authored'),
-      { method: 'POST', body: { contract, constraints } },
-    );
-  }
-
-  promote(
-    contract: VisualContract,
-    objects: readonly VisualObjectPromotionRule[],
-    ignoreObjects: readonly string[],
-  ): Promise<DenResult<VisualPromotionResponse>> {
-    return this.http.json(
-      joinUrl(this.config.visualContractApiBase, '/promote-contract'),
-      {
-        method: 'POST',
-        body: { contract, objects, ignore_objects: ignoreObjects },
-      },
-    );
-  }
-
-  compare(
-    reference: VisualContract,
-    candidate: VisualContract,
-  ): Promise<DenResult<VisualComparisonReport>> {
-    return this.http.json(
-      joinUrl(this.config.visualContractApiBase, '/compare'),
-      { method: 'POST', body: { reference, candidate } },
-    );
-  }
-
-  getRun(runId: string): Promise<DenResult<VisualContractRun>> {
-    return this.http.json(
-      joinUrl(
-        this.config.visualContractApiBase,
-        `/${encodeURIComponent(runId)}`,
-      ),
-    );
-  }
 }
 
 export class ProjectsTransport {
@@ -1085,99 +1010,6 @@ export class LibrarianTransport {
       {
         method: 'POST',
         body: request,
-      },
-    );
-  }
-}
-
-export class ConversationTransport {
-  constructor(
-    private readonly config: RuntimeApiConfig,
-    private readonly http: DenHttpClient,
-  ) {}
-
-  listChannels(
-    projectId: string,
-    options: { readonly limit?: number; readonly kind?: string } = {},
-  ): Promise<DenResult<readonly DenConversationChannel[]>> {
-    if (projectId === DEN_GLOBAL_PROJECT_ID) {
-      return this.http.json(
-        joinUrl(
-          this.config.conversationApiBase,
-          `/channels${query({ limit: options.limit, kind: options.kind ?? 'system' })}`,
-        ),
-      );
-    }
-    return this.http.json(
-      joinUrl(
-        this.config.conversationApiBase,
-        `/channels${query({ project_id: projectId, limit: options.limit, kind: options.kind })}`,
-      ),
-    );
-  }
-
-  listMemberships(
-    options: {
-      readonly channelId?: number;
-      readonly projectId?: string;
-      readonly includeLeft?: boolean;
-      readonly limit?: number;
-    } = {},
-  ): Promise<DenResult<readonly DenConversationMembership[]>> {
-    return this.http.json(
-      joinUrl(
-        this.config.conversationApiBase,
-        `/memberships${query({
-          channel_id: options.channelId,
-          project_id: options.projectId,
-          include_left: options.includeLeft,
-          limit: options.limit,
-        })}`,
-      ),
-    );
-  }
-
-  putMembership(
-    channelId: number,
-    body: DenConversationPutMembershipRequest,
-  ): Promise<DenResult<DenConversationMembership>> {
-    return this.http.json(
-      joinUrl(
-        this.config.conversationApiBase,
-        `/channels/${channelId}/memberships`,
-      ),
-      {
-        method: 'PUT',
-        body,
-      },
-    );
-  }
-
-  listMessages(
-    channelId: number,
-    options: { readonly afterId?: number; readonly limit?: number } = {},
-  ): Promise<DenResult<readonly DenChannelMessage[]>> {
-    return this.http.json(
-      joinUrl(
-        this.config.conversationApiBase,
-        `/channels/${channelId}/messages${query({ after_id: options.afterId, limit: options.limit })}`,
-      ),
-    );
-  }
-
-  postMessage(
-    channelId: number,
-    body: DenConversationPostMessageRequest,
-  ): Promise<DenResult<DenChannelMessage>> {
-    return this.http.json(
-      joinUrl(
-        this.config.conversationApiBase,
-        `/channels/${channelId}/messages`,
-      ),
-      {
-        method: 'POST',
-        body,
-        headers: { 'Idempotency-Key': body.dedupe_key },
       },
     );
   }

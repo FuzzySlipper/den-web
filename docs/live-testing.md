@@ -103,25 +103,7 @@ Non-claims:
 - does not prove dropped Git/session/worker workflows;
 - start-work behavior is limited to successor-supported request paths.
 
-### 3. Conversation Timeline And Composer
-
-Purpose: prove the cockpit conversation view uses Conversation/Timeline/Delivery
-successor routes only.
-
-Milestones:
-
-- project channel list loads from `/api/v1/conversation`;
-- timeline items load or stream from `/api/v1/timeline`;
-- composer posts through Conversation or Delivery successor route as appropriate;
-- newly posted message is visible by readback;
-- stream fallback state is visible when streaming is unavailable.
-
-Non-claims:
-
-- does not prove direct-message behavior;
-- does not prove legacy den-channels compatibility.
-
-### 4. Documents List, Detail, And Discussion
+### 3. Documents List, Detail, And Discussion
 
 Purpose: prove documents use successor routes and preserve the predecessor's
 important editor/discussion behavior.
@@ -139,7 +121,7 @@ Non-claims:
 - does not prove external blog rendering;
 - does not prove concurrent editing.
 
-### 5. Notifications Feed And Read Behavior
+### 4. Notifications Feed And Read Behavior
 
 Purpose: prove notification feed, unread cues, and read-state persistence render
 correctly.
@@ -158,7 +140,7 @@ Non-claims:
 - does not prove browser popup behavior unless that control is included in the
   scenario variant.
 
-### 6. Messages Inbox And Thread
+### 5. Messages Inbox And Thread
 
 Purpose: prove project messages and thread detail render through messages
 successor routes.
@@ -175,7 +157,7 @@ Non-claims:
 - does not prove direct-message conversations;
 - does not prove channel timeline rendering.
 
-### 7. Librarian Query
+### 6. Librarian Query
 
 Purpose: prove the librarian query surface calls the den-services librarian
 successor route and renders answer/source states.
@@ -192,7 +174,7 @@ Non-claims:
 - does not prove ranking quality;
 - does not prove knowledge curation correctness.
 
-### 8. Agents Overview Degraded State
+### 7. Agents Overview Degraded State
 
 Purpose: prove the successor agents overview is Observation-backed and honest
 about missing successor parity.
@@ -211,7 +193,7 @@ Non-claims:
 - does not prove assignment trace parity until den-services exposes that
   successor contract.
 
-### 9. Preferences Persistence And Visual Application
+### 8. Preferences Persistence And Visual Application
 
 Purpose: prove preferences use platform ports and apply visible UI changes.
 
@@ -228,7 +210,7 @@ Non-claims:
 - does not prove every keyboard shortcut;
 - does not prove cross-browser storage behavior.
 
-### 10. Static Service Smoke And Legacy Route Retirement
+### 9. Static Service Smoke And Legacy Route Retirement
 
 Purpose: prove the deployed/static-service shape matches the Den Web contract.
 
@@ -240,7 +222,6 @@ Milestones:
 - `/api/v1/projects` succeeds through the same-origin proxy;
 - `/api/v1/projects/den-web/tasks?limit=1` succeeds;
 - `/api/v1/user-notifications?read_for_agent=web-ui&limit=5` succeeds;
-- `/api/v1/conversation/channels?project_id=den-web&limit=1` succeeds;
 - `/api/v1/observation/lane?limit=1` succeeds;
 - `/api/v1/timeline/channels/1/items?limit=1` succeeds;
 - retired `/api/channels?limit=1` and `/api/gateway/memberships?projectId=den-web`
@@ -251,7 +232,7 @@ Non-claims:
 - does not prove feature-level rendered parity;
 - does not prove rollback unless rollback is explicitly exercised.
 
-### 11. Artifact Evidence Preview
+### 10. Artifact Evidence Preview
 
 Purpose: prove a durable `den-artifact://` reference in Den message metadata
 resolves through the same-origin artifacts route without putting image bytes in

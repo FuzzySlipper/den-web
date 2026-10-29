@@ -11,25 +11,21 @@ describe('runtime API config', () => {
   it('maps runtime config file keys to the canonical transport config', () => {
     const config = runtimeConfigFromFile({
       tasksSuccessorApiBase: '/api/v1/',
-      conversationSuccessorApiBase: '/api/v1/conversation/',
       timelineSuccessorApiBase: '/api/v1/timeline/',
       observationSuccessorApiBase: '/api/v1/observation/',
       deliverySuccessorApiBase: '/api/v1/delivery/',
       docPublishApiBase: '/api/v1/blog/publications/',
       artifactsApiBase: '/api/v1/artifacts/',
-      visualContractApiBase: '/api/v1/visual-contracts/',
       environmentName: 'den-srv',
     });
 
     expect(config).toEqual({
       servicesApiBase: '/api/v1',
-      conversationApiBase: '/api/v1/conversation',
       timelineApiBase: '/api/v1/timeline',
       observationApiBase: '/api/v1/observation',
       deliveryApiBase: '/api/v1/delivery',
       docPublishApiBase: '/api/v1/blog/publications',
       artifactsApiBase: '/api/v1/artifacts',
-      visualContractApiBase: '/api/v1/visual-contracts',
       environmentName: 'den-srv',
     });
   });

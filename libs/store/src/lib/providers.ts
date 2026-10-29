@@ -24,10 +24,6 @@ import {
 import { createAgentsStore, type AgentsStore } from './agents-store';
 import { createArtifactsStore, type ArtifactsStore } from './artifacts-store';
 import { createBoardStore, type BoardStore } from './board-store';
-import {
-  createConversationStore,
-  type ConversationStore,
-} from './conversation-store';
 import { createDocumentsStore, type DocumentsStore } from './documents-store';
 import {
   createDocumentPublishStore,
@@ -51,10 +47,6 @@ import {
 } from './preferences-store';
 import { createTasksStore, type TasksStore } from './tasks-store';
 import { createWorkspaceStore, type WorkspaceStore } from './workspace-store';
-import {
-  createVisualContractStore,
-  type VisualContractStore,
-} from './visual-contract-store';
 
 export const DEN_RUNTIME_CONFIG = new InjectionToken<RuntimeApiConfig>(
   'DEN_RUNTIME_CONFIG',
@@ -86,9 +78,6 @@ export const GUIDANCE_STORE = new InjectionToken<GuidanceStore>(
 export const NOTIFICATIONS_STORE = new InjectionToken<NotificationsStore>(
   'NOTIFICATIONS_STORE',
 );
-export const CONVERSATION_STORE = new InjectionToken<ConversationStore>(
-  'CONVERSATION_STORE',
-);
 export const AGENTS_STORE = new InjectionToken<AgentsStore>('AGENTS_STORE');
 export const ARTIFACTS_STORE = new InjectionToken<ArtifactsStore>(
   'ARTIFACTS_STORE',
@@ -108,9 +97,6 @@ export const KNOWLEDGE_STORE = new InjectionToken<KnowledgeStore>(
 );
 export const PREFERENCES_STORE = new InjectionToken<PreferencesStore>(
   'PREFERENCES_STORE',
-);
-export const VISUAL_CONTRACT_STORE = new InjectionToken<VisualContractStore>(
-  'VISUAL_CONTRACT_STORE',
 );
 
 export function provideDenStoreKernel(
@@ -194,16 +180,6 @@ export function provideDenStoreKernel(
         createPreferencesStore(browserStorage(), browserDocumentEffects()),
     },
     {
-      provide: CONVERSATION_STORE,
-      useFactory: (clients: DenTransportClients) =>
-        createConversationStore(
-          clients.conversation,
-          clients.timeline,
-          clients.delivery,
-        ),
-      deps: [DEN_TRANSPORT_CLIENTS],
-    },
-    {
       provide: AGENTS_STORE,
       useFactory: (clients: DenTransportClients) =>
         createAgentsStore(clients.observation),
@@ -219,12 +195,6 @@ export function provideDenStoreKernel(
       provide: BOARD_STORE,
       useFactory: (clients: DenTransportClients) =>
         createBoardStore(clients.board),
-      deps: [DEN_TRANSPORT_CLIENTS],
-    },
-    {
-      provide: VISUAL_CONTRACT_STORE,
-      useFactory: (clients: DenTransportClients) =>
-        createVisualContractStore(clients.visualContract),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
   ]);

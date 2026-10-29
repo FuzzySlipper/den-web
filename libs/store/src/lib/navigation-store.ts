@@ -2,7 +2,6 @@ import { signal, type Signal } from '@angular/core';
 
 export type DenWebTab =
   | 'tasks'
-  | 'conversation'
   | 'notifications'
   | 'messages'
   | 'documents'
@@ -11,7 +10,6 @@ export type DenWebTab =
   | 'guidance'
   | 'librarian'
   | 'agents'
-  | 'visual-contract'
   | 'preferences';
 
 export interface MessageThreadNavigationTarget {

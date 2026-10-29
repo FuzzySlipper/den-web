@@ -131,12 +131,8 @@ async function checkConfigAndBuild() {
   const config = parseJson('/den-web-config.json', configResponse);
   if (config?.tasksSuccessorApiBase === '/api/v1') pass('tasksSuccessorApiBase is /api/v1');
   else fail('tasksSuccessorApiBase', JSON.stringify(config?.tasksSuccessorApiBase));
-  if (config?.conversationSuccessorApiBase === '/api/v1/conversation') pass('conversation base is /api/v1/conversation');
-  else fail('conversationSuccessorApiBase', JSON.stringify(config?.conversationSuccessorApiBase));
   if (config?.observationSuccessorApiBase === '/api/v1/observation') pass('observation base is /api/v1/observation');
   else fail('observationSuccessorApiBase', JSON.stringify(config?.observationSuccessorApiBase));
-  if (config?.visualContractApiBase === '/api/v1/visual-contracts') pass('visual contract base is /api/v1/visual-contracts');
-  else fail('visualContractApiBase', JSON.stringify(config?.visualContractApiBase));
   if (config?.environmentName === expectedEnvironment) pass(`environmentName is ${expectedEnvironment}`);
   else fail('environmentName', JSON.stringify(config?.environmentName));
 
@@ -154,8 +150,6 @@ async function checkApis() {
     ['projects', '/api/v1/projects'],
     ['tasks', '/api/v1/projects/den-web/tasks?limit=1'],
     ['notifications', '/api/v1/user-notifications?read_for_agent=web-ui&limit=5'],
-    ['conversation', '/api/v1/conversation/channels?project_id=den-web&limit=1'],
-    ['conversation memberships', '/api/v1/conversation/memberships?project_id=den-web&limit=20'],
     ['observation', '/api/v1/observation/lane?limit=1'],
     ['timeline', '/api/v1/timeline/channels/1/items?limit=1'],
   ]) {

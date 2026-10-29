@@ -14,13 +14,11 @@ export interface RuntimeConfigLoaderOptions {
 const runtimeStringKeys = [
   'tasksSuccessorApiBase',
   'messagesSuccessorApiBase',
-  'conversationSuccessorApiBase',
   'timelineSuccessorApiBase',
   'observationSuccessorApiBase',
   'deliverySuccessorApiBase',
   'docPublishApiBase',
   'artifactsApiBase',
-  'visualContractApiBase',
   'environmentName',
 ] as const;
 
@@ -37,13 +35,11 @@ export function runtimeConfigFromFile(file: DenWebRuntimeConfigFile): RuntimeApi
 
   return {
     servicesApiBase: servicesBase,
-    conversationApiBase: normalizeApiBase(file.conversationSuccessorApiBase, defaultRuntimeApiConfig.conversationApiBase),
     timelineApiBase: normalizeApiBase(file.timelineSuccessorApiBase, defaultRuntimeApiConfig.timelineApiBase),
     observationApiBase: normalizeApiBase(file.observationSuccessorApiBase, defaultRuntimeApiConfig.observationApiBase),
     deliveryApiBase: normalizeApiBase(file.deliverySuccessorApiBase, defaultRuntimeApiConfig.deliveryApiBase),
     docPublishApiBase: normalizeApiBase(file.docPublishApiBase, defaultRuntimeApiConfig.docPublishApiBase),
     artifactsApiBase: normalizeApiBase(file.artifactsApiBase, defaultRuntimeApiConfig.artifactsApiBase),
-    visualContractApiBase: normalizeApiBase(file.visualContractApiBase, defaultRuntimeApiConfig.visualContractApiBase),
     environmentName: file.environmentName?.trim() || defaultRuntimeApiConfig.environmentName,
   };
 }
@@ -100,13 +96,11 @@ function parseRuntimeConfigRecord(raw: unknown): ParseResult<DenWebRuntimeConfig
     value: {
       tasksSuccessorApiBase: record['tasksSuccessorApiBase'],
       messagesSuccessorApiBase: record['messagesSuccessorApiBase'],
-      conversationSuccessorApiBase: record['conversationSuccessorApiBase'],
       timelineSuccessorApiBase: record['timelineSuccessorApiBase'],
       observationSuccessorApiBase: record['observationSuccessorApiBase'],
       deliverySuccessorApiBase: record['deliverySuccessorApiBase'],
       docPublishApiBase: record['docPublishApiBase'],
       artifactsApiBase: record['artifactsApiBase'],
-      visualContractApiBase: record['visualContractApiBase'],
       environmentName: record['environmentName'],
     } as DenWebRuntimeConfigFile,
   };

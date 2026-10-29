@@ -101,21 +101,14 @@ function listValue(name, fallback = '') {
 
 function runtimeConfig() {
   const timelineProjects = env.TIMELINE_SUCCESSOR_PROJECT_IDS ?? 'den-web';
-  const conversationProjects = env.CONVERSATION_SUCCESSOR_READ_PROJECT_IDS ?? timelineProjects;
   return {
     tasksSuccessorApiBase: env.TASKS_SUCCESSOR_API_BASE ?? '/api/v1',
     messagesSuccessorApiBase: env.MESSAGES_SUCCESSOR_API_BASE ?? '/api/v1',
-    conversationSuccessorApiBase: env.CONVERSATION_SUCCESSOR_API_BASE ?? '/api/v1/conversation',
     observationSuccessorApiBase: env.OBSERVATION_SUCCESSOR_API_BASE ?? '/api/v1/observation',
     deliverySuccessorApiBase: env.DELIVERY_SUCCESSOR_API_BASE ?? '/api/v1/delivery',
     timelineSuccessorApiBase: env.TIMELINE_SUCCESSOR_API_BASE ?? '/api/v1/timeline',
     docPublishApiBase: env.DOC_PUBLISH_API_BASE ?? '/api/v1/blog/publications',
     artifactsApiBase: env.ARTIFACTS_API_BASE ?? '/api/v1/artifacts',
-    visualContractApiBase: env.VISUAL_CONTRACT_API_BASE ?? '/api/v1/visual-contracts',
-    conversationSuccessorReadsEnabled: boolValue('CONVERSATION_SUCCESSOR_READS_ENABLED', 'true'),
-    conversationSuccessorWritesEnabled: boolValue('CONVERSATION_SUCCESSOR_WRITES_ENABLED', 'true'),
-    conversationSuccessorReadProjectIds: listValue('CONVERSATION_SUCCESSOR_READ_PROJECT_IDS', conversationProjects),
-    conversationSuccessorWriteProjectIds: listValue('CONVERSATION_SUCCESSOR_WRITE_PROJECT_IDS', conversationProjects),
     timelineSuccessorEnabled: boolValue('TIMELINE_SUCCESSOR_ENABLED', 'true'),
     timelineSuccessorProjectIds: listValue('TIMELINE_SUCCESSOR_PROJECT_IDS', timelineProjects),
     appBasePath: env.APP_BASE_PATH ?? '/',

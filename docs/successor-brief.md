@@ -57,7 +57,6 @@ Allowed normal browser route families:
 | Domain | Browser base |
 | --- | --- |
 | Projects, spaces, tasks, messages, notifications, documents, review, librarian | `/api/v1` |
-| Conversation | `/api/v1/conversation` |
 | Timeline | `/api/v1/timeline` |
 | Observation | `/api/v1/observation` |
 | Delivery/wake intents | `/api/v1/delivery` |
@@ -89,7 +88,6 @@ These product areas are in successor scope:
 | --- | --- | --- |
 | Projects/spaces | project/space list, visibility filters, selected workspace | `packages/shell/src/spaces.ts`, `packages/features/src/projects/` |
 | Tasks | list/tree/detail, status filters, dependency-waiting display, review actions, start-work affordances where successor services support them | `packages/features/src/tasks/`, `packages/api/src/core/tasks*.ts` |
-| Conversation cockpit | project channel selection, timeline/message display, composer, reactions/memberships only through Conversation/Timeline/Delivery | `packages/features/src/channels/`, `packages/api/src/channels/`, `packages/api/src/timeline/` |
 | Messages | inbox/detail/thread views backed by messages successor APIs | `packages/features/src/messages/`, `packages/api/src/core/messages*.ts` |
 | Notifications | user notification feed, read cache, bell cues, side panel or route-level view | `packages/features/src/notifications/` |
 | Documents | list/detail/edit guard, discussions, publish panel | `packages/features/src/documents/`, `packages/api/src/core/documents.ts`, `packages/api/src/docPublish/` |
@@ -112,6 +110,8 @@ explicitly re-adds them with successor contracts:
 | Worker pool/lobby | Drop | Worker references are explicitly out of scope. |
 | Hermes-specific behavior | Drop | Hermes direct references are explicitly out of scope. |
 | Direct den-channels compatibility | Drop | Normal product path is successor `/api/v1/*` only. |
+| Conversation cockpit | Drop | Abandoned by the owner; the den-services `conversation` module is retired. |
+| Visual contracts and visual inspect | Drop | Abandoned by the owner; the den-services visual contract/inspect modules are retired. |
 
 ## Behavioral Fixtures To Carry Forward
 
@@ -123,7 +123,6 @@ Carry forward tests and cases, not implementation code. Good first candidates:
 - dirty document switch guard;
 - notification panel/read-cache behavior;
 - channel render model cases that do not mention pi-crew or legacy sources;
-- conversation route and idempotent write behavior through successor routes;
 - runtime config precedence and malformed config handling;
 - static service smoke behavior from `docs/den-web-static-service-contract.md`.
 
@@ -141,7 +140,6 @@ successor must make these semantics explicit in stores and transport:
 | Tasks | shell polls every 5s, all-spaces aggregates multiple project reads | task store, no component-owned aggregation |
 | Documents | shell polls every 5s, detail reads on selection | document store with explicit dirty-edit guard |
 | Notifications | feed polls every 10s, panel polls faster, local read cache | notification store plus platform storage port |
-| Conversation | timeline stream when enabled, polling fallback, local stream opt-out | transport owns EventSource/reconnect, store owns fallback state |
 | Agent overview | observation reads poll every 10s | agents store renders source-health/degraded states |
 | Preferences | localStorage plus direct document CSS mutation | platform storage/document ports |
 
@@ -157,14 +155,13 @@ Minimum scenario set:
 
 1. boot and workspace selection;
 2. project tasks list/detail;
-3. conversation timeline and composer;
-4. documents list/detail/discussion;
-5. notifications feed and read behavior;
-6. messages inbox/thread;
-7. librarian query;
-8. agents overview degraded-state display;
-9. preferences persistence and visual application;
-10. static service smoke and retired legacy route checks.
+3. documents list/detail/discussion;
+4. notifications feed and read behavior;
+5. messages inbox/thread;
+6. librarian query;
+7. agents overview degraded-state display;
+8. preferences persistence and visual application;
+9. static service smoke and retired legacy route checks.
 
 ## Definition Of Ported
 

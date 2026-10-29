@@ -8,13 +8,6 @@ export const shellRoutes: Routes = [
       import('@den-web/feature-tasks').then((m) => m.TaskCockpitComponent),
   },
   {
-    path: 'conversation',
-    loadComponent: () =>
-      import('@den-web/feature-conversation').then(
-        (m) => m.ConversationCockpitComponent,
-      ),
-  },
-  {
     path: 'notifications',
     loadComponent: () =>
       import('@den-web/feature-notifications').then(
@@ -66,13 +59,6 @@ export const shellRoutes: Routes = [
     loadComponent: () =>
       import('@den-web/feature-agents').then(
         (m) => m.AgentsOverviewComponent,
-      ),
-  },
-  {
-    path: 'visual-contract',
-    loadComponent: () =>
-      import('@den-web/feature-visual-contract').then(
-        (m) => m.VisualContractWorkspaceComponent,
       ),
   },
   {

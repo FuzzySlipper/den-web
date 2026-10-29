@@ -111,13 +111,11 @@ Each release contains same-origin browser bases:
 {
   "tasksSuccessorApiBase": "/api/v1",
   "messagesSuccessorApiBase": "/api/v1",
-  "conversationSuccessorApiBase": "/api/v1/conversation",
   "observationSuccessorApiBase": "/api/v1/observation",
   "deliverySuccessorApiBase": "/api/v1/delivery",
   "timelineSuccessorApiBase": "/api/v1/timeline",
   "docPublishApiBase": "/api/v1/blog/publications",
   "artifactsApiBase": "/api/v1/artifacts",
-  "visualContractApiBase": "/api/v1/visual-contracts",
   "environmentName": "den-srv"
 }
 ```

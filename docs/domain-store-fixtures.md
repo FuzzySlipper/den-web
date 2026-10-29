@@ -15,8 +15,6 @@ Carried-forward fixture coverage:
 - notification read-cache mapping as optimistic UI state, with service read
   state remaining authoritative;
 - message intent labels and fallback body projection;
-- conversation body segmentation for `<details>` blocks and timeline item
-  projection;
 - Observation-backed agents overview with explicit degraded source state;
 - signal stores with private writable state, public readonly signals, named
   commands, and `AsyncState<T>` for every async value.
