@@ -26,7 +26,7 @@ remain the authorities for their own domains.
 The canonical operator URL is:
 
 ```text
-http://192.168.1.10:18080/
+http://192.168.1.5:18080/
 ```
 
 | Path | Owner | Contract |

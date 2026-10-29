@@ -26,7 +26,7 @@ npm run e2e
 at another trusted development edge:
 
 ```bash
-DEN_WEB_DEV_EDGE_URL=http://192.168.1.10:18080 npm run dev
+DEN_WEB_DEV_EDGE_URL=http://192.168.1.5:18080 npm run dev
 ```
 
 An API request must return the edge/Gateway response. SPA HTML on `/api/v1/*`

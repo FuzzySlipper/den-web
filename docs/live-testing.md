@@ -251,7 +251,7 @@ Run the focused live scenario with:
 
 ```bash
 LIVE_RUN=1 \
-BASE_URL=http://192.168.1.10:18080 \
+BASE_URL=http://192.168.1.5:18080 \
 ARTIFACT_EVIDENCE_TASK_ID=3480 \
 npx playwright test --config=apps/den-web-e2e/playwright.config.mts \
   src/live/artifact-evidence.live.spec.ts

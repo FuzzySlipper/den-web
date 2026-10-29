@@ -54,11 +54,17 @@ same cutover.
 
 ## Deploy
 
-From a workstation with access to the target host:
+From den-agents (or any machine with `~/server-access/den-services`):
 
 ```bash
 npm run deploy:den-srv:remote
 ```
+
+This builds, checks, and stages the release locally, ships the release
+directory to CT106 (192.168.1.5) over `ssh -F ~/server-access/den-services/config
+target`, flips `current`/`previous` there, verifies the build sentinel and the
+live smoke, and rolls back the symlinks on failure. The host needs no den-web
+checkout or Node build.
 
 From a checkout already on the service host:
 
@@ -91,7 +97,7 @@ Useful overrides:
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `DEPLOY_ROOT` | `/data/services/den-web` | Asset release root. |
-| `DEN_WEB_URL` | `http://192.168.1.10:18080` | Public smoke target. |
+| `DEN_WEB_URL` | `http://192.168.1.5:18080` | Public smoke target. |
 | `KEEP_RELEASES` | `5` | Number of releases retained. |
 | `ALLOW_DIRTY` | unset | Permit deploying committed HEAD from a dirty checkout. |
 | `SKIP_INSTALL` | unset | Skip `npm ci`. |
@@ -99,9 +105,10 @@ Useful overrides:
 | `DEPLOY_SMOKE` | `1` | Set to `0` only for deliberate staged work. |
 | `DRY_RUN` | unset | Validate and print without activating a release. |
 
-The remote wrapper additionally supports `DEN_WEB_DEPLOY_TARGET`,
-`DEN_WEB_REMOTE_REPO`, `DEN_WEB_DEPLOY_BRANCH`, `SKIP_PUSH`, and
-`SKIP_SENTINEL`.
+The remote wrapper additionally supports `DEN_WEB_DEPLOY_SSH` (full ssh
+command ending in the host alias), `DEN_WEB_DEPLOY_OWNER`,
+`DEN_WEB_DEPLOY_BRANCH`, and `SKIP_PUSH`. `STAGE_ONLY=1` makes the local
+script stage a release under `DEPLOY_ROOT` without activating it.
 
 ## Runtime config
 

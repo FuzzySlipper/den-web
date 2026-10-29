@@ -2,7 +2,7 @@
 
 import * as http from 'node:http';
 
-const baseUrl = process.env.DEN_WEB_URL ?? 'http://192.168.1.10:18080';
+const baseUrl = process.env.DEN_WEB_URL ?? 'http://192.168.1.5:18080';
 const expectedCommit = process.env.EXPECTED_BUILD_COMMIT ?? '';
 const expectedEnvironment = process.env.EXPECTED_ENV_NAME ?? 'den-srv';
 const base = new URL(baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`);

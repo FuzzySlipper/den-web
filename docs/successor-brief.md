@@ -187,7 +187,7 @@ user-deliverable UI claim.
 Keep the public static-service shape from
 `docs/den-web-static-service-contract.md`:
 
-- canonical URL: `http://192.168.1.10:18080/`;
+- canonical URL: `http://192.168.1.5:18080/`;
 - runtime config: `/den-web-config.json`;
 - static asset service only;
 - same-origin `/api/v1/*` browser bases;

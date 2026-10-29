@@ -15,9 +15,10 @@ const releasesDir = path.join(deployRoot, 'releases');
 const currentLink = path.join(deployRoot, 'current');
 const previousLink = path.join(deployRoot, 'previous');
 const wwwrootLink = path.join(deployRoot, 'wwwroot');
-const publicUrl = env.DEN_WEB_URL ?? 'http://192.168.1.10:18080';
+const publicUrl = env.DEN_WEB_URL ?? 'http://192.168.1.5:18080';
 const keepReleases = Number.parseInt(env.KEEP_RELEASES ?? '5', 10);
 const dryRun = env.DRY_RUN === '1';
+const stageOnly = env.STAGE_ONLY === '1';
 const shouldSmoke = env.DEPLOY_SMOKE !== '0';
 const skipInstall = env.SKIP_INSTALL === '1';
 const skipChecks = env.SKIP_CHECKS === '1';
@@ -249,6 +250,10 @@ async function main() {
   }
   await fs.mkdir(releasesDir, { recursive: true });
   const releaseDir = await stageRelease(commit, dirty, id);
+  if (stageOnly) {
+    log(`staged ${releaseDir}`);
+    return;
+  }
   await activate(releaseDir, previousTarget);
   try {
     await waitForServiceReady();
