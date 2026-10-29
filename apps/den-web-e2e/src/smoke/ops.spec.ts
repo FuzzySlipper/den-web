@@ -111,3 +111,17 @@ test('a failed refresh keeps the last status but drops the green', async ({ page
   await expect(ops.locator('.tone-ok')).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('ops-refresh-failed.png'), fullPage: true });
 });
+
+test('the Operations page scrolls to content below the fold', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await mockOps(page);
+  await page.goto('/ops');
+  const last = page.getByTestId('ops-job').last();
+  await expect(last).toBeVisible();
+  await expect(last.getByText('Retention and recovery')).not.toBeInViewport();
+  // Scroll the way a person does: the wheel over the panel, not scrollIntoView.
+  await page.getByRole('heading', { name: 'Operations' }).hover();
+  await page.mouse.wheel(0, 5000);
+  await expect(last.getByText('Retention and recovery')).toBeInViewport();
+  await page.screenshot({ path: testInfo.outputPath('ops-scrolled.png') });
+});

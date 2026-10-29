@@ -1,7 +1,17 @@
 export const opsPanelStyles = `
+  /* The shell clips its main area, so the panel scrolls itself. */
   :host {
     display: block;
+    height: calc(100dvh - 57px);
     min-width: 0;
+    overflow-y: auto;
+  }
+
+  @media (max-width: 840px) {
+    :host {
+      height: auto;
+      overflow: visible;
+    }
   }
 
   .surface {
