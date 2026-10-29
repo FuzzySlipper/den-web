@@ -42,6 +42,7 @@ import {
   type PreferencesStore,
 } from './preferences-store';
 import { createOpsStore, type OpsStore } from './ops-store';
+import { createResourcesStore, type ResourcesStore } from './resources-store';
 import { createTasksStore, type TasksStore } from './tasks-store';
 import { createWorkspaceStore, type WorkspaceStore } from './workspace-store';
 
@@ -94,6 +95,10 @@ export const PREFERENCES_STORE = new InjectionToken<PreferencesStore>(
 );
 
 export const OPS_STORE = new InjectionToken<OpsStore>('OPS_STORE');
+
+export const RESOURCES_STORE = new InjectionToken<ResourcesStore>(
+  'RESOURCES_STORE',
+);
 
 export function provideDenStoreKernel(
   config: RuntimeApiConfig = defaultRuntimeApiConfig,
@@ -185,6 +190,12 @@ export function provideDenStoreKernel(
       provide: OPS_STORE,
       useFactory: (clients: DenTransportClients, clock: ClockPort) =>
         createOpsStore(clients.ops, clock),
+      deps: [DEN_TRANSPORT_CLIENTS, DEN_CLOCK],
+    },
+    {
+      provide: RESOURCES_STORE,
+      useFactory: (clients: DenTransportClients, clock: ClockPort) =>
+        createResourcesStore(clients.resources, clock, browserStorage()),
       deps: [DEN_TRANSPORT_CLIENTS, DEN_CLOCK],
     },
     {

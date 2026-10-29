@@ -671,3 +671,205 @@ export interface DenOpsJobDetail {
   readonly runs: readonly DenOpsRun[];
   readonly verifications: readonly DenOpsVerification[];
 }
+
+// Resources: advisory record of what is using the workshop machines
+// (den-services docs/resources-api-contract.md). Times are RFC 3339 strings,
+// except telemetry.sampled_at, which the probe reports in Unix seconds.
+
+export type DenResourcesHostStatus = 'unknown' | 'working' | 'queued' | 'quiet';
+export type DenResourceLifecycle = 'maintained' | 'experimental' | 'retired' | 'unknown';
+export type DenResourcesWorkState = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface DenResourcesGpu {
+  readonly name?: string | null;
+  readonly utilization_percent?: number | null;
+  readonly memory_total_bytes?: number | null;
+  readonly memory_used_bytes?: number | null;
+  readonly gtt_used_bytes?: number | null;
+  readonly memory_note?: string | null;
+}
+
+export interface DenResourcesProcess {
+  readonly pid?: number | null;
+  readonly command?: string | null;
+  readonly cwd?: string | null;
+  readonly cpu_percent?: number | null;
+  readonly rss_bytes?: number | null;
+}
+
+export interface DenResourcesContainer {
+  readonly name?: string | null;
+  readonly image?: string | null;
+  readonly state?: string | null;
+  readonly status?: string | null;
+  readonly cpu?: string | null;
+  readonly memory?: string | null;
+  readonly socket?: string | null;
+}
+
+export interface DenResourcesDisk {
+  readonly path?: string | null;
+  readonly total_bytes?: number | null;
+  readonly free_bytes?: number | null;
+}
+
+/** The probe snapshot, passed through unchanged; any metric may be missing or null. */
+export interface DenResourcesTelemetry {
+  readonly sampled_at?: number | null;
+  readonly platform?: string | null;
+  readonly cpu_count?: number | null;
+  readonly cpu_percent?: number | null;
+  readonly load_average?: readonly (number | null)[] | null;
+  readonly memory?: {
+    readonly total_bytes?: number | null;
+    readonly available_bytes?: number | null;
+    readonly swap_total_bytes?: number | null;
+    readonly swap_free_bytes?: number | null;
+  } | null;
+  readonly gpus?: readonly DenResourcesGpu[] | null;
+  readonly processes?: readonly DenResourcesProcess[] | null;
+  readonly containers?: readonly DenResourcesContainer[] | null;
+  readonly disks?: readonly DenResourcesDisk[] | null;
+  readonly paths?: Readonly<Record<string, boolean>> | null;
+  readonly warnings?: readonly string[] | null;
+}
+
+export interface DenResourcesAppJob {
+  readonly id: string;
+  readonly state: string;
+  readonly node_types: readonly string[];
+}
+
+export interface DenResourcesApp {
+  readonly name: string;
+  readonly kind: string;
+  readonly url: string;
+  readonly resources: readonly string[];
+  readonly online: boolean;
+  /** Null for `kind:"health"` apps: health is known, the queue is not. */
+  readonly running: number | null;
+  readonly queued: number | null;
+  readonly jobs: readonly DenResourcesAppJob[];
+  readonly error: string | null;
+  readonly checked_at: string | null;
+  readonly stale: boolean;
+}
+
+export interface DenResourcesHost {
+  readonly id: string;
+  readonly name: string;
+  readonly role: string;
+  readonly access: string;
+  readonly note: string;
+  readonly position: number;
+  readonly status: DenResourcesHostStatus;
+  readonly stale: boolean;
+  readonly error: string | null;
+  readonly attempted_at: string | null;
+  readonly sampled_at: string | null;
+  readonly received_at: string | null;
+  readonly telemetry: DenResourcesTelemetry | null;
+  readonly apps: readonly DenResourcesApp[];
+  readonly apps_checked_at: string | null;
+}
+
+export interface DenResource {
+  readonly id: string;
+  readonly host: string;
+  readonly name: string;
+  readonly kind: string;
+  readonly path: string;
+  readonly probe_path: string;
+  readonly runtime_path: string;
+  readonly access: string;
+  readonly sharing: string;
+  readonly lifecycle: DenResourceLifecycle;
+  readonly notes: string;
+  readonly guide: string;
+  readonly match: string;
+  readonly updated_at: string | null;
+  readonly last_used_at: string | null;
+  readonly last_used_by: string | null;
+  readonly observed_activity_at: string | null;
+  readonly confirmed_at: string | null;
+  readonly confirmed_by: string | null;
+  readonly path_present: boolean | null;
+  readonly path_checked_at: string | null;
+}
+
+export interface DenResourcesWork {
+  readonly id: string;
+  readonly host: string;
+  readonly source: string;
+  readonly external_id: string | null;
+  readonly title: string;
+  readonly owner: string;
+  readonly project: string;
+  readonly resources: readonly string[];
+  readonly state: DenResourcesWorkState;
+  readonly note: string;
+  readonly url: string;
+  readonly ttl_seconds: number;
+  readonly created_at: string | null;
+  readonly started_at: string | null;
+  readonly updated_at: string | null;
+  readonly expires_at: string | null;
+  readonly ended_at: string | null;
+  /** Queued or running but the heartbeat expired. Never means free or abandoned. */
+  readonly stale: boolean;
+}
+
+export interface DenResourcesCounts {
+  readonly hosts: number;
+  readonly hosts_fresh: number;
+  readonly running: number;
+  readonly native_queued: number;
+  readonly resources: number;
+}
+
+export interface DenResourcesState {
+  readonly generated_at: string;
+  readonly poll_seconds: number;
+  readonly stale_after_seconds: number;
+  readonly counts: DenResourcesCounts;
+  readonly hosts: readonly DenResourcesHost[];
+  readonly resources: readonly DenResource[];
+  readonly work: readonly DenResourcesWork[];
+}
+
+export interface DenResourcesWorkReport {
+  readonly host: string;
+  readonly title: string;
+  readonly owner: string;
+  readonly project?: string;
+  readonly resources?: readonly string[];
+  readonly state?: 'queued' | 'running';
+  readonly ttl_seconds?: number;
+  readonly source?: string;
+  readonly note?: string;
+}
+
+export interface DenResourcesWorkUpdate {
+  readonly state?: 'completed' | 'failed' | 'cancelled';
+  readonly note?: string;
+}
+
+export interface DenResourcesWorkReportResponse extends DenResourcesWork {
+  readonly warnings?: readonly string[];
+}
+
+export interface DenResourceSaveRequest {
+  readonly id: string;
+  readonly host?: string;
+  readonly name?: string;
+  readonly kind?: string;
+  readonly path?: string;
+  readonly runtime_path?: string;
+  readonly access?: string;
+  readonly sharing?: string;
+  readonly lifecycle?: DenResourceLifecycle;
+  readonly notes?: string;
+  readonly touch?: boolean;
+  readonly confirm?: boolean;
+  readonly owner?: string;
+}

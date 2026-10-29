@@ -60,6 +60,13 @@ export const shellRoutes: Routes = [
       import('@den-web/feature-ops').then((m) => m.OpsPanelComponent),
   },
   {
+    path: 'resources',
+    loadComponent: () =>
+      import('@den-web/feature-resources').then(
+        (m) => m.ResourcesPanelComponent,
+      ),
+  },
+  {
     path: 'preferences',
     loadComponent: () =>
       import('@den-web/feature-preferences').then(

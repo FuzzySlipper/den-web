@@ -11,6 +11,13 @@ import type {
   DenDeliveryIntent,
   DenOpsJobDetail,
   DenOpsSummary,
+  DenResource,
+  DenResourceSaveRequest,
+  DenResourcesState,
+  DenResourcesWork,
+  DenResourcesWorkReport,
+  DenResourcesWorkReportResponse,
+  DenResourcesWorkUpdate,
   DenDeliveryIntentRequest,
   DenDiscussion,
   DenDocPublishRequest,
@@ -83,6 +90,7 @@ export interface DenTransportClients {
   readonly artifacts: ArtifactsTransport;
   readonly guidance: GuidanceTransport;
   readonly ops: OpsTransport;
+  readonly resources: ResourcesTransport;
 }
 
 export function createDenTransportClients(
@@ -105,6 +113,7 @@ export function createDenTransportClients(
     artifacts: new ArtifactsTransport(config, http),
     guidance: new GuidanceTransport(config, http),
     ops: new OpsTransport(config, http),
+    resources: new ResourcesTransport(config, http),
   };
 }
 
@@ -1136,5 +1145,41 @@ export class OpsTransport {
     return this.http.json(
       joinUrl(this.config.servicesApiBase, `/ops/jobs/${encodeURIComponent(jobId)}${query({ limit })}`),
     );
+  }
+}
+
+export class ResourcesTransport {
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
+
+  state(workLimit?: number): Promise<DenResult<DenResourcesState>> {
+    return this.http.json(
+      joinUrl(this.config.servicesApiBase, `/resources/state${query({ work_limit: workLimit })}`),
+    );
+  }
+
+  /** Checks in or reports a job. The response lists overlapping active reports as warnings. */
+  reportWork(body: DenResourcesWorkReport): Promise<DenResult<DenResourcesWorkReportResponse>> {
+    return this.http.json(joinUrl(this.config.servicesApiBase, '/resources/work'), {
+      method: 'POST',
+      body,
+    });
+  }
+
+  /** `{}` renews the heartbeat; a terminal `state` checks the work out. */
+  updateWork(workId: string, body: DenResourcesWorkUpdate = {}): Promise<DenResult<DenResourcesWork>> {
+    return this.http.json(
+      joinUrl(this.config.servicesApiBase, `/resources/work/${encodeURIComponent(workId)}`),
+      { method: 'POST', body },
+    );
+  }
+
+  saveResource(body: DenResourceSaveRequest): Promise<DenResult<DenResource>> {
+    return this.http.json(joinUrl(this.config.servicesApiBase, '/resources/directory'), {
+      method: 'POST',
+      body,
+    });
   }
 }

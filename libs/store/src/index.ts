@@ -12,5 +12,6 @@ export * from './lib/navigation-store';
 export * from './lib/ops-store';
 export * from './lib/preferences-store';
 export * from './lib/providers';
+export * from './lib/resources-store';
 export * from './lib/tasks-store';
 export * from './lib/workspace-store';

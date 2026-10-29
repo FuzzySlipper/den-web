@@ -5,3 +5,4 @@ export * from './lib/documents';
 export * from './lib/messages';
 export * from './lib/tasks';
 export * from './lib/ops';
+export * from './lib/resources';
