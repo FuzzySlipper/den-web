@@ -553,3 +553,133 @@ export interface DenDocPublishResponse {
   readonly preview_markdown?: string;
   readonly warnings?: readonly string[];
 }
+
+// Ops: central backup and maintenance status (den-services docs/ops-api-contract.md).
+
+export type DenOpsJobStatus =
+  | 'unknown'
+  | 'failed'
+  | 'overdue'
+  | 'never_reported'
+  | 'warning'
+  | 'running'
+  | 'ok'
+  | 'disabled';
+
+export type DenOpsRunState = 'running' | 'success' | 'warning' | 'failed' | 'skipped';
+
+export interface DenOpsRun {
+  readonly job_id: string;
+  readonly run_id: string;
+  readonly host: string;
+  readonly kind: string;
+  readonly engine: string;
+  readonly runner: string;
+  readonly state: DenOpsRunState;
+  readonly terminal: boolean;
+  readonly phase: string;
+  readonly started_at: string;
+  readonly updated_at: string;
+  readonly finished_at: string | null;
+  readonly exit_code: number | null;
+  readonly error: string;
+  readonly reason: string;
+  readonly warnings: readonly string[];
+  readonly notices: readonly string[];
+  readonly target: string;
+  readonly archive_id: string;
+  readonly archive_name: string;
+  readonly original_bytes: number | null;
+  readonly compressed_bytes: number | null;
+  readonly deduplicated_bytes: number | null;
+  readonly file_count: number | null;
+  readonly duration_seconds: number | null;
+  readonly complete: boolean;
+  readonly log_path: string;
+  readonly manifest_path: string;
+  readonly run_directory: string;
+  readonly recovery_pointer: string;
+  readonly received_at: string;
+  readonly report_count: number;
+}
+
+export interface DenOpsVerification {
+  readonly job_id: string;
+  readonly verification_id: string;
+  readonly run_id: string;
+  readonly kind: 'verification' | 'restore_test';
+  readonly check_type: string;
+  readonly state: 'success' | 'warning' | 'failed';
+  readonly at: string;
+  readonly scope: string;
+  readonly archive: string;
+  readonly full_data_read: boolean | null;
+  readonly evidence_path: string;
+  readonly checked: readonly string[];
+  readonly received_at: string;
+}
+
+export interface DenOpsSchedule {
+  readonly timezone: string;
+  readonly times: readonly string[];
+  readonly weekdays: readonly string[];
+  readonly grace_seconds: number;
+}
+
+export interface DenOpsJob {
+  readonly job_id: string;
+  readonly host_id: string;
+  readonly display_name: string;
+  readonly engine: string;
+  readonly kind: string;
+  readonly source: string;
+  readonly scope: string;
+  readonly target: string;
+  readonly schedule: DenOpsSchedule | null;
+  readonly heartbeat_stale_after_seconds: number;
+  readonly retention: string;
+  readonly recovery_pointer: string;
+  readonly notes: string;
+  readonly registered: boolean;
+  readonly enabled: boolean;
+  readonly status: DenOpsJobStatus;
+  readonly status_reason: string;
+  readonly freshness: 'fresh' | 'overdue' | 'unscheduled';
+  readonly expected_by: string | null;
+  readonly next_due_at: string | null;
+  readonly evaluated_at: string;
+  readonly current_run: DenOpsRun | null;
+  readonly heartbeat_state: 'fresh' | 'stale' | null;
+  readonly heartbeat_age_seconds: number | null;
+  readonly last_attempt: DenOpsRun | null;
+  readonly last_finished: DenOpsRun | null;
+  readonly last_success: DenOpsRun | null;
+  readonly last_archive: DenOpsRun | null;
+  readonly last_verification: DenOpsVerification | null;
+  readonly last_restore_test: DenOpsVerification | null;
+}
+
+export interface DenOpsHost {
+  readonly host_id: string;
+  readonly display_name: string;
+  readonly role: string;
+  readonly notes: string;
+  readonly registered: boolean;
+  readonly coverage: 'configured' | 'not_configured';
+  readonly job_count: number;
+  readonly status: DenOpsJobStatus;
+}
+
+export interface DenOpsSummary {
+  readonly generated_at: string;
+  readonly status: DenOpsJobStatus;
+  readonly counts: Readonly<Record<string, number>>;
+  readonly hosts: readonly DenOpsHost[];
+  readonly jobs: readonly DenOpsJob[];
+}
+
+export interface DenOpsJobDetail {
+  readonly job: DenOpsJob;
+  readonly runs: readonly DenOpsRun[];
+  readonly verifications: readonly DenOpsVerification[];
+}

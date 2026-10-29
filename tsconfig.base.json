@@ -33,6 +33,7 @@
       "@den-web/feature-guidance": ["libs/feature-guidance/src/index.ts"],
       "@den-web/feature-librarian": ["libs/feature-librarian/src/index.ts"],
       "@den-web/feature-messages": ["libs/feature-messages/src/index.ts"],
+      "@den-web/feature-ops": ["libs/feature-ops/src/index.ts"],
       "@den-web/feature-notifications": [
         "libs/feature-notifications/src/index.ts"
       ],

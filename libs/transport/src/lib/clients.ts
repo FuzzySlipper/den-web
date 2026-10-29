@@ -9,6 +9,8 @@ import type {
   DenBoardPurgeRequest,
   DenBoardSearchPage,
   DenDeliveryIntent,
+  DenOpsJobDetail,
+  DenOpsSummary,
   DenDeliveryIntentRequest,
   DenDiscussion,
   DenDocPublishRequest,
@@ -82,6 +84,7 @@ export interface DenTransportClients {
   readonly docPublish: DocPublishTransport;
   readonly artifacts: ArtifactsTransport;
   readonly guidance: GuidanceTransport;
+  readonly ops: OpsTransport;
 }
 
 export function createDenTransportClients(
@@ -104,6 +107,7 @@ export function createDenTransportClients(
     docPublish: new DocPublishTransport(config, http),
     artifacts: new ArtifactsTransport(config, http),
     guidance: new GuidanceTransport(config, http),
+    ops: new OpsTransport(config, http),
   };
 }
 
@@ -1149,5 +1153,22 @@ export class DocPublishTransport {
       method: 'POST',
       body: request,
     });
+  }
+}
+
+export class OpsTransport {
+  constructor(
+    private readonly config: RuntimeApiConfig,
+    private readonly http: DenHttpClient,
+  ) {}
+
+  summary(): Promise<DenResult<DenOpsSummary>> {
+    return this.http.json(joinUrl(this.config.servicesApiBase, '/ops/summary'));
+  }
+
+  job(jobId: string, limit?: number): Promise<DenResult<DenOpsJobDetail>> {
+    return this.http.json(
+      joinUrl(this.config.servicesApiBase, `/ops/jobs/${encodeURIComponent(jobId)}${query({ limit })}`),
+    );
   }
 }

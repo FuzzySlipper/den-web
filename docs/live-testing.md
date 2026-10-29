@@ -261,3 +261,36 @@ Non-claims:
 
 - does not prove sensitive-artifact authorization policy;
 - does not prove deleted-artifact rendering.
+
+### 11. Operations Backup Status
+
+Purpose: prove the Operations page reads real backup status from Ops through
+same-origin `/api/v1/ops` (web-edge → Gateway → Ops on CT106) and renders it
+without ever showing unverified protection as green.
+
+Milestones:
+
+- the Admin → Operations route renders;
+- `/api/v1/ops/summary` responds and the overall status or an error alert is
+  visible;
+- each registered job shows its status, last attempt, last successful backup,
+  schedule, verification and restore-test lines;
+- the first job's history table loads from `/api/v1/ops/jobs/{job_id}`;
+- the evidence packet records the Ops responses and job statuses seen.
+
+Run the focused live scenario with:
+
+```bash
+LIVE_RUN=1 \
+BASE_URL=http://192.168.1.5:18080 \
+npx playwright test --config=apps/den-web-e2e/playwright.config.mts \
+  src/live/ops.live.spec.ts
+```
+
+The mocked smoke spec `src/smoke/ops.spec.ts` covers the failure, overdue,
+uncovered-machine, Ops-unreachable and failed-refresh renderings.
+
+Non-claims:
+
+- does not prove that any backup ran, only what Ops has recorded;
+- does not exercise failure or overdue states against the live backend.
