@@ -29,12 +29,18 @@ function log(message) {
   console.log(`[deploy-den-srv] ${message}`);
 }
 
+// Deploy-control variables describe this run only; checks and tests that
+// exercise the deploy script must not inherit them.
+const childEnv = Object.fromEntries(
+  Object.entries(process.env).filter(([name]) => !['STAGE_ONLY', 'DEPLOY_ROOT', 'DEPLOY_SMOKE'].includes(name)),
+);
+
 function run(command, args, options = {}) {
   log(`$ ${[command, ...args].join(' ')}`);
   if (dryRun) return;
   const result = spawnSync(command, args, {
     cwd: options.cwd ?? repoRoot,
-    env: { ...process.env, ...options.env },
+    env: { ...childEnv, ...options.env },
     stdio: 'inherit',
   });
   if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} failed with exit ${result.status}`);
