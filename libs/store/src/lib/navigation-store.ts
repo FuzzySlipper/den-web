@@ -2,7 +2,6 @@ import { signal, type Signal } from '@angular/core';
 
 export type DenWebTab =
   | 'tasks'
-  | 'notifications'
   | 'messages'
   | 'documents'
   | 'board'

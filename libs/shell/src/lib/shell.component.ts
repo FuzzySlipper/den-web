@@ -29,7 +29,6 @@ const navGroups: readonly NavGroup[] = [
     items: [
       { id: 'tasks', label: 'Tasks' },
       { id: 'messages', label: 'Messages' },
-      { id: 'notifications', label: 'Notifications' },
     ],
   },
   {

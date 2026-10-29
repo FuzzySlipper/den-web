@@ -8,13 +8,6 @@ export const shellRoutes: Routes = [
       import('@den-web/feature-tasks').then((m) => m.TaskCockpitComponent),
   },
   {
-    path: 'notifications',
-    loadComponent: () =>
-      import('@den-web/feature-notifications').then(
-        (m) => m.NotificationsPanelComponent,
-      ),
-  },
-  {
     path: 'messages',
     loadComponent: () =>
       import('@den-web/feature-messages').then(

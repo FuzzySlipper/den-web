@@ -57,7 +57,7 @@ test('deployment smoke accepts a typed missing-project response on an empty inst
   const result = await runSmoke(address(edge));
   assert.equal(result.code, 0, result.output);
   assert.match(result.output, /POST librarian query body reached Librarian on empty instance/);
-  assert.match(result.output, /-- Results: 29 passed, 0 failed --/);
+  assert.match(result.output, /-- Results: 27 passed, 0 failed --/);
 });
 
 function json(res, status, body) {

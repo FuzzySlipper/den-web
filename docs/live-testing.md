@@ -121,24 +121,10 @@ Non-claims:
 - does not prove external blog rendering;
 - does not prove concurrent editing.
 
-### 4. Notifications Feed And Read Behavior
+### 4. Notifications (retired)
 
-Purpose: prove notification feed, unread cues, and read-state persistence render
-correctly.
-
-Milestones:
-
-- user notification feed loads from `/api/v1/user-notifications`;
-- unread cue appears when unread items exist;
-- read action changes visible state;
-- local read cache survives reload through platform storage port;
-- failed feed read renders classified error state.
-
-Non-claims:
-
-- does not prove push notification delivery;
-- does not prove browser popup behavior unless that control is included in the
-  scenario variant.
+The Notifications page was removed from Den Web in October 2026 because
+nothing used it. This number is kept so later scenario numbers stay stable.
 
 ### 5. Messages Inbox And Thread
 
@@ -221,7 +207,6 @@ Milestones:
 - `/den-web-config.json` is valid or intentionally absent;
 - `/api/v1/projects` succeeds through the same-origin proxy;
 - `/api/v1/projects/den-web/tasks?limit=1` succeeds;
-- `/api/v1/user-notifications?read_for_agent=web-ui&limit=5` succeeds;
 - `/api/v1/observation/lane?limit=1` succeeds;
 - `/api/v1/timeline/channels/1/items?limit=1` succeeds;
 - retired `/api/channels?limit=1` and `/api/gateway/memberships?projectId=den-web`

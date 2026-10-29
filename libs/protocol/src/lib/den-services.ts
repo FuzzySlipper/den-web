@@ -167,18 +167,6 @@ export interface DenArtifactMetadata {
   readonly deleted_at?: string | null;
 }
 
-export interface DenNotification {
-  readonly id: number;
-  readonly project_id?: string;
-  readonly task_id?: number | null;
-  readonly sender?: string;
-  readonly content?: string;
-  readonly urgency?: string | null;
-  readonly is_read?: boolean;
-  readonly metadata?: Readonly<Record<string, unknown>> | null;
-  readonly created_at?: string;
-}
-
 export interface DenDocumentSummary {
   readonly id?: number;
   readonly project_id: string;

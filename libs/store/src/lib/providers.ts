@@ -38,10 +38,6 @@ import {
   type NavigationStore,
 } from './navigation-store';
 import {
-  createNotificationsStore,
-  type NotificationsStore,
-} from './notifications-store';
-import {
   createPreferencesStore,
   type PreferencesStore,
 } from './preferences-store';
@@ -75,9 +71,6 @@ export const DOCUMENT_PUBLISH_STORE = new InjectionToken<DocumentPublishStore>(
 );
 export const GUIDANCE_STORE = new InjectionToken<GuidanceStore>(
   'GUIDANCE_STORE',
-);
-export const NOTIFICATIONS_STORE = new InjectionToken<NotificationsStore>(
-  'NOTIFICATIONS_STORE',
 );
 export const AGENTS_STORE = new InjectionToken<AgentsStore>('AGENTS_STORE');
 export const ARTIFACTS_STORE = new InjectionToken<ArtifactsStore>(
@@ -147,12 +140,6 @@ export function provideDenStoreKernel(
       provide: GUIDANCE_STORE,
       useFactory: (clients: DenTransportClients) =>
         createGuidanceStore(clients.guidance, clients.documents),
-      deps: [DEN_TRANSPORT_CLIENTS],
-    },
-    {
-      provide: NOTIFICATIONS_STORE,
-      useFactory: (clients: DenTransportClients) =>
-        createNotificationsStore(clients.notifications, browserStorage()),
       deps: [DEN_TRANSPORT_CLIENTS],
     },
     {

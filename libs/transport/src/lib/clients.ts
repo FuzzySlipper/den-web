@@ -33,7 +33,6 @@ import type {
   DenManualReviewReceipt,
   DenMessage,
   DenMessageThreadResponse,
-  DenNotification,
   DenObservationLane,
   DenProject,
   DenResult,
@@ -74,7 +73,6 @@ export interface DenTransportClients {
   readonly projects: ProjectsTransport;
   readonly tasks: TasksTransport;
   readonly messages: MessagesTransport;
-  readonly notifications: NotificationsTransport;
   readonly documents: DocumentsTransport;
   readonly knowledge: KnowledgeTransport;
   readonly librarian: LibrarianTransport;
@@ -97,7 +95,6 @@ export function createDenTransportClients(
     projects: new ProjectsTransport(config, http),
     tasks: new TasksTransport(config, http),
     messages: new MessagesTransport(config, http),
-    notifications: new NotificationsTransport(config, http),
     documents: new DocumentsTransport(config, http),
     knowledge: new KnowledgeTransport(config, http),
     librarian: new LibrarianTransport(config, http),
@@ -524,37 +521,6 @@ export class MessagesTransport {
         this.config.servicesApiBase,
         `/projects/${encodeURIComponent(projectId)}/messages/threads/${threadId}`,
       ),
-    );
-  }
-}
-
-export class NotificationsTransport {
-  constructor(
-    private readonly config: RuntimeApiConfig,
-    private readonly http: DenHttpClient,
-  ) {}
-
-  listUserNotifications(
-    options: { readonly readForAgent?: string; readonly limit?: number } = {},
-  ): Promise<DenResult<readonly DenNotification[]>> {
-    return this.http.json(
-      joinUrl(
-        this.config.servicesApiBase,
-        `/user-notifications${query({ read_for_agent: options.readForAgent, limit: options.limit })}`,
-      ),
-    );
-  }
-
-  markRead(
-    ids: readonly number[],
-    readForAgent: string,
-  ): Promise<DenResult<{ readonly marked?: number }>> {
-    return this.http.json(
-      joinUrl(this.config.servicesApiBase, '/user-notifications/read'),
-      {
-        method: 'POST',
-        body: { ids, read_for_agent: readForAgent },
-      },
     );
   }
 }

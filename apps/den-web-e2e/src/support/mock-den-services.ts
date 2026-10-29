@@ -146,7 +146,6 @@ const taskDetail = {
   subtasks: [nestedTask, ashaTask],
   recent_messages: [],
 };
-const notifications = [{ id: 9, project_id: 'den-web', task_id: 3993, sender: 'den-services', content: 'Notification fixture loaded', urgency: 'normal', is_read: false, created_at: '2026-07-02T00:00:00Z', metadata: null }];
 const olderTaskMessage = { id: 1, project_id: 'den-web', task_id: 3993, thread_id: 1, sender: 'den-web', intent: 'note', content: 'Oldest task fixture note', metadata: null, created_at: '2026-07-01T23:59:00Z' };
 const taskMessages = [{ id: 2, project_id: 'den-web', task_id: 3993, thread_id: 1, sender: 'codex', intent: 'handoff', content: 'Phase 4 fixture loaded', metadata: artifactPacket, created_at: '2026-07-02T00:01:00Z' }, olderTaskMessage];
 const primaryMessage = { id: 10, project_id: 'den-web', task_id: 3993, thread_id: 1, sender: 'codex', intent: 'handoff', content: 'Message fixture loaded', metadata: artifactPacket, created_at: '2026-07-02T00:00:00Z' };
@@ -426,8 +425,6 @@ export async function mockDenServices(page: Page): Promise<void> {
       ref: 'main',
     },
   }));
-  await page.route('**/api/v1/user-notifications?**', (route) => json(route, notifications));
-  await page.route('**/api/v1/user-notifications/read', (route) => json(route, { marked: 1 }));
   await page.route('**/api/v1/projects/den-web/messages?**', (route) => json(route, messagesFor(route)));
   await page.route('**/api/v1/projects/asha/messages?**', (route) => json(route, []));
   await page.route('**/api/v1/projects/archive-mine/messages?**', (route) => json(route, []));

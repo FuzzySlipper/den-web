@@ -12,8 +12,6 @@ Carried-forward fixture coverage:
   visibility, and flat-list parent context;
 - document dirty-switch decisions, canonical Markdown selection, and discussion
   thread separation;
-- notification read-cache mapping as optimistic UI state, with service read
-  state remaining authoritative;
 - message intent labels and fallback body projection;
 - Observation-backed agents overview with explicit degraded source state;
 - signal stores with private writable state, public readonly signals, named
@@ -23,7 +21,6 @@ Dropped predecessor assumptions:
 
 - feature components should not own polling, local readback, backend calls, or
   browser effects;
-- local notification storage is not authoritative state;
 - document discussion is not part of the canonical document Markdown body;
 - old direct-connectivity and deferred feature premises are not represented in
   successor domain models.

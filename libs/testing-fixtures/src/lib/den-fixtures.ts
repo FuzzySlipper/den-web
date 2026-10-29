@@ -4,7 +4,6 @@ import type {
   DenDocumentDetail,
   DenDocumentSummary,
   DenMessage,
-  DenNotification,
   DenObservationLane,
   DenProject,
   DenSpace,
@@ -83,21 +82,6 @@ export function discussionCommentFixture(overrides: Partial<DenDiscussionComment
 
 export function discussionFixture(overrides: Partial<DenDiscussion> = {}): DenDiscussion {
   return { comments: [discussionCommentFixture()], ...overrides };
-}
-
-export function notificationFixture(overrides: Partial<DenNotification> = {}): DenNotification {
-  return {
-    id: 1,
-    project_id: 'den-web',
-    task_id: 3992,
-    sender: 'den-services',
-    content: 'Phase update available',
-    urgency: 'normal',
-    is_read: false,
-    created_at: '2026-07-02T00:00:00Z',
-    metadata: null,
-    ...overrides,
-  };
 }
 
 export function messageFixture(overrides: Partial<DenMessage> = {}): DenMessage {

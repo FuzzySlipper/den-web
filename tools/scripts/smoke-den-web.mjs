@@ -149,7 +149,6 @@ async function checkApis() {
   for (const [label, pathname] of [
     ['projects', '/api/v1/projects'],
     ['tasks', '/api/v1/projects/den-web/tasks?limit=1'],
-    ['notifications', '/api/v1/user-notifications?read_for_agent=web-ui&limit=5'],
     ['observation', '/api/v1/observation/lane?limit=1'],
     ['timeline', '/api/v1/timeline/channels/1/items?limit=1'],
   ]) {

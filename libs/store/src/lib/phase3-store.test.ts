@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ClockPort, KeyValueStoragePort } from '@den-web/platform';
-import { memoryStorage } from '@den-web/platform';
+import type { ClockPort } from '@den-web/platform';
 import type {
   DenDiscussion,
   DenDocumentDetail,
@@ -8,7 +7,6 @@ import type {
   DenGuidanceEntry,
   DenManualReviewCapability,
   DenManualReviewReceipt,
-  DenNotification,
   DenObservationLane,
   DenProject,
   DenRecordHumanAcceptanceResponse,
@@ -22,10 +20,8 @@ import {
   createAgentsStore,
   createDocumentsStore,
   createGuidanceStore,
-  createNotificationsStore,
   createTasksStore,
   createWorkspaceStore,
-  NOTIFICATION_READ_CACHE_KEY,
   stateValue,
   taskMessagesFetchLimit,
 } from '../index';
@@ -861,21 +857,6 @@ describe('successor signal stores', () => {
     expect(store.selectedEntry()).toBeNull();
   });
 
-  it('persists optimistic notification read state through the storage port', async () => {
-    const storage = memoryStorage();
-    const store = createNotificationsStore({
-      listUserNotifications: async () => ok([notificationFixture({ id: 1, is_read: false })]),
-      markRead: async () => ok({ marked: 1 }),
-    }, storage);
-
-    await store.refresh();
-    expect(store.unreadCount()).toBe(1);
-    await store.markRead(['notification:1']);
-
-    expect(store.unreadCount()).toBe(0);
-    expect(readStorageSet(storage, NOTIFICATION_READ_CACHE_KEY)).toEqual(new Set(['notification:1']));
-  });
-
   it('projects observation lanes through the agents store', async () => {
     const store = createAgentsStore({
       lane: async () => ok(observationLaneFixture({ source_health: [{ source: 'observation', status: 'unavailable' }] })),
@@ -894,11 +875,6 @@ function fakeClock(): ClockPort {
     setTimeout: () => 1,
     clearTimeout: () => undefined,
   };
-}
-
-function readStorageSet(storage: KeyValueStoragePort, key: string): ReadonlySet<string> {
-  const raw = storage.getItem(key);
-  return new Set(raw ? JSON.parse(raw) as string[] : []);
 }
 
 async function eventually(predicate: () => boolean): Promise<void> {
@@ -960,21 +936,6 @@ function guidanceEntryFixture(overrides: Partial<DenGuidanceEntry> = {}): DenGui
 
 function discussionFixture(overrides: Partial<DenDiscussion> = {}): DenDiscussion {
   return { comments: [{ id: 1, author_identity: 'codex', body_markdown: 'Readable body', parent_comment_id: null }], ...overrides };
-}
-
-function notificationFixture(overrides: Partial<DenNotification> = {}): DenNotification {
-  return {
-    id: 1,
-    project_id: 'den-web',
-    task_id: 3992,
-    sender: 'den-services',
-    content: 'Phase update available',
-    urgency: 'normal',
-    is_read: false,
-    metadata: null,
-    created_at: '2026-07-02T00:00:00Z',
-    ...overrides,
-  };
 }
 
 function observationLaneFixture(overrides: Partial<DenObservationLane> = {}): DenObservationLane {

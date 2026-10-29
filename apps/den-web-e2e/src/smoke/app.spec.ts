@@ -409,11 +409,6 @@ test('renders inherited feature tabs through successor fixtures', async ({ page 
   await mockDenServices(page);
   await page.goto('/');
 
-  await page.getByRole('link', { name: 'Notifications' }).click();
-  await expect(page.getByText('Notification fixture loaded')).toBeVisible();
-  await page.getByRole('button', { name: 'Mark read' }).click();
-  await expect(page.getByText('0 unread')).toBeVisible();
-
   await page.getByRole('link', { name: 'Messages' }).click();
   await expect(page.getByText('Message fixture loaded')).toBeVisible();
   await page.getByRole('button', { name: /Handoff/ }).click();

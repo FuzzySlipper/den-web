@@ -10,10 +10,7 @@ import {
   isDependencyWaitingTask,
   messageIntentLabel,
   messageViewItem,
-  notificationCacheId,
-  notificationViewItem,
   observationAgentsOverview,
-  parseNotificationReadCache,
   taskMatchesStatusFilter,
   visibleTaskRows,
 } from '../index';
@@ -23,7 +20,6 @@ import type {
   DenDocumentDetail,
   DenDocumentSummary,
   DenMessage,
-  DenNotification,
   DenObservationLane,
   DenTaskDetail,
   DenTaskSummary,
@@ -125,21 +121,6 @@ function discussionFixture(overrides: Partial<DenDiscussion> = {}): DenDiscussio
   return { comments: [discussionCommentFixture()], ...overrides };
 }
 
-function notificationFixture(overrides: Partial<DenNotification> = {}): DenNotification {
-  return {
-    id: 1,
-    project_id: 'den-web',
-    task_id: 3992,
-    sender: 'den-services',
-    content: 'Phase update available',
-    urgency: 'normal',
-    is_read: false,
-    created_at: '2026-07-02T00:00:00Z',
-    metadata: null,
-    ...overrides,
-  };
-}
-
 function messageFixture(overrides: Partial<DenMessage> = {}): DenMessage {
   return {
     id: 1,
@@ -199,16 +180,7 @@ describe('successor document domain fixtures', () => {
   });
 });
 
-describe('successor notification and message fixtures', () => {
-  it('treats local notification read state as an optimistic cache only', () => {
-    const cached = parseNotificationReadCache(JSON.stringify([notificationCacheId(1)]));
-    const item = notificationViewItem(notificationFixture({ id: 1, is_read: false }), cached);
-    const urgent = notificationViewItem(notificationFixture({ id: 2, urgency: 'critical' }));
-
-    expect(item.read).toBe(true);
-    expect(urgent.severity).toBe('error');
-  });
-
+describe('successor message fixtures', () => {
   it('projects messages to stable labels and display bodies', () => {
     expect(messageIntentLabel('review_feedback')).toBe('Feedback');
     expect(messageViewItem(messageFixture({ content: '', summary: 'Fallback summary' })).body).toBe('Fallback summary');
