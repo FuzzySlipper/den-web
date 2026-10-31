@@ -110,8 +110,8 @@ explicitly re-adds them with successor contracts:
 | Worker pool/lobby | Drop | Worker references are explicitly out of scope. |
 | Hermes-specific behavior | Drop | Hermes direct references are explicitly out of scope. |
 | Direct den-channels compatibility | Drop | Normal product path is successor `/api/v1/*` only. |
-| Conversation cockpit | Drop | Abandoned by the owner; the den-services `conversation` module is retired. |
-| Visual contracts and visual inspect | Drop | Abandoned by the owner; the den-services visual contract/inspect modules are retired. |
+| Conversation cockpit | Drop | Abandoned by Patch; the den-services `conversation` module is retired. |
+| Visual contracts and visual inspect | Drop | Abandoned by Patch; the den-services visual contract/inspect modules are retired. |
 
 ## Behavioral Fixtures To Carry Forward
 
