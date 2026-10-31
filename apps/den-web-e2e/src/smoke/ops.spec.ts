@@ -45,7 +45,7 @@ const summary = {
   ],
   jobs: [
     job(),
-    job({ job_id: 'den-nas-config', host_id: 'den-nas', display_name: 'den-nas configuration', status: 'failed', status_reason: 'latest finished run nas-2 failed', last_attempt: failedRun, last_finished: failedRun }),
+    job({ job_id: 'den-nas-config', host_id: 'den-nas', display_name: 'den-nas configuration', notes: 'B2 bucket held 27.59 GB as observed at 2026-10-30T10:40:57Z.', status: 'failed', status_reason: 'latest finished run nas-2 failed', last_attempt: failedRun, last_finished: failedRun }),
     job({ job_id: 'snapraid-sync', host_id: 'den-nas', display_name: 'SnapRAID sync', engine: 'snapraid', kind: 'maintenance', status: 'overdue', freshness: 'overdue', status_reason: 'no run started for the slot due by 2026-10-29T18:00:00Z', last_restore_test: null }),
   ],
 };
@@ -78,6 +78,8 @@ test('Operations shows failures, overdue jobs, uncovered machines and history', 
   const failed = page.getByRole('article', { name: 'den-nas configuration' });
   await expect(failed.getByText('Failed to acquire /run/lock/snapraid-maintenance.lock')).toBeVisible();
   await expect(failed.getByText('den-agents-git-2026-10-29T04-24-43').first()).toBeVisible();
+  await expect(failed.getByTestId('ops-job-notes')).toContainText('27.59 GB as observed at 2026-10-30T10:40:57Z');
+  await expect(page.getByRole('article', { name: 'SnapRAID sync' }).getByTestId('ops-job-notes')).toHaveCount(0);
   await expect(page.getByTestId('ops-host').filter({ hasText: 'den-win11' })).toContainText('Not configured · No backup tracked');
 
   const healthy = page.getByRole('article', { name: 'den-agents Git projects' });

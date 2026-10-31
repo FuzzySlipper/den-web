@@ -167,6 +167,13 @@ import { opsPanelStyles } from './ops-panel.styles';
                     @if (run.logPath) { <span class="muted">Log: <code>{{ run.logPath }}</code></span> }
                   }
                 </div>
+
+                @if (job.notes) {
+                  <div class="fact" data-testid="ops-job-notes">
+                    <h4>Notes</h4>
+                    <span class="muted">{{ job.notes }}</span>
+                  </div>
+                }
               </div>
 
               <div class="toolbar">
