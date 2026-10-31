@@ -11,6 +11,7 @@ export type DenWebTab =
   | 'agents'
   | 'ops'
   | 'resources'
+  | 'wiki'
   | 'preferences';
 
 export interface MessageThreadNavigationTarget {

@@ -35,6 +35,7 @@
       "@den-web/feature-messages": ["libs/feature-messages/src/index.ts"],
       "@den-web/feature-ops": ["libs/feature-ops/src/index.ts"],
       "@den-web/feature-resources": ["libs/feature-resources/src/index.ts"],
+      "@den-web/feature-wiki": ["libs/feature-wiki/src/index.ts"],
       "@den-web/feature-preferences": ["libs/feature-preferences/src/index.ts"],
       "@den-web/feature-projects": ["libs/feature-projects/src/index.ts"],
       "@den-web/feature-tasks": ["libs/feature-tasks/src/index.ts"],

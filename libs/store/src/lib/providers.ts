@@ -43,6 +43,7 @@ import {
 } from './preferences-store';
 import { createOpsStore, type OpsStore } from './ops-store';
 import { createResourcesStore, type ResourcesStore } from './resources-store';
+import { createWikiStore, type WikiStore } from './wiki-store';
 import { createTasksStore, type TasksStore } from './tasks-store';
 import { createWorkspaceStore, type WorkspaceStore } from './workspace-store';
 
@@ -99,6 +100,8 @@ export const OPS_STORE = new InjectionToken<OpsStore>('OPS_STORE');
 export const RESOURCES_STORE = new InjectionToken<ResourcesStore>(
   'RESOURCES_STORE',
 );
+
+export const WIKI_STORE = new InjectionToken<WikiStore>('WIKI_STORE');
 
 export function provideDenStoreKernel(
   config: RuntimeApiConfig = defaultRuntimeApiConfig,
@@ -197,6 +200,11 @@ export function provideDenStoreKernel(
       useFactory: (clients: DenTransportClients, clock: ClockPort) =>
         createResourcesStore(clients.resources, clock, browserStorage()),
       deps: [DEN_TRANSPORT_CLIENTS, DEN_CLOCK],
+    },
+    {
+      provide: WIKI_STORE,
+      useFactory: (clients: DenTransportClients) => createWikiStore(clients.wiki),
+      deps: [DEN_TRANSPORT_CLIENTS],
     },
     {
       provide: BOARD_STORE,

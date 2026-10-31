@@ -6,3 +6,4 @@ export * from './lib/messages';
 export * from './lib/tasks';
 export * from './lib/ops';
 export * from './lib/resources';
+export * from './lib/wiki';

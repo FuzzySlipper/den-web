@@ -105,11 +105,10 @@ async function mockResources(page: Page, stateStatus: () => number = () => 200):
   return { posts, stateReads: () => reads };
 }
 
-test('Resources is a top-level page showing machines, measured activity and native queues', async ({ page }, testInfo) => {
+test('Resources sits under Admin and shows machines, measured activity and native queues', async ({ page }, testInfo) => {
   await mockResources(page);
   await page.goto('/');
-  await expect(page.locator('.rail-group[aria-label="Admin"]').getByRole('link', { name: 'Resources' })).toHaveCount(0);
-  await page.getByRole('link', { name: 'Resources' }).click();
+  await page.locator('.rail-group[aria-label="Admin"]').getByRole('link', { name: 'Resources' }).click();
   await expect(page).toHaveURL(/\/resources$/);
   await expect(page.getByRole('heading', { name: 'Resources', exact: true })).toBeVisible();
 

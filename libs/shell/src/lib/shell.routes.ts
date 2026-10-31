@@ -67,6 +67,11 @@ export const shellRoutes: Routes = [
       ),
   },
   {
+    path: 'wiki',
+    loadComponent: () =>
+      import('@den-web/feature-wiki').then((m) => m.WikiPanelComponent),
+  },
+  {
     path: 'preferences',
     loadComponent: () =>
       import('@den-web/feature-preferences').then(

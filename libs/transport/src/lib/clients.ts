@@ -58,6 +58,7 @@ import {
   DEN_GLOBAL_PROJECT_ID,
 } from '@den-web/protocol';
 import { DenHttpClient, joinUrl, query } from './http';
+import { WikiTransport } from './wiki-transport';
 
 interface EventStreamEvent {
   readonly type: string;
@@ -91,6 +92,7 @@ export interface DenTransportClients {
   readonly guidance: GuidanceTransport;
   readonly ops: OpsTransport;
   readonly resources: ResourcesTransport;
+  readonly wiki: WikiTransport;
 }
 
 export function createDenTransportClients(
@@ -114,6 +116,7 @@ export function createDenTransportClients(
     guidance: new GuidanceTransport(config, http),
     ops: new OpsTransport(config, http),
     resources: new ResourcesTransport(config, http),
+    wiki: new WikiTransport(config, http),
   };
 }
 

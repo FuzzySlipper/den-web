@@ -19,16 +19,11 @@ interface NavItem {
 }
 
 interface NavGroup {
-  /** Null for a top-level item that belongs to no group. */
-  readonly label: string | null;
+  readonly label: string;
   readonly items: readonly NavItem[];
 }
 
 const navGroups: readonly NavGroup[] = [
-  {
-    label: null,
-    items: [{ id: 'resources', label: 'Resources' }],
-  },
   {
     label: 'Operate',
     items: [
@@ -44,6 +39,7 @@ const navGroups: readonly NavGroup[] = [
       { id: 'knowledge', label: 'Knowledge' },
       { id: 'guidance', label: 'Guidance' },
       { id: 'librarian', label: 'Librarian' },
+      { id: 'wiki', label: 'Wiki' },
     ],
   },
   {
@@ -51,6 +47,7 @@ const navGroups: readonly NavGroup[] = [
     items: [
       { id: 'agents', label: 'Agents' },
       { id: 'ops', label: 'Operations' },
+      { id: 'resources', label: 'Resources' },
       { id: 'preferences', label: 'Preferences' },
     ],
   },
@@ -210,11 +207,9 @@ const navGroups: readonly NavGroup[] = [
     <div class="shell">
       <nav class="rail" aria-label="Primary">
         <h1 class="brand">Den Web</h1>
-        @for (group of navGroups; track $index) {
+        @for (group of navGroups; track group.label) {
           <div class="rail-group" [attr.aria-label]="group.label">
-            @if (group.label) {
-              <span class="rail-group-label">{{ group.label }}</span>
-            }
+            <span class="rail-group-label">{{ group.label }}</span>
             @for (item of group.items; track item.id) {
               <a
                 class="nav-item"
