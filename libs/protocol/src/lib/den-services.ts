@@ -215,7 +215,6 @@ export interface DenKnowledgeEntrySummary {
   readonly status: string;
   readonly curation_state: string;
   readonly tags?: readonly string[];
-  readonly audience?: readonly string[];
   readonly aliases?: readonly string[];
   readonly source_refs?: readonly DenKnowledgeSourceRef[];
   readonly accuracy_notes?: string;

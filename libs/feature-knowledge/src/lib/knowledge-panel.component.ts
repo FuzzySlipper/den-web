@@ -83,7 +83,6 @@ type MobilePane = 'list' | 'detail';
                     <div class="meta-item"><span class="label">Updated</span><span class="value"><den-local-time [value]="entry.updated_at" [relative]="false" /></span></div>
                     <div class="meta-item"><span class="label">Created</span><span class="value"><den-local-time [value]="entry.created_at" [relative]="false" /></span></div>
                     <div class="meta-item"><span class="label">Tags</span><span class="value">{{ tagList(entry.tags) }}</span></div>
-                    <div class="meta-item"><span class="label">Audience</span><span class="value">{{ tagList(entry.audience) }}</span></div>
                   </div>
                   @if (entry.summary) { <p class="summary">{{ entry.summary }}</p> }
                   @if (entry.accuracy_notes) { <p class="summary">{{ entry.accuracy_notes }}</p> }
