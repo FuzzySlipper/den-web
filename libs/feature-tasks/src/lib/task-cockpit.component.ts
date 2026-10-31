@@ -56,8 +56,8 @@ const filterOptions: readonly FilterOption[] = [
 ];
 
 const sortOptions: readonly SortOption[] = [
-  { value: 'priority', label: 'Priority' },
   { value: 'id', label: 'ID' },
+  { value: 'priority', label: 'Priority' },
 ];
 
 const editableStatuses: readonly string[] = ['backlog', 'planned', 'in_progress', 'review', 'blocked', 'done', 'cancelled'];

@@ -121,7 +121,7 @@ export function visibleTaskRows(
   options: { readonly filter?: TaskStatusFilter; readonly query?: string; readonly flat?: boolean; readonly sort?: TaskSortMode } = {},
 ): readonly FlatTaskRow[] {
   const matches = (task: DenTaskSummary): boolean => taskMatchesStatusFilter(task, options.filter ?? null) && taskSearchMatches(task, options.query ?? '');
-  const sort = options.sort ?? 'priority';
+  const sort = options.sort ?? 'id';
   if (options.flat) {
     const taskById = new Map(tasks.map((task) => [task.id, task]));
     return sortTaskRows(tasks, sort)

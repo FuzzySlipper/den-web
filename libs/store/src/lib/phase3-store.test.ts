@@ -204,10 +204,10 @@ describe('successor signal stores', () => {
 
     await store.refresh('den-web');
 
-    expect(store.sortMode()).toBe('priority');
-    expect(store.rows().map((row) => row.task.id)).toEqual([5000, 4200, 4100]);
-    store.setSortMode('id');
+    expect(store.sortMode()).toBe('id');
     expect(store.rows().map((row) => row.task.id)).toEqual([4100, 4200, 5000]);
+    store.setSortMode('priority');
+    expect(store.rows().map((row) => row.task.id)).toEqual([5000, 4200, 4100]);
   });
 
   it('reconciles task edits into selected detail and list state', async () => {

@@ -13,9 +13,9 @@ test('boots the successor task cockpit', async ({ page }) => {
   await expect(page.getByRole('button', { name: /Den Web den-web/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Asha Studio asha/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Global _global/ })).toBeVisible();
-  await expect(page.getByLabel('Task sort')).toHaveValue('priority');
-  await page.getByLabel('Task sort').selectOption('id');
   await expect(page.getByLabel('Task sort')).toHaveValue('id');
+  await page.getByLabel('Task sort').selectOption('priority');
+  await expect(page.getByLabel('Task sort')).toHaveValue('priority');
   await expect(page.getByRole('button', { name: 'Projects' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Spaces' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /#3993 Den Web Angular/ })).toBeVisible();
@@ -71,7 +71,7 @@ test('keeps the canonical updated timestamp in task detail without cluttering ta
   await expect(localTime).not.toContainText('2026-07-29T00:57:23.730966Z');
   await expect(taskRow).toContainText('#3993');
 
-  await page.getByLabel('Task sort').selectOption('id');
+  await expect(page.getByLabel('Task sort')).toHaveValue('id');
   await expect(page.locator('.task-list .row').first()).toContainText('#3993');
   await expect(taskRow.locator('time')).toHaveCount(0);
   await expect(localTime).toHaveAttribute('datetime', '2026-07-29T00:57:23.730966Z');

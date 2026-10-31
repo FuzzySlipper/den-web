@@ -76,7 +76,7 @@ export function createTasksStore(transport: TasksTransportPort, messagesTranspor
   let taskListGeneration = 0;
   let currentTaskListProjectId: string | null = null;
   const filter = signal<TaskStatusFilter>('active');
-  const sortMode = signal<TaskSortMode>('priority');
+  const sortMode = signal<TaskSortMode>('id');
   const query = signal('');
   const flat = signal(false);
 
