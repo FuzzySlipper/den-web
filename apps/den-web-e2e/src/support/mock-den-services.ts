@@ -1,6 +1,11 @@
 import type { Page, Route } from '@playwright/test';
 
-const project = { id: 'den-web', name: 'Den Web', visibility: 'normal' };
+const project = {
+  id: 'den-web',
+  name: 'Den Web',
+  visibility: 'normal',
+  crew_notify: { on_done: [{ address: 'den-web.lead', policy: 'next_turn' }] },
+};
 const hiddenProject = { id: 'archive-mine', name: 'Archive Mine', visibility: 'archived' };
 const spaces = [
   { id: 'den-web', name: 'Den Web', kind: 'project', visibility: 'normal' },

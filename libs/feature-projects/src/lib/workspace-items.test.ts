@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEN_GLOBAL_PROJECT_ID, type DenProject, type DenSpace } from '@den-web/protocol';
-import { workspaceItems } from './workspace-items';
+import { reviewNotices, workspaceItems } from './workspace-items';
 
 const project: DenProject = { id: 'den-web', name: 'Den Web', visibility: 'normal' };
 const projectScope: DenSpace = { id: 'den-web', name: 'Den Web', kind: 'project', visibility: 'normal' };
@@ -49,5 +49,18 @@ describe('workspaceItems', () => {
     const visibleWithSpacesOn = workspaceItems([project, archivedProject], [], true);
     expect(hiddenWhenSpacesOff.map((item) => item.id)).toEqual([DEN_GLOBAL_PROJECT_ID, 'den-web', 'old-den']);
     expect(visibleWithSpacesOn.map((item) => item.id)).toEqual(hiddenWhenSpacesOff.map((item) => item.id));
+  });
+});
+
+describe('reviewNotices', () => {
+  it('lists the on_done addresses of the selected project, empty when unset, null for a space or none', () => {
+    const notified: DenProject = {
+      ...project,
+      crew_notify: { on_done: [{ address: 'den-web.lead', policy: 'next_turn' }] },
+    };
+    expect(reviewNotices([notified], 'den-web')).toEqual([{ address: 'den-web.lead', policy: 'next_turn' }]);
+    expect(reviewNotices([project], 'den-web')).toEqual([]);
+    expect(reviewNotices([project], 'asha')).toBeNull();
+    expect(reviewNotices([project], null)).toBeNull();
   });
 });

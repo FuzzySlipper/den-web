@@ -4,6 +4,17 @@ export interface DenProject {
   readonly id: string;
   readonly name?: string;
   readonly visibility?: string;
+  /** Crew addresses crew-review tells about the project's tasks; absent when none. */
+  readonly crew_notify?: DenCrewNotify;
+}
+
+export interface DenCrewNotify {
+  readonly on_done?: readonly DenCrewNotifyTarget[];
+}
+
+export interface DenCrewNotifyTarget {
+  readonly address: string;
+  readonly policy: 'no_wake' | 'next_turn';
 }
 
 export interface DenSpace {

@@ -168,6 +168,19 @@ test('selects spaces as active workspaces', async ({ page }) => {
   await expect(page.getByLabel('Document detail').getByRole('heading', { name: 'Asha Brief' }).first()).toBeVisible();
 });
 
+test('shows who is told when a selected project\'s task passes review', async ({ page }) => {
+  await mockDenServices(page);
+  await page.goto('/');
+
+  await page.getByLabel('Workspaces').getByRole('button', { name: /Den Web/ }).click();
+  const notices = page.getByLabel('Review notices');
+  await expect(notices).toContainText('den-web.lead');
+  await expect(notices).toContainText('wakes');
+
+  await page.getByRole('button', { name: /Asha Studio asha/ }).click();
+  await expect(notices).toHaveCount(0);
+});
+
 test('shows archived workspaces on demand and exposes global scope views', async ({ page }) => {
   await mockDenServices(page);
   await page.goto('/');

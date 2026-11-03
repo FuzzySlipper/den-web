@@ -1,4 +1,4 @@
-import { DEN_GLOBAL_PROJECT_ID, type DenProject, type DenSpace } from '@den-web/protocol';
+import { DEN_GLOBAL_PROJECT_ID, type DenCrewNotifyTarget, type DenProject, type DenSpace } from '@den-web/protocol';
 
 export interface WorkspaceItem {
   readonly id: string;
@@ -57,4 +57,10 @@ function isSpaceItem(item: WorkspaceItem, projects: readonly DenProject[]): bool
   if (item.source !== 'space') return false;
   if (item.kind !== undefined && item.kind !== '') return item.kind !== 'project';
   return !projects.some((project) => project.id === item.id);
+}
+
+/** Who crew-review tells when one of the project's tasks passes review. */
+export function reviewNotices(projects: readonly DenProject[], projectId: string | null): readonly DenCrewNotifyTarget[] | null {
+  const project = projects.find((item) => item.id === projectId);
+  return project ? (project.crew_notify?.on_done ?? []) : null;
 }

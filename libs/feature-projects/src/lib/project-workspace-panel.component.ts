@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import type { OnDestroy, OnInit } from '@angular/core';
 import { stateValue, WORKSPACE_STORE } from '@den-web/store';
-import { workspaceItems, type WorkspaceItem } from './workspace-items';
+import { reviewNotices, workspaceItems, type WorkspaceItem } from './workspace-items';
 
 @Component({
   selector: 'den-project-workspace-panel',
@@ -150,6 +150,28 @@ import { workspaceItems, type WorkspaceItem } from './workspace-items';
         color: var(--den-danger);
       }
 
+      .notices ul {
+        display: grid;
+        gap: 4px;
+        list-style: none;
+        margin: 0;
+        padding: 0 8px;
+      }
+
+      .notices li {
+        align-items: center;
+        display: flex;
+        gap: 6px;
+        min-width: 0;
+      }
+
+      .hint {
+        color: var(--den-muted);
+        font-size: var(--den-font-size-xs);
+        margin: 0;
+        padding: 0 8px;
+      }
+
       footer {
         border-top: 1px solid var(--den-border);
         padding: 6px 10px;
@@ -264,6 +286,23 @@ import { workspaceItems, type WorkspaceItem } from './workspace-items';
             </div>
           }
         </section>
+        @if (notices(); as targets) {
+          <section class="notices" aria-label="Review notices">
+            <p class="section-title">Told when a task passes review</p>
+            @if (targets.length === 0) {
+              <p class="hint">Nobody. Add a seat with <code>den-tool den update_project_crew_notify</code>.</p>
+            } @else {
+              <ul>
+                @for (target of targets; track target.address) {
+                  <li>
+                    <span class="item-id">{{ target.address }}</span>
+                    <span class="chip">{{ target.policy === 'next_turn' ? 'wakes' : 'no wake' }}</span>
+                  </li>
+                }
+              </ul>
+            }
+          </section>
+        }
       </div>
 
       <footer>
@@ -287,6 +326,7 @@ export class ProjectWorkspacePanelComponent implements OnInit, OnDestroy {
   protected readonly workspaceItems = computed(() =>
     workspaceItems(this.projectItems(), this.spaceItems(), this.showSpaces()),
   );
+  protected readonly notices = computed(() => reviewNotices(this.projectItems(), this.selectedProjectId()));
   protected readonly loading = computed(() => this.projects().kind === 'loading' || this.spaces().kind === 'loading');
   protected readonly loadError = computed(() => {
     const state = this.projects();
